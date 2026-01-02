@@ -216,7 +216,9 @@ export default function App() {
       )}
 
       {currentPage === 'login-test' && (
-        <LoginTest />
+        <LoginTest 
+          onLoginSuccess={() => handleNavigate('home')}
+        />
       )}
       
       {/* Hide BottomNav when in FullScreen views */}

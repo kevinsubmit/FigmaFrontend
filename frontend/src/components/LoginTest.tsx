@@ -7,7 +7,11 @@ import { useState } from 'react';
 import { login, register, getCurrentUser, logout, sendVerificationCode, type User } from '../api/auth';
 import { toast } from 'sonner';
 
-export function LoginTest() {
+interface LoginTestProps {
+  onLoginSuccess?: () => void;
+}
+
+export function LoginTest({ onLoginSuccess }: LoginTestProps = {}) {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -70,6 +74,13 @@ export function LoginTest() {
       // Fetch user info
       const userInfo = await getCurrentUser();
       setUser(userInfo);
+      
+      // Call onLoginSuccess callback to navigate to home
+      if (onLoginSuccess) {
+        setTimeout(() => {
+          onLoginSuccess();
+        }, 500); // Small delay to show success message
+      }
     } catch (error: any) {
       toast.error(error.message || 'Login failed');
     } finally {
