@@ -27,6 +27,7 @@ function AppRouter() {
   const [selectedSalon, setSelectedSalon] = useState<any>(null);
   const [settingsSection, setSettingsSection] = useState<'main' | 'referral' | 'vip'>('main');
   const [myBookings, setMyBookings] = useState<any[]>([]);
+  const [isViewingStoreDetails, setIsViewingStoreDetails] = useState(false);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,7 +57,7 @@ function AppRouter() {
 
   const currentPage = getCurrentPage();
   // Hide bottom nav for full-screen pages and when viewing store details in services page
-  const isFullScreenPage = currentPage === 'pin-detail' || currentPage === 'edit-profile' || currentPage === 'order-history' || currentPage === 'my-points' || currentPage === 'my-coupons' || currentPage === 'my-gift-cards' || currentPage === 'settings' || currentPage === 'vip-description' || currentPage === 'login' || (currentPage === 'services' && selectedSalon !== null);
+  const isFullScreenPage = currentPage === 'pin-detail' || currentPage === 'edit-profile' || currentPage === 'order-history' || currentPage === 'my-points' || currentPage === 'my-coupons' || currentPage === 'my-gift-cards' || currentPage === 'settings' || currentPage === 'vip-description' || currentPage === 'login' || (currentPage === 'services' && isViewingStoreDetails);
 
   const handleNavigate = (page: 'home' | 'services' | 'appointments' | 'profile' | 'deals') => {
     console.log('handleNavigate called with page:', page);
@@ -153,6 +154,7 @@ function AppRouter() {
             <Services 
               onBookingSuccess={handleBookingSuccess}
               initialSelectedStore={selectedSalon}
+              onStoreDetailsChange={setIsViewingStoreDetails}
             />
           </ProtectedRoute>
         } />

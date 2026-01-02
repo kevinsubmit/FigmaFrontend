@@ -59,9 +59,10 @@ interface ServicesProps {
   onBookingSuccess?: (booking: any) => void;
   initialStep?: number;
   initialSelectedStore?: any;
+  onStoreDetailsChange?: (isViewingDetails: boolean) => void;
 }
 
-export function Services({ onBookingSuccess, initialStep, initialSelectedStore }: ServicesProps) {
+export function Services({ onBookingSuccess, initialStep, initialSelectedStore, onStoreDetailsChange }: ServicesProps) {
   const [step, setStep] = useState(initialStep || 1);
   const [isLoading, setIsLoading] = useState(false);
   const [hasAppliedOffer, setHasAppliedOffer] = useState(!!initialSelectedStore);
@@ -78,6 +79,13 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore }
       // Ensure we are logically in the details view
     }
   }, [initialSelectedStore]);
+
+  // Notify parent component when store details view changes
+  useEffect(() => {
+    if (onStoreDetailsChange) {
+      onStoreDetailsChange(selectedStore !== null);
+    }
+  }, [selectedStore, onStoreDetailsChange]);
 
   useEffect(() => {
     // Simulate data loading
