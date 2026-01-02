@@ -5,15 +5,16 @@
 import apiClient from './client';
 
 export interface RegisterData {
-  email: string;
+  phone: string;  // Required: US phone number (10 or 11 digits)
+  verification_code: string;  // Required: 6-digit verification code
   username: string;
   password: string;
+  email?: string;  // Optional
   full_name?: string;
-  phone?: string;
 }
 
 export interface LoginData {
-  email: string;
+  phone: string;  // Can use phone or email
   password: string;
 }
 
@@ -25,11 +26,12 @@ export interface TokenResponse {
 
 export interface User {
   id: number;
-  email: string;
+  phone: string;
+  email?: string;
   username: string;
   full_name?: string;
   avatar_url?: string;
-  phone?: string;
+  phone_verified: boolean;
   is_active: boolean;
   is_admin: boolean;
   created_at: string;
@@ -96,4 +98,25 @@ export async function refreshToken(): Promise<TokenResponse> {
  */
 export function isAuthenticated(): boolean {
   return localStorage.getItem('access_token') !== null;
+}
+
+/**
+ * Send verification code to phone
+ */
+export async function sendVerificationCode(phone: string, code_type: 'register' | 'login' | 'reset_password' = 'register'): Promise<{ message: string }> {
+  return apiClient.post<{ message: string }>('/api/v1/auth/send-verification-code', {
+    phone,
+    code_type,
+  });
+}
+
+/**
+ * Verify verification code
+ */
+export async function verifyCode(phone: string, code: string, code_type: 'register' | 'login' | 'reset_password' = 'register'): Promise<{ valid: boolean; message: string }> {
+  return apiClient.post<{ valid: boolean; message: string }>('/api/v1/auth/verify-code', {
+    phone,
+    code,
+    code_type,
+  });
 }
