@@ -24,7 +24,6 @@ export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 
 // Main App Router Component
 function AppRouter() {
   const [selectedPin, setSelectedPin] = useState<any>(null);
-  const [selectedSalon, setSelectedSalon] = useState<any>(null);
   const [settingsSection, setSettingsSection] = useState<'main' | 'referral' | 'vip'>('main');
   const [myBookings, setMyBookings] = useState<any[]>([]);
   const [isViewingStoreDetails, setIsViewingStoreDetails] = useState(false);
@@ -109,24 +108,9 @@ function AppRouter() {
   const handleSelectSalon = (salon: any) => {
     // Save current scroll
     scrollPositions.current[currentPage] = window.scrollY;
-    // Convert to a format that matches Services component's expected store structure
-    const mockStore = {
-      id: salon.id || 1,
-      name: salon.name,
-      rating: salon.rating,
-      reviewCount: salon.reviews,
-      distance: "1.2 mi",
-      address: salon.location,
-      coverImage: salon.image,
-      thumbnails: [
-        "https://images.unsplash.com/photo-1673985402265-46c4d2e53982?w=400&q=80",
-        "https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400&q=80",
-        "https://images.unsplash.com/photo-1522337660859-02fbefca4702?w=400&q=80",
-        "https://images.unsplash.com/photo-1519017713917-9807534d0b0b?w=400&q=80"
-      ]
-    };
-    setSelectedSalon(mockStore);
-    navigate('/services');
+    // Navigate directly to the store details page using store ID
+    const storeId = salon.id || 1;
+    navigate(`/services/${storeId}`);
   };
 
   return (
@@ -153,7 +137,15 @@ function AppRouter() {
           <ProtectedRoute>
             <Services 
               onBookingSuccess={handleBookingSuccess}
-              initialSelectedStore={selectedSalon}
+              onStoreDetailsChange={setIsViewingStoreDetails}
+            />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/services/:storeId" element={
+          <ProtectedRoute>
+            <Services 
+              onBookingSuccess={handleBookingSuccess}
               onStoreDetailsChange={setIsViewingStoreDetails}
             />
           </ProtectedRoute>

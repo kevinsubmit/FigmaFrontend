@@ -1,5 +1,6 @@
 import { ChevronDown, Check, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader } from './ui/Loader';
 import { StoreDetails } from './StoreDetails';
@@ -63,6 +64,9 @@ interface ServicesProps {
 }
 
 export function Services({ onBookingSuccess, initialStep, initialSelectedStore, onStoreDetailsChange }: ServicesProps) {
+  const { storeId } = useParams<{ storeId: string }>();
+  const navigate = useNavigate();
+  
   const [step, setStep] = useState(initialStep || 1);
   const [isLoading, setIsLoading] = useState(false);
   const [hasAppliedOffer, setHasAppliedOffer] = useState(!!initialSelectedStore);
@@ -70,6 +74,19 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('recommended');
   const [selectedStore, setSelectedStore] = useState<typeof STORES[0] | null>(initialSelectedStore || null);
+
+  // Load store from URL parameter
+  useEffect(() => {
+    if (storeId) {
+      const store = STORES.find(s => s.id === parseInt(storeId));
+      if (store) {
+        setSelectedStore(store);
+      } else {
+        // Invalid store ID, redirect to services list
+        navigate('/services', { replace: true });
+      }
+    }
+  }, [storeId, navigate]);
 
   // Sync state with props since the component stays mounted
   useEffect(() => {
@@ -170,7 +187,7 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
           {/* Stores List */}
           <div className="px-4 py-6 space-y-8">
             {getSortedStores().map((store) => (
-              <div key={store.id} onClick={() => setSelectedStore(store)} className="group cursor-pointer">
+              <div key={store.id} onClick={() => navigate(`/services/${store.id}`)} className="group cursor-pointer">
                 {/* Main Image */}
                 <div className="relative aspect-[16/10] rounded-xl overflow-hidden mb-3 bg-gray-900 border border-[#333]">
                   <img 
@@ -272,10 +289,10 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
           {selectedStore && (
             <StoreDetails 
                 store={selectedStore} 
-                onBack={() => setSelectedStore(null)} 
+                onBack={() => navigate('/services')} 
                 onBookingComplete={(booking) => {
                   onBookingSuccess?.(booking);
-                  setSelectedStore(null);
+                  navigate('/services');
                 }}
             />
           )}
