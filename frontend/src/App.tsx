@@ -63,11 +63,6 @@ function AppRouter() {
     // Save current scroll position before navigating
     scrollPositions.current[currentPage] = window.scrollY;
     
-    // Reset selectedSalon if navigating to services via bottom nav directly
-    if (page === 'services') {
-      setSelectedSalon(null);
-    }
-    
     // Navigate using react-router
     const routeMap: Record<string, string> = {
       home: '/',
