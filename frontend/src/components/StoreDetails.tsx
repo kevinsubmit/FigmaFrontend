@@ -8,7 +8,7 @@ import {
   Check, 
   Heart, 
   Share2, 
-  Calendar, 
+  Calendar as CalendarIcon, 
   CreditCard,
   MessageSquare,
   Lock,
@@ -44,7 +44,7 @@ import {
   DrawerFooter,
   DrawerClose,
 } from "./ui/drawer";
-import { Calendar } from "./ui/calendar";
+import { Calendar } from "./ui/calendar";  // Calendar component
 
 interface Store {
   id: number;
