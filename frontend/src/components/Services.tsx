@@ -85,6 +85,9 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
         // Invalid store ID, redirect to services list
         navigate('/services', { replace: true });
       }
+    } else {
+      // No storeId in URL, reset to list view
+      setSelectedStore(null);
     }
   }, [storeId, navigate]);
 

@@ -38,7 +38,7 @@ function AppRouter() {
   const getCurrentPage = (): Page => {
     const path = location.pathname;
     if (path === '/') return 'home';
-    if (path === '/services') return 'services';
+    if (path === '/services' || path.startsWith('/services/')) return 'services';
     if (path === '/appointments') return 'appointments';
     if (path === '/profile') return 'profile';
     if (path === '/deals') return 'deals';
