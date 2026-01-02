@@ -10,8 +10,11 @@ import string
 
 
 def generate_code() -> str:
-    """生成6位数字验证码"""
-    return ''.join(random.choices(string.digits, k=6))
+    """生成6位数字验证码（开发模式：固定为123456）"""
+    # 开发模式：使用固定验证码便于测试
+    return '123456'
+    # 生产模式：使用随机验证码
+    # return ''.join(random.choices(string.digits, k=6))
 
 
 def create(

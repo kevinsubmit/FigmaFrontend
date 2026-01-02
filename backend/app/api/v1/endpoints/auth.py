@@ -46,7 +46,7 @@ async def send_verification_code(
     # For now, just return success (code can be checked in database)
     
     return {
-        "message": f"Verification code sent to {request.phone}. Check database for code (development mode).",
+        "message": f"Verification code sent to {request.phone}. Use code: 123456 (development mode)",
         "expires_in": 600  # 10 minutes in seconds
     }
 
