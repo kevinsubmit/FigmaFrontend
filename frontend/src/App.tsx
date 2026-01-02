@@ -55,7 +55,8 @@ function AppRouter() {
   };
 
   const currentPage = getCurrentPage();
-  const isFullScreenPage = currentPage === 'pin-detail' || currentPage === 'edit-profile' || currentPage === 'order-history' || currentPage === 'my-points' || currentPage === 'my-coupons' || currentPage === 'my-gift-cards' || currentPage === 'settings' || currentPage === 'vip-description' || currentPage === 'login';
+  // Hide bottom nav for full-screen pages and when viewing store details in services page
+  const isFullScreenPage = currentPage === 'pin-detail' || currentPage === 'edit-profile' || currentPage === 'order-history' || currentPage === 'my-points' || currentPage === 'my-coupons' || currentPage === 'my-gift-cards' || currentPage === 'settings' || currentPage === 'vip-description' || currentPage === 'login' || (currentPage === 'services' && selectedSalon !== null);
 
   const handleNavigate = (page: 'home' | 'services' | 'appointments' | 'profile' | 'deals') => {
     console.log('handleNavigate called with page:', page);
