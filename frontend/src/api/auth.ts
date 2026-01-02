@@ -103,20 +103,20 @@ export function isAuthenticated(): boolean {
 /**
  * Send verification code to phone
  */
-export async function sendVerificationCode(phone: string, code_type: 'register' | 'login' | 'reset_password' = 'register'): Promise<{ message: string }> {
-  return apiClient.post<{ message: string }>('/api/v1/auth/send-verification-code', {
+export async function sendVerificationCode(phone: string, purpose: 'register' | 'login' | 'reset_password' = 'register'): Promise<{ message: string; expires_in: number }> {
+  return apiClient.post<{ message: string; expires_in: number }>('/api/v1/auth/send-verification-code', {
     phone,
-    code_type,
+    purpose,
   });
 }
 
 /**
  * Verify verification code
  */
-export async function verifyCode(phone: string, code: string, code_type: 'register' | 'login' | 'reset_password' = 'register'): Promise<{ valid: boolean; message: string }> {
+export async function verifyCode(phone: string, code: string, purpose: 'register' | 'login' | 'reset_password' = 'register'): Promise<{ valid: boolean; message: string }> {
   return apiClient.post<{ valid: boolean; message: string }>('/api/v1/auth/verify-code', {
     phone,
     code,
-    code_type,
+    purpose,
   });
 }

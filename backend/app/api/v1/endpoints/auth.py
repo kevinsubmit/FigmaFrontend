@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
-from app.schemas.verification import VerificationCodeRequest, VerificationCodeVerify, VerificationCodeResponse
+from app.schemas.verification import SendVerificationCodeRequest, VerifyCodeRequest, SendVerificationCodeResponse
 from app.crud import user as crud_user
 from app.crud import verification_code as crud_verification
 from app.core.security import create_access_token, create_refresh_token, verify_password
@@ -16,9 +16,9 @@ from app.models.user import User
 router = APIRouter()
 
 
-@router.post("/send-verification-code", response_model=VerificationCodeResponse)
+@router.post("/send-verification-code", response_model=SendVerificationCodeResponse)
 async def send_verification_code(
-    request: VerificationCodeRequest,
+    request: SendVerificationCodeRequest,
     db: Session = Depends(get_db)
 ):
     """
@@ -39,7 +39,7 @@ async def send_verification_code(
     verification = crud_verification.create_verification_code(
         db,
         phone=request.phone,
-        code_type=request.code_type
+        code_type=request.purpose
     )
     
     # TODO: In production, send SMS via Twilio or other SMS service
@@ -47,13 +47,13 @@ async def send_verification_code(
     
     return {
         "message": f"Verification code sent to {request.phone}. Check database for code (development mode).",
-        "expires_in_minutes": 10
+        "expires_in": 600  # 10 minutes in seconds
     }
 
 
 @router.post("/verify-code")
 async def verify_code(
-    request: VerificationCodeVerify,
+    request: VerifyCodeRequest,
     db: Session = Depends(get_db)
 ):
     """
@@ -70,7 +70,7 @@ async def verify_code(
         db,
         phone=request.phone,
         code=request.code,
-        code_type=request.code_type
+        code_type=request.purpose
     )
     
     if is_valid:
