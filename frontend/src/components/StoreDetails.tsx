@@ -356,6 +356,7 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
     setIsBooked(true);
     setTimeout(() => {
         setIsBooked(false);
+        setIsBookingDrawerOpen(false);
         onBookingComplete?.(bookingData);
         setSelectedTime(null);
     }, 2500);
