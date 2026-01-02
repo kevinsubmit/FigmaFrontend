@@ -9,8 +9,10 @@ from app.schemas.verification import SendVerificationCodeRequest, VerifyCodeRequ
 from app.crud import user as crud_user
 from app.crud import verification_code as crud_verification
 from app.core.security import create_access_token, create_refresh_token, verify_password
+from app.core.config import settings
 from app.api.deps import get_current_user
 from app.models.user import User
+import os
 
 
 router = APIRouter()
@@ -45,8 +47,19 @@ async def send_verification_code(
     # TODO: In production, send SMS via Twilio or other SMS service
     # For now, just return success (code can be checked in database)
     
+    # 检查是否为开发环境
+    is_development = (
+        settings.ENVIRONMENT.lower() in ['development', 'dev', 'local'] or
+        os.getenv('ENVIRONMENT', '').lower() in ['development', 'dev', 'local']
+    )
+    
+    if is_development:
+        message = f"Verification code sent to {request.phone}. Use code: 123456 (development mode)"
+    else:
+        message = f"Verification code sent to {request.phone}. Please check your SMS."
+    
     return {
-        "message": f"Verification code sent to {request.phone}. Use code: 123456 (development mode)",
+        "message": message,
         "expires_in": 600  # 10 minutes in seconds
     }
 

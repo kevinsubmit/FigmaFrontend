@@ -5,16 +5,31 @@ from typing import Optional
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from app.models.verification_code import VerificationCode
+from app.core.config import settings
 import random
 import string
+import os
 
 
 def generate_code() -> str:
-    """生成6位数字验证码（开发模式：固定为123456）"""
-    # 开发模式：使用固定验证码便于测试
-    return '123456'
-    # 生产模式：使用随机验证码
-    # return ''.join(random.choices(string.digits, k=6))
+    """
+    生成6位数字验证码
+    
+    开发环境：返回固定验证码 '123456'
+    生产环境：返回随机验证码
+    """
+    # 检查环境变量，判断是否为开发环境
+    is_development = (
+        settings.ENVIRONMENT.lower() in ['development', 'dev', 'local'] or
+        os.getenv('ENVIRONMENT', '').lower() in ['development', 'dev', 'local']
+    )
+    
+    if is_development:
+        # 开发模式：使用固定验证码便于测试
+        return '123456'
+    else:
+        # 生产模式：使用随机验证码
+        return ''.join(random.choices(string.digits, k=6))
 
 
 def create(
