@@ -19,6 +19,7 @@ from app.schemas.appointment import (
 from app.schemas.user import UserResponse
 from app.models.appointment import AppointmentStatus
 from app.services import notification_service
+from app.services import reminder_service
 
 router = APIRouter()
 
@@ -58,6 +59,15 @@ def create_appointment(
     
     # Send notification to store admin
     notification_service.notify_appointment_created(db, db_appointment)
+    
+    # Create reminders for the appointment
+    reminder_service.create_reminders_on_appointment_creation(
+        db,
+        db_appointment.id,
+        user_id,
+        db_appointment.appointment_date,
+        db_appointment.appointment_time
+    )
     
     return db_appointment
 
@@ -179,6 +189,9 @@ def cancel_appointment(
     # Send notification (cancelled by customer)
     notification_service.notify_appointment_cancelled(db, cancelled_appointment, cancelled_by_admin=False)
     
+    # Cancel reminders
+    reminder_service.handle_appointment_cancellation(db, appointment_id)
+    
     return cancelled_appointment
 
 
@@ -235,6 +248,15 @@ def reschedule_appointment(
     
     # Send notification
     notification_service.notify_appointment_rescheduled(db, rescheduled_appointment)
+    
+    # Update reminders
+    reminder_service.handle_appointment_reschedule(
+        db,
+        appointment_id,
+        current_user.id,
+        reschedule_data.new_date,
+        reschedule_data.new_time
+    )
     
     return rescheduled_appointment
 

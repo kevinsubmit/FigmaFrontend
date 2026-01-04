@@ -4,9 +4,28 @@ FastAPI main application
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.api.v1.api import api_router
+from app.services.scheduler import reminder_scheduler
 import os
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan manager"""
+    # Startup
+    logger.info("Starting up application...")
+    reminder_scheduler.start()
+    logger.info("Reminder scheduler started")
+    yield
+    # Shutdown
+    logger.info("Shutting down application...")
+    await reminder_scheduler.stop()
+    logger.info("Reminder scheduler stopped")
 
 
 # Create FastAPI application
@@ -16,7 +35,8 @@ app = FastAPI(
     description="NailsDash美甲预约平台后端API",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json"
+    openapi_url="/api/openapi.json",
+    lifespan=lifespan
 )
 
 # Configure CORS

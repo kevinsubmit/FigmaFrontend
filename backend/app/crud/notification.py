@@ -69,3 +69,26 @@ def get_unread_count(db: Session, user_id: int) -> int:
         Notification.user_id == user_id,
         Notification.is_read == False
     ).count()
+
+
+def create_notification(
+    db: Session,
+    user_id: int,
+    notification_type: str,
+    title: str,
+    message: str,
+    related_id: Optional[int] = None
+) -> Notification:
+    """Create a new notification"""
+    notification = Notification(
+        user_id=user_id,
+        type=notification_type,
+        title=title,
+        message=message,
+        appointment_id=related_id,
+        is_read=False
+    )
+    db.add(notification)
+    db.commit()
+    db.refresh(notification)
+    return notification
