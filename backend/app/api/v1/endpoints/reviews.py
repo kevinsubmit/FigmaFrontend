@@ -4,8 +4,9 @@ from sqlalchemy import func
 from typing import List
 from app.db.session import get_db
 from app.models.review import Review
-from app.models.appointment import Appointment
 from app.models.user import User
+from app.models.appointment import Appointment
+from app.models.review_reply import ReviewReply
 from app.schemas.review import ReviewCreate, ReviewResponse, StoreRatingResponse
 from app.api.deps import get_current_user
 
@@ -71,6 +72,8 @@ def create_review(
     response = ReviewResponse.from_orm(new_review)
     response.user_name = current_user.username
     response.user_avatar = current_user.avatar_url
+    response.images = new_review.images or []
+    response.reply = None
     
     return response
 
@@ -93,7 +96,7 @@ def get_store_reviews(
         Review.created_at.desc()
     ).offset(skip).limit(limit).all()
     
-    # 填充用户信息
+    # 填充用户信息和回复信息
     response_list = []
     for review in reviews:
         user = db.query(User).filter(User.id == review.user_id).first()
@@ -101,6 +104,22 @@ def get_store_reviews(
         if user:
             review_response.user_name = user.username
             review_response.user_avatar = user.avatar_url
+        review_response.images = review.images or []
+        
+        # 获取回复信息
+        reply = db.query(ReviewReply).filter(ReviewReply.review_id == review.id).first()
+        if reply:
+            admin = db.query(User).filter(User.id == reply.admin_id).first()
+            review_response.reply = {
+                "id": reply.id,
+                "content": reply.content,
+                "admin_name": admin.username if admin else None,
+                "created_at": reply.created_at.isoformat(),
+                "updated_at": reply.updated_at.isoformat()
+            }
+        else:
+            review_response.reply = None
+            
         response_list.append(review_response)
     
     return response_list
@@ -171,12 +190,28 @@ def get_my_reviews(
         Review.created_at.desc()
     ).offset(skip).limit(limit).all()
     
-    # 填充用户信息
+    # 填充用户信息和回复信息
     response_list = []
     for review in reviews:
         review_response = ReviewResponse.from_orm(review)
         review_response.user_name = current_user.username
         review_response.user_avatar = current_user.avatar_url
+        review_response.images = review.images or []
+        
+        # 获取回复信息
+        reply = db.query(ReviewReply).filter(ReviewReply.review_id == review.id).first()
+        if reply:
+            admin = db.query(User).filter(User.id == reply.admin_id).first()
+            review_response.reply = {
+                "id": reply.id,
+                "content": reply.content,
+                "admin_name": admin.username if admin else None,
+                "created_at": reply.created_at.isoformat(),
+                "updated_at": reply.updated_at.isoformat()
+            }
+        else:
+            review_response.reply = None
+            
         response_list.append(review_response)
     
     return response_list
@@ -220,6 +255,21 @@ def update_review(
     response = ReviewResponse.from_orm(review)
     response.user_name = current_user.username
     response.user_avatar = current_user.avatar_url
+    response.images = review.images or []
+    
+    # 获取回复信息
+    reply = db.query(ReviewReply).filter(ReviewReply.review_id == review.id).first()
+    if reply:
+        admin = db.query(User).filter(User.id == reply.admin_id).first()
+        response.reply = {
+            "id": reply.id,
+            "content": reply.content,
+            "admin_name": admin.username if admin else None,
+            "created_at": reply.created_at.isoformat(),
+            "updated_at": reply.updated_at.isoformat()
+        }
+    else:
+        response.reply = None
     
     return response
 

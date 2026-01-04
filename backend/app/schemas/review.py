@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 
 class ReviewCreate(BaseModel):
@@ -8,6 +8,7 @@ class ReviewCreate(BaseModel):
     appointment_id: int = Field(..., description="预约ID")
     rating: float = Field(..., ge=1, le=5, description="评分（1-5星）")
     comment: Optional[str] = Field(None, description="评价内容")
+    images: Optional[List[str]] = Field(None, description="评价图片URL列表")
 
 
 class ReviewResponse(BaseModel):
@@ -18,12 +19,14 @@ class ReviewResponse(BaseModel):
     appointment_id: int
     rating: float
     comment: Optional[str]
+    images: Optional[List[str]] = None
     created_at: datetime
     updated_at: datetime
     
     # 关联信息
     user_name: Optional[str] = None
     user_avatar: Optional[str] = None
+    reply: Optional[dict] = None  # 管理员回复
 
     class Config:
         from_attributes = True

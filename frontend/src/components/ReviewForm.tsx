@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Star } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Star, Upload, X, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { createReview, updateReview, Review } from '../api/reviews';
+import { createReview, updateReview, Review, uploadImages } from '../api/reviews';
 
 interface ReviewFormProps {
   appointmentId: number;
@@ -15,14 +15,67 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
   const [hoverRating, setHoverRating] = useState<number>(0);
   const [comment, setComment] = useState<string>(existingReview?.comment || '');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<string[]>(existingReview?.images || []);
+  const [isUploadingImages, setIsUploadingImages] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const isEditMode = !!existingReview;
 
   useEffect(() => {
     if (existingReview) {
       setRating(existingReview.rating);
       setComment(existingReview.comment || '');
+      setImagePreviewUrls(existingReview.images || []);
     }
   }, [existingReview]);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    
+    // 限制最多5张图片
+    const totalImages = imagePreviewUrls.length + selectedImages.length + files.length;
+    if (totalImages > 5) {
+      toast.error('Maximum 5 images allowed');
+      return;
+    }
+    
+    // 验证文件类型和大小
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Only image files are allowed');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image size must be less than 5MB');
+        return;
+      }
+    }
+    
+    setSelectedImages([...selectedImages, ...files]);
+    
+    // 生成预览URL
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviewUrls(prev => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRemoveImage = (index: number) => {
+    const isExistingImage = index < (existingReview?.images?.length || 0);
+    
+    if (isExistingImage) {
+      // 移除现有图片
+      setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
+    } else {
+      // 移除新选择的图片
+      const newImageIndex = index - (existingReview?.images?.length || 0);
+      setSelectedImages(prev => prev.filter((_, i) => i !== newImageIndex));
+      setImagePreviewUrls(prev => prev.filter((_, i) => i !== index));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +94,28 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
         return;
       }
 
+      // 上传新图片
+      let uploadedImageUrls: string[] = [];
+      if (selectedImages.length > 0) {
+        setIsUploadingImages(true);
+        try {
+          uploadedImageUrls = await uploadImages(selectedImages, token);
+        } catch (error: any) {
+          console.error('Failed to upload images:', error);
+          toast.error('Failed to upload images');
+          setIsSubmitting(false);
+          setIsUploadingImages(false);
+          return;
+        }
+        setIsUploadingImages(false);
+      }
+
+      // 合并现有图片和新上传的图片
+      const existingImageUrls = isEditMode 
+        ? imagePreviewUrls.filter(url => url.startsWith('http') || url.startsWith('/uploads'))
+        : [];
+      const allImageUrls = [...existingImageUrls, ...uploadedImageUrls];
+
       if (isEditMode && existingReview) {
         // 编辑模式
         await updateReview(
@@ -49,6 +124,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
             appointment_id: appointmentId,
             rating,
             comment: comment.trim() || undefined,
+            images: allImageUrls.length > 0 ? allImageUrls : undefined,
           },
           token
         );
@@ -60,6 +136,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
             appointment_id: appointmentId,
             rating,
             comment: comment.trim() || undefined,
+            images: allImageUrls.length > 0 ? allImageUrls : undefined,
           },
           token
         );
@@ -136,6 +213,67 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
             <p className="text-sm text-gray-500 mt-1 text-right">
               {comment.length}/500
             </p>
+          </div>
+
+          {/* Images */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Photos (Optional, max 5)
+            </label>
+            
+            {/* Image Previews */}
+            {imagePreviewUrls.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {imagePreviewUrls.map((url, index) => (
+                  <div key={index} className="relative aspect-square">
+                    <img
+                      src={url.startsWith('http') || url.startsWith('/') ? `http://localhost:8000${url}` : url}
+                      alt={`Preview ${index + 1}`}
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(index)}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Upload Button */}
+            {imagePreviewUrls.length < 5 && (
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageSelect}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingImages}
+                  className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-rose-400 transition-colors flex items-center justify-center gap-2 text-gray-600 hover:text-rose-500 disabled:opacity-50"
+                >
+                  {isUploadingImages ? (
+                    <>
+                      <Loader2 className="animate-spin" size={20} />
+                      <span>Uploading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload size={20} />
+                      <span>Add Photos</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Buttons */}

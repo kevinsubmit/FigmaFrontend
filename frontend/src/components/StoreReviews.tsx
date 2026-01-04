@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, User as UserIcon } from 'lucide-react';
+import { Star, User as UserIcon, MessageCircle } from 'lucide-react';
 import { getStoreReviews, getStoreRating, Review, StoreRating } from '../api/reviews';
 
 interface StoreReviewsProps {
@@ -152,7 +152,44 @@ const StoreReviews: React.FC<StoreReviewsProps> = ({ storeId }) => {
 
               {/* Comment */}
               {review.comment && (
-                <p className="text-gray-300 text-sm leading-relaxed">{review.comment}</p>
+                <p className="text-gray-300 text-sm leading-relaxed mb-3">{review.comment}</p>
+              )}
+
+              {/* Images */}
+              {review.images && review.images.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {review.images.map((imageUrl, imgIndex) => (
+                    <img
+                      key={imgIndex}
+                      src={`http://localhost:8000${imageUrl}`}
+                      alt={`Review image ${imgIndex + 1}`}
+                      className="w-full aspect-square object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => window.open(`http://localhost:8000${imageUrl}`, '_blank')}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Admin Reply */}
+              {review.reply && (
+                <div className="mt-3 p-3 bg-blue-500/10 rounded-lg border-l-4 border-blue-400">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MessageCircle size={14} className="text-blue-400" />
+                    <span className="text-xs font-semibold text-blue-400">
+                      {review.reply.admin_name || 'Store Admin'} replied
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {new Date(review.reply.created_at).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-300">
+                    {review.reply.content}
+                  </p>
+                </div>
               )}
             </div>
           ))}

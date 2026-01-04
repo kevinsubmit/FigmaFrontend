@@ -9,10 +9,20 @@ export interface Review {
   appointment_id: number;
   rating: number;
   comment: string | null;
+  images?: string[];  // 评价图片URL列表
   created_at: string;
   updated_at: string;
   user_name?: string;
-  user_avatar?: string;
+  user_avatar?: string | null;
+  reply?: ReviewReply | null;  // 管理员回复
+}
+
+export interface ReviewReply {
+  id: number;
+  content: string;
+  admin_name: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface StoreRating {
@@ -28,6 +38,7 @@ export interface CreateReviewData {
   appointment_id: number;
   rating: number;
   comment?: string;
+  images?: string[];  // 评价图片URL列表
 }
 
 // 创建评价
@@ -94,4 +105,20 @@ export const deleteReview = async (reviewId: number, token: string): Promise<voi
       Authorization: `Bearer ${token}`,
     },
   });
+};
+
+// 上传图片
+export const uploadImages = async (files: File[], token: string): Promise<string[]> => {
+  const formData = new FormData();
+  files.forEach((file) => {
+    formData.append('files', file);
+  });
+
+  const response = await axios.post(`${API_BASE_URL}/upload/images`, formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
 };
