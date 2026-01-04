@@ -388,3 +388,26 @@ python3 test_store_hours.py
 
 测试覆盖率：100%（9个测试用例全部通过）
 
+
+## 美甲师休假管理功能
+
+### 功能概述
+- 支持整天休假和部分时间不可用
+- 自动集成到可用时间段计算
+- 完整的CRUD API
+- 权限控制（超级管理员/店铺管理员）
+
+### 新增API端点
+- `POST /api/v1/technicians/{id}/unavailable` - 创建不可用时间段
+- `GET /api/v1/technicians/{id}/unavailable` - 获取不可用时间段列表
+- `GET /api/v1/technicians/{id}/unavailable/{unavailable_id}` - 获取特定不可用时间段
+- `PATCH /api/v1/technicians/{id}/unavailable/{unavailable_id}` - 更新不可用时间段
+- `DELETE /api/v1/technicians/{id}/unavailable/{unavailable_id}` - 删除不可用时间段
+
+### 使用场景
+1. **年假**: 设置start_date和end_date，不设置时间
+2. **病假**: 设置start_date和end_date，不设置时间
+3. **临时事务**: 设置start_date=end_date，设置start_time和end_time
+
+详细文档请参考：[docs/Technician_Unavailable_Management.md](docs/Technician_Unavailable_Management.md)
+

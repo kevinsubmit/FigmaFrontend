@@ -2,6 +2,7 @@
 Technician Model
 """
 from sqlalchemy import Column, Integer, String, Text, DateTime, func
+from sqlalchemy.orm import relationship
 from app.db.session import Base
 
 
@@ -21,3 +22,6 @@ class Technician(Base):
     is_active = Column(Integer, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    unavailable_periods = relationship("TechnicianUnavailable", back_populates="technician", cascade="all, delete-orphan")

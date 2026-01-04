@@ -299,12 +299,33 @@ def get_technician_available_slots(
         Appointment.status.in_([AppointmentStatus.PENDING, AppointmentStatus.CONFIRMED])
     ).all()
     
-    # Build list of busy time ranges
+    # Check if technician is unavailable on this date
+    from app.crud import technician_unavailable as crud_unavailable
+    is_unavailable = crud_unavailable.check_technician_unavailable(
+        db, technician_id, check_date
+    )
+    if is_unavailable:
+        return []  # Technician is unavailable for the entire day
+    
+    # Build list of busy time ranges (appointments + partial unavailable periods)
     busy_ranges = []
+    
+    # Add existing appointments
     for appt, appt_service in existing_appointments:
         start_datetime = datetime.combine(check_date, appt.appointment_time)
         end_datetime = start_datetime + timedelta(minutes=appt_service.duration_minutes)
         busy_ranges.append((start_datetime, end_datetime))
+    
+    # Add partial unavailable periods (with specific start/end times)
+    unavailable_periods = crud_unavailable.get_unavailable_periods(
+        db, technician_id, check_date, check_date
+    )
+    for period in unavailable_periods:
+        if period.start_time and period.end_time:
+            # Partial day unavailability
+            start_datetime = datetime.combine(check_date, period.start_time)
+            end_datetime = datetime.combine(check_date, period.end_time)
+            busy_ranges.append((start_datetime, end_datetime))
     
     # Generate available slots
     available_slots = []
