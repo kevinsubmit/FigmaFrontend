@@ -14,12 +14,13 @@ import { Settings } from './components/Settings';
 import { MyGiftCards } from './components/MyGiftCards';
 import { Deals } from './components/Deals';
 import { VipDescription } from './components/VipDescription';
-import { LoginTest } from './components/LoginTest';
-import { ProtectedRoute } from './components/ProtectedRoute';
+import { Login } from './components/Login';
+import { Register } from './components/Register';
+import { AuthProvider } from './contexts/AuthContext';
 import { toast } from 'react-toastify';
 import { Sparkles } from 'lucide-react';
 
-export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 'pin-detail' | 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'login';
+export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 'pin-detail' | 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'login' | 'register';
 
 // Main App Router Component
 function AppRouter() {
@@ -57,12 +58,13 @@ function AppRouter() {
     if (path === '/settings') return 'settings';
     if (path === '/vip-description') return 'vip-description';
     if (path === '/login') return 'login';
+    if (path === '/register') return 'register';
     return 'home';
   };
 
   const currentPage = getCurrentPage();
   // Hide bottom nav for full-screen pages and when viewing store details in services page
-  const isFullScreenPage = currentPage === 'pin-detail' || currentPage === 'edit-profile' || currentPage === 'order-history' || currentPage === 'my-points' || currentPage === 'my-coupons' || currentPage === 'my-gift-cards' || currentPage === 'settings' || currentPage === 'vip-description' || currentPage === 'login' || (currentPage === 'services' && isViewingStoreDetails);
+  const isFullScreenPage = currentPage === 'pin-detail' || currentPage === 'edit-profile' || currentPage === 'order-history' || currentPage === 'my-points' || currentPage === 'my-coupons' || currentPage === 'my-gift-cards' || currentPage === 'settings' || currentPage === 'vip-description' || currentPage === 'login' || currentPage === 'register' || (currentPage === 'services' && isViewingStoreDetails);
 
   const handleNavigate = (page: 'home' | 'services' | 'appointments' | 'profile' | 'deals') => {
     console.log('handleNavigate called with page:', page);
@@ -119,52 +121,52 @@ function AppRouter() {
       <Routes>
         {/* Login Route - Public */}
         <Route path="/login" element={
-          <LoginTest 
-            onLoginSuccess={() => navigate('/')}
+          <Login 
+            onNavigate={(page) => navigate(page === 'home' ? '/' : `/${page}`)}
+            onBack={() => navigate(-1)}
+          />
+        } />
+
+        {/* Register Route - Public */}
+        <Route path="/register" element={
+          <Register 
+            onNavigate={(page) => navigate(page === 'home' ? '/' : `/${page}`)}
+            onBack={() => navigate(-1)}
           />
         } />
 
         {/* Protected Routes */}
         <Route path="/" element={
-          <ProtectedRoute>
-            <Home 
+          <Home 
               onNavigate={handleNavigate} 
               onPinClick={handlePinClick}
             />
-          </ProtectedRoute>
         } />
 
         <Route path="/services" element={
-          <ProtectedRoute>
-            <Services 
+          <Services 
               onBookingSuccess={handleBookingSuccess}
               onStoreDetailsChange={setIsViewingStoreDetails}
             />
-          </ProtectedRoute>
         } />
 
         <Route path="/services/:storeId" element={
-          <ProtectedRoute>
-            <Services 
+          <Services 
               onBookingSuccess={handleBookingSuccess}
               onStoreDetailsChange={setIsViewingStoreDetails}
             />
-          </ProtectedRoute>
         } />
 
         <Route path="/appointments" element={
-          <ProtectedRoute>
-            <Appointments 
+          <Appointments 
               newBooking={myBookings[myBookings.length - 1]} 
               onClearNewBooking={() => setMyBookings(myBookings.slice(0, -1))} 
               onNavigate={handleNavigate}
             />
-          </ProtectedRoute>
         } />
 
         <Route path="/profile" element={
-          <ProtectedRoute>
-            <Profile 
+          <Profile 
               onNavigate={(page, sub) => {
                 scrollPositions.current[currentPage] = window.scrollY;
                 if (page === 'settings' && sub) {
@@ -189,22 +191,18 @@ function AppRouter() {
                 navigate('/pin-detail');
               }}
             />
-          </ProtectedRoute>
         } />
 
         <Route path="/deals" element={
-          <ProtectedRoute>
-            <Deals 
+          <Deals 
               onBack={() => navigate('/')}
               onSelectSalon={handleSelectSalon}
             />
-          </ProtectedRoute>
         } />
 
         {/* Sub-pages / Overlays */}
         <Route path="/pin-detail" element={
-          <ProtectedRoute>
-            <PinDetail 
+          <PinDetail 
               onBack={() => navigate('/')} 
               onBookNow={() => {
                 navigate('/services');
@@ -215,68 +213,53 @@ function AppRouter() {
               }} 
               pinData={selectedPin}
             />
-          </ProtectedRoute>
         } />
 
         <Route path="/edit-profile" element={
-          <ProtectedRoute>
-            <EditProfile 
+          <EditProfile 
               onBack={() => navigate('/profile')}
               onSave={handleSaveProfile}
             />
-          </ProtectedRoute>
         } />
 
         <Route path="/order-history" element={
-          <ProtectedRoute>
-            <OrderHistory 
+          <OrderHistory 
               onBack={() => navigate('/profile')}
             />
-          </ProtectedRoute>
         } />
 
         <Route path="/my-points" element={
-          <ProtectedRoute>
-            <MyPoints 
+          <MyPoints 
               onBack={() => navigate('/profile')}
             />
-          </ProtectedRoute>
         } />
 
         <Route path="/my-coupons" element={
-          <ProtectedRoute>
-            <MyCoupons 
+          <MyCoupons 
               onBack={() => navigate('/profile')}
             />
-          </ProtectedRoute>
         } />
 
         <Route path="/my-gift-cards" element={
-          <ProtectedRoute>
-            <MyGiftCards 
+          <MyGiftCards 
               onBack={() => navigate('/profile')}
             />
-          </ProtectedRoute>
         } />
 
         <Route path="/settings" element={
-          <ProtectedRoute>
-            <Settings
+          <Settings
               initialSection={settingsSection}
               onBack={() => {
                 navigate('/profile');
                 setSettingsSection('main');
               }}
             />
-          </ProtectedRoute>
         } />
 
         <Route path="/vip-description" element={
-          <ProtectedRoute>
-            <VipDescription 
+          <VipDescription 
               onBack={() => navigate('/profile')}
             />
-          </ProtectedRoute>
         } />
 
         {/* Fallback - redirect to home or login */}
@@ -296,8 +279,10 @@ function AppRouter() {
 // Main App Component with Router Provider
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppRouter />
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRouter />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
