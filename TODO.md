@@ -70,4 +70,30 @@
 ### 文档
 - [x] 创建服务项目管理模块API文档
 - [x] 更新README.md
+- [x] 提交代码到GitHub
+
+## 美甲师管理模块
+
+### 后端开发
+- [x] 分析现有美甲师相关数据库表结构
+- [x] 创建美甲师CRUD API端点
+  - [x] GET /api/v1/technicians/ - 获取美甲师列表（支持分页、店铺筛选）
+  - [x] GET /api/v1/technicians/{technician_id} - 获取美甲师详情
+  - [x] POST /api/v1/technicians/ - 创建美甲师（管理员）
+  - [x] PATCH /api/v1/technicians/{technician_id} - 更新美甲师信息（管理员）
+  - [x] DELETE /api/v1/technicians/{technician_id} - 删除美甲师（管理员）
+- [x] 实现美甲师可用性管理
+  - [x] PATCH /api/v1/technicians/{technician_id}/availability - 切换美甲师可用状态
+
+### API测试
+- [x] 测试美甲师列表API
+- [x] 测试美甲师详情API
+- [x] 测试美甲师创建API
+- [x] 测试美甲师更新API
+- [x] 测试美甲师删除API
+- [x] 测试可用性管理API
+
+### 文档
+- [x] 创建美甲师管理模块API文档
+- [x] 更新README.md
 - [ ] 提交代码到GitHub

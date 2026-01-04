@@ -92,7 +92,7 @@ uvicorn app.main:app --reload
 #### 后端模块
 - [x] 店铺管理模块（已完成）
 - [x] 服务项目模块（已完成）
-- [ ] 美甲师模块
+- [x] 美甲师模块（已完成）
 - [ ] 预约系统
 - [ ] VIP会员系统
 - [ ] 积分系统
@@ -155,6 +155,14 @@ uvicorn app.main:app --reload
 - `PATCH /api/v1/services/{service_id}/availability` - 切换服务可用性（管理员）
 - `GET /api/v1/services/categories` - 获取服务分类列表
 
+### 美甲师管理
+- `GET /api/v1/technicians/` - 获取美甲师列表
+- `GET /api/v1/technicians/{technician_id}` - 获取美甲师详情
+- `POST /api/v1/technicians/` - 创建美甲师（管理员）
+- `PATCH /api/v1/technicians/{technician_id}` - 更新美甲师（管理员）
+- `DELETE /api/v1/technicians/{technician_id}` - 删除美甲师（管理员）
+- `PATCH /api/v1/technicians/{technician_id}/availability` - 切换美甲师可用性（管理员）
+
 更多API端点正在开发中...
 
 ## 测试
@@ -174,6 +182,7 @@ python test_api.py
 
 - [店铺管理模块API文档](docs/Store_Management_API.md)
 - [服务项目管理模块API文档](docs/Service_Management_API.md)
+- [美甲师管理模块API文档](docs/Technician_Management_API.md)
 - [Reschedule功能测试报告](docs/NailsDash_Reschedule_Test_Report.md)
 
 ## 部署
