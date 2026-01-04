@@ -2,6 +2,7 @@
 Appointment Model
 """
 from sqlalchemy import Column, Integer, String, Date, Time, Text, DateTime, func, Enum
+from sqlalchemy.orm import relationship
 from app.db.session import Base
 import enum
 
@@ -34,3 +35,6 @@ class Appointment(Base):
     notes = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    review = relationship("Review", back_populates="appointment", uselist=False, cascade="all, delete-orphan")

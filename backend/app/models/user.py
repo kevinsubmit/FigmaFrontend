@@ -2,6 +2,7 @@
 User database model
 """
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, func
+from sqlalchemy.orm import relationship
 from app.db.session import Base
 
 
@@ -22,6 +23,9 @@ class User(Base):
     store_id = Column(Integer, nullable=True, index=True)  # 店铺管理员关联的店铺ID
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    
+    # Relationships
+    reviews = relationship("Review", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User(id={self.id}, username={self.username}, phone={self.phone})>"

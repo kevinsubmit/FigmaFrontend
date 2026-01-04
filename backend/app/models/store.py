@@ -29,6 +29,7 @@ class Store(Base):
     
     # Relationships
     hours = relationship("StoreHours", back_populates="store", cascade="all, delete-orphan")
+    reviews = relationship("Review", back_populates="store", cascade="all, delete-orphan")
 
 
 class StoreImage(Base):

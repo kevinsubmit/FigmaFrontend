@@ -18,12 +18,13 @@ import { Notifications } from './components/Notifications';
 import { BookingFlow } from './components/BookingFlow';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
+import { MyReviews } from './components/MyReviews';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { toast } from 'react-toastify';
 import { Sparkles } from 'lucide-react';
 
-export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 'notifications' | 'booking' | 'pin-detail' | 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'login' | 'register';
+export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 'notifications' | 'booking' | 'pin-detail' | 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'login' | 'register' | 'my-reviews';
 
 // Main App Router Component
 function AppRouter() {
@@ -64,12 +65,13 @@ function AppRouter() {
     if (path === '/booking') return 'booking';
     if (path === '/login') return 'login';
     if (path === '/register') return 'register';
+    if (path === '/my-reviews') return 'my-reviews';
     return 'home';
   };
 
   const currentPage = getCurrentPage();
   // Hide bottom nav for full-screen pages and when viewing store details in services page
-  const isFullScreenPage = currentPage === 'pin-detail' || currentPage === 'edit-profile' || currentPage === 'order-history' || currentPage === 'my-points' || currentPage === 'my-coupons' || currentPage === 'my-gift-cards' || currentPage === 'settings' || currentPage === 'vip-description' || currentPage === 'notifications' || currentPage === 'booking' || currentPage === 'login' || currentPage === 'register' || (currentPage === 'services' && isViewingStoreDetails);
+  const isFullScreenPage = currentPage === 'pin-detail' || currentPage === 'edit-profile' || currentPage === 'order-history' || currentPage === 'my-points' || currentPage === 'my-coupons' || currentPage === 'my-gift-cards' || currentPage === 'settings' || currentPage === 'vip-description' || currentPage === 'notifications' || currentPage === 'booking' || currentPage === 'login' || currentPage === 'register' || currentPage === 'my-reviews' || (currentPage === 'services' && isViewingStoreDetails);
 
   const handleNavigate = (page: 'home' | 'services' | 'appointments' | 'profile' | 'deals') => {
     console.log('handleNavigate called with page:', page);
@@ -195,7 +197,8 @@ function AppRouter() {
                   'my-coupons': '/my-coupons',
                   'my-gift-cards': '/my-gift-cards',
                   'settings': '/settings',
-                  'vip-description': '/vip-description'
+                  'vip-description': '/vip-description',
+                  'my-reviews': '/my-reviews'
                 };
                 navigate(routeMap[page] || '/profile');
               }}
@@ -296,6 +299,12 @@ function AppRouter() {
                 navigate('/appointments');
               }}
             />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/my-reviews" element={
+          <ProtectedRoute>
+            <MyReviews />
           </ProtectedRoute>
         } />
 

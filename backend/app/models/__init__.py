@@ -10,5 +10,6 @@ from app.models.technician import Technician
 from app.models.store_hours import StoreHours
 from app.models.technician_unavailable import TechnicianUnavailable
 from app.models.notification import Notification, NotificationType
+from app.models.review import Review
 
-__all__ = ["User", "VerificationCode", "Store", "StoreImage", "Service", "Appointment", "AppointmentStatus", "Technician", "StoreHours", "TechnicianUnavailable", "Notification", "NotificationType"]
+__all__ = ["User", "VerificationCode", "Store", "StoreImage", "Service", "Appointment", "AppointmentStatus", "Technician", "StoreHours", "TechnicianUnavailable", "Notification", "NotificationType", "Review"]

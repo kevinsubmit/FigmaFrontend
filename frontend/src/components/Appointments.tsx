@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Clock, MapPin, User, DollarSign, ChevronRight, X, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, User, DollarSign, ChevronRight, X, AlertCircle, Star } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { getMyAppointments, cancelAppointment, Appointment } from '../api/appointments';
 import { getStoreById, Store } from '../api/stores';
 import { getServiceById, Service } from '../api/services';
 import { getTechnicianById, Technician } from '../api/technicians';
+import ReviewForm from './ReviewForm';
 
 interface AppointmentWithDetails extends Appointment {
   store?: Store;
@@ -21,6 +22,8 @@ export function Appointments() {
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithDetails | null>(null);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewingAppointment, setReviewingAppointment] = useState<AppointmentWithDetails | null>(null);
 
   useEffect(() => {
     loadAppointments();
@@ -205,17 +208,31 @@ export function Appointments() {
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(apt.status)}`}>
                     {getStatusText(apt.status)}
                   </span>
-                  {apt.status === 'pending' && (
-                    <button
-                      onClick={() => {
-                        setSelectedAppointment(apt);
-                        setShowCancelDialog(true);
-                      }}
-                      className="text-sm text-red-400 hover:text-red-300 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                  )}
+                  <div className="flex gap-2">
+                    {apt.status === 'completed' && (
+                      <button
+                        onClick={() => {
+                          setReviewingAppointment(apt);
+                          setShowReviewForm(true);
+                        }}
+                        className="text-sm text-[#D4AF37] hover:text-[#b08d2d] transition-colors flex items-center gap-1"
+                      >
+                        <Star className="w-4 h-4" />
+                        Review
+                      </button>
+                    )}
+                    {apt.status === 'pending' && (
+                      <button
+                        onClick={() => {
+                          setSelectedAppointment(apt);
+                          setShowCancelDialog(true);
+                        }}
+                        className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Store Info */}
@@ -328,6 +345,22 @@ export function Appointments() {
         >
           <span className="text-2xl">+</span>
         </button>
+      )}
+
+      {/* Review Form */}
+      {showReviewForm && reviewingAppointment && (
+        <ReviewForm
+          appointmentId={reviewingAppointment.id}
+          onSuccess={() => {
+            setShowReviewForm(false);
+            setReviewingAppointment(null);
+            loadAppointments();
+          }}
+          onCancel={() => {
+            setShowReviewForm(false);
+            setReviewingAppointment(null);
+          }}
+        />
       )}
     </div>
   );

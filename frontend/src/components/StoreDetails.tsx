@@ -48,6 +48,7 @@ import { Calendar } from "./ui/calendar";  // Calendar component
 import { getServicesByStoreId, Service as APIService } from '../services/services.service';
 import { Store as APIStore } from '../services/stores.service';
 import { createAppointment } from '../services/appointments.service';
+import StoreReviews from './StoreReviews';
 
 // Use the Store type from stores.service
 type Store = APIStore;
@@ -633,114 +634,7 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
         {/* REVIEWS TAB */}
         {activeTab === 'reviews' && (
           <div className="animate-in fade-in duration-300">
-            {/* Rating Summary Card */}
-            <div className="bg-[#1a1a1a] border border-[#333] rounded-xl p-6 mb-6">
-              <div className="flex gap-6">
-                <div className="flex flex-col items-center justify-center border-r border-[#333] pr-6">
-                    <div className="text-5xl font-bold text-white mb-2">5.0<span className="text-lg text-gray-500 font-normal">/5</span></div>
-                    <div className="flex gap-1 mb-1">
-                        {[1, 2, 3, 4, 5].map((i) => (
-                            <Star key={i} className="w-4 h-4 text-[#D4AF37] fill-[#D4AF37]" />
-                        ))}
-                    </div>
-                    <div className="text-xs text-gray-400">13 reviews</div>
-                </div>
-                
-                <div className="flex-1 flex flex-col justify-center gap-1.5">
-                    {[5, 4, 3, 2, 1].map((num) => (
-                        <div key={num} className="flex items-center gap-3 text-xs">
-                            <span className="text-gray-400 w-2">{num}</span>
-                            <Progress 
-                                value={num === 5 ? 100 : 0} 
-                                className="h-1.5 bg-[#333]" 
-                                indicatorClassName="bg-[#D4AF37]"
-                            />
-                            <span className="text-gray-400 w-4 text-right">{num === 5 ? 13 : 0}</span>
-                        </div>
-                    ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Reviews List */}
-            <div className="space-y-8">
-                <div className="text-xs text-gray-500 leading-relaxed mb-6">
-                    Verified reviews ensure that feedback is provided by actual customers who have completed a service with this provider.
-                </div>
-
-                {reviewsList.length === 0 && isReviewsLoading ? (
-                    <div className="flex justify-center py-12">
-                        <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
-                    </div>
-                ) : (
-                    <>
-                        {reviewsList.map((review) => (
-                            <div key={review.id} className="border-b border-[#333] pb-8 last:border-0">
-                                <div className="flex justify-between items-start mb-3">
-                                    <div className="flex items-center gap-3">
-                                        <img src={review.avatar} alt={review.user} className="w-10 h-10 rounded-full object-cover bg-gray-800" />
-                                        <div>
-                                            <div className="flex items-center gap-1 mb-0.5">
-                                                {[1, 2, 3, 4, 5].map((i) => (
-                                                    <Star 
-                                                        key={i} 
-                                                        className={`w-3 h-3 ${i <= review.rating ? 'text-[#D4AF37] fill-[#D4AF37]' : 'text-gray-600'}`} 
-                                                    />
-                                                ))}
-                                            </div>
-                                            <div className="text-xs text-gray-500">{review.date}</div>
-                                        </div>
-                                    </div>
-                                    
-                                    {review.verified && (
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="text-[10px] font-medium text-[#D4AF37]">Verified User</span>
-                                            <div className="w-4 h-4 rounded-full bg-[#D4AF37] flex items-center justify-center">
-                                                <Check className="w-2.5 h-2.5 text-black stroke-[3]" />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {review.title && <h4 className="text-white font-bold mb-2">{review.title}</h4>}
-                                <p className="text-gray-300 text-sm leading-relaxed mb-4">
-                                    {review.content}
-                                </p>
-
-                                {review.photos && review.photos.length > 0 && (
-                                    <div className="flex gap-2 mb-4">
-                                        {review.photos.map((photo, index) => (
-                                            <img key={index} src={photo} alt="Review attachment" className="w-20 h-20 rounded-lg object-cover border border-[#333]" />
-                                        ))}
-                                    </div>
-                                )}
-
-                                {review.reply && (
-                                    <div className="bg-[#222] rounded-lg p-4 mt-4 border border-[#333]">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-white font-bold text-sm">{review.reply.user}</span>
-                                            <span className="text-xs text-gray-500">Replied: {review.reply.date}</span>
-                                        </div>
-                                        <p className="text-gray-400 text-xs">
-                                            {review.reply.content}
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </>
-                )}
-
-                 {/* Load More Trigger & Loader */}
-                 <div ref={observerTarget} className="py-8 flex justify-center">
-                    {isReviewsLoading && reviewsList.length > 0 && (
-                        <div className="flex items-center gap-2 text-[#D4AF37] text-xs font-bold uppercase tracking-widest">
-                             <Loader2 className="w-4 h-4 animate-spin" />
-                             Loading Reviews
-                        </div>
-                    )}
-                 </div>
-            </div>
+            <StoreReviews storeId={store.id} />
           </div>
         )}
         
