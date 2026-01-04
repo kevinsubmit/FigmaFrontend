@@ -6,8 +6,12 @@ from typing import List
 import os
 import uuid
 from pathlib import Path
+import logging
 from app.api.deps import get_current_user
 from app.models.user import User
+from app.utils.image_compression import compress_image
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -57,13 +61,31 @@ async def upload_images(
                 detail=f"File size exceeds maximum allowed size of 5MB"
             )
         
-        # 生成唯一文件名
-        unique_filename = f"{uuid.uuid4()}{file_ext}"
+        # 压缩图片
+        try:
+            compressed_content, compression_info = compress_image(
+                content,
+                max_width=1920,
+                max_height=1920,
+                quality=85,
+                target_size_kb=500
+            )
+            
+            # 记录压缩信息
+            logger.info(f"Image compressed: {compression_info}")
+            
+        except Exception as e:
+            logger.error(f"Failed to compress image: {e}")
+            # 如果压缩失败，使用原图
+            compressed_content = content
+        
+        # 生成唯一文件名（使用.jpg扩展名，因为压缩后都是JPEG）
+        unique_filename = f"{uuid.uuid4()}.jpg"
         file_path = UPLOAD_DIR / unique_filename
         
-        # 保存文件
+        # 保存压缩后的文件
         with open(file_path, "wb") as f:
-            f.write(content)
+            f.write(compressed_content)
         
         # 返回文件URL（相对路径）
         file_url = f"/uploads/{unique_filename}"
