@@ -70,3 +70,14 @@ def get_service_categories(db: Session) -> List[str]:
         Service.category.isnot(None)
     ).distinct().all()
     return [cat[0] for cat in categories if cat[0]]
+
+
+def delete_service(db: Session, service_id: int) -> bool:
+    """Delete service"""
+    db_service = get_service(db, service_id)
+    if not db_service:
+        return False
+    
+    db.delete(db_service)
+    db.commit()
+    return True

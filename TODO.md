@@ -36,9 +36,38 @@
 ### 文档
 - [x] 创建店铺管理模块API文档
 - [x] 更新README.md
-- [ ] 提交代码到GitHub
+- [x] 提交代码到GitHub
 
 ## 已完成功能
 - [x] 用户认证系统
 - [x] 预约管理功能
 - [x] Reschedule功能
+
+## 服务项目管理模块
+
+### 后端开发
+- [x] 分析现有服务相关数据库表结构
+- [x] 创建服务项目CRUD API端点
+  - [x] GET /api/v1/services/ - 获取服务列表（支持分页、分类筛选）
+  - [x] GET /api/v1/services/{service_id} - 获取服务详情
+  - [x] POST /api/v1/services/ - 创建服务（管理员）
+  - [x] PATCH /api/v1/services/{service_id} - 更新服务信息（管理员）
+  - [x] DELETE /api/v1/services/{service_id} - 删除服务（管理员）
+- [x] 实现服务分类管理
+  - [x] GET /api/v1/services/categories - 获取所有分类
+  - [ ] POST /api/v1/services/categories - 创建分类（管理员）
+- [x] 实现服务可用性管理
+  - [x] PATCH /api/v1/services/{service_id}/availability - 切换服务可用状态
+
+### API测试
+- [x] 测试服务列表API
+- [x] 测试服务详情API
+- [x] 测试服务创建API
+- [x] 测试服务更新API
+- [x] 测试服务删除API
+- [x] 测试分类管理API
+
+### 文档
+- [x] 创建服务项目管理模块API文档
+- [x] 更新README.md
+- [ ] 提交代码到GitHub
