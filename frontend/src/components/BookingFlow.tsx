@@ -299,20 +299,20 @@ export function BookingFlow({ onBack, onComplete }: BookingFlowProps) {
 
             {/* Technician Selection */}
             {currentStep === 'technician' && (
-              <div className="space-y-3">
-                <button
-                  onClick={() => handleTechnicianSelect(null)}
-                  className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#D4AF37]/50 transition-all text-left"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-white mb-1">Any Available Technician</h3>
-                      <p className="text-sm text-gray-400">We'll assign the best available technician</p>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400" />
-                  </div>
-                </button>
-                
+              <div className="space-y-4">
+                <div className="text-center mb-4">
+                  <p className="text-gray-400 text-sm mb-3">Choose a specific technician or skip to let the store assign one</p>
+                  <button
+                    onClick={() => handleTechnicianSelect(null)}
+                    className="px-6 py-3 rounded-xl bg-[#D4AF37] text-black font-semibold hover:bg-[#b08d2d] transition-colors"
+                  >
+                    Skip - No Preference
+                  </button>
+                </div>
+
+                <div className="border-t border-white/10 pt-4">
+                  <p className="text-sm text-gray-400 mb-3">Or select a specific technician:</p>
+                </div>
                 {technicians.map((technician) => (
                   <button
                     key={technician.id}
