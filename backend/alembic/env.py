@@ -20,7 +20,36 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Set sqlalchemy.url from settings
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# Convert mysql:// to mysql+pymysql:// for TiDB compatibility
+import re
+from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
+
+database_url = settings.DATABASE_URL
+if database_url.startswith("mysql://"):
+    database_url = database_url.replace("mysql://", "mysql+pymysql://", 1)
+
+# Remove problematic SSL parameter and add proper SSL parameters
+parsed = urlparse(database_url)
+query_params = parse_qs(parsed.query)
+# Remove the ssl parameter with JSON value
+if 'ssl' in query_params:
+    del query_params['ssl']
+# Add proper SSL parameters for TiDB
+query_params['ssl_verify_cert'] = ['true']
+query_params['ssl_verify_identity'] = ['true']
+
+# Rebuild URL
+new_query = urlencode(query_params, doseq=True)
+database_url = urlunparse((
+    parsed.scheme,
+    parsed.netloc,
+    parsed.path,
+    parsed.params,
+    new_query,
+    parsed.fragment
+))
+
+config.set_main_option("sqlalchemy.url", database_url)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
