@@ -232,3 +232,36 @@
 - [ ] 创建营业时间管理API文档
 - [ ] 更新README
 - [ ] 提交代码到GitHub
+
+
+## 预约通知系统
+
+### Phase 1: 设计通知系统架构和数据库
+- [x] 设计notification表结构
+- [x] 创建SQLAlchemy模型
+- [x] 确定通知触发场景
+- [x] 设计通知模板
+
+### Phase 2: 开发通知服务和API
+- [x] 创建通知服务（notification_service.py）
+- [x] 实现通知CRUD操作
+- [x] 创建通知API端点
+  - [x] GET /api/v1/notifications - 获取用户通知列表
+  - [x] GET /api/v1/notifications/{id} - 获取通知详情
+  - [x] PATCH /api/v1/notifications/{id}/read - 标记为已读
+  - [x] DELETE /api/v1/notifications/{id} - 删除通知
+- [x] 实现通知发送逻辑
+
+### Phase 3: 集成到预约流程
+- [x] 预约创建时通知店铺管理员
+- [x] 预约确认时通知用户
+- [x] 预约取消时通知相关方
+- [x] 预约完成时通知用户
+
+### Phase 4: 测试和文档
+- [x] 测试通知创建和发送
+- [x] 测试通知查询和管理
+- [x] 测试与预约流程的集成
+- [x] 创建通知系统API文档
+- [ ] 更新README
+- [ ] 提交代码到GitHub

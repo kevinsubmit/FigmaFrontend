@@ -411,3 +411,23 @@ python3 test_store_hours.py
 
 详细文档请参考：[docs/Technician_Unavailable_Management.md](docs/Technician_Unavailable_Management.md)
 
+
+## 预约通知系统
+
+实时通知系统，在预约状态变更时自动通知相关用户。
+
+### 功能特性
+- **自动通知**：预约创建、确认、取消、完成时自动发送通知
+- **多角色支持**：客户和店铺管理员分别接收相关通知
+- **未读管理**：支持标记已读、获取未读数量
+- **关联预约**：通知关联具体预约，方便快速查看
+
+### API端点
+- `GET /api/v1/notifications` - 获取通知列表
+- `GET /api/v1/notifications/{id}` - 获取通知详情
+- `PATCH /api/v1/notifications/{id}/read` - 标记为已读
+- `GET /api/v1/notifications/unread/count` - 获取未读数量
+- `DELETE /api/v1/notifications/{id}` - 删除通知
+
+详细文档：[预约通知系统 API 文档](docs/Notification_System.md)
+

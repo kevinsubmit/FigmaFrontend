@@ -15,6 +15,7 @@ from app.schemas.appointment import (
 )
 from app.schemas.user import UserResponse
 from app.models.appointment import AppointmentStatus
+from app.services import notification_service
 
 router = APIRouter()
 
@@ -51,6 +52,10 @@ def create_appointment(
         appointment=appointment,
         user_id=user_id
     )
+    
+    # Send notification to store admin
+    notification_service.notify_appointment_created(db, db_appointment)
+    
     return db_appointment
 
 
@@ -154,6 +159,9 @@ def cancel_appointment(
     
     cancelled_appointment = crud_appointment.cancel_appointment(db, appointment_id=appointment_id)
     
+    # Send notification (cancelled by customer)
+    notification_service.notify_appointment_cancelled(db, cancelled_appointment, cancelled_by_admin=False)
+    
     return cancelled_appointment
 
 
@@ -217,6 +225,9 @@ def confirm_appointment(
         appointment=AppointmentUpdate(status=AppointmentStatus.CONFIRMED)
     )
     
+    # Send notification to customer
+    notification_service.notify_appointment_confirmed(db, updated_appointment)
+    
     return updated_appointment
 
 
@@ -278,5 +289,8 @@ def complete_appointment(
         appointment_id=appointment_id,
         appointment=AppointmentUpdate(status=AppointmentStatus.COMPLETED)
     )
+    
+    # Send notification to customer
+    notification_service.notify_appointment_completed(db, updated_appointment)
     
     return updated_appointment
