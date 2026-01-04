@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Loader } from './ui/Loader';
 import { Calendar, Clock, MapPin, ChevronRight, CheckCircle2, Navigation2, XCircle, AlertTriangle } from 'lucide-react';
+import { getMyAppointments, cancelAppointment as cancelAppointmentAPI, AppointmentWithDetails } from '../services/appointments.service';
+import { getStoreById } from '../services/stores.service';
+import { getServiceById } from '../services/services.service';
 import {
   Drawer,
   DrawerContent,
@@ -12,11 +15,12 @@ import {
 } from "./ui/drawer";
 import { toast } from "sonner@2.0.3";
 
-interface Appointment {
-  id: string;
+interface AppointmentDisplay {
+  id: number;
   service: {
     name: string;
     price: number;
+    duration: number;
   };
   store: {
     name: string;
@@ -24,10 +28,8 @@ interface Appointment {
   };
   date: Date;
   time: string;
-  status: 'upcoming' | 'completed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
 }
-
-const MOCK_APPOINTMENTS: Appointment[] = [];
 
 interface AppointmentsProps {
   newBooking?: any;
@@ -37,9 +39,59 @@ interface AppointmentsProps {
 
 export function Appointments({ newBooking, onClearNewBooking, onNavigate }: AppointmentsProps) {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
-  const [appointments, setAppointments] = useState<Appointment[]>(MOCK_APPOINTMENTS);
+  const [appointments, setAppointments] = useState<AppointmentDisplay[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isManageDrawerOpen, setIsManageDrawerOpen] = useState(false);
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentDisplay | null>(null);
+
+  // 加载预约列表
+  useEffect(() => {
+    loadAppointments();
+  }, []);
+
+  const loadAppointments = async () => {
+    try {
+      setIsLoading(true);
+      const data = await getMyAppointments();
+      
+      // 转换数据格式
+      const displayAppointments: AppointmentDisplay[] = await Promise.all(
+        data.map(async (apt) => {
+          try {
+            const store = await getStoreById(apt.store_id);
+            const service = await getServiceById(apt.service_id);
+            
+            return {
+              id: apt.id,
+              service: {
+                name: service.name,
+                price: service.price,
+                duration: service.duration_minutes
+              },
+              store: {
+                name: store.name,
+                address: store.address
+              },
+              date: new Date(apt.appointment_date + 'T' + apt.appointment_time),
+              time: apt.appointment_time.substring(0, 5), // HH:MM
+              status: apt.status
+            };
+          } catch (error) {
+            console.error('Error loading appointment details:', error);
+            return null;
+          }
+        })
+      );
+      
+      setAppointments(displayAppointments.filter(apt => apt !== null) as AppointmentDisplay[]);
+    } catch (error) {
+      console.error('Error loading appointments:', error);
+      toast.error('Failed to load appointments');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleDirections = (address: string) => {
     const encodedAddress = encodeURIComponent(address);
@@ -58,18 +110,34 @@ export function Appointments({ newBooking, onClearNewBooking, onNavigate }: Appo
     }
   };
 
-  const handleCancelAppointment = () => {
-    onClearNewBooking?.();
-    setIsCancelConfirmOpen(false);
-    setIsManageDrawerOpen(false);
-    toast.success("Appointment cancelled successfully", {
-      description: "You can book again anytime.",
-      style: {
-        background: '#1a1a1a',
-        border: '1px solid #D4AF3733',
-        color: '#fff'
+  const handleCancelAppointment = async () => {
+    if (!selectedAppointment) return;
+    
+    try {
+      await cancelAppointmentAPI(selectedAppointment.id);
+      
+      // 如果取消的是newBooking，清除它
+      if (newBooking && selectedAppointment.id === newBooking.id) {
+        onClearNewBooking?.();
       }
-    });
+      
+      // 重新加载预约列表
+      await loadAppointments();
+      
+      setIsCancelConfirmOpen(false);
+      setIsManageDrawerOpen(false);
+      toast.success("Appointment cancelled successfully", {
+        description: "You can book again anytime.",
+        style: {
+          background: '#1a1a1a',
+          border: '1px solid #D4AF3733',
+          color: '#fff'
+        }
+      });
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+      toast.error('Failed to cancel appointment');
+    }
   };
 
   return (
@@ -105,7 +173,11 @@ export function Appointments({ newBooking, onClearNewBooking, onNavigate }: Appo
       </div>
 
       <div className="px-4 py-6">
-        {activeTab === 'upcoming' ? (
+        {isLoading ? (
+          <div className="flex justify-center items-center py-20">
+            <Loader />
+          </div>
+        ) : activeTab === 'upcoming' ? (
           <div className="space-y-4">
             {newBooking ? (
               <div className="bg-[#1a1a1a] border border-[#D4AF37]/30 rounded-2xl overflow-hidden animate-in slide-in-from-bottom duration-500">
@@ -170,7 +242,17 @@ export function Appointments({ newBooking, onClearNewBooking, onNavigate }: Appo
                       Directions
                     </button>
                     <button 
-                      onClick={() => setIsManageDrawerOpen(true)}
+                      onClick={() => {
+                        setSelectedAppointment({
+                          id: newBooking.id,
+                          service: newBooking.service,
+                          store: newBooking.store,
+                          date: newBooking.date,
+                          time: newBooking.time,
+                          status: 'pending'
+                        });
+                        setIsManageDrawerOpen(true);
+                      }}
                       className="flex-1 py-3 bg-[#1a1a1a] border border-[#333] text-white text-sm font-bold rounded-xl hover:bg-[#222] transition-colors"
                     >
                       Manage
@@ -178,7 +260,75 @@ export function Appointments({ newBooking, onClearNewBooking, onNavigate }: Appo
                   </div>
                 </div>
               </div>
-            ) : (
+            ) : null}
+            
+            {/* 显示从后端API获取的预约列表 */}
+            {appointments
+              .filter(apt => apt.status === 'pending' || apt.status === 'confirmed')
+              .map((apt) => (
+                <div key={apt.id} className="bg-[#1a1a1a] border border-[#333] rounded-2xl overflow-hidden">
+                  <div className="p-4">
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="flex-1 pr-4">
+                        <div className="px-2 py-0.5 bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 rounded text-[10px] font-bold uppercase tracking-wider inline-block mb-2">
+                          {apt.service.name}
+                        </div>
+                        <h3 className="text-white font-bold text-xl leading-tight mb-1">{apt.store.name}</h3>
+                        <div className="flex items-center gap-1.5 text-gray-500 text-xs">
+                          <MapPin className="w-3 h-3" />
+                          <span>{apt.store.address}</span>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <div className="bg-[#D4AF37] text-black px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter">
+                          Pay at salon
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3 mb-6">
+                      <div className="bg-black/40 rounded-xl p-3 border border-[#333]">
+                        <div className="flex items-center gap-2 text-gray-500 mb-1">
+                          <Calendar className="w-3 h-3" />
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Date</span>
+                        </div>
+                        <div className="text-white text-sm font-medium">
+                          {apt.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </div>
+                      </div>
+                      <div className="bg-black/40 rounded-xl p-3 border border-[#333]">
+                        <div className="flex items-center gap-2 text-gray-500 mb-1">
+                          <Clock className="w-3 h-3" />
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Time</span>
+                        </div>
+                        <div className="text-white text-sm font-medium">{apt.time}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-4">
+                      <button 
+                        onClick={() => handleDirections(apt.store.address)}
+                        className="flex-1 py-3 bg-[#D4AF37]/10 text-[#D4AF37] rounded-xl border border-[#D4AF37]/20 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
+                      >
+                        <Navigation2 className="w-4 h-4" />
+                        Directions
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setSelectedAppointment(apt);
+                          setIsManageDrawerOpen(true);
+                        }}
+                        className="flex-1 py-3 bg-[#1a1a1a] border border-[#333] text-white text-sm font-bold rounded-xl hover:bg-[#222] transition-colors"
+                      >
+                        Manage
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            
+            {/* 如果没有预约，显示空状态 */}
+            {!newBooking && appointments.filter(apt => apt.status === 'pending' || apt.status === 'confirmed').length === 0 && (
               <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
                 <div className="w-20 h-20 bg-[#1a1a1a] rounded-full flex items-center justify-center mb-6 border border-[#333]">
                   <Calendar className="w-10 h-10 text-gray-600" />
@@ -197,8 +347,59 @@ export function Appointments({ newBooking, onClearNewBooking, onNavigate }: Appo
             )}
           </div>
         ) : (
-          <div className="py-20 text-center">
-             <p className="text-gray-500 text-sm">No past appointments found.</p>
+          <div className="space-y-4">
+            {appointments
+              .filter(apt => apt.status === 'completed' || apt.status === 'cancelled')
+              .map((apt) => (
+                <div key={apt.id} className="bg-[#1a1a1a] border border-[#333] rounded-2xl overflow-hidden opacity-60">
+                  <div className="p-4">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1 pr-4">
+                        <div className="px-2 py-0.5 bg-gray-500/10 text-gray-500 border border-gray-500/20 rounded text-[10px] font-bold uppercase tracking-wider inline-block mb-2">
+                          {apt.service.name}
+                        </div>
+                        <h3 className="text-white font-bold text-lg leading-tight mb-1">{apt.store.name}</h3>
+                        <div className="flex items-center gap-1.5 text-gray-500 text-xs">
+                          <MapPin className="w-3 h-3" />
+                          <span>{apt.store.address}</span>
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
+                          apt.status === 'completed' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
+                        }`}>
+                          {apt.status}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-black/40 rounded-xl p-3 border border-[#333]">
+                        <div className="flex items-center gap-2 text-gray-500 mb-1">
+                          <Calendar className="w-3 h-3" />
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Date</span>
+                        </div>
+                        <div className="text-white text-sm font-medium">
+                          {apt.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </div>
+                      </div>
+                      <div className="bg-black/40 rounded-xl p-3 border border-[#333]">
+                        <div className="flex items-center gap-2 text-gray-500 mb-1">
+                          <Clock className="w-3 h-3" />
+                          <span className="text-[10px] font-bold uppercase tracking-wider">Time</span>
+                        </div>
+                        <div className="text-white text-sm font-medium">{apt.time}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            
+            {appointments.filter(apt => apt.status === 'completed' || apt.status === 'cancelled').length === 0 && (
+              <div className="py-20 text-center">
+                <p className="text-gray-500 text-sm">No past appointments found.</p>
+              </div>
+            )}
           </div>
         )}
       </div>
