@@ -25,8 +25,8 @@ class Appointment(Base):
     appointment_date = Column(Date, nullable=False, index=True)
     appointment_time = Column(Time, nullable=False)
     status = Column(
-        Enum(AppointmentStatus),
-        default=AppointmentStatus.PENDING,
+        Enum('pending', 'confirmed', 'completed', 'cancelled', name='appointment_status'),
+        default='pending',
         nullable=False,
         index=True
     )

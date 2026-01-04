@@ -47,6 +47,7 @@ import {
 import { Calendar } from "./ui/calendar";  // Calendar component
 import { getServicesByStoreId, Service as APIService } from '../services/services.service';
 import { Store as APIStore } from '../services/stores.service';
+import { createAppointment } from '../services/appointments.service';
 
 // Use the Store type from stores.service
 type Store = APIStore;
@@ -159,6 +160,10 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
   const [services, setServices] = useState<Service[]>([]);
   const [isServicesLoading, setIsServicesLoading] = useState(true);
   const [servicesError, setServicesError] = useState<string | null>(null);
+  
+  // Booking State
+  const [isBooking, setIsBooking] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null);
   
   // Modals/Drawers State
   const [isMapDrawerOpen, setIsMapDrawerOpen] = useState(false);
@@ -385,27 +390,83 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
     return { totalPrice, durationStr, totalMinutes };
   };
 
-  const handleConfirmBooking = () => {
-    // Mock booking logic
-    const { totalPrice, durationStr } = calculateTotals();
-    const bookingData = {
-      id: Math.random().toString(36).substr(2, 9),
-      services: selectedServices,
-      totalPrice,
-      totalDuration: durationStr,
-      staff: selectedStaff || { name: 'Any Professional' },
-      store: store,
-      date: selectedDate,
-      time: selectedTime,
-    };
-
-    setIsBooked(true);
-    setTimeout(() => {
+  const handleConfirmBooking = async () => {
+    if (!selectedDate || !selectedTime) return;
+    
+    try {
+      setIsBooking(true);
+      setBookingError(null);
+      
+      // Parse time string (e.g., "9:00 AM") to hours and minutes
+      const [timeStr, period] = selectedTime.split(' ');
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      let appointmentHours = hours;
+      if (period === 'PM' && hours !== 12) {
+        appointmentHours += 12;
+      } else if (period === 'AM' && hours === 12) {
+        appointmentHours = 0;
+      }
+      
+      // Format date as YYYY-MM-DD
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const appointmentDate = `${year}-${month}-${day}`;
+      
+      // Format time as HH:MM:SS
+      const appointmentTime = `${String(appointmentHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+      
+      // Get first service ID (for now, we only support single service booking)
+      const serviceId = selectedServices[0]?.id;
+      if (!serviceId) {
+        throw new Error('No service selected');
+      }
+      
+      // Call backend API
+      const appointment = await createAppointment({
+        store_id: store.id,
+        service_id: serviceId,
+        appointment_date: appointmentDate,
+        appointment_time: appointmentTime,
+        notes: selectedServices.length > 1 
+          ? `Multiple services: ${selectedServices.map(s => s.name).join(', ')}`
+          : undefined
+      });
+      
+      // Show success state
+      setIsBooked(true);
+      
+      // Prepare booking data for callback
+      const { totalPrice, durationStr } = calculateTotals();
+      const bookingData = {
+        id: appointment.id.toString(),
+        services: selectedServices,
+        totalPrice,
+        totalDuration: durationStr,
+        staff: selectedStaff || { name: 'Any Professional' },
+        store: store,
+        date: selectedDate,
+        time: selectedTime,
+        appointment: appointment
+      };
+      
+      setTimeout(() => {
         setIsBooked(false);
         setIsBookingDrawerOpen(false);
         onBookingComplete?.(bookingData);
+        // Reset selections
+        setSelectedServices([]);
         setSelectedTime(null);
-    }, 2500);
+        setSelectedDate(new Date());
+      }, 2500);
+      
+    } catch (err: any) {
+      console.error('Booking failed:', err);
+      setBookingError(err.response?.data?.detail || err.message || 'Failed to create appointment');
+      setIsBooked(false);
+    } finally {
+      setIsBooking(false);
+    }
   };
 
   const timeSlots = ["09:00", "09:30", "10:00", "11:00", "13:30", "14:00", "15:30", "16:00"];
@@ -1132,13 +1193,27 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
                         </div>
 
                         <div className="mt-10 flex flex-col gap-3">
+                            {bookingError && (
+                              <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-3 text-red-400 text-sm">
+                                {bookingError}
+                              </div>
+                            )}
                             <button 
                                 onClick={handleConfirmBooking}
-                                disabled={!selectedTime || !selectedDate}
+                                disabled={!selectedTime || !selectedDate || isBooking}
                                 className="w-full py-4 bg-gradient-to-r from-[#D4AF37] to-[#b5952f] text-black font-bold rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:grayscale shadow-[0_10px_30px_rgba(212,175,55,0.2)] flex items-center justify-center gap-2"
                             >
-                                <Zap className="w-4 h-4 fill-black" />
-                                Confirm Appointment
+                                {isBooking ? (
+                                  <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Creating Appointment...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Zap className="w-4 h-4 fill-black" />
+                                    Confirm Appointment
+                                  </>
+                                )}
                             </button>
                             <DrawerClose asChild>
                                 <button className="w-full py-4 text-gray-400 font-bold hover:text-white transition-colors">
