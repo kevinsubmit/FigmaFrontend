@@ -14,6 +14,7 @@ import { Settings } from './components/Settings';
 import { MyGiftCards } from './components/MyGiftCards';
 import { Deals } from './components/Deals';
 import { VipDescription } from './components/VipDescription';
+import { Notifications } from './components/Notifications';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { AuthProvider } from './contexts/AuthContext';
@@ -21,7 +22,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { toast } from 'react-toastify';
 import { Sparkles } from 'lucide-react';
 
-export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 'pin-detail' | 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'login' | 'register';
+export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 'notifications' | 'pin-detail' | 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'login' | 'register';
 
 // Main App Router Component
 function AppRouter() {
@@ -58,6 +59,7 @@ function AppRouter() {
     if (path === '/my-gift-cards') return 'my-gift-cards';
     if (path === '/settings') return 'settings';
     if (path === '/vip-description') return 'vip-description';
+    if (path === '/notifications') return 'notifications';
     if (path === '/login') return 'login';
     if (path === '/register') return 'register';
     return 'home';
@@ -65,7 +67,7 @@ function AppRouter() {
 
   const currentPage = getCurrentPage();
   // Hide bottom nav for full-screen pages and when viewing store details in services page
-  const isFullScreenPage = currentPage === 'pin-detail' || currentPage === 'edit-profile' || currentPage === 'order-history' || currentPage === 'my-points' || currentPage === 'my-coupons' || currentPage === 'my-gift-cards' || currentPage === 'settings' || currentPage === 'vip-description' || currentPage === 'login' || currentPage === 'register' || (currentPage === 'services' && isViewingStoreDetails);
+  const isFullScreenPage = currentPage === 'pin-detail' || currentPage === 'edit-profile' || currentPage === 'order-history' || currentPage === 'my-points' || currentPage === 'my-coupons' || currentPage === 'my-gift-cards' || currentPage === 'settings' || currentPage === 'vip-description' || currentPage === 'notifications' || currentPage === 'login' || currentPage === 'register' || (currentPage === 'services' && isViewingStoreDetails);
 
   const handleNavigate = (page: 'home' | 'services' | 'appointments' | 'profile' | 'deals') => {
     console.log('handleNavigate called with page:', page);
@@ -273,6 +275,15 @@ function AppRouter() {
           <VipDescription 
               onBack={() => navigate('/profile')}
             />
+        } />
+
+        <Route path="/notifications" element={
+          <ProtectedRoute>
+            <Notifications 
+              onBack={() => navigate(-1)}
+              onNavigate={(page) => navigate(page === 'home' ? '/' : `/${page}`)}
+            />
+          </ProtectedRoute>
         } />
 
         {/* Fallback - redirect to home or login */}

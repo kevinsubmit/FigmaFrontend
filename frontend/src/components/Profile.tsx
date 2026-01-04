@@ -1,4 +1,4 @@
-import { Share, Plus, MoreHorizontal, Crown, Coins, Ticket, Receipt, UserCog, Settings, TrendingUp, Camera, Gift, Users, Pencil, Check, X, AlertCircle, Sparkles, ChevronRight } from 'lucide-react';
+import { Share, Plus, MoreHorizontal, Crown, Coins, Ticket, Receipt, UserCog, Settings, TrendingUp, Camera, Gift, Users, Pencil, Check, X, AlertCircle, Sparkles, ChevronRight, Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Masonry from 'react-responsive-masonry';
 import { useState, useEffect } from 'react';
@@ -8,7 +8,7 @@ import { Progress } from "./ui/progress";
 import { Settings as SettingsView } from './Settings';
 
 interface ProfileProps {
-  onNavigate?: (page: 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description', subPage?: 'referral') => void;
+  onNavigate?: (page: 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'notifications', subPage?: 'referral') => void;
   onPinClick?: (pinData: any) => void;
 }
 
@@ -173,12 +173,22 @@ export function Profile({ onNavigate, onPinClick }: ProfileProps) {
       {/* Top Bar */}
       <div className="flex justify-between items-center px-4 py-2 pt-[calc(1rem+env(safe-area-inset-top))]">
         <div /> {/* Spacer */}
-        <button 
-          onClick={() => setShowSettings(true)}
-          className="p-2 rounded-full bg-[#1a1a1a] border border-[#333] hover:bg-[#333] text-white transition-colors"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => onNavigate?.('notifications')}
+            className="relative p-2 rounded-full bg-[#1a1a1a] border border-[#333] hover:bg-[#333] text-white transition-colors"
+          >
+            <Bell className="w-4 h-4" />
+            {/* Unread badge - will be dynamic later */}
+            <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#D4AF37] rounded-full border border-black" />
+          </button>
+          <button 
+            onClick={() => setShowSettings(true)}
+            className="p-2 rounded-full bg-[#1a1a1a] border border-[#333] hover:bg-[#333] text-white transition-colors"
+          >
+            <Settings className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
         <div className="flex flex-col items-center px-6 mt-2">
