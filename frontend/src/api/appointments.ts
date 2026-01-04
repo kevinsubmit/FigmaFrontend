@@ -47,8 +47,44 @@ export const getAppointmentById = async (appointmentId: number): Promise<Appoint
 };
 
 /**
- * 取消预约
+ * 取消预约（带取消原因）
  */
-export const cancelAppointment = async (appointmentId: number): Promise<void> => {
-  return apiClient.patch(`/api/v1/appointments/${appointmentId}`, { status: 'cancelled' }, true);
+export const cancelAppointment = async (
+  appointmentId: number,
+  cancelReason?: string
+): Promise<Appointment> => {
+  return apiClient.post(
+    `/api/v1/appointments/${appointmentId}/cancel`,
+    { cancel_reason: cancelReason },
+    true
+  );
+};
+
+/**
+ * 改期预约
+ */
+export const rescheduleAppointment = async (
+  appointmentId: number,
+  newDate: string,
+  newTime: string
+): Promise<Appointment> => {
+  return apiClient.post(
+    `/api/v1/appointments/${appointmentId}/reschedule`,
+    { new_date: newDate, new_time: newTime },
+    true
+  );
+};
+
+/**
+ * 更新预约备注
+ */
+export const updateAppointmentNotes = async (
+  appointmentId: number,
+  notes: string
+): Promise<Appointment> => {
+  return apiClient.patch(
+    `/api/v1/appointments/${appointmentId}/notes`,
+    { notes },
+    true
+  );
 };

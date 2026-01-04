@@ -53,3 +53,19 @@ class AppointmentWithDetails(Appointment):
 
     class Config:
         from_attributes = True
+
+
+class AppointmentCancel(BaseModel):
+    """Appointment cancel schema"""
+    cancel_reason: Optional[str] = None
+
+
+class AppointmentReschedule(BaseModel):
+    """Appointment reschedule schema"""
+    new_date: date
+    new_time: time
+
+
+class AppointmentNotesUpdate(BaseModel):
+    """Appointment notes update schema"""
+    notes: str

@@ -184,3 +184,54 @@ def check_time_conflict(
                 }
     
     return {"has_conflict": False, "conflict_type": None, "message": "No conflict"}
+
+
+
+def cancel_appointment_with_reason(
+    db: Session,
+    appointment_id: int,
+    cancel_reason: Optional[str] = None,
+    cancelled_by: Optional[int] = None
+) -> Optional[Appointment]:
+    """Cancel appointment with reason"""
+    db_appointment = get_appointment(db, appointment_id)
+    if not db_appointment:
+        return None
+    
+    db_appointment.status = AppointmentStatus.CANCELLED
+    db_appointment.cancel_reason = cancel_reason
+    db_appointment.cancelled_at = datetime.now()
+    db_appointment.cancelled_by = cancelled_by
+    
+    db.commit()
+    db.refresh(db_appointment)
+    return db_appointment
+
+
+def reschedule_appointment(
+    db: Session,
+    appointment_id: int,
+    new_date: date,
+    new_time: time
+) -> Optional[Appointment]:
+    """Reschedule appointment to a new date/time"""
+    db_appointment = get_appointment(db, appointment_id)
+    if not db_appointment:
+        return None
+    
+    # Save original date/time if this is the first reschedule
+    if db_appointment.reschedule_count == 0:
+        db_appointment.original_date = db_appointment.appointment_date
+        db_appointment.original_time = db_appointment.appointment_time
+    
+    # Update to new date/time
+    db_appointment.appointment_date = new_date
+    db_appointment.appointment_time = new_time
+    db_appointment.reschedule_count += 1
+    
+    # Reset status to pending (needs confirmation again)
+    db_appointment.status = AppointmentStatus.PENDING
+    
+    db.commit()
+    db.refresh(db_appointment)
+    return db_appointment

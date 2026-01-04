@@ -32,7 +32,13 @@ class Appointment(Base):
         nullable=False,
         index=True
     )
-    notes = Column(Text)
+    notes = Column(Text)  # 用户备注
+    cancel_reason = Column(Text)  # 取消原因
+    cancelled_at = Column(DateTime(timezone=True))  # 取消时间
+    cancelled_by = Column(Integer)  # 取消人ID（用户或管理员）
+    original_date = Column(Date)  # 原始预约日期（用于改期记录）
+    original_time = Column(Time)  # 原始预约时间（用于改期记录）
+    reschedule_count = Column(Integer, default=0)  # 改期次数
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     

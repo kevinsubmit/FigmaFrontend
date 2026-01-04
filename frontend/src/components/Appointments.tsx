@@ -7,6 +7,7 @@ import { getStoreById, Store } from '../api/stores';
 import { getServiceById, Service } from '../api/services';
 import { getTechnicianById, Technician } from '../api/technicians';
 import ReviewForm from './ReviewForm';
+import { AppointmentDetailsDialog } from './AppointmentDetailsDialog';
 
 interface AppointmentWithDetails extends Appointment {
   store?: Store;
@@ -24,6 +25,7 @@ export function Appointments() {
   const [cancelling, setCancelling] = useState(false);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewingAppointment, setReviewingAppointment] = useState<AppointmentWithDetails | null>(null);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
   useEffect(() => {
     loadAppointments();
@@ -201,7 +203,11 @@ export function Appointments() {
             {displayedAppointments.map((apt) => (
               <div
                 key={apt.id}
-                className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all"
+                onClick={() => {
+                  setSelectedAppointment(apt);
+                  setShowDetailsDialog(true);
+                }}
+                className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all cursor-pointer"
               >
                 {/* Status Badge */}
                 <div className="flex items-center justify-between mb-3">
@@ -345,6 +351,20 @@ export function Appointments() {
         >
           <span className="text-2xl">+</span>
         </button>
+      )}
+
+      {/* Appointment Details Dialog */}
+      {showDetailsDialog && selectedAppointment && (
+        <AppointmentDetailsDialog
+          appointment={selectedAppointment}
+          onClose={() => {
+            setShowDetailsDialog(false);
+            setSelectedAppointment(null);
+          }}
+          onUpdate={() => {
+            loadAppointments();
+          }}
+        />
       )}
 
       {/* Review Form */}

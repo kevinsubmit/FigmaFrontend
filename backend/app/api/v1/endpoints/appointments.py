@@ -11,7 +11,10 @@ from app.schemas.appointment import (
     Appointment,
     AppointmentCreate,
     AppointmentUpdate,
-    AppointmentWithDetails
+    AppointmentWithDetails,
+    AppointmentCancel,
+    AppointmentReschedule,
+    AppointmentNotesUpdate
 )
 from app.schemas.user import UserResponse
 from app.models.appointment import AppointmentStatus
@@ -139,14 +142,15 @@ def update_appointment(
     return updated_appointment
 
 
-@router.delete("/{appointment_id}", response_model=Appointment)
+@router.post("/{appointment_id}/cancel", response_model=Appointment)
 def cancel_appointment(
     appointment_id: int,
+    cancel_data: AppointmentCancel,
     current_user: UserResponse = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Cancel appointment (requires authentication)
+    Cancel appointment with reason (requires authentication)
     """
     appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
     
@@ -157,12 +161,111 @@ def cancel_appointment(
     if appointment.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to cancel this appointment")
     
-    cancelled_appointment = crud_appointment.cancel_appointment(db, appointment_id=appointment_id)
+    # Check if appointment can be cancelled
+    if appointment.status == AppointmentStatus.CANCELLED:
+        raise HTTPException(status_code=400, detail="Appointment is already cancelled")
+    
+    if appointment.status == AppointmentStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="Cannot cancel a completed appointment")
+    
+    # Cancel appointment with reason
+    cancelled_appointment = crud_appointment.cancel_appointment_with_reason(
+        db,
+        appointment_id=appointment_id,
+        cancel_reason=cancel_data.cancel_reason,
+        cancelled_by=current_user.id
+    )
     
     # Send notification (cancelled by customer)
     notification_service.notify_appointment_cancelled(db, cancelled_appointment, cancelled_by_admin=False)
     
     return cancelled_appointment
+
+
+@router.post("/{appointment_id}/reschedule", response_model=Appointment)
+def reschedule_appointment(
+    appointment_id: int,
+    reschedule_data: AppointmentReschedule,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Reschedule appointment to a new date/time (requires authentication)
+    """
+    appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
+    
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    # Check if appointment belongs to current user
+    if appointment.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to reschedule this appointment")
+    
+    # Check if appointment can be rescheduled
+    if appointment.status == AppointmentStatus.CANCELLED:
+        raise HTTPException(status_code=400, detail="Cannot reschedule a cancelled appointment")
+    
+    if appointment.status == AppointmentStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="Cannot reschedule a completed appointment")
+    
+    # Check for time conflicts
+    conflict_result = crud_appointment.check_time_conflict(
+        db,
+        appointment_date=reschedule_data.new_date,
+        appointment_time=reschedule_data.new_time,
+        service_id=appointment.service_id,
+        technician_id=appointment.technician_id,
+        user_id=current_user.id,
+        exclude_appointment_id=appointment_id
+    )
+    
+    if conflict_result["has_conflict"]:
+        raise HTTPException(
+            status_code=400,
+            detail=conflict_result["message"]
+        )
+    
+    # Reschedule appointment
+    rescheduled_appointment = crud_appointment.reschedule_appointment(
+        db,
+        appointment_id=appointment_id,
+        new_date=reschedule_data.new_date,
+        new_time=reschedule_data.new_time
+    )
+    
+    # Send notification
+    notification_service.notify_appointment_rescheduled(db, rescheduled_appointment)
+    
+    return rescheduled_appointment
+
+
+@router.patch("/{appointment_id}/notes", response_model=Appointment)
+def update_appointment_notes(
+    appointment_id: int,
+    notes_data: AppointmentNotesUpdate,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Update appointment notes (requires authentication)
+    """
+    appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
+    
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    
+    # Check if appointment belongs to current user
+    if appointment.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this appointment")
+    
+    # Update notes
+    updated_appointment = crud_appointment.update_appointment(
+        db,
+        appointment_id=appointment_id,
+        appointment=AppointmentUpdate(notes=notes_data.notes)
+    )
+    
+    return updated_appointment
 
 
 @router.patch("/{appointment_id}/confirm", response_model=Appointment)
