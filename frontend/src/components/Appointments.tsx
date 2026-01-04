@@ -44,6 +44,9 @@ export function Appointments({ newBooking, onClearNewBooking, onNavigate }: Appo
   const [isManageDrawerOpen, setIsManageDrawerOpen] = useState(false);
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentDisplay | null>(null);
+  const [isRescheduleDrawerOpen, setIsRescheduleDrawerOpen] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState<Date | null>(null);
+  const [rescheduleTime, setRescheduleTime] = useState<string>('');
 
   // 加载预约列表
   useEffect(() => {
@@ -138,6 +141,55 @@ export function Appointments({ newBooking, onClearNewBooking, onNavigate }: Appo
       console.error('Error cancelling appointment:', error);
       toast.error('Failed to cancel appointment');
     }
+  };
+
+  const handleReschedule = async () => {
+    if (!selectedAppointment || !rescheduleDate || !rescheduleTime) {
+      toast.error('Please select both date and time');
+      return;
+    }
+    
+    try {
+      const { updateAppointment } = await import('../services/appointments.service');
+      
+      await updateAppointment(selectedAppointment.id, {
+        appointment_date: rescheduleDate.toISOString().split('T')[0],
+        appointment_time: rescheduleTime
+      });
+      
+      // 重新加载预约列表
+      await loadAppointments();
+      
+      setIsRescheduleDrawerOpen(false);
+      setIsManageDrawerOpen(false);
+      setRescheduleDate(null);
+      setRescheduleTime('');
+      
+      toast.success("Appointment rescheduled successfully", {
+        description: `New time: ${rescheduleDate.toLocaleDateString()} at ${rescheduleTime}`,
+        style: {
+          background: '#1a1a1a',
+          border: '1px solid #D4AF3733',
+          color: '#fff'
+        }
+      });
+    } catch (error) {
+      console.error('Error rescheduling appointment:', error);
+      toast.error('Failed to reschedule appointment');
+    }
+  };
+
+  // 生成可用时间段（9:00 - 18:00，每30分钟一个时间段）
+  const generateTimeSlots = () => {
+    const slots = [];
+    for (let hour = 9; hour <= 18; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        if (hour === 18 && minute > 0) break; // 最后一个时间段是18:00
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        slots.push(timeString);
+      }
+    }
+    return slots;
   };
 
   return (
@@ -418,9 +470,8 @@ export function Appointments({ newBooking, onClearNewBooking, onNavigate }: Appo
             <button 
               className="w-full py-4 px-6 bg-[#1a1a1a] border border-[#333] rounded-2xl flex items-center justify-between hover:bg-[#222] transition-colors group"
               onClick={() => {
-                toast.info("Rescheduling feature coming soon", {
-                  style: { background: '#1a1a1a', border: '1px solid #D4AF3733', color: '#fff' }
-                });
+                setIsRescheduleDrawerOpen(true);
+                setIsManageDrawerOpen(false);
               }}
             >
               <div className="flex items-center gap-4">
@@ -482,6 +533,80 @@ export function Appointments({ newBooking, onClearNewBooking, onNavigate }: Appo
               No, Keep It
             </button>
           </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Reschedule Drawer */}
+      <Drawer open={isRescheduleDrawerOpen} onOpenChange={setIsRescheduleDrawerOpen}>
+        <DrawerContent className="bg-black border-[#D4AF37]/20 text-white max-h-[90vh]">
+          <DrawerHeader className="border-b border-[#D4AF37]/20 px-6">
+            <DrawerTitle className="text-2xl font-bold">Reschedule Appointment</DrawerTitle>
+            <DrawerDescription className="text-gray-400">
+              Choose a new date and time for your service
+            </DrawerDescription>
+          </DrawerHeader>
+          
+          <div className="px-6 py-6 space-y-6 overflow-y-auto">
+            {/* Current Appointment Info */}
+            {selectedAppointment && (
+              <div className="p-4 bg-[#1a1a1a] border border-[#333] rounded-2xl">
+                <div className="text-sm text-gray-400 mb-2">Current Appointment</div>
+                <div className="font-bold text-lg text-[#D4AF37]">{selectedAppointment.service.name}</div>
+                <div className="text-gray-300 mt-1">{selectedAppointment.store.name}</div>
+                <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
+                  <span>{selectedAppointment.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                  <span>{selectedAppointment.time}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Date Selection */}
+            <div>
+              <label className="block text-sm font-bold text-gray-300 mb-3">Select New Date</label>
+              <input
+                type="date"
+                value={rescheduleDate ? rescheduleDate.toISOString().split('T')[0] : ''}
+                onChange={(e) => setRescheduleDate(new Date(e.target.value))}
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#333] rounded-xl text-white focus:border-[#D4AF37] focus:outline-none"
+              />
+            </div>
+
+            {/* Time Selection */}
+            <div>
+              <label className="block text-sm font-bold text-gray-300 mb-3">Select New Time</label>
+              <div className="grid grid-cols-4 gap-2 max-h-[200px] overflow-y-auto">
+                {generateTimeSlots().map((time) => (
+                  <button
+                    key={time}
+                    onClick={() => setRescheduleTime(time)}
+                    className={`py-3 px-2 rounded-xl font-medium transition-all ${
+                      rescheduleTime === time
+                        ? 'bg-[#D4AF37] text-black'
+                        : 'bg-[#1a1a1a] border border-[#333] text-white hover:bg-[#222]'
+                    }`}
+                  >
+                    {time}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DrawerFooter className="border-t border-[#D4AF37]/20 px-6 py-4">
+            <button
+              onClick={handleReschedule}
+              disabled={!rescheduleDate || !rescheduleTime}
+              className="w-full py-4 bg-[#D4AF37] text-black font-bold rounded-2xl hover:bg-[#C5A028] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Confirm Reschedule
+            </button>
+            <DrawerClose asChild>
+              <button className="w-full py-4 font-bold text-gray-400 hover:text-white transition-colors">
+                Cancel
+              </button>
+            </DrawerClose>
+          </DrawerFooter>
         </DrawerContent>
       </Drawer>
     </div>
