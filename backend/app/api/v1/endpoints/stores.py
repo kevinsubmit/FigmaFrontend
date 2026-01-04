@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from app.api.deps import get_db, get_current_admin_user
+from app.api.deps import get_db, get_current_admin_user, get_current_store_admin
 from app.models.user import User
 from app.crud import store as crud_store, service as crud_service
 from app.schemas.store import Store, StoreWithImages, StoreImage, StoreCreate, StoreUpdate, StoreImageCreate
@@ -110,13 +110,22 @@ def update_store(
     store_id: int,
     store: StoreUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_store_admin)
 ):
     """
-    Update store information (Admin only)
+    Update store information (Store admin only)
     
-    Requires admin permissions
+    - Super admin can update any store
+    - Store manager can only update their own store
     """
+    # If user is store manager (not super admin), enforce store ownership
+    if not current_user.is_admin:
+        if current_user.store_id != store_id:
+            raise HTTPException(
+                status_code=403,
+                detail="You can only update your own store"
+            )
+    
     updated_store = crud_store.update_store(db, store_id=store_id, store=store)
     if not updated_store:
         raise HTTPException(status_code=404, detail="Store not found")
@@ -149,16 +158,25 @@ def create_store_image(
     is_primary: int = 0,
     display_order: int = 0,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_store_admin)
 ):
     """
-    Add an image to a store (Admin only)
+    Add an image to a store (Store admin only)
     
-    Requires admin permissions
+    - Super admin can add images to any store
+    - Store manager can only add images to their own store
     """
     store = crud_store.get_store(db, store_id=store_id)
     if not store:
         raise HTTPException(status_code=404, detail="Store not found")
+    
+    # If user is store manager (not super admin), enforce store ownership
+    if not current_user.is_admin:
+        if current_user.store_id != store_id:
+            raise HTTPException(
+                status_code=403,
+                detail="You can only add images to your own store"
+            )
     
     new_image = crud_store.create_store_image(
         db,
@@ -175,38 +193,25 @@ def delete_store_image(
     store_id: int,
     image_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_store_admin)
 ):
     """
-    Delete a store image (Admin only)
+    Delete a store image (Store admin only)
     
-    Requires admin permissions
+    - Super admin can delete images from any store
+    - Store manager can only delete images from their own store
     """
     store = crud_store.get_store(db, store_id=store_id)
     if not store:
         raise HTTPException(status_code=404, detail="Store not found")
     
-    deleted = crud_store.delete_store_image(db, image_id=image_id, store_id=store_id)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Image not found")
-    
-    return None
-
-@router.delete("/{store_id}/images/{image_id}", status_code=204)
-def delete_store_image(
-    store_id: int,
-    image_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user)
-):
-    """
-    Delete a store image (Admin only)
-    
-    Requires admin permissions
-    """
-    store = crud_store.get_store(db, store_id=store_id)
-    if not store:
-        raise HTTPException(status_code=404, detail="Store not found")
+    # If user is store manager (not super admin), enforce store ownership
+    if not current_user.is_admin:
+        if current_user.store_id != store_id:
+            raise HTTPException(
+                status_code=403,
+                detail="You can only delete images from your own store"
+            )
     
     deleted = crud_store.delete_store_image(db, image_id=image_id, store_id=store_id)
     if not deleted:
