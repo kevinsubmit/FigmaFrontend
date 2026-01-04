@@ -1,614 +1,334 @@
 import { useState, useEffect } from 'react';
-import { Loader } from './ui/Loader';
-import { Calendar, Clock, MapPin, ChevronRight, CheckCircle2, Navigation2, XCircle, AlertTriangle } from 'lucide-react';
-import { getMyAppointments, cancelAppointment as cancelAppointmentAPI, AppointmentWithDetails } from '../services/appointments.service';
-import { getStoreById } from '../services/stores.service';
-import { getServiceById } from '../services/services.service';
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerClose,
-} from "./ui/drawer";
-import { toast } from "sonner@2.0.3";
+import { useNavigate } from 'react-router-dom';
+import { Calendar, Clock, MapPin, User, DollarSign, ChevronRight, X, AlertCircle } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { getMyAppointments, cancelAppointment, Appointment } from '../api/appointments';
+import { getStoreById, Store } from '../api/stores';
+import { getServiceById, Service } from '../api/services';
+import { getTechnicianById, Technician } from '../api/technicians';
 
-interface AppointmentDisplay {
-  id: number;
-  service: {
-    name: string;
-    price: number;
-    duration: number;
-  };
-  store: {
-    name: string;
-    address: string;
-  };
-  date: Date;
-  time: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+interface AppointmentWithDetails extends Appointment {
+  store?: Store;
+  service?: Service;
+  technician?: Technician | null;
 }
 
-interface AppointmentsProps {
-  newBooking?: any;
-  onClearNewBooking?: () => void;
-  onNavigate?: (page: any) => void;
-}
+export function Appointments() {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
+  const [appointments, setAppointments] = useState<AppointmentWithDetails[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentWithDetails | null>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
-export function Appointments({ newBooking, onClearNewBooking, onNavigate }: AppointmentsProps) {
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
-  const [appointments, setAppointments] = useState<AppointmentDisplay[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isManageDrawerOpen, setIsManageDrawerOpen] = useState(false);
-  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
-  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentDisplay | null>(null);
-  const [isRescheduleDrawerOpen, setIsRescheduleDrawerOpen] = useState(false);
-  const [rescheduleDate, setRescheduleDate] = useState<Date | null>(null);
-  const [rescheduleTime, setRescheduleTime] = useState<string>('');
-
-  // 加载预约列表
   useEffect(() => {
     loadAppointments();
   }, []);
 
   const loadAppointments = async () => {
     try {
-      setIsLoading(true);
+      setLoading(true);
       const data = await getMyAppointments();
       
-      // 转换数据格式
-      const displayAppointments: AppointmentDisplay[] = await Promise.all(
+      // Load details for each appointment
+      const appointmentsWithDetails = await Promise.all(
         data.map(async (apt) => {
           try {
-            const store = await getStoreById(apt.store_id);
-            const service = await getServiceById(apt.service_id);
+            const [store, service, technician] = await Promise.all([
+              getStoreById(apt.store_id),
+              getServiceById(apt.service_id),
+              apt.technician_id ? getTechnicianById(apt.technician_id).catch(() => null) : Promise.resolve(null)
+            ]);
             
             return {
-              id: apt.id,
-              service: {
-                name: service.name,
-                price: service.price,
-                duration: service.duration_minutes
-              },
-              store: {
-                name: store.name,
-                address: store.address
-              },
-              date: new Date(apt.appointment_date + 'T' + apt.appointment_time),
-              time: apt.appointment_time.substring(0, 5), // HH:MM
-              status: apt.status
+              ...apt,
+              store,
+              service,
+              technician
             };
           } catch (error) {
-            console.error('Error loading appointment details:', error);
-            return null;
+            console.error('Failed to load appointment details:', error);
+            return apt;
           }
         })
       );
       
-      setAppointments(displayAppointments.filter(apt => apt !== null) as AppointmentDisplay[]);
+      setAppointments(appointmentsWithDetails);
     } catch (error) {
-      console.error('Error loading appointments:', error);
+      console.error('Failed to load appointments:', error);
       toast.error('Failed to load appointments');
     } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDirections = (address: string) => {
-    const encodedAddress = encodeURIComponent(address);
-    // Universal link for Google Maps, works on iOS/Android
-    const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
-    // Apple Maps specific link (will fallback to Google Maps or web if not on iOS)
-    const appleMapsUrl = `maps://maps.apple.com/?q=${encodedAddress}`;
-    
-    // Check if user is on iOS
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    
-    if (isIOS) {
-      window.open(appleMapsUrl, '_blank');
-    } else {
-      window.open(googleMapsUrl, '_blank');
+      setLoading(false);
     }
   };
 
   const handleCancelAppointment = async () => {
     if (!selectedAppointment) return;
-    
+
     try {
-      await cancelAppointmentAPI(selectedAppointment.id);
-      
-      // 如果取消的是newBooking，清除它
-      if (newBooking && selectedAppointment.id === newBooking.id) {
-        onClearNewBooking?.();
-      }
-      
-      // 重新加载预约列表
+      setCancelling(true);
+      await cancelAppointment(selectedAppointment.id);
+      toast.success('Appointment cancelled successfully');
+      setShowCancelDialog(false);
+      setSelectedAppointment(null);
       await loadAppointments();
-      
-      setIsCancelConfirmOpen(false);
-      setIsManageDrawerOpen(false);
-      toast.success("Appointment cancelled successfully", {
-        description: "You can book again anytime.",
-        style: {
-          background: '#1a1a1a',
-          border: '1px solid #D4AF3733',
-          color: '#fff'
-        }
-      });
-    } catch (error) {
-      console.error('Error cancelling appointment:', error);
-      toast.error('Failed to cancel appointment');
+    } catch (error: any) {
+      console.error('Failed to cancel appointment:', error);
+      toast.error(error?.message || 'Failed to cancel appointment');
+    } finally {
+      setCancelling(false);
     }
   };
 
-  const handleReschedule = async () => {
-    if (!selectedAppointment || !rescheduleDate || !rescheduleTime) {
-      toast.error('Please select both date and time');
-      return;
-    }
-    
-    try {
-      const { updateAppointment } = await import('../services/appointments.service');
-      
-      await updateAppointment(selectedAppointment.id, {
-        appointment_date: rescheduleDate.toISOString().split('T')[0],
-        appointment_time: rescheduleTime
-      });
-      
-      // 重新加载预约列表
-      await loadAppointments();
-      
-      setIsRescheduleDrawerOpen(false);
-      setIsManageDrawerOpen(false);
-      setRescheduleDate(null);
-      setRescheduleTime('');
-      
-      toast.success("Appointment rescheduled successfully", {
-        description: `New time: ${rescheduleDate.toLocaleDateString()} at ${rescheduleTime}`,
-        style: {
-          background: '#1a1a1a',
-          border: '1px solid #D4AF3733',
-          color: '#fff'
-        }
-      });
-    } catch (error) {
-      console.error('Error rescheduling appointment:', error);
-      toast.error('Failed to reschedule appointment');
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'text-yellow-500 bg-yellow-500/10';
+      case 'confirmed':
+        return 'text-green-500 bg-green-500/10';
+      case 'completed':
+        return 'text-blue-500 bg-blue-500/10';
+      case 'cancelled':
+        return 'text-red-500 bg-red-500/10';
+      default:
+        return 'text-gray-500 bg-gray-500/10';
     }
   };
 
-  // 生成可用时间段（9:00 - 18:00，每30分钟一个时间段）
-  const generateTimeSlots = () => {
-    const slots = [];
-    for (let hour = 9; hour <= 18; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        if (hour === 18 && minute > 0) break; // 最后一个时间段是18:00
-        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        slots.push(timeString);
-      }
-    }
-    return slots;
+  const getStatusText = (status: string) => {
+    return status.charAt(0).toUpperCase() + status.slice(1);
   };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      weekday: 'short'
+    });
+  };
+
+  const formatTime = (timeString: string) => {
+    // timeString is in HH:MM:SS or HH:MM format
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  const isUpcoming = (apt: Appointment) => {
+    const aptDate = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
+    const now = new Date();
+    return aptDate >= now && apt.status !== 'cancelled' && apt.status !== 'completed';
+  };
+
+  const upcomingAppointments = appointments.filter(isUpcoming);
+  const pastAppointments = appointments.filter(apt => !isUpcoming(apt));
+
+  const displayedAppointments = activeTab === 'upcoming' ? upcomingAppointments : pastAppointments;
 
   return (
-    <div className="min-h-screen bg-black animate-in fade-in duration-500 pb-24">
+    <div className="min-h-screen bg-black text-white pb-20">
       {/* Header */}
-      <div className="bg-black text-white px-6 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] border-b border-[#D4AF37]/20 sticky top-0 z-10">
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold">Appointments</h1>
+      <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-lg border-b border-white/10">
+        <div className="px-4 py-4">
+          <h1 className="text-2xl font-bold">My Appointments</h1>
         </div>
+
         {/* Tabs */}
-        <div className="flex gap-3">
+        <div className="flex px-4">
           <button
             onClick={() => setActiveTab('upcoming')}
-            className={`px-6 py-2 rounded-full transition-colors text-sm font-bold ${
-              activeTab === 'upcoming'
-                ? 'bg-[#D4AF37] text-black'
-                : 'bg-transparent text-gray-400 border border-[#333]'
+            className={`flex-1 py-3 text-center font-medium transition-colors relative ${
+              activeTab === 'upcoming' ? 'text-[#D4AF37]' : 'text-gray-400'
             }`}
           >
             Upcoming
+            {upcomingAppointments.length > 0 && (
+              <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-[#D4AF37] text-black">
+                {upcomingAppointments.length}
+              </span>
+            )}
+            {activeTab === 'upcoming' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#D4AF37]" />
+            )}
           </button>
           <button
-            onClick={() => setActiveTab('history')}
-            className={`px-6 py-2 rounded-full transition-colors text-sm font-bold ${
-              activeTab === 'history'
-                ? 'bg-[#D4AF37] text-black'
-                : 'bg-transparent text-gray-400 border border-[#333]'
+            onClick={() => setActiveTab('past')}
+            className={`flex-1 py-3 text-center font-medium transition-colors relative ${
+              activeTab === 'past' ? 'text-[#D4AF37]' : 'text-gray-400'
             }`}
           >
-            History
+            Past
+            {activeTab === 'past' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#D4AF37]" />
+            )}
           </button>
         </div>
       </div>
 
+      {/* Content */}
       <div className="px-4 py-6">
-        {isLoading ? (
-          <div className="flex justify-center items-center py-20">
-            <Loader />
+        {loading ? (
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D4AF37]"></div>
           </div>
-        ) : activeTab === 'upcoming' ? (
-          <div className="space-y-4">
-            {newBooking ? (
-              <div className="bg-[#1a1a1a] border border-[#D4AF37]/30 rounded-2xl overflow-hidden animate-in slide-in-from-bottom duration-500">
-                <div className="bg-[#D4AF37]/10 px-4 py-2 border-b border-[#D4AF37]/20 flex items-center justify-between">
-                  <span className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-widest">Just Booked</span>
-                  <CheckCircle2 className="w-3 h-3 text-[#D4AF37]" />
-                </div>
-                <div className="p-4">
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="flex-1 pr-4">
-                      {newBooking.services ? (
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {newBooking.services.map((s: any) => (
-                            <span key={s.id} className="px-2 py-0.5 bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 rounded text-[10px] font-bold uppercase tracking-wider">
-                              {s.name}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="px-2 py-0.5 bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 rounded text-[10px] font-bold uppercase tracking-wider inline-block mb-2">
-                          {newBooking.service?.name}
-                        </div>
-                      )}
-                      <h3 className="text-white font-bold text-xl leading-tight mb-1">{newBooking.store?.name}</h3>
-                      <div className="flex items-center gap-1.5 text-gray-500 text-xs">
-                        <MapPin className="w-3 h-3" />
-                        <span>{newBooking.store?.address}</span>
-                      </div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="bg-[#D4AF37] text-black px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter">
-                        Pay at salon
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-3 mb-6">
-                    <div className="bg-black/40 rounded-xl p-3 border border-[#333]">
-                      <div className="flex items-center gap-2 text-gray-500 mb-1">
-                        <Calendar className="w-3 h-3" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">Date</span>
-                      </div>
-                      <div className="text-white text-sm font-medium">
-                        {newBooking.date?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                      </div>
-                    </div>
-                    <div className="bg-black/40 rounded-xl p-3 border border-[#333]">
-                      <div className="flex items-center gap-2 text-gray-500 mb-1">
-                        <Clock className="w-3 h-3" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">Time</span>
-                      </div>
-                      <div className="text-white text-sm font-medium">{newBooking.time}</div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-4">
-                    <button 
-                      onClick={() => handleDirections(newBooking.store?.address)}
-                      className="flex-1 py-3 bg-[#D4AF37]/10 text-[#D4AF37] rounded-xl border border-[#D4AF37]/20 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
-                    >
-                      <Navigation2 className="w-4 h-4" />
-                      Directions
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setSelectedAppointment({
-                          id: newBooking.id,
-                          service: newBooking.service,
-                          store: newBooking.store,
-                          date: newBooking.date,
-                          time: newBooking.time,
-                          status: 'pending'
-                        });
-                        setIsManageDrawerOpen(true);
-                      }}
-                      className="flex-1 py-3 bg-[#1a1a1a] border border-[#333] text-white text-sm font-bold rounded-xl hover:bg-[#222] transition-colors"
-                    >
-                      Manage
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-            
-            {/* 显示从后端API获取的预约列表 */}
-            {appointments
-              .filter(apt => apt.status === 'pending' || apt.status === 'confirmed')
-              .map((apt) => (
-                <div key={apt.id} className="bg-[#1a1a1a] border border-[#333] rounded-2xl overflow-hidden">
-                  <div className="p-4">
-                    <div className="flex justify-between items-start mb-6">
-                      <div className="flex-1 pr-4">
-                        <div className="px-2 py-0.5 bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/20 rounded text-[10px] font-bold uppercase tracking-wider inline-block mb-2">
-                          {apt.service.name}
-                        </div>
-                        <h3 className="text-white font-bold text-xl leading-tight mb-1">{apt.store.name}</h3>
-                        <div className="flex items-center gap-1.5 text-gray-500 text-xs">
-                          <MapPin className="w-3 h-3" />
-                          <span>{apt.store.address}</span>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <div className="bg-[#D4AF37] text-black px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter">
-                          Pay at salon
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3 mb-6">
-                      <div className="bg-black/40 rounded-xl p-3 border border-[#333]">
-                        <div className="flex items-center gap-2 text-gray-500 mb-1">
-                          <Calendar className="w-3 h-3" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider">Date</span>
-                        </div>
-                        <div className="text-white text-sm font-medium">
-                          {apt.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                        </div>
-                      </div>
-                      <div className="bg-black/40 rounded-xl p-3 border border-[#333]">
-                        <div className="flex items-center gap-2 text-gray-500 mb-1">
-                          <Clock className="w-3 h-3" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider">Time</span>
-                        </div>
-                        <div className="text-white text-sm font-medium">{apt.time}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between gap-4">
-                      <button 
-                        onClick={() => handleDirections(apt.store.address)}
-                        className="flex-1 py-3 bg-[#D4AF37]/10 text-[#D4AF37] rounded-xl border border-[#D4AF37]/20 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
-                      >
-                        <Navigation2 className="w-4 h-4" />
-                        Directions
-                      </button>
-                      <button 
-                        onClick={() => {
-                          setSelectedAppointment(apt);
-                          setIsManageDrawerOpen(true);
-                        }}
-                        className="flex-1 py-3 bg-[#1a1a1a] border border-[#333] text-white text-sm font-bold rounded-xl hover:bg-[#222] transition-colors"
-                      >
-                        Manage
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            
-            {/* 如果没有预约，显示空状态 */}
-            {!newBooking && appointments.filter(apt => apt.status === 'pending' || apt.status === 'confirmed').length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-                <div className="w-20 h-20 bg-[#1a1a1a] rounded-full flex items-center justify-center mb-6 border border-[#333]">
-                  <Calendar className="w-10 h-10 text-gray-600" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">No upcoming appointments</h3>
-                <p className="text-gray-400 text-sm mb-8 max-w-[260px]">
-                  Looks like you haven't booked anything yet. Ready for a fresh new look?
-                </p>
-                <button 
-                  onClick={() => onNavigate?.('services')}
-                  className="w-full max-w-[200px] py-4 bg-[#D4AF37] hover:bg-[#b5952f] text-black font-bold rounded-xl transition-all active:scale-[0.98] shadow-[0_10px_20px_rgba(212,175,55,0.2)]"
-                >
-                  Book Now
-                </button>
-              </div>
+        ) : displayedAppointments.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
+              <Calendar className="w-8 h-8 text-gray-400" />
+            </div>
+            <p className="text-gray-400 mb-4">
+              {activeTab === 'upcoming' ? 'No upcoming appointments' : 'No past appointments'}
+            </p>
+            {activeTab === 'upcoming' && (
+              <button
+                onClick={() => navigate('/booking')}
+                className="px-6 py-3 rounded-xl bg-[#D4AF37] text-black font-semibold hover:bg-[#b08d2d] transition-colors"
+              >
+                Book Now
+              </button>
             )}
           </div>
         ) : (
           <div className="space-y-4">
-            {appointments
-              .filter(apt => apt.status === 'completed' || apt.status === 'cancelled')
-              .map((apt) => (
-                <div key={apt.id} className="bg-[#1a1a1a] border border-[#333] rounded-2xl overflow-hidden opacity-60">
-                  <div className="p-4">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1 pr-4">
-                        <div className="px-2 py-0.5 bg-gray-500/10 text-gray-500 border border-gray-500/20 rounded text-[10px] font-bold uppercase tracking-wider inline-block mb-2">
-                          {apt.service.name}
-                        </div>
-                        <h3 className="text-white font-bold text-lg leading-tight mb-1">{apt.store.name}</h3>
-                        <div className="flex items-center gap-1.5 text-gray-500 text-xs">
-                          <MapPin className="w-3 h-3" />
-                          <span>{apt.store.address}</span>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
-                          apt.status === 'completed' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
-                        }`}>
-                          {apt.status}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-black/40 rounded-xl p-3 border border-[#333]">
-                        <div className="flex items-center gap-2 text-gray-500 mb-1">
-                          <Calendar className="w-3 h-3" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider">Date</span>
-                        </div>
-                        <div className="text-white text-sm font-medium">
-                          {apt.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                        </div>
-                      </div>
-                      <div className="bg-black/40 rounded-xl p-3 border border-[#333]">
-                        <div className="flex items-center gap-2 text-gray-500 mb-1">
-                          <Clock className="w-3 h-3" />
-                          <span className="text-[10px] font-bold uppercase tracking-wider">Time</span>
-                        </div>
-                        <div className="text-white text-sm font-medium">{apt.time}</div>
-                      </div>
-                    </div>
+            {displayedAppointments.map((apt) => (
+              <div
+                key={apt.id}
+                className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all"
+              >
+                {/* Status Badge */}
+                <div className="flex items-center justify-between mb-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(apt.status)}`}>
+                    {getStatusText(apt.status)}
+                  </span>
+                  {apt.status === 'pending' && (
+                    <button
+                      onClick={() => {
+                        setSelectedAppointment(apt);
+                        setShowCancelDialog(true);
+                      }}
+                      className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+
+                {/* Store Info */}
+                {apt.store && (
+                  <div className="mb-3">
+                    <h3 className="font-semibold text-lg text-white mb-1">{apt.store.name}</h3>
+                    <p className="text-sm text-gray-400 flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
+                      {apt.store.address}
+                    </p>
+                  </div>
+                )}
+
+                {/* Service Info */}
+                {apt.service && (
+                  <div className="flex items-center gap-2 mb-2 text-sm">
+                    <span className="text-white">💅 {apt.service.name}</span>
+                    <span className="text-gray-400">•</span>
+                    <span className="text-[#D4AF37] flex items-center gap-1">
+                      <DollarSign className="w-3 h-3" />
+                      {apt.service.price.toFixed(2)}
+                    </span>
+                    <span className="text-gray-400">•</span>
+                    <span className="text-gray-400">{apt.service.duration_minutes} min</span>
+                  </div>
+                )}
+
+                {/* Technician Info */}
+                {apt.technician && (
+                  <div className="flex items-center gap-2 mb-3 text-sm text-gray-400">
+                    <User className="w-4 h-4" />
+                    <span>with {apt.technician.name}</span>
+                  </div>
+                )}
+
+                {/* Date & Time */}
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-1 text-white">
+                    <Calendar className="w-4 h-4" />
+                    {formatDate(apt.appointment_date)}
+                  </div>
+                  <div className="flex items-center gap-1 text-white">
+                    <Clock className="w-4 h-4" />
+                    {formatTime(apt.appointment_time)}
                   </div>
                 </div>
-              ))}
-            
-            {appointments.filter(apt => apt.status === 'completed' || apt.status === 'cancelled').length === 0 && (
-              <div className="py-20 text-center">
-                <p className="text-gray-500 text-sm">No past appointments found.</p>
               </div>
-            )}
+            ))}
           </div>
         )}
       </div>
 
-      {/* Manage Appointment Drawer */}
-      <Drawer open={isManageDrawerOpen} onOpenChange={setIsManageDrawerOpen}>
-        <DrawerContent className="bg-[#121212] border-t border-[#333] text-white pb-8">
-          <div className="mx-auto w-12 h-1.5 bg-[#333] rounded-full mt-3 mb-6" />
-          <DrawerHeader className="pb-6">
-            <DrawerTitle className="text-center text-xl font-bold tracking-tight">Manage Appointment</DrawerTitle>
-            <DrawerDescription className="text-center text-gray-400 mt-1">
-              Update or cancel your upcoming service
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="px-6 space-y-3">
-            <button 
-              className="w-full py-4 px-6 bg-[#1a1a1a] border border-[#333] rounded-2xl flex items-center justify-between hover:bg-[#222] transition-colors group"
-              onClick={() => {
-                setIsRescheduleDrawerOpen(true);
-                setIsManageDrawerOpen(false);
-              }}
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-[#D4AF37]/10 flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-[#D4AF37]" />
-                </div>
-                <span className="font-bold text-lg">Reschedule</span>
+      {/* Cancel Confirmation Dialog */}
+      {showCancelDialog && selectedAppointment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
+          <div className="w-full max-w-md p-6 rounded-2xl bg-[#1a1a1a] border border-white/10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-red-500" />
               </div>
-              <ChevronRight className="w-5 h-5 text-gray-500" />
-            </button>
-            
-            <button 
-              onClick={() => setIsCancelConfirmOpen(true)}
-              className="w-full py-4 px-6 bg-[#1a1a1a] border border-red-500/20 rounded-2xl flex items-center justify-between hover:bg-red-500/5 transition-colors group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
-                  <XCircle className="w-5 h-5 text-red-500" />
-                </div>
-                <span className="font-bold text-lg text-red-500">Cancel Appointment</span>
+              <div>
+                <h3 className="font-semibold text-lg">Cancel Appointment?</h3>
+                <p className="text-sm text-gray-400">This action cannot be undone</p>
               </div>
-              <ChevronRight className="w-5 h-5 text-gray-500" />
-            </button>
-          </div>
-          <DrawerFooter className="pt-6">
-            <DrawerClose asChild>
-              <button className="w-full py-4 font-bold text-gray-400 hover:text-white transition-colors">
-                Back
+            </div>
+
+            <div className="mb-6 p-4 rounded-xl bg-white/5">
+              <p className="text-sm text-gray-400 mb-2">You are about to cancel:</p>
+              <p className="font-medium">{selectedAppointment.service?.name}</p>
+              <p className="text-sm text-gray-400">
+                {formatDate(selectedAppointment.appointment_date)} at {formatTime(selectedAppointment.appointment_time)}
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowCancelDialog(false);
+                  setSelectedAppointment(null);
+                }}
+                disabled={cancelling}
+                className="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors font-medium disabled:opacity-50"
+              >
+                Keep Appointment
               </button>
-            </DrawerClose>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
-
-      {/* Cancellation Confirmation Drawer */}
-      <Drawer open={isCancelConfirmOpen} onOpenChange={setIsCancelConfirmOpen}>
-        <DrawerContent className="bg-[#121212] border-t border-[#333] text-white pb-8">
-          <div className="mx-auto w-12 h-1.5 bg-[#333] rounded-full mt-3 mb-6" />
-          <DrawerHeader className="pb-2">
-            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
-              <AlertTriangle className="w-8 h-8 text-red-500" />
-            </div>
-            <DrawerTitle className="text-center text-xl font-bold tracking-tight">Cancel Appointment?</DrawerTitle>
-            <DrawerDescription className="text-center text-gray-400 mt-2 px-6">
-              Are you sure you want to cancel your appointment? This action cannot be undone.
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="px-6 flex flex-col gap-3 mt-8">
-            <button 
-              onClick={handleCancelAppointment}
-              className="w-full py-4 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition-all"
-            >
-              Yes, Cancel Appointment
-            </button>
-            <button 
-              onClick={() => setIsCancelConfirmOpen(false)}
-              className="w-full py-4 bg-[#1a1a1a] border border-[#333] text-white font-bold rounded-2xl hover:bg-[#222] transition-colors"
-            >
-              No, Keep It
-            </button>
-          </div>
-        </DrawerContent>
-      </Drawer>
-
-      {/* Reschedule Drawer */}
-      <Drawer open={isRescheduleDrawerOpen} onOpenChange={setIsRescheduleDrawerOpen}>
-        <DrawerContent className="bg-black border-[#D4AF37]/20 text-white max-h-[90vh]">
-          <DrawerHeader className="border-b border-[#D4AF37]/20 px-6">
-            <DrawerTitle className="text-2xl font-bold">Reschedule Appointment</DrawerTitle>
-            <DrawerDescription className="text-gray-400">
-              Choose a new date and time for your service
-            </DrawerDescription>
-          </DrawerHeader>
-          
-          <div className="px-6 py-6 space-y-6 overflow-y-auto">
-            {/* Current Appointment Info */}
-            {selectedAppointment && (
-              <div className="p-4 bg-[#1a1a1a] border border-[#333] rounded-2xl">
-                <div className="text-sm text-gray-400 mb-2">Current Appointment</div>
-                <div className="font-bold text-lg text-[#D4AF37]">{selectedAppointment.service.name}</div>
-                <div className="text-gray-300 mt-1">{selectedAppointment.store.name}</div>
-                <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
-                  <span>{selectedAppointment.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                  <span>{selectedAppointment.time}</span>
-                </div>
-              </div>
-            )}
-
-            {/* Date Selection */}
-            <div>
-              <label className="block text-sm font-bold text-gray-300 mb-3">Select New Date</label>
-              <input
-                type="date"
-                value={rescheduleDate ? rescheduleDate.toISOString().split('T')[0] : ''}
-                onChange={(e) => setRescheduleDate(new Date(e.target.value))}
-                min={new Date().toISOString().split('T')[0]}
-                className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#333] rounded-xl text-white focus:border-[#D4AF37] focus:outline-none"
-              />
-            </div>
-
-            {/* Time Selection */}
-            <div>
-              <label className="block text-sm font-bold text-gray-300 mb-3">Select New Time</label>
-              <div className="grid grid-cols-4 gap-2 max-h-[200px] overflow-y-auto">
-                {generateTimeSlots().map((time) => (
-                  <button
-                    key={time}
-                    onClick={() => setRescheduleTime(time)}
-                    className={`py-3 px-2 rounded-xl font-medium transition-all ${
-                      rescheduleTime === time
-                        ? 'bg-[#D4AF37] text-black'
-                        : 'bg-[#1a1a1a] border border-[#333] text-white hover:bg-[#222]'
-                    }`}
-                  >
-                    {time}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <DrawerFooter className="border-t border-[#D4AF37]/20 px-6 py-4">
-            <button
-              onClick={handleReschedule}
-              disabled={!rescheduleDate || !rescheduleTime}
-              className="w-full py-4 bg-[#D4AF37] text-black font-bold rounded-2xl hover:bg-[#C5A028] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Confirm Reschedule
-            </button>
-            <DrawerClose asChild>
-              <button className="w-full py-4 font-bold text-gray-400 hover:text-white transition-colors">
-                Cancel
+              <button
+                onClick={handleCancelAppointment}
+                disabled={cancelling}
+                className="flex-1 py-3 rounded-xl bg-red-500 hover:bg-red-600 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {cancelling ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                ) : (
+                  <>
+                    <X className="w-5 h-5" />
+                    Cancel Appointment
+                  </>
+                )}
               </button>
-            </DrawerClose>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Book Button */}
+      {activeTab === 'upcoming' && (
+        <button
+          onClick={() => navigate('/booking')}
+          className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-[#D4AF37] text-black shadow-lg hover:bg-[#b08d2d] transition-all flex items-center justify-center z-10"
+        >
+          <span className="text-2xl">+</span>
+        </button>
+      )}
     </div>
   );
 }

@@ -328,12 +328,14 @@
 - [x] 创建预约确认页面
 - [x] 提交预约到后端
 
-### Phase 3: 完善我的预约页面
-- [ ] 显示预约列表
-- [ ] 显示预约状态（pending/confirmed/completed/cancelled）
-- [ ] 预约详情查看
-- [ ] 取消预约功能
-- [ ] 与通知系统联动
+### Phase 3: 完善我的预约页面（当前任务）
+- [x] 更新API调用（使用新的api/appointments.ts）
+- [x] 显示完整的预约信息（店铺、服务、美甲师、时间）
+- [x] 显示预约状态（pending/confirmed/completed/cancelled）
+- [x] 优化UI设计（与BookingFlow保持一致）
+- [x] 预约详情查看
+- [x] 取消预约功能
+- [x] 与通知系统联动
 
 ### Phase 4: 测试和优化
 - [ ] 功能测试
