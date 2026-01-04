@@ -322,3 +322,69 @@ python3 test_appointment_enhancements.py
 
 测试覆盖率：100%（9个测试用例全部通过）
 
+
+## 店铺营业时间管理
+
+### 功能概述
+
+店铺营业时间管理功能允许每个店铺设置自己的营业时间，支持：
+
+- 为每周7天分别设置不同的营业时间
+- 标记休息日（如周日休息）
+- 灵活调整单日营业时间（如节假日）
+- 与预约系统深度集成，自动使用实际营业时间计算可用预约时段
+
+### API端点
+
+- `GET /api/v1/stores/{id}/hours` - 获取店铺营业时间（公开）
+- `PUT /api/v1/stores/{id}/hours` - 批量设置营业时间（店铺管理员）
+- `POST /api/v1/stores/{id}/hours/{day}` - 更新单日营业时间（店铺管理员）
+
+### 使用示例
+
+**设置营业时间**（周一至周五 9:00-18:00，周六 10:00-17:00，周日休息）：
+
+```python
+import requests
+
+token = "your_admin_token"
+headers = {"Authorization": f"Bearer {token}"}
+
+hours_data = {
+    "hours": [
+        {"day_of_week": 0, "open_time": "09:00:00", "close_time": "18:00:00", "is_closed": False},
+        {"day_of_week": 1, "open_time": "09:00:00", "close_time": "18:00:00", "is_closed": False},
+        {"day_of_week": 2, "open_time": "09:00:00", "close_time": "18:00:00", "is_closed": False},
+        {"day_of_week": 3, "open_time": "09:00:00", "close_time": "18:00:00", "is_closed": False},
+        {"day_of_week": 4, "open_time": "09:00:00", "close_time": "18:00:00", "is_closed": False},
+        {"day_of_week": 5, "open_time": "10:00:00", "close_time": "17:00:00", "is_closed": False},
+        {"day_of_week": 6, "open_time": None, "close_time": None, "is_closed": True}
+    ]
+}
+
+resp = requests.put("http://localhost:8000/api/v1/stores/4/hours", headers=headers, json=hours_data)
+```
+
+### 与预约系统集成
+
+可用时间段计算会自动使用店铺的实际营业时间：
+
+- 营业日：只在营业时间内生成可预约时段
+- 休息日：返回空的可用时间段列表
+- 不同店铺可以有不同的营业时间
+
+### 文档
+
+完整的API文档请参考：[店铺营业时间管理 API 文档](docs/Store_Hours_Management.md)
+
+### 测试
+
+运行测试：
+
+```bash
+cd backend
+python3 test_store_hours.py
+```
+
+测试覆盖率：100%（9个测试用例全部通过）
+

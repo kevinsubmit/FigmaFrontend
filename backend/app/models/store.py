@@ -2,6 +2,7 @@
 Store Model
 """
 from sqlalchemy import Column, Integer, String, Float, Text, DateTime, func
+from sqlalchemy.orm import relationship
 from app.db.session import Base
 
 
@@ -22,9 +23,12 @@ class Store(Base):
     rating = Column(Float, default=0.0)
     review_count = Column(Integer, default=0)
     description = Column(Text)
-    opening_hours = Column(Text)  # JSON string
+    opening_hours = Column(Text)  # JSON string (deprecated, use store_hours table)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    hours = relationship("StoreHours", back_populates="store", cascade="all, delete-orphan")
 
 
 class StoreImage(Base):

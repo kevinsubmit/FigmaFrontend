@@ -273,9 +273,21 @@ def get_technician_available_slots(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
     
-    # Get store hours (assuming 9:00-18:00 for now, can be enhanced later)
-    store_open_time = time_type(9, 0)
-    store_close_time = time_type(18, 0)
+    # Get store hours from database
+    from app.crud import store_hours as crud_store_hours
+    
+    # Get day of week (0=Monday, 6=Sunday)
+    day_of_week = check_date.weekday()
+    
+    # Get store hours for this day
+    store_hours = crud_store_hours.get_store_hours_for_day(db, technician.store_id, day_of_week)
+    
+    # If store is closed or no hours set, return empty list
+    if not store_hours or store_hours['is_closed']:
+        return []
+    
+    store_open_time = store_hours['open_time']
+    store_close_time = store_hours['close_time']
     slot_interval = 30  # 30-minute slots
     
     # Get technician's existing appointments for the date

@@ -197,5 +197,38 @@
 
 ### 文档
 - [x] 创建预约系统增强API文档
+- [x] 更新README
+- [x] 提交代码到GitHub
+
+## 店铺营业时间管理
+
+### 数据库设计
+- [x] 设计store_hours表结构
+- [x] 创建SQLAlchemy模型
+- [x] 创建数据库迁移脚本
+- [x] 执行迁移
+
+### API开发
+- [x] 创建营业时间Schema（Pydantic）
+- [x] 实现营业时间CRUD操作
+- [x] 创建API端点
+  - [x] GET /api/v1/stores/{store_id}/hours - 获取营业时间
+  - [x] PUT /api/v1/stores/{store_id}/hours - 更新营业时间
+  - [x] POST /api/v1/stores/{store_id}/hours/batch - 批量设置营业时间
+- [x] 添加权限控制（店铺管理员）
+
+### 集成
+- [x] 更新可用时间段计算逻辑
+- [x] 使用店铺实际营业时间替代硬编码
+- [x] 处理店铺休息日情况
+
+### 测试
+- [ ] 测试营业时间CRUD操作
+- [ ] 测试权限控制
+- [ ] 测试可用时间段计算集成
+- [ ] 测试边界情况（休息日、跨天营业等）
+
+### 文档
+- [ ] 创建营业时间管理API文档
 - [ ] 更新README
 - [ ] 提交代码到GitHub

@@ -2,7 +2,7 @@
 API v1 router
 """
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, stores, services, appointments, technicians
+from app.api.v1.endpoints import auth, stores, services, appointments, technicians, store_hours
 
 api_router = APIRouter()
 
@@ -12,3 +12,4 @@ api_router.include_router(stores.router, prefix="/stores", tags=["Stores"])
 api_router.include_router(services.router, prefix="/services", tags=["Services"])
 api_router.include_router(appointments.router, prefix="/appointments", tags=["Appointments"])
 api_router.include_router(technicians.router, prefix="/technicians", tags=["Technicians"])
+api_router.include_router(store_hours.router, prefix="/stores", tags=["Store Hours"])
