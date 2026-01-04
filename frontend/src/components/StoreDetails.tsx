@@ -45,23 +45,20 @@ import {
   DrawerClose,
 } from "./ui/drawer";
 import { Calendar } from "./ui/calendar";  // Calendar component
+import { getServicesByStoreId, Service as APIService } from '../services/services.service';
+import { Store as APIStore } from '../services/stores.service';
 
-interface Store {
-  id: number;
-  name: string;
-  address: string;
-  rating: number;
-  reviewCount: number;
-  coverImage: string;
-  thumbnails: string[];
-}
+// Use the Store type from stores.service
+type Store = APIStore;
 
+// Use the Service type from services.service, but adapt it for UI
 interface Service {
   id: number;
   name: string;
   price: number;
   duration: string;
   description?: string;
+  category?: string;
 }
 
 interface Review {
@@ -81,14 +78,7 @@ interface Review {
   photos?: string[];
 }
 
-const MOCK_SERVICES: Service[] = [
-  { id: 1, name: "Manicure", price: 20.00, duration: "25m" },
-  { id: 2, name: "Manicure and pedicure", price: 50.00, duration: "55m" },
-  { id: 3, name: "Gel Remove", price: 8.00, duration: "15m" },
-  { id: 4, name: "Gel Manicure", price: 30.00, duration: "40m" },
-  { id: 5, name: "Acrylic Full Set", price: 45.00, duration: "60m" },
-  { id: 6, name: "Dip Powder", price: 40.00, duration: "45m" },
-];
+// MOCK_SERVICES removed - now fetched from API
 
 // Template reviews for generating data
 const REVIEW_TEMPLATES: Partial<Review>[] = [
@@ -165,6 +155,11 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
   
+  // Services State
+  const [services, setServices] = useState<Service[]>([]);
+  const [isServicesLoading, setIsServicesLoading] = useState(true);
+  const [servicesError, setServicesError] = useState<string | null>(null);
+  
   // Modals/Drawers State
   const [isMapDrawerOpen, setIsMapDrawerOpen] = useState(false);
   const [isCallDrawerOpen, setIsCallDrawerOpen] = useState(false);
@@ -190,7 +185,30 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
   const observerTarget = useRef(null);
 
   // Combine cover image and thumbnails for the gallery
-  const galleryImages = [store.coverImage, ...(store.thumbnails || [])];
+  const getPrimaryImage = (): string => {
+    if (store.images && store.images.length > 0) {
+      const primaryImage = store.images.find(img => img.is_primary === 1);
+      return primaryImage?.image_url || store.images[0].image_url;
+    }
+    return 'https://images.unsplash.com/photo-1619607146034-5a05296c8f9a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080';
+  };
+  
+  const getAllImages = (): string[] => {
+    if (store.images && store.images.length > 0) {
+      return store.images
+        .sort((a, b) => {
+          // Primary image first
+          if (a.is_primary === 1) return -1;
+          if (b.is_primary === 1) return 1;
+          // Then by display order
+          return a.display_order - b.display_order;
+        })
+        .map(img => img.image_url);
+    }
+    return [getPrimaryImage()];
+  };
+  
+  const galleryImages = getAllImages();
 
   useEffect(() => {
     if (!api) {
@@ -204,6 +222,34 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
       setCurrent(api.selectedScrollSnap());
     });
   }, [api]);
+
+  // Load services from API
+  useEffect(() => {
+    const loadServices = async () => {
+      try {
+        setIsServicesLoading(true);
+        const apiServices = await getServicesByStoreId(store.id);
+        // Convert API services to UI format
+        const uiServices: Service[] = apiServices.map(s => ({
+          id: s.id,
+          name: s.name,
+          price: s.price,
+          duration: `${s.duration_minutes}m`,
+          description: s.description || undefined,
+          category: s.category || undefined
+        }));
+        setServices(uiServices);
+        setServicesError(null);
+      } catch (err) {
+        console.error('Failed to load services:', err);
+        setServicesError('Failed to load services');
+      } finally {
+        setIsServicesLoading(false);
+      }
+    };
+
+    loadServices();
+  }, [store.id]);
 
   // Initial Data Load on Tab Change
   useEffect(() => {
@@ -431,8 +477,8 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
         <p className="text-gray-300 text-sm mb-3">{store.address}</p>
         <div className="flex items-center gap-2 mb-2">
           <Star className="w-4 h-4 text-[#D4AF37] fill-[#D4AF37]" />
-          <span className="text-white font-bold">{store.rating}</span>
-          <span className="text-[#D4AF37] text-sm">({store.reviewCount} reviews)</span>
+          <span className="text-white font-bold">{store.rating?.toFixed(1) || 'N/A'}</span>
+          <span className="text-[#D4AF37] text-sm">({store.review_count || 0} reviews)</span>
         </div>
       </div>
 
@@ -463,7 +509,20 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
         {/* SERVICES TAB */}
         {activeTab === 'services' && (
           <div className="space-y-4 animate-in fade-in">
-            {MOCK_SERVICES.map((service) => {
+            {isServicesLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-[#D4AF37]" />
+              </div>
+            ) : servicesError ? (
+              <div className="text-center py-12 text-red-500">
+                {servicesError}
+              </div>
+            ) : services.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">
+                No services available
+              </div>
+            ) : (
+              services.map((service) => {
               const isSelected = selectedServices.some(s => s.id === service.id);
               return (
                 <div 
@@ -505,7 +564,8 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
                   </div>
                 </div>
               );
-            })}
+            })
+            )}
           </div>
         )}
 
@@ -676,8 +736,8 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
                     
                     {/* Floating Info Card */}
                     <div className="absolute bottom-4 left-4 right-4 bg-[#1a1a1a]/95 backdrop-blur-md border border-[#333] p-3 rounded-xl shadow-2xl flex items-center gap-3">
-                         <div className="w-12 h-12 rounded-full border border-[#333] overflow-hidden flex-shrink-0 bg-black">
-                             <img src={store.coverImage} className="w-full h-full object-cover" alt="Store Logo" />
+                          <div className="w-12 h-12 rounded-full border border-[#333] overflow-hidden flex-shrink-0 bg-black">
+                              <img src={getPrimaryImage()} className="w-full h-full object-cover" alt="Store Logo" />
                          </div>
                          <div className="flex-1 min-w-0">
                              <h3 className="font-bold text-white text-sm truncate">{store.name}</h3>

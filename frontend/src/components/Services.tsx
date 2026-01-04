@@ -1,58 +1,10 @@
-import { ChevronDown, Check, Sparkles } from 'lucide-react';
+import { ChevronDown, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader } from './ui/Loader';
 import { StoreDetails } from './StoreDetails';
-
-// Mock Data
-const STORES = [
-  {
-    id: 1,
-    name: "JM Nails By Michelle",
-    rating: 5.0,
-    reviewCount: 9,
-    distance: "8.0 mi",
-    address: "573 State St, Springfield, 01109",
-    coverImage: "https://images.unsplash.com/photo-1619607146034-5a05296c8f9a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
-    thumbnails: [
-      "https://images.unsplash.com/photo-1673985402265-46c4d2e53982?w=400&q=80",
-      "https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400&q=80",
-      "https://images.unsplash.com/photo-1522337660859-02fbefca4702?w=400&q=80",
-      "https://images.unsplash.com/photo-1519017713917-9807534d0b0b?w=400&q=80"
-    ]
-  },
-  {
-    id: 2,
-    name: "Luxe Nail Spa",
-    rating: 4.8,
-    reviewCount: 124,
-    distance: "2.5 mi",
-    address: "123 Main St, Downtown, 01103",
-    coverImage: "https://images.unsplash.com/photo-1758225490983-0fae7961e425?w=1080&q=80",
-    thumbnails: [
-        "https://images.unsplash.com/photo-1632345031435-8727f6897d53?w=400&q=80",
-        "https://images.unsplash.com/photo-1595854341625-f33ee1043f76?w=400&q=80",
-        "https://images.unsplash.com/photo-1562940215-4314619607a2?w=400&q=80",
-        "https://images.unsplash.com/photo-1698181842119-a5283dea1440?w=400&q=80"
-    ]
-  },
-  {
-    id: 3,
-    name: "Golden Touch Salon",
-    rating: 4.9,
-    reviewCount: 56,
-    distance: "5.1 mi",
-    address: "442 Broadway, West Side, 01105",
-    coverImage: "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1080&q=80",
-    thumbnails: [
-        "https://images.unsplash.com/photo-1522337360705-2b5163795267?w=400&q=80",
-        "https://images.unsplash.com/photo-1632345031435-8727f6897d53?w=400&q=80",
-        "https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400&q=80",
-        "https://images.unsplash.com/photo-1519017713917-9807534d0b0b?w=400&q=80"
-    ]
-  }
-];
+import { getStores, Store } from '../services/stores.service';
 
 type SortOption = 'recommended' | 'distance' | 'reviews';
 
@@ -68,35 +20,55 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
   const navigate = useNavigate();
   
   const [step, setStep] = useState(initialStep || 1);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [hasAppliedOffer, setHasAppliedOffer] = useState(!!initialSelectedStore);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('recommended');
-  const [selectedStore, setSelectedStore] = useState<typeof STORES[0] | null>(initialSelectedStore || null);
+  const [selectedStore, setSelectedStore] = useState<Store | null>(initialSelectedStore || null);
+  const [stores, setStores] = useState<Store[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch stores from API
+  useEffect(() => {
+    const fetchStores = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getStores();
+        setStores(data);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch stores:', err);
+        setError('Failed to load stores. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStores();
+  }, []);
 
   // Load store from URL parameter
   useEffect(() => {
-    if (storeId) {
-      const store = STORES.find(s => s.id === parseInt(storeId));
+    if (storeId && stores.length > 0) {
+      const store = stores.find(s => s.id === parseInt(storeId));
       if (store) {
         setSelectedStore(store);
       } else {
         // Invalid store ID, redirect to services list
         navigate('/services', { replace: true });
       }
-    } else {
+    } else if (!storeId) {
       // No storeId in URL, reset to list view
       setSelectedStore(null);
     }
-  }, [storeId, navigate]);
+  }, [storeId, stores, navigate]);
 
   // Sync state with props since the component stays mounted
   useEffect(() => {
     if (initialSelectedStore) {
       setSelectedStore(initialSelectedStore);
       setHasAppliedOffer(true);
-      // Ensure we are logically in the details view
     }
   }, [initialSelectedStore]);
 
@@ -107,23 +79,19 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
     }
   }, [selectedStore, onStoreDetailsChange]);
 
-  useEffect(() => {
-    // Simulate data loading
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, []);
-
   const getSortedStores = () => {
-    const stores = [...STORES];
+    const storesCopy = [...stores];
     switch (sortBy) {
       case 'distance':
-        return stores.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance));
+        // Sort by distance (if available, otherwise keep original order)
+        return storesCopy.sort((a, b) => {
+          // For now, keep original order as we don't have user location
+          return 0;
+        });
       case 'reviews':
-        return stores.sort((a, b) => b.rating - a.rating); // Sort by rating for 'reviews' option
+        return storesCopy.sort((a, b) => (b.rating || 0) - (a.rating || 0));
       default:
-        return stores; // Recommended (default order)
+        return storesCopy; // Recommended (default order)
     }
   };
 
@@ -141,10 +109,53 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
     }
   };
 
+  // Helper function to get primary image or first image
+  const getPrimaryImage = (store: Store): string => {
+    if (store.images && store.images.length > 0) {
+      const primaryImage = store.images.find(img => img.is_primary === 1);
+      return primaryImage?.image_url || store.images[0].image_url;
+    }
+    return 'https://images.unsplash.com/photo-1619607146034-5a05296c8f9a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080';
+  };
+
+  // Helper function to get thumbnail images (excluding primary)
+  const getThumbnailImages = (store: Store): string[] => {
+    if (store.images && store.images.length > 1) {
+      return store.images
+        .filter(img => img.is_primary !== 1)
+        .sort((a, b) => a.display_order - b.display_order)
+        .slice(0, 4)
+        .map(img => img.image_url);
+    }
+    // Fallback thumbnails
+    return [
+      "https://images.unsplash.com/photo-1673985402265-46c4d2e53982?w=400&q=80",
+      "https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400&q=80",
+      "https://images.unsplash.com/photo-1522337660859-02fbefca4702?w=400&q=80",
+      "https://images.unsplash.com/photo-1519017713917-9807534d0b0b?w=400&q=80"
+    ].slice(0, 4);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black pt-20">
         <Loader />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black pt-20 px-6">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-[#D4AF37] text-black rounded-lg font-semibold"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -194,19 +205,19 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
                 {/* Main Image */}
                 <div className="relative aspect-[16/10] rounded-xl overflow-hidden mb-3 bg-gray-900 border border-[#333]">
                   <img 
-                    src={store.coverImage} 
+                    src={getPrimaryImage(store)} 
                     alt={store.name} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-white flex flex-col items-center min-w-[60px]">
-                     <span className="text-lg font-bold leading-none">{store.rating}</span>
-                     <span className="text-[10px] text-gray-300">{store.reviewCount} reviews</span>
+                     <span className="text-lg font-bold leading-none">{store.rating?.toFixed(1) || 'N/A'}</span>
+                     <span className="text-[10px] text-gray-300">{store.review_count || 0} reviews</span>
                   </div>
                 </div>
 
                 {/* Thumbnails */}
                 <div className="grid grid-cols-4 gap-2 mb-3">
-                    {store.thumbnails.map((thumb, index) => (
+                    {getThumbnailImages(store).map((thumb, index) => (
                         <div key={index} className="aspect-square rounded-lg overflow-hidden bg-gray-900 border border-[#333]">
                             <img src={thumb} alt="" className="w-full h-full object-cover" />
                         </div>
@@ -217,7 +228,7 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
                 <div>
                     <h3 className="text-xl font-bold text-white mb-1 group-hover:text-[#D4AF37] transition-colors">{store.name}</h3>
                     <div className="flex items-center text-sm text-gray-400">
-                        <span>{store.distance}</span>
+                        <span>{store.city}, {store.state}</span>
                         <span className="mx-1.5">·</span>
                         <span className="truncate">{store.address}</span>
                     </div>
@@ -273,7 +284,7 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
                         {/* Radio Button Custom */}
                         <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
                           sortBy === option.id 
-                            ? 'border-[#D4AF37] bg-transparent' // Standard radio often has dot inside. Image showed filled circle.
+                            ? 'border-[#D4AF37] bg-transparent'
                             : 'border-gray-600 bg-transparent'
                         }`}>
                           {sortBy === option.id && (
