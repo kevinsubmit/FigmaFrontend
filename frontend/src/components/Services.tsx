@@ -359,9 +359,7 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
                 <div>
                     <h3 className="text-xl font-bold text-white mb-1 group-hover:text-[#D4AF37] transition-colors">{store.name}</h3>
                     <div className="flex items-center text-sm text-gray-400">
-                        <span>{store.city}, {store.state}</span>
-                        <span className="mx-1.5">·</span>
-                        <span className="truncate">{store.address}</span>
+                        <span className="truncate">{store.address}, {store.city}, {store.state}</span>
                         {store.distance !== undefined && store.distance !== null && (
                           <>
                             <span className="mx-1.5">·</span>

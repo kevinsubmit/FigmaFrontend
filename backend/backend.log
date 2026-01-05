@@ -104,3 +104,9 @@ FROM stores
 2026-01-04 19:53:07,657 INFO sqlalchemy.engine.Engine [cached since 5.063s ago] {}
 2026-01-04 19:53:07,664 INFO sqlalchemy.engine.Engine ROLLBACK
 INFO:     127.0.0.1:40232 - "GET /api/v1/stores/?user_lat=40.7589&user_lng=-73.9851&sort_by=distance&limit=3 HTTP/1.1" 200 OK
+2026-01-04 19:57:03,028 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-01-04 19:57:03,029 INFO sqlalchemy.engine.Engine SELECT appointment_reminders.id AS appointment_reminders_id, appointment_reminders.appointment_id AS appointment_reminders_appointment_id, appointment_reminders.user_id AS appointment_reminders_user_id, appointment_reminders.reminder_type AS appointment_reminders_reminder_type, appointment_reminders.status AS appointment_reminders_status, appointment_reminders.scheduled_time AS appointment_reminders_scheduled_time, appointment_reminders.sent_at AS appointment_reminders_sent_at, appointment_reminders.error_message AS appointment_reminders_error_message, appointment_reminders.created_at AS appointment_reminders_created_at, appointment_reminders.updated_at AS appointment_reminders_updated_at 
+FROM appointment_reminders 
+WHERE appointment_reminders.status = %(status_1)s AND appointment_reminders.scheduled_time <= %(scheduled_time_1)s
+2026-01-04 19:57:03,029 INFO sqlalchemy.engine.Engine [cached since 300s ago] {'status_1': 'pending', 'scheduled_time_1': datetime.datetime(2026, 1, 4, 19, 57, 3, 24618)}
+2026-01-04 19:57:03,036 INFO sqlalchemy.engine.Engine ROLLBACK
