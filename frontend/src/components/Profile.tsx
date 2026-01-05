@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import Masonry from 'react-responsive-masonry';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { notificationsService } from '../services/notifications.service';
 import { Loader } from './ui/Loader';
 import { Progress } from "./ui/progress";
 import { Settings as SettingsView } from './Settings';
@@ -105,6 +106,25 @@ export function Profile({ onNavigate, onPinClick }: ProfileProps) {
   const [tempName, setTempName] = useState(USER_INFO.name);
   const [nameError, setNameError] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  
+  // Fetch unread notification count
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const count = await notificationsService.getUnreadCount();
+        setUnreadCount(count);
+      } catch (error) {
+        console.error('Failed to fetch unread count:', error);
+      }
+    };
+    
+    fetchUnreadCount();
+    
+    // Poll for new notifications every 30 seconds
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     // Simulate data loading
@@ -179,8 +199,14 @@ export function Profile({ onNavigate, onPinClick }: ProfileProps) {
             className="relative p-2 rounded-full bg-[#1a1a1a] border border-[#333] hover:bg-[#333] text-white transition-colors"
           >
             <Bell className="w-4 h-4" />
-            {/* Unread badge - will be dynamic later */}
-            <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#D4AF37] rounded-full border border-black" />
+            {/* Dynamic unread badge */}
+            {unreadCount > 0 && (
+              <div className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-[#D4AF37] rounded-full border border-black flex items-center justify-center">
+                <span className="text-[9px] font-bold text-black">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              </div>
+            )}
           </button>
           <button 
             onClick={() => setShowSettings(true)}

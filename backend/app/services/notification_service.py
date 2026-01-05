@@ -168,3 +168,62 @@ def notify_appointment_completed(db: Session, appointment: Appointment):
         message=message,
         appointment_id=appointment.id
     )
+
+
+def notify_appointment_reminder_24h(db: Session, appointment: Appointment):
+    """
+    Send 24-hour reminder notification for upcoming appointment
+    """
+    # Get service and store details
+    from app.models.service import Service
+    service = db.query(Service).filter(Service.id == appointment.service_id).first()
+    store = db.query(Store).filter(Store.id == appointment.store_id).first()
+    
+    service_name = service.name if service else "Unknown Service"
+    store_name = store.name if store else "Unknown Store"
+    
+    title = "Appointment Reminder - Tomorrow"
+    message = (
+        f"Reminder: You have an appointment tomorrow "
+        f"({appointment.appointment_date.strftime('%B %d, %Y')}) at "
+        f"{appointment.appointment_time.strftime('%I:%M %p')} "
+        f"for {service_name} at {store_name}. We look forward to seeing you!"
+    )
+    
+    create_notification(
+        db=db,
+        user_id=appointment.user_id,
+        notification_type=NotificationType.APPOINTMENT_REMINDER,
+        title=title,
+        message=message,
+        appointment_id=appointment.id
+    )
+
+
+def notify_appointment_reminder_1h(db: Session, appointment: Appointment):
+    """
+    Send 1-hour reminder notification for upcoming appointment
+    """
+    # Get service and store details
+    from app.models.service import Service
+    service = db.query(Service).filter(Service.id == appointment.service_id).first()
+    store = db.query(Store).filter(Store.id == appointment.store_id).first()
+    
+    service_name = service.name if service else "Unknown Service"
+    store_name = store.name if store else "Unknown Store"
+    
+    title = "Appointment Reminder - In 1 Hour"
+    message = (
+        f"Your appointment for {service_name} at {store_name} "
+        f"is in 1 hour at {appointment.appointment_time.strftime('%I:%M %p')}. "
+        f"Please arrive on time. See you soon!"
+    )
+    
+    create_notification(
+        db=db,
+        user_id=appointment.user_id,
+        notification_type=NotificationType.APPOINTMENT_REMINDER,
+        title=title,
+        message=message,
+        appointment_id=appointment.id
+    )
