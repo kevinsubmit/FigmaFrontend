@@ -20,12 +20,14 @@ import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { MyReviews } from './components/MyReviews';
 import { MyFavorites } from './components/MyFavorites';
+import ChangePassword from './components/ChangePassword';
+import PhoneManagement from './components/PhoneManagement';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { toast } from 'react-toastify';
 import { Sparkles } from 'lucide-react';
 
-export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 'notifications' | 'booking' | 'pin-detail' | 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'login' | 'register' | 'my-reviews' | 'my-favorites';
+export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 'notifications' | 'booking' | 'pin-detail' | 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'login' | 'register' | 'my-reviews' | 'my-favorites' | 'change-password' | 'phone-management';
 
 // Main App Router Component
 function AppRouter() {
@@ -68,12 +70,14 @@ function AppRouter() {
     if (path === '/register') return 'register';
     if (path === '/my-reviews') return 'my-reviews';
     if (path === '/my-favorites') return 'my-favorites';
+    if (path === '/change-password') return 'change-password';
+    if (path === '/phone-management') return 'phone-management';
     return 'home';
   };
 
   const currentPage = getCurrentPage();
   // Hide bottom nav for full-screen pages and when viewing store details in services page
-  const isFullScreenPage = currentPage === 'pin-detail' || currentPage === 'edit-profile' || currentPage === 'order-history' || currentPage === 'my-points' || currentPage === 'my-coupons' || currentPage === 'my-gift-cards' || currentPage === 'settings' || currentPage === 'vip-description' || currentPage === 'notifications' || currentPage === 'booking' || currentPage === 'login' || currentPage === 'register' || currentPage === 'my-reviews' || currentPage === 'my-favorites' || (currentPage === 'services' && isViewingStoreDetails);
+  const isFullScreenPage = currentPage === 'pin-detail' || currentPage === 'edit-profile' || currentPage === 'order-history' || currentPage === 'my-points' || currentPage === 'my-coupons' || currentPage === 'my-gift-cards' || currentPage === 'settings' || currentPage === 'vip-description' || currentPage === 'notifications' || currentPage === 'booking' || currentPage === 'login' || currentPage === 'register' || currentPage === 'my-reviews' || currentPage === 'my-favorites' || currentPage === 'change-password' || currentPage === 'phone-management' || (currentPage === 'services' && isViewingStoreDetails);
 
   const handleNavigate = (page: 'home' | 'services' | 'appointments' | 'profile' | 'deals') => {
     console.log('handleNavigate called with page:', page);
@@ -238,10 +242,9 @@ function AppRouter() {
         } />
 
         <Route path="/edit-profile" element={
-          <EditProfile 
-              onBack={() => navigate('/profile')}
-              onSave={handleSaveProfile}
-            />
+          <ProtectedRoute>
+            <EditProfile />
+          </ProtectedRoute>
         } />
 
         <Route path="/order-history" element={
@@ -313,6 +316,18 @@ function AppRouter() {
         <Route path="/my-favorites" element={
           <ProtectedRoute>
             <MyFavorites />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/change-password" element={
+          <ProtectedRoute>
+            <ChangePassword />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/phone-management" element={
+          <ProtectedRoute>
+            <PhoneManagement />
           </ProtectedRoute>
         } />
 

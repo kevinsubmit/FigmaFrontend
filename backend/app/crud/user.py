@@ -148,3 +148,33 @@ def deactivate(db: Session, id: int) -> Optional[User]:
         db.commit()
         db.refresh(obj)
     return obj
+
+
+def update_user(db: Session, user_id: int, update_data: dict) -> User:
+    """
+    Update user with dict data
+    
+    Args:
+        db: Database session
+        user_id: User ID
+        update_data: Dictionary of fields to update
+        
+    Returns:
+        Updated user object
+        
+    Raises:
+        ValueError: If user not found
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise ValueError(f"User with id {user_id} not found")
+    
+    # Update only provided fields
+    for field, value in update_data.items():
+        if hasattr(user, field):
+            setattr(user, field, value)
+    
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user

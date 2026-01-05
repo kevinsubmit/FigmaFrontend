@@ -20,7 +20,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from "sonner@2.0.3";
 
-type SettingsSection = 'main' | 'referral' | 'language' | 'partnership' | 'about' | 'feedback' | 'vip';
+type SettingsSection = 'main' | 'referral' | 'language' | 'partnership' | 'about' | 'feedback' | 'vip' | 'notifications' | 'password' | 'phone';
 
 interface SettingsProps {
   onBack: () => void;
@@ -31,6 +31,7 @@ export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [isCopied, setIsCopied] = useState(false);
+  const [notificationEnabled, setNotificationEnabled] = useState(true);
 
   const referralCode = "GOLDEN99";
 
@@ -94,6 +95,8 @@ export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
       title: "Account & Preferences",
       items: [
         { label: 'Profile Settings', icon: User, action: () => console.log('Profile') },
+        { label: 'Change Password', icon: ShieldCheck, action: () => setActiveSection('password') },
+        { label: 'Phone Number', icon: Bell, action: () => setActiveSection('phone') },
         { label: 'VIP Membership', icon: Star, badge: "VIP 3", action: () => setActiveSection('vip') },
         { 
           label: 'Language', 
@@ -481,6 +484,135 @@ export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
 
             <div className="mt-12 p-6 bg-[#D4AF37]/5 border border-[#D4AF37]/10 rounded-2xl text-center">
               <p className="text-sm text-gray-400 italic">"Our team usually responds within 2 hours during business hours."</p>
+            </div>
+          </motion.div>
+        ) : activeSection === 'notifications' ? (
+          <motion.div 
+            key="notifications"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="px-6 pt-10"
+          >
+            <button onClick={handleSectionBack} className="mb-8 flex items-center text-gray-400 hover:text-white">
+              <ChevronLeft className="w-5 h-5" />
+              <span className="font-medium">Back</span>
+            </button>
+
+            <h2 className="text-3xl font-bold mb-2">Notifications</h2>
+            <p className="text-gray-400 mb-8 leading-relaxed">
+              Manage your notification preferences
+            </p>
+
+            <div className="bg-[#111] border border-[#222] rounded-2xl overflow-hidden">
+              <div className="p-5 flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-white mb-1">Push Notifications</h4>
+                  <p className="text-xs text-gray-500">Receive updates about your bookings</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setNotificationEnabled(!notificationEnabled);
+                    toast.success(notificationEnabled ? 'Notifications disabled' : 'Notifications enabled');
+                  }}
+                  className={`relative w-12 h-7 rounded-full transition-colors ${
+                    notificationEnabled ? 'bg-[#D4AF37]' : 'bg-gray-700'
+                  }`}
+                >
+                  <div
+                    className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform ${
+                      notificationEnabled ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        ) : activeSection === 'password' ? (
+          <motion.div 
+            key="password"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="px-6 pt-10"
+          >
+            <button onClick={handleSectionBack} className="mb-8 flex items-center text-gray-400 hover:text-white">
+              <ChevronLeft className="w-5 h-5" />
+              <span className="font-medium">Back</span>
+            </button>
+
+            <h2 className="text-3xl font-bold mb-2">Change Password</h2>
+            <p className="text-gray-400 mb-8 leading-relaxed">
+              Update your account password
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Current Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter current password"
+                  className="w-full bg-[#111] border border-[#222] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#D4AF37] transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">New Password</label>
+                <input
+                  type="password"
+                  placeholder="Enter new password"
+                  className="w-full bg-[#111] border border-[#222] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#D4AF37] transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Confirm New Password</label>
+                <input
+                  type="password"
+                  placeholder="Confirm new password"
+                  className="w-full bg-[#111] border border-[#222] rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#D4AF37] transition-colors"
+                />
+              </div>
+              <button
+                onClick={() => {
+                  toast.success('Password updated successfully');
+                  setTimeout(() => setActiveSection('main'), 1000);
+                }}
+                className="w-full bg-[#D4AF37] text-black font-bold py-3 rounded-xl hover:bg-[#B8941F] transition-colors"
+              >
+                Update Password
+              </button>
+            </div>
+          </motion.div>
+        ) : activeSection === 'phone' ? (
+          <motion.div 
+            key="phone"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="px-6 pt-10"
+          >
+            <button onClick={handleSectionBack} className="mb-8 flex items-center text-gray-400 hover:text-white">
+              <ChevronLeft className="w-5 h-5" />
+              <span className="font-medium">Back</span>
+            </button>
+
+            <h2 className="text-3xl font-bold mb-2">Phone Number</h2>
+            <p className="text-gray-400 mb-8 leading-relaxed">
+              Manage your phone number
+            </p>
+
+            <div className="space-y-4">
+              <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+                <p className="text-sm text-gray-400 mb-2">Current Phone Number</p>
+                <p className="text-lg font-medium">+1 (555) 123-4567</p>
+              </div>
+              <button
+                onClick={() => {
+                  toast.info('Phone number update feature coming soon');
+                }}
+                className="w-full bg-[#D4AF37] text-black font-bold py-3 rounded-xl hover:bg-[#B8941F] transition-colors"
+              >
+                Change Phone Number
+              </button>
             </div>
           </motion.div>
         ) : (

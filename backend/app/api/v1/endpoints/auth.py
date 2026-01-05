@@ -1,7 +1,7 @@
 """
 Authentication API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
@@ -269,3 +269,102 @@ async def refresh_token(
         "refresh_token": new_refresh_token,
         "token_type": "bearer"
     }
+
+
+@router.put("/me", response_model=UserResponse)
+async def update_current_user(
+    user_update: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Update current user information
+    
+    Args:
+        user_update: User update data
+        current_user: Current authenticated user
+        db: Database session
+        
+    Returns:
+        Updated user data
+        
+    Note:
+        - date_of_birth cannot be changed once set
+        - Only updates provided fields
+    """
+    # Check if trying to update date_of_birth when it's already set
+    if 'date_of_birth' in user_update and current_user.date_of_birth is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Date of birth cannot be changed once set"
+        )
+    
+    # Update user
+    updated_user = crud_user.update_user(db, current_user.id, user_update)
+    return updated_user
+
+
+@router.post("/me/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Upload user avatar
+    
+    Args:
+        file: Avatar image file
+        current_user: Current authenticated user
+        db: Database session
+        
+    Returns:
+        Avatar URL
+        
+    Raises:
+        HTTPException: If file type is invalid or file is too large
+    """
+    import os
+    from pathlib import Path
+    
+    # Validate file type
+    allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid file type. Allowed types: {', '.join(allowed_types)}"
+        )
+    
+    # Validate file size (max 5MB)
+    file_content = await file.read()
+    if len(file_content) > 5 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File size exceeds 5MB limit"
+        )
+    
+    # Reset file pointer
+    await file.seek(0)
+    
+    # Generate unique filename
+    import uuid
+    file_extension = Path(file.filename).suffix
+    filename = f"avatar_{current_user.id}_{uuid.uuid4().hex}{file_extension}"
+    
+    # Save file
+    upload_dir = Path("/home/ubuntu/FigmaFrontend/backend/uploads/avatars")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    file_path = upload_dir / filename
+    
+    # Compress image if needed
+    from app.utils.image_compression import compress_image
+    compressed_content = compress_image(file_content, max_width=500, target_size_kb=200)
+    
+    with open(file_path, "wb") as f:
+        f.write(compressed_content)
+    
+    # Update user avatar URL
+    avatar_url = f"/uploads/avatars/{filename}"
+    crud_user.update_user(db, current_user.id, {"avatar_url": avatar_url})
+    
+    return {"avatar_url": avatar_url}

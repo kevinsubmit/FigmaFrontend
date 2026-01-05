@@ -3,7 +3,7 @@ User Pydantic schemas for request/response validation
 """
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date
 import re
 
 
@@ -40,12 +40,16 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = Field(None, max_length=200)
     phone: Optional[str] = Field(None, max_length=20)
     avatar_url: Optional[str] = Field(None, max_length=500)
+    gender: Optional[str] = Field(None, description="Gender: male, female, other")
+    date_of_birth: Optional[date] = Field(None, description="Date of birth (cannot be changed once set)")
 
 
 class UserInDB(UserBase):
     """Schema for user in database"""
     id: int
     avatar_url: Optional[str] = None
+    gender: Optional[str] = None
+    date_of_birth: Optional[date] = None
     phone_verified: bool
     is_active: bool
     is_admin: bool

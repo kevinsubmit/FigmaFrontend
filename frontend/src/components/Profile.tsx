@@ -259,6 +259,13 @@ export function Profile({ onNavigate, onPinClick }: ProfileProps) {
               <Pencil className="w-4 h-4 text-[#D4AF37] opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           )}
+          <button
+            onClick={() => onNavigate?.('edit-profile')}
+            className="mt-2 text-sm text-[#D4AF37] hover:text-[#B8941F] transition-colors flex items-center gap-1"
+          >
+            <Pencil className="w-3 h-3" />
+            Edit Profile
+          </button>
         </div>
         
         {/* VIP Membership Section */}
