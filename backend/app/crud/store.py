@@ -69,7 +69,7 @@ def get_stores(
                 dlng = lng2 - lng1
                 a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlng/2)**2
                 c = 2 * asin(sqrt(a))
-                distance = 6371 * c  # Radius of earth in kilometers
+                distance = 3959 * c  # Radius of earth in miles
                 
                 stores_with_distance.append((store, distance))
             else:
