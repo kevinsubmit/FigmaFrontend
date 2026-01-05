@@ -1,28 +1,58 @@
 import { ArrowLeft, Coins, TrendingUp, TrendingDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Loader } from './ui/Loader';
+import pointsService, { PointsBalance, PointTransaction } from '../services/points.service';
 
 interface MyPointsProps {
   onBack: () => void;
 }
 
-const POINTS_HISTORY = [
-  { id: 1, title: 'Service Payment - Luxe Nail Spa', points: 128, type: 'earn', date: '2023-12-10' },
-  { id: 2, title: 'New Member Bonus', points: 500, type: 'earn', date: '2023-11-01' },
-  { id: 3, title: 'Redeemed: $10 Off Coupon', points: -1000, type: 'spend', date: '2023-11-15' },
-  { id: 4, title: 'Review Bonus', points: 50, type: 'earn', date: '2023-10-20' },
-  { id: 5, title: 'Service Payment - Golden Glow', points: 85, type: 'earn', date: '2023-11-25' },
-];
-
 export function MyPoints({ onBack }: MyPointsProps) {
   const [isLoading, setIsLoading] = useState(true);
+  const [balance, setBalance] = useState<PointsBalance | null>(null);
+  const [transactions, setTransactions] = useState<PointTransaction[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(timer);
+    loadPointsData();
   }, []);
 
-  const totalPoints = POINTS_HISTORY.reduce((acc, curr) => acc + curr.points, 1240); // Starting balance mock
+  const loadPointsData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Please login to view points');
+        setIsLoading(false);
+        return;
+      }
+
+      // Load balance and transactions
+      const [balanceData, transactionsData] = await Promise.all([
+        pointsService.getBalance(token),
+        pointsService.getTransactions(token, 0, 50),
+      ]);
+
+      setBalance(balanceData);
+      setTransactions(transactionsData);
+    } catch (err: any) {
+      console.error('Error loading points data:', err);
+      setError(err.response?.data?.detail || 'Failed to load points data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+  };
 
   if (isLoading) {
     return (
@@ -31,6 +61,8 @@ export function MyPoints({ onBack }: MyPointsProps) {
       </div>
     );
   }
+
+  const totalPoints = balance?.available_points || 0;
 
   return (
     <div className="min-h-screen bg-black text-white pb-safe animate-in fade-in duration-300">
@@ -46,30 +78,55 @@ export function MyPoints({ onBack }: MyPointsProps) {
         <div className="w-16 h-16 rounded-full bg-[#D4AF37]/10 flex items-center justify-center border border-[#D4AF37]/30 mb-4">
           <Coins className="w-8 h-8 text-[#D4AF37]" />
         </div>
-        <h2 className="text-4xl font-bold text-[#D4AF37] mb-1">{totalPoints}</h2>
+        <h2 className="text-4xl font-bold text-[#D4AF37] mb-1">{totalPoints.toLocaleString()}</h2>
         <p className="text-gray-400 text-sm">Available Points</p>
+        {balance && (
+          <p className="text-gray-500 text-xs mt-2">
+            Total Earned: {balance.total_points.toLocaleString()}
+          </p>
+        )}
       </div>
+
+      {error && (
+        <div className="mx-4 mt-4 bg-red-900/20 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg text-sm">
+          {error}
+        </div>
+      )}
 
       <div className="px-4 py-6">
         <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 pl-1">History</h3>
-        <div className="space-y-4">
-          {POINTS_HISTORY.map((item) => (
-            <div key={item.id} className="flex justify-between items-center py-2 border-b border-[#333] last:border-0">
-              <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${item.type === 'earn' ? 'bg-green-900/20 text-green-500' : 'bg-red-900/20 text-red-500'}`}>
-                  {item.type === 'earn' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+        
+        {transactions.length === 0 ? (
+          <div className="text-center py-12">
+            <Coins className="mx-auto text-gray-600 mb-4" size={48} />
+            <p className="text-gray-500">No transactions yet</p>
+            <p className="text-sm text-gray-600 mt-2">
+              Complete appointments to earn points
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {transactions.map((item) => (
+              <div key={item.id} className="flex justify-between items-center py-2 border-b border-[#333] last:border-0">
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${item.type === 'earn' ? 'bg-green-900/20 text-green-500' : 'bg-red-900/20 text-red-500'}`}>
+                    {item.type === 'earn' ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-white">{item.reason}</p>
+                    {item.description && (
+                      <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
+                    )}
+                    <p className="text-xs text-gray-500">{formatDate(item.created_at)}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-white">{item.title}</p>
-                  <p className="text-xs text-gray-500">{item.date}</p>
-                </div>
+                <span className={`font-bold ${item.type === 'earn' ? 'text-green-500' : 'text-white'}`}>
+                  {item.amount > 0 ? '+' : ''}{item.amount}
+                </span>
               </div>
-              <span className={`font-bold ${item.type === 'earn' ? 'text-green-500' : 'text-white'}`}>
-                {item.type === 'earn' ? '+' : ''}{item.points}
-              </span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
