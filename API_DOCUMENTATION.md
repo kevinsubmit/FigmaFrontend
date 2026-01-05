@@ -1,0 +1,1021 @@
+# API接口文档
+
+## 概述
+
+本文档提供美甲预约平台的完整API接口说明，包括认证、用户管理、店铺管理、预约管理、积分优惠券、通知、推荐等所有功能模块的API端点。
+
+## 基本信息
+
+### 基础URL
+
+```
+开发环境: http://localhost:8000
+生产环境: https://api.yourdomain.com
+```
+
+### 认证方式
+
+所有需要认证的API使用JWT Bearer Token认证：
+
+```
+Authorization: Bearer {access_token}
+```
+
+### 响应格式
+
+所有API响应均为JSON格式：
+
+**成功响应**：
+```json
+{
+  "data": {...},
+  "message": "Success"
+}
+```
+
+**错误响应**：
+```json
+{
+  "detail": "Error message"
+}
+```
+
+### HTTP状态码
+
+| 状态码 | 说明 |
+|-------|------|
+| 200 | 请求成功 |
+| 201 | 创建成功 |
+| 204 | 删除成功（无内容） |
+| 400 | 请求参数错误 |
+| 401 | 未认证 |
+| 403 | 无权限 |
+| 404 | 资源不存在 |
+| 500 | 服务器错误 |
+
+## API模块
+
+### 1. 认证模块 (Auth)
+
+#### 1.1 发送验证码
+
+```
+POST /api/v1/auth/send-verification-code
+```
+
+**请求体**：
+```json
+{
+  "phone": "1234567890",
+  "purpose": "register"
+}
+```
+
+**响应**：
+```json
+{
+  "message": "Verification code sent successfully"
+}
+```
+
+#### 1.2 用户注册
+
+```
+POST /api/v1/auth/register
+```
+
+**请求体**：
+```json
+{
+  "phone": "1234567890",
+  "username": "John Doe",
+  "password": "password123",
+  "verification_code": "123456",
+  "referral_code": "ABC123"
+}
+```
+
+**响应**：
+```json
+{
+  "id": 1,
+  "phone": "1234567890",
+  "username": "John Doe",
+  "email": null,
+  "is_active": true,
+  "created_at": "2026-01-05T10:00:00"
+}
+```
+
+#### 1.3 用户登录
+
+```
+POST /api/v1/auth/login
+```
+
+**请求体**：
+```json
+{
+  "phone": "1234567890",
+  "password": "password123"
+}
+```
+
+**响应**：
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "user": {
+    "id": 1,
+    "phone": "1234567890",
+    "username": "John Doe"
+  }
+}
+```
+
+#### 1.4 获取当前用户信息
+
+```
+GET /api/v1/auth/me
+Authorization: Bearer {token}
+```
+
+**响应**：
+```json
+{
+  "id": 1,
+  "phone": "1234567890",
+  "username": "John Doe",
+  "email": "john@example.com",
+  "is_active": true,
+  "created_at": "2026-01-05T10:00:00"
+}
+```
+
+### 2. 用户模块 (Users)
+
+#### 2.1 获取用户列表
+
+```
+GET /api/v1/users/
+Authorization: Bearer {admin_token}
+```
+
+**查询参数**：
+- `skip`: 跳过的记录数（默认0）
+- `limit`: 返回的记录数（默认100）
+
+#### 2.2 获取用户详情
+
+```
+GET /api/v1/users/{user_id}
+Authorization: Bearer {token}
+```
+
+#### 2.3 更新用户信息
+
+```
+PUT /api/v1/users/{user_id}
+Authorization: Bearer {token}
+```
+
+**请求体**：
+```json
+{
+  "username": "New Name",
+  "email": "newemail@example.com"
+}
+```
+
+### 3. 店铺模块 (Stores)
+
+#### 3.1 获取店铺列表
+
+```
+GET /api/v1/stores/
+```
+
+**查询参数**：
+- `skip`: 跳过的记录数（默认0）
+- `limit`: 返回的记录数（默认100）
+- `search`: 搜索关键词（可选）
+
+**响应**：
+```json
+[
+  {
+    "id": 1,
+    "name": "Nail Salon",
+    "address": "123 Main St",
+    "phone": "1234567890",
+    "rating": 4.5,
+    "review_count": 120,
+    "latitude": 40.7128,
+    "longitude": -74.0060,
+    "created_at": "2026-01-01T00:00:00"
+  }
+]
+```
+
+#### 3.2 获取店铺详情
+
+```
+GET /api/v1/stores/{store_id}
+```
+
+**响应**：
+```json
+{
+  "id": 1,
+  "name": "Nail Salon",
+  "description": "Best nail salon in town",
+  "address": "123 Main St",
+  "phone": "1234567890",
+  "email": "info@nailsalon.com",
+  "rating": 4.5,
+  "review_count": 120,
+  "latitude": 40.7128,
+  "longitude": -74.0060,
+  "hours": [...],
+  "services": [...],
+  "portfolio": [...],
+  "created_at": "2026-01-01T00:00:00"
+}
+```
+
+#### 3.3 创建店铺
+
+```
+POST /api/v1/stores/
+Authorization: Bearer {admin_token}
+```
+
+**请求体**：
+```json
+{
+  "name": "New Nail Salon",
+  "description": "Description",
+  "address": "456 Oak St",
+  "phone": "0987654321",
+  "email": "info@newsalon.com",
+  "latitude": 40.7589,
+  "longitude": -73.9851
+}
+```
+
+#### 3.4 更新店铺信息
+
+```
+PUT /api/v1/stores/{store_id}
+Authorization: Bearer {admin_token}
+```
+
+#### 3.5 删除店铺
+
+```
+DELETE /api/v1/stores/{store_id}
+Authorization: Bearer {admin_token}
+```
+
+### 4. 服务模块 (Services)
+
+#### 4.1 获取服务列表
+
+```
+GET /api/v1/services/
+```
+
+**查询参数**：
+- `store_id`: 店铺ID（可选）
+- `skip`: 跳过的记录数（默认0）
+- `limit`: 返回的记录数（默认100）
+
+**响应**：
+```json
+[
+  {
+    "id": 1,
+    "store_id": 1,
+    "name": "Manicure",
+    "description": "Basic manicure service",
+    "price": 25.00,
+    "duration": 30,
+    "is_active": true,
+    "created_at": "2026-01-01T00:00:00"
+  }
+]
+```
+
+#### 4.2 获取服务详情
+
+```
+GET /api/v1/services/{service_id}
+```
+
+#### 4.3 创建服务
+
+```
+POST /api/v1/services/
+Authorization: Bearer {admin_token}
+```
+
+**请求体**：
+```json
+{
+  "store_id": 1,
+  "name": "Pedicure",
+  "description": "Relaxing pedicure service",
+  "price": 35.00,
+  "duration": 45,
+  "is_active": true
+}
+```
+
+### 5. 预约模块 (Appointments)
+
+#### 5.1 创建预约
+
+```
+POST /api/v1/appointments/
+Authorization: Bearer {token}
+```
+
+**请求体**：
+```json
+{
+  "store_id": 1,
+  "service_id": 1,
+  "technician_id": 1,
+  "appointment_date": "2026-01-10",
+  "appointment_time": "14:00:00",
+  "notes": "Please use gentle products"
+}
+```
+
+**响应**：
+```json
+{
+  "id": 1,
+  "user_id": 123,
+  "store_id": 1,
+  "service_id": 1,
+  "technician_id": 1,
+  "appointment_date": "2026-01-10",
+  "appointment_time": "14:00:00",
+  "status": "pending",
+  "total_price": 25.00,
+  "notes": "Please use gentle products",
+  "created_at": "2026-01-05T10:00:00"
+}
+```
+
+#### 5.2 获取我的预约列表
+
+```
+GET /api/v1/appointments/my-appointments
+Authorization: Bearer {token}
+```
+
+**查询参数**：
+- `status`: 状态筛选（pending/confirmed/completed/cancelled）
+- `skip`: 跳过的记录数（默认0）
+- `limit`: 返回的记录数（默认100）
+
+#### 5.3 获取预约详情
+
+```
+GET /api/v1/appointments/{appointment_id}
+Authorization: Bearer {token}
+```
+
+#### 5.4 更新预约状态
+
+```
+PATCH /api/v1/appointments/{appointment_id}/status
+Authorization: Bearer {token}
+```
+
+**请求体**：
+```json
+{
+  "status": "confirmed"
+}
+```
+
+#### 5.5 取消预约
+
+```
+POST /api/v1/appointments/{appointment_id}/cancel
+Authorization: Bearer {token}
+```
+
+**请求体**：
+```json
+{
+  "reason": "Schedule conflict"
+}
+```
+
+### 6. 积分模块 (Points)
+
+#### 6.1 获取积分余额
+
+```
+GET /api/v1/points/balance
+Authorization: Bearer {token}
+```
+
+**响应**：
+```json
+{
+  "total_points": 500,
+  "available_points": 300
+}
+```
+
+#### 6.2 获取积分明细
+
+```
+GET /api/v1/points/transactions
+Authorization: Bearer {token}
+```
+
+**查询参数**：
+- `skip`: 跳过的记录数（默认0）
+- `limit`: 返回的记录数（默认50）
+
+**响应**：
+```json
+[
+  {
+    "id": 1,
+    "amount": 50,
+    "type": "earn",
+    "reason": "Order completed",
+    "description": "Completed appointment #456",
+    "created_at": "2026-01-05T10:30:00"
+  }
+]
+```
+
+### 7. 优惠券模块 (Coupons)
+
+#### 7.1 获取可领取优惠券列表
+
+```
+GET /api/v1/coupons/available
+```
+
+#### 7.2 获取可兑换优惠券列表
+
+```
+GET /api/v1/coupons/exchangeable
+```
+
+#### 7.3 获取我的优惠券
+
+```
+GET /api/v1/coupons/my-coupons
+Authorization: Bearer {token}
+```
+
+**查询参数**：
+- `status`: 状态筛选（available/used/expired）
+
+#### 7.4 领取优惠券
+
+```
+POST /api/v1/coupons/claim
+Authorization: Bearer {token}
+```
+
+**请求体**：
+```json
+{
+  "coupon_id": 1
+}
+```
+
+#### 7.5 积分兑换优惠券
+
+```
+POST /api/v1/coupons/exchange/{coupon_id}
+Authorization: Bearer {token}
+```
+
+### 8. 通知模块 (Notifications)
+
+#### 8.1 获取通知列表
+
+```
+GET /api/v1/notifications/
+Authorization: Bearer {token}
+```
+
+**查询参数**：
+- `skip`: 跳过的记录数（默认0）
+- `limit`: 返回的记录数（默认100）
+- `unread_only`: 只返回未读（true/false）
+
+#### 8.2 获取未读通知数量
+
+```
+GET /api/v1/notifications/unread-count
+Authorization: Bearer {token}
+```
+
+**响应**：
+```json
+{
+  "unread_count": 5
+}
+```
+
+#### 8.3 标记通知为已读
+
+```
+PATCH /api/v1/notifications/{notification_id}/read
+Authorization: Bearer {token}
+```
+
+#### 8.4 标记所有通知为已读
+
+```
+POST /api/v1/notifications/mark-all-read
+Authorization: Bearer {token}
+```
+
+#### 8.5 删除通知
+
+```
+DELETE /api/v1/notifications/{notification_id}
+Authorization: Bearer {token}
+```
+
+### 9. 推荐模块 (Referrals)
+
+#### 9.1 获取我的推荐码
+
+```
+GET /api/v1/referrals/my-code
+Authorization: Bearer {token}
+```
+
+**响应**：
+```json
+{
+  "referral_code": "ABC123"
+}
+```
+
+#### 9.2 获取推荐统计
+
+```
+GET /api/v1/referrals/stats
+Authorization: Bearer {token}
+```
+
+**响应**：
+```json
+{
+  "total_referrals": 10,
+  "successful_referrals": 8,
+  "total_rewards": 80.00
+}
+```
+
+#### 9.3 获取推荐列表
+
+```
+GET /api/v1/referrals/list
+Authorization: Bearer {token}
+```
+
+**查询参数**：
+- `skip`: 跳过的记录数（默认0）
+- `limit`: 返回的记录数（默认100）
+
+**响应**：
+```json
+[
+  {
+    "id": 1,
+    "referred_user_id": 456,
+    "referred_username": "Jane Doe",
+    "status": "rewarded",
+    "reward_amount": 10.00,
+    "created_at": "2026-01-05T10:00:00"
+  }
+]
+```
+
+### 10. 评价模块 (Reviews)
+
+#### 10.1 创建评价
+
+```
+POST /api/v1/reviews/
+Authorization: Bearer {token}
+```
+
+**请求体**：
+```json
+{
+  "store_id": 1,
+  "appointment_id": 123,
+  "rating": 5,
+  "comment": "Excellent service!",
+  "images": ["url1", "url2"]
+}
+```
+
+#### 10.2 获取店铺评价列表
+
+```
+GET /api/v1/reviews/store/{store_id}
+```
+
+**查询参数**：
+- `skip`: 跳过的记录数（默认0）
+- `limit`: 返回的记录数（默认20）
+
+#### 10.3 获取我的评价列表
+
+```
+GET /api/v1/reviews/my-reviews
+Authorization: Bearer {token}
+```
+
+#### 10.4 更新评价
+
+```
+PUT /api/v1/reviews/{review_id}
+Authorization: Bearer {token}
+```
+
+#### 10.5 删除评价
+
+```
+DELETE /api/v1/reviews/{review_id}
+Authorization: Bearer {token}
+```
+
+### 11. 店铺营业时间模块 (Store Hours)
+
+#### 11.1 获取店铺营业时间
+
+```
+GET /api/v1/store-hours/store/{store_id}
+```
+
+**响应**：
+```json
+[
+  {
+    "id": 1,
+    "store_id": 1,
+    "day_of_week": 1,
+    "open_time": "09:00:00",
+    "close_time": "18:00:00",
+    "is_closed": false
+  }
+]
+```
+
+#### 11.2 设置店铺营业时间
+
+```
+POST /api/v1/store-hours/
+Authorization: Bearer {admin_token}
+```
+
+**请求体**：
+```json
+{
+  "store_id": 1,
+  "day_of_week": 1,
+  "open_time": "09:00:00",
+  "close_time": "18:00:00",
+  "is_closed": false
+}
+```
+
+### 12. 店铺节假日模块 (Store Holidays)
+
+#### 12.1 获取店铺节假日列表
+
+```
+GET /api/v1/store-holidays/store/{store_id}
+```
+
+**响应**：
+```json
+[
+  {
+    "id": 1,
+    "store_id": 1,
+    "holiday_date": "2026-01-01",
+    "reason": "New Year's Day",
+    "is_closed": true
+  }
+]
+```
+
+#### 12.2 创建节假日
+
+```
+POST /api/v1/store-holidays/
+Authorization: Bearer {admin_token}
+```
+
+**请求体**：
+```json
+{
+  "store_id": 1,
+  "holiday_date": "2026-12-25",
+  "reason": "Christmas",
+  "is_closed": true
+}
+```
+
+### 13. 店铺作品集模块 (Store Portfolio)
+
+#### 13.1 获取店铺作品集
+
+```
+GET /api/v1/store-portfolio/store/{store_id}
+```
+
+**响应**：
+```json
+[
+  {
+    "id": 1,
+    "store_id": 1,
+    "image_url": "https://example.com/image1.jpg",
+    "title": "French Manicure",
+    "description": "Classic french manicure style",
+    "created_at": "2026-01-01T00:00:00"
+  }
+]
+```
+
+#### 13.2 上传作品
+
+```
+POST /api/v1/store-portfolio/
+Authorization: Bearer {admin_token}
+```
+
+**请求体**：
+```json
+{
+  "store_id": 1,
+  "image_url": "https://example.com/new-image.jpg",
+  "title": "Gel Nails",
+  "description": "Beautiful gel nail design"
+}
+```
+
+#### 13.3 删除作品
+
+```
+DELETE /api/v1/store-portfolio/{portfolio_id}
+Authorization: Bearer {admin_token}
+```
+
+### 14. 技师模块 (Technicians)
+
+#### 14.1 获取店铺技师列表
+
+```
+GET /api/v1/technicians/store/{store_id}
+```
+
+**响应**：
+```json
+[
+  {
+    "id": 1,
+    "store_id": 1,
+    "name": "Alice Smith",
+    "specialty": "Manicure, Pedicure",
+    "rating": 4.8,
+    "is_active": true,
+    "created_at": "2026-01-01T00:00:00"
+  }
+]
+```
+
+#### 14.2 获取技师详情
+
+```
+GET /api/v1/technicians/{technician_id}
+```
+
+#### 14.3 创建技师
+
+```
+POST /api/v1/technicians/
+Authorization: Bearer {admin_token}
+```
+
+**请求体**：
+```json
+{
+  "store_id": 1,
+  "name": "Bob Johnson",
+  "specialty": "Nail Art",
+  "is_active": true
+}
+```
+
+### 15. 文件上传模块 (Upload)
+
+#### 15.1 上传文件
+
+```
+POST /api/v1/upload/
+Authorization: Bearer {token}
+Content-Type: multipart/form-data
+```
+
+**请求体**：
+```
+file: <binary_file_data>
+```
+
+**响应**：
+```json
+{
+  "url": "https://storage.example.com/files/abc123.jpg",
+  "filename": "image.jpg",
+  "size": 102400
+}
+```
+
+## 错误处理
+
+### 常见错误码
+
+| 错误码 | 说明 | 示例 |
+|-------|------|------|
+| 400 | 请求参数错误 | 缺少必填字段、格式错误 |
+| 401 | 未认证 | Token无效或过期 |
+| 403 | 无权限 | 非管理员访问管理接口 |
+| 404 | 资源不存在 | 用户ID不存在 |
+| 409 | 冲突 | 手机号已注册 |
+| 422 | 验证错误 | 数据验证失败 |
+| 500 | 服务器错误 | 内部错误 |
+
+### 错误响应示例
+
+```json
+{
+  "detail": "User not found"
+}
+```
+
+```json
+{
+  "detail": [
+    {
+      "loc": ["body", "phone"],
+      "msg": "field required",
+      "type": "value_error.missing"
+    }
+  ]
+}
+```
+
+## 分页
+
+所有列表API支持分页，使用以下查询参数：
+
+- `skip`: 跳过的记录数（默认0）
+- `limit`: 返回的记录数（默认值因接口而异）
+
+**示例**：
+```
+GET /api/v1/stores/?skip=20&limit=10
+```
+
+## 搜索和筛选
+
+部分API支持搜索和筛选：
+
+**店铺搜索**：
+```
+GET /api/v1/stores/?search=nail
+```
+
+**预约状态筛选**：
+```
+GET /api/v1/appointments/my-appointments?status=confirmed
+```
+
+**优惠券状态筛选**：
+```
+GET /api/v1/coupons/my-coupons?status=available
+```
+
+## 速率限制
+
+为保护API服务，实施以下速率限制：
+
+| 端点类型 | 限制 |
+|---------|------|
+| 认证端点 | 10次/分钟 |
+| 读取端点 | 100次/分钟 |
+| 写入端点 | 30次/分钟 |
+| 上传端点 | 10次/分钟 |
+
+超过限制将返回429状态码。
+
+## 数据格式
+
+### 日期时间格式
+
+所有日期时间使用ISO 8601格式：
+
+```
+2026-01-05T10:30:00
+```
+
+### 日期格式
+
+```
+2026-01-05
+```
+
+### 时间格式
+
+```
+14:30:00
+```
+
+### 金额格式
+
+金额使用浮点数，单位为美元：
+
+```json
+{
+  "price": 25.50
+}
+```
+
+## 最佳实践
+
+### 1. 认证Token管理
+
+- Token有效期为24小时
+- 在Token过期前刷新
+- 安全存储Token，不要暴露在URL中
+
+### 2. 错误处理
+
+- 始终检查HTTP状态码
+- 解析错误响应中的detail字段
+- 实现重试机制（指数退避）
+
+### 3. 性能优化
+
+- 使用分页避免一次加载大量数据
+- 缓存不常变化的数据（如店铺信息）
+- 使用条件请求（If-Modified-Since）
+
+### 4. 安全建议
+
+- 使用HTTPS
+- 不要在客户端存储敏感信息
+- 验证用户输入
+- 实施CSRF保护
+
+## 版本控制
+
+当前API版本：**v1**
+
+API版本在URL中指定：`/api/v1/...`
+
+## 更新日志
+
+### 2026-01-05
+- ✅ 完成所有核心模块API
+- ✅ 添加认证、用户、店铺、预约模块
+- ✅ 添加积分、优惠券、通知、推荐模块
+- ✅ 添加评价、营业时间、节假日、作品集模块
+- ✅ 添加技师、文件上传模块
+
+## 相关文档
+
+- [通知系统文档](./NOTIFICATION_SYSTEM.md)
+- [积分和优惠券系统文档](./POINTS_COUPONS_SYSTEM.md)
+- [推荐好友系统文档](./REFERRAL_SYSTEM.md)
+- [系统架构文档](./SYSTEM_ARCHITECTURE.md)
+
+---
+
+**文档版本**: 1.0  
+**最后更新**: 2026-01-05  
+**维护者**: Manus AI
