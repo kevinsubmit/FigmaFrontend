@@ -33,6 +33,7 @@ class UserCreate(UserBase):
     """Schema for user registration"""
     password: str = Field(..., min_length=8, max_length=100)
     verification_code: str = Field(..., min_length=6, max_length=6, description="手机验证码")
+    referral_code: Optional[str] = Field(None, max_length=10, description="推荐码(可选)")
 
 
 class UserUpdate(BaseModel):

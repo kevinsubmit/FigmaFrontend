@@ -22,12 +22,13 @@ import { MyReviews } from './components/MyReviews';
 import { MyFavorites } from './components/MyFavorites';
 import ChangePassword from './components/ChangePassword';
 import PhoneManagement from './components/PhoneManagement';
+import ReferralPage from './components/ReferralPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { toast } from 'react-toastify';
 import { Sparkles } from 'lucide-react';
 
-export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 'notifications' | 'booking' | 'pin-detail' | 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'login' | 'register' | 'my-reviews' | 'my-favorites' | 'change-password' | 'phone-management';
+export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 'notifications' | 'booking' | 'pin-detail' | 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'login' | 'register' | 'my-reviews' | 'my-favorites' | 'change-password' | 'phone-management' | 'referral';
 
 // Main App Router Component
 function AppRouter() {
@@ -263,6 +264,12 @@ function AppRouter() {
           <MyCoupons 
               onBack={() => navigate('/profile')}
             />
+        } />
+        
+        <Route path="/referral" element={
+          <ProtectedRoute>
+            <ReferralPage />
+          </ProtectedRoute>
         } />
 
         <Route path="/my-gift-cards" element={

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSearchParams } from 'react-router-dom';
 import authService from '../services/auth.service';
 
 interface RegisterProps {
@@ -16,9 +17,19 @@ export function Register({ onNavigate, onBack }: RegisterProps) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [searchParams] = useSearchParams();
+  
+  // 从 URL 参数获取推荐码
+  useEffect(() => {
+    const refCode = searchParams.get('ref');
+    if (refCode) {
+      setReferralCode(refCode);
+    }
+  }, [searchParams]);
 
   // 发送验证码
   const handleSendCode = async () => {
@@ -130,6 +141,7 @@ export function Register({ onNavigate, onBack }: RegisterProps) {
         username,
         password,
         full_name: fullName || undefined,
+        referral_code: referralCode || undefined,
       });
 
       // 注册成功，跳转到首页
@@ -305,6 +317,25 @@ export function Register({ onNavigate, onBack }: RegisterProps) {
                 placeholder="请再次输入密码"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
               />
+            </div>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                推荐码 <span className="text-gray-400">(可选)</span>
+              </label>
+              <input
+                type="text"
+                value={referralCode}
+                onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                placeholder="输入推荐码获得$10优惠券"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent uppercase"
+                maxLength={10}
+              />
+              {referralCode && (
+                <p className="mt-1 text-sm text-green-600">
+                  ✓ 注册成功后您和推荐人都将获得$10优惠券
+                </p>
+              )}
             </div>
 
             <button

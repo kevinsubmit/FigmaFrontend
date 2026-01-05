@@ -152,8 +152,62 @@ async def register(
     # Mark verification code as used
     crud_verification.mark_as_used(db, phone=user_in.phone, code=user_in.verification_code)
     
+    # 处理推荐码
+    referrer = None
+    if user_in.referral_code:
+        from app.crud import referral as crud_referral
+        referrer = crud_referral.find_referrer_by_code(db, user_in.referral_code)
+        if not referrer:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid referral code"
+            )
+    
     # Create new user with phone_verified=True
     user = crud_user.create(db, obj_in=user_in)
+    
+    # 如果有推荐码，创建推荐关系并发放奖励
+    if referrer:
+        from app.crud import referral as crud_referral
+        from app.crud import coupons as crud_coupons
+        
+        # 更新用户的referred_by_code
+        user.referred_by_code = user_in.referral_code
+        db.commit()
+        
+        # 创建推荐关系
+        referral = crud_referral.create_referral(
+            db,
+            referrer_id=referrer.id,
+            referee_id=user.id,
+            referral_code=user_in.referral_code
+        )
+        
+        # 发放奖励: 双方各得$10优惠券
+        # 查找$10推荐奖励优惠券模板
+        from app.models.coupon import Coupon, CouponType, CouponCategory
+        referral_coupon_template = db.query(Coupon).filter(
+            Coupon.type == CouponType.FIXED_AMOUNT,
+            Coupon.discount_value == 10.0,
+            Coupon.category == CouponCategory.REFERRAL,
+            Coupon.is_active == True
+        ).first()
+        
+        if referral_coupon_template:
+            # 发放给推荐人
+            referrer_coupon = crud_coupons.claim_coupon(db, referrer.id, referral_coupon_template.id)
+            
+            # 发放给被推荐人
+            referee_coupon = crud_coupons.claim_coupon(db, user.id, referral_coupon_template.id)
+            
+            # 更新推荐关系为已奖励
+            crud_referral.mark_referral_rewarded(
+                db,
+                referral.id,
+                referrer_coupon_id=referrer_coupon.id if referrer_coupon else None,
+                referee_coupon_id=referee_coupon.id if referee_coupon else None
+            )
+    
     return user
 
 

@@ -23,11 +23,18 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)  # 超级管理员
     store_id = Column(Integer, nullable=True, index=True)  # 店铺管理员关联的店铺ID
+    
+    # 推荐系统
+    referral_code = Column(String(10), unique=True, nullable=True, index=True)  # 我的推荐码
+    referred_by_code = Column(String(10), nullable=True, index=True)  # 被谁推荐(推荐码)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
     
     # Relationships
     reviews = relationship("Review", back_populates="user", cascade="all, delete-orphan")
+    points = relationship("UserPoints", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    coupons = relationship("UserCoupon", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User(id={self.id}, username={self.username}, phone={self.phone})>"
