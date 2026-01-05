@@ -48,6 +48,7 @@ import { Calendar } from "./ui/calendar";  // Calendar component
 import { getServicesByStoreId, Service as APIService } from '../services/services.service';
 import { Store as APIStore } from '../services/stores.service';
 import { createAppointment } from '../services/appointments.service';
+import { getStorePortfolio, PortfolioItem } from '../services/store-portfolio.service';
 import StoreReviews from './StoreReviews';
 
 // Use the Store type from stores.service
@@ -175,9 +176,10 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
   const [isBooked, setIsBooked] = useState(false);
 
   // Portfolio State
-  const [portfolioImages, setPortfolioImages] = useState<string[]>([]);
+  const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
   const [isPortfolioLoading, setIsPortfolioLoading] = useState(false);
   const [hasMorePortfolio, setHasMorePortfolio] = useState(true);
+  const [portfolioSkip, setPortfolioSkip] = useState(0);
 
   // Reviews State
   const [reviewsList, setReviewsList] = useState<Review[]>([]);
@@ -259,8 +261,8 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
 
   // Initial Data Load on Tab Change
   useEffect(() => {
-    if (activeTab === 'portfolio' && portfolioImages.length === 0) {
-      loadMoreImages();
+    if (activeTab === 'portfolio' && portfolioItems.length === 0) {
+      loadMorePortfolio();
     } else if (activeTab === 'reviews' && reviewsList.length === 0) {
       loadMoreReviews();
     }
@@ -276,7 +278,7 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
 
     const isLoading = isPortfolio ? isPortfolioLoading : isReviewsLoading;
     const hasMore = isPortfolio ? hasMorePortfolio : hasMoreReviews;
-    const loadFunction = isPortfolio ? loadMoreImages : loadMoreReviews;
+    const loadFunction = isPortfolio ? loadMorePortfolio : loadMoreReviews;
 
     if (!hasMore || isLoading) return;
 
@@ -296,23 +298,45 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
     return () => observer.disconnect();
   }, [activeTab, hasMorePortfolio, hasMoreReviews, isPortfolioLoading, isReviewsLoading]);
 
-  // Load More Portfolio Images
-  const loadMoreImages = async () => {
+  // Load More Portfolio Items
+  const loadMorePortfolio = async () => {
     if (isPortfolioLoading) return;
     setIsPortfolioLoading(true);
 
-    await new Promise(resolve => setTimeout(resolve, 800));
-
-    const newImages = Array.from({ length: 10 }).map((_, i) => {
-        const baseIndex = (portfolioImages.length + i) % PORTFOLIO_BASE_IMAGES.length;
-        return `${PORTFOLIO_BASE_IMAGES[baseIndex]}&sig=${portfolioImages.length + i}`;
-    });
-
-    setPortfolioImages(prev => [...prev, ...newImages]);
-    setIsPortfolioLoading(false);
-    
-    if (portfolioImages.length + newImages.length >= 50) {
+    try {
+      const items = await getStorePortfolio(store.id, portfolioSkip, 20);
+      
+      if (items.length === 0) {
         setHasMorePortfolio(false);
+      } else {
+        setPortfolioItems(prev => [...prev, ...items]);
+        setPortfolioSkip(prev => prev + items.length);
+        
+        // If we got less than requested, no more items
+        if (items.length < 20) {
+          setHasMorePortfolio(false);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load portfolio:', error);
+      // Fallback to mock data if API fails
+      const newImages = Array.from({ length: 10 }).map((_, i) => {
+        const baseIndex = (portfolioItems.length + i) % PORTFOLIO_BASE_IMAGES.length;
+        return {
+          id: portfolioItems.length + i + 1,
+          store_id: store.id,
+          image_url: `${PORTFOLIO_BASE_IMAGES[baseIndex]}&sig=${portfolioItems.length + i}`,
+          display_order: 0,
+          created_at: new Date().toISOString()
+        };
+      });
+      setPortfolioItems(prev => [...prev, ...newImages]);
+      
+      if (portfolioItems.length + newImages.length >= 50) {
+        setHasMorePortfolio(false);
+      }
+    } finally {
+      setIsPortfolioLoading(false);
     }
   };
 
@@ -641,27 +665,32 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
         {/* PORTFOLIO TAB */}
         {activeTab === 'portfolio' && (
             <div className="animate-in fade-in duration-300 -mx-2">
-                 {portfolioImages.length > 0 ? (
+                 {portfolioItems.length > 0 ? (
                     <Masonry columnsCount={2} gutter="8px">
-                        {portfolioImages.map((src, index) => (
-                            <div key={index} className="relative group cursor-pointer overflow-hidden rounded-xl bg-gray-900 border border-[#333]">
+                        {portfolioItems.map((item, index) => (
+                            <div key={item.id} className="relative group cursor-pointer overflow-hidden rounded-xl bg-gray-900 border border-[#333]">
                                 <img 
-                                    src={src} 
-                                    alt={`Portfolio ${index}`} 
+                                    src={item.image_url.startsWith('http') ? item.image_url : `http://localhost:8000${item.image_url}`} 
+                                    alt={item.title || `Portfolio ${index + 1}`} 
                                     className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500"
                                 />
+                                {item.title && (
+                                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                                    <p className="text-white text-sm font-medium">{item.title}</p>
+                                  </div>
+                                )}
                             </div>
                         ))}
                     </Masonry>
                  ) : (
-                    <div className="flex justify-center py-12">
-                        <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
+                    <div className="text-center py-12 text-gray-500">
+                        No portfolio images yet
                     </div>
                  )}
 
                  {/* Load More Trigger & Loader */}
                  <div ref={observerTarget} className="py-8 flex justify-center">
-                    {isPortfolioLoading && portfolioImages.length > 0 && (
+                    {isPortfolioLoading && portfolioItems.length > 0 && (
                         <div className="flex items-center gap-2 text-[#D4AF37] text-xs font-bold uppercase tracking-widest">
                              <Loader2 className="w-4 h-4 animate-spin" />
                              Loading
