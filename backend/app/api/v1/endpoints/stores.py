@@ -22,7 +22,9 @@ def get_stores(
     city: Optional[str] = None,
     search: Optional[str] = None,
     min_rating: Optional[float] = Query(None, ge=0, le=5),
-    sort_by: Optional[str] = Query(None, regex="^(rating_desc|rating_asc|name_asc|name_desc|review_count_desc)$"),
+    sort_by: Optional[str] = Query("recommended", regex="^(recommended|distance|top_rated)$"),
+    user_lat: Optional[float] = None,
+    user_lng: Optional[float] = None,
     db: Session = Depends(get_db)
 ):
     """
@@ -33,7 +35,9 @@ def get_stores(
     - **city**: Filter by city name
     - **search**: Search in store name and address
     - **min_rating**: Filter by minimum rating (0-5)
-    - **sort_by**: Sort results (rating_desc, rating_asc, name_asc, name_desc, review_count_desc)
+    - **sort_by**: Sort results (recommended, distance, top_rated)
+    - **user_lat**: User latitude (required for distance sorting)
+    - **user_lng**: User longitude (required for distance sorting)
     """
     stores = crud_store.get_stores(
         db,
@@ -42,7 +46,9 @@ def get_stores(
         city=city,
         search=search,
         min_rating=min_rating,
-        sort_by=sort_by
+        sort_by=sort_by,
+        user_lat=user_lat,
+        user_lng=user_lng
     )
     return stores
 

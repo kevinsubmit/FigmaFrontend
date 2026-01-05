@@ -32,6 +32,31 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
   const [selectedStore, setSelectedStore] = useState<Store | null>(initialSelectedStore || null);
   const [stores, setStores] = useState<Store[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Get user location
+  useEffect(() => {
+    if (sortBy === 'distance' && !userLocation) {
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setUserLocation({
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            });
+          },
+          (error) => {
+            console.error('Failed to get user location:', error);
+            // Fallback to recommended if location is denied
+            setSortBy('recommended');
+          }
+        );
+      } else {
+        console.error('Geolocation is not supported');
+        setSortBy('recommended');
+      }
+    }
+  }, [sortBy, userLocation]);
 
   // Fetch stores from API
   useEffect(() => {
@@ -41,7 +66,9 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
         const data = await getStoresAPI({
           search: searchQuery || undefined,
           min_rating: minRating,
-          sort_by: getSortByParam()
+          sort_by: getSortByParam(),
+          user_lat: sortBy === 'distance' && userLocation ? userLocation.lat : undefined,
+          user_lng: sortBy === 'distance' && userLocation ? userLocation.lng : undefined
         });
         setStores(data);
         setError(null);
@@ -54,14 +81,14 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
     };
 
     fetchStores();
-  }, [searchQuery, minRating, sortBy]);
+  }, [searchQuery, minRating, sortBy, userLocation]);
   
   // Convert sortBy to API parameter
   const getSortByParam = () => {
     switch (sortBy) {
-      case 'reviews': return 'rating_desc';
-      case 'distance': return undefined; // Not implemented yet
-      default: return 'rating_desc'; // Recommended
+      case 'reviews': return 'top_rated';
+      case 'distance': return 'distance';
+      default: return 'recommended';
     }
   };
   

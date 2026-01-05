@@ -19,9 +19,14 @@ def get_stores(
     city: Optional[str] = None,
     search: Optional[str] = None,
     min_rating: Optional[float] = None,
-    sort_by: Optional[str] = None
+    sort_by: Optional[str] = "recommended",
+    user_lat: Optional[float] = None,
+    user_lng: Optional[float] = None
 ) -> List[Store]:
     """Get list of stores with optional filters and sorting"""
+    from sqlalchemy import func, case
+    from math import radians, cos, sin, asin, sqrt
+    
     query = db.query(Store)
     
     # Filter by city
@@ -40,19 +45,50 @@ def get_stores(
         query = query.filter(Store.rating >= min_rating)
     
     # Sort results
-    if sort_by == "rating_desc":
-        query = query.order_by(Store.rating.desc())
-    elif sort_by == "rating_asc":
-        query = query.order_by(Store.rating.asc())
-    elif sort_by == "name_asc":
-        query = query.order_by(Store.name.asc())
-    elif sort_by == "name_desc":
-        query = query.order_by(Store.name.desc())
-    elif sort_by == "review_count_desc":
-        query = query.order_by(Store.review_count.desc())
+    if sort_by == "top_rated":
+        # Sort by rating (highest first), then by review count
+        query = query.order_by(Store.rating.desc(), Store.review_count.desc())
+    elif sort_by == "distance" and user_lat is not None and user_lng is not None:
+        # Calculate distance using Haversine formula
+        # Note: This is a simplified version. For production, consider using PostGIS
+        lat1 = radians(user_lat)
+        lng1 = radians(user_lng)
+        
+        # Get all stores first (since we need to calculate distance in Python)
+        stores = query.all()
+        
+        # Calculate distance for each store
+        stores_with_distance = []
+        for store in stores:
+            if store.latitude and store.longitude:
+                lat2 = radians(store.latitude)
+                lng2 = radians(store.longitude)
+                
+                # Haversine formula
+                dlat = lat2 - lat1
+                dlng = lng2 - lng1
+                a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlng/2)**2
+                c = 2 * asin(sqrt(a))
+                distance = 6371 * c  # Radius of earth in kilometers
+                
+                stores_with_distance.append((store, distance))
+            else:
+                # If store doesn't have coordinates, put it at the end
+                stores_with_distance.append((store, float('inf')))
+        
+        # Sort by distance
+        stores_with_distance.sort(key=lambda x: x[1])
+        
+        # Extract stores and apply pagination
+        sorted_stores = [s[0] for s in stores_with_distance]
+        return sorted_stores[skip:skip+limit]
     else:
-        # Default: sort by rating descending
-        query = query.order_by(Store.rating.desc())
+        # Default: "recommended" - Sort by a combination of rating and review count
+        # Formula: (rating * 0.7) + (normalized_review_count * 0.3)
+        # This gives more weight to rating but also considers popularity
+        query = query.order_by(
+            (Store.rating * 0.7 + func.least(Store.review_count / 100.0, 1.0) * 0.3).desc()
+        )
     
     return query.offset(skip).limit(limit).all()
 

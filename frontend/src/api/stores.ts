@@ -30,6 +30,8 @@ export const getStores = async (params?: {
   search?: string;
   min_rating?: number;
   sort_by?: string;
+  user_lat?: number;
+  user_lng?: number;
 }): Promise<Store[]> => {
   return apiClient.get('/api/v1/stores', { params });
 };

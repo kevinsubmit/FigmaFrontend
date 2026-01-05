@@ -1,44 +1,34 @@
 nohup: ignoring input
 INFO:     Will watch for changes in these directories: ['/home/ubuntu/FigmaFrontend/backend']
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [9905] using WatchFiles
-INFO:     Started server process [9907]
+INFO:     Started reloader process [10855] using WatchFiles
+INFO:     Started server process [10857]
 INFO:     Waiting for application startup.
-2026-01-04 19:34:04,354 INFO sqlalchemy.engine.Engine SELECT DATABASE()
-2026-01-04 19:34:04,354 INFO sqlalchemy.engine.Engine [raw sql] {}
-2026-01-04 19:34:04,361 INFO sqlalchemy.engine.Engine SELECT @@sql_mode
-2026-01-04 19:34:04,361 INFO sqlalchemy.engine.Engine [raw sql] {}
-2026-01-04 19:34:04,364 INFO sqlalchemy.engine.Engine SELECT @@lower_case_table_names
-2026-01-04 19:34:04,364 INFO sqlalchemy.engine.Engine [raw sql] {}
-2026-01-04 19:34:04,371 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2026-01-04 19:34:04,375 INFO sqlalchemy.engine.Engine SELECT appointment_reminders.id AS appointment_reminders_id, appointment_reminders.appointment_id AS appointment_reminders_appointment_id, appointment_reminders.user_id AS appointment_reminders_user_id, appointment_reminders.reminder_type AS appointment_reminders_reminder_type, appointment_reminders.status AS appointment_reminders_status, appointment_reminders.scheduled_time AS appointment_reminders_scheduled_time, appointment_reminders.sent_at AS appointment_reminders_sent_at, appointment_reminders.error_message AS appointment_reminders_error_message, appointment_reminders.created_at AS appointment_reminders_created_at, appointment_reminders.updated_at AS appointment_reminders_updated_at 
+2026-01-04 19:46:59,415 INFO sqlalchemy.engine.Engine SELECT DATABASE()
+2026-01-04 19:46:59,415 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-01-04 19:46:59,431 INFO sqlalchemy.engine.Engine SELECT @@sql_mode
+2026-01-04 19:46:59,431 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-01-04 19:46:59,440 INFO sqlalchemy.engine.Engine SELECT @@lower_case_table_names
+2026-01-04 19:46:59,440 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-01-04 19:46:59,456 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-01-04 19:46:59,460 INFO sqlalchemy.engine.Engine SELECT appointment_reminders.id AS appointment_reminders_id, appointment_reminders.appointment_id AS appointment_reminders_appointment_id, appointment_reminders.user_id AS appointment_reminders_user_id, appointment_reminders.reminder_type AS appointment_reminders_reminder_type, appointment_reminders.status AS appointment_reminders_status, appointment_reminders.scheduled_time AS appointment_reminders_scheduled_time, appointment_reminders.sent_at AS appointment_reminders_sent_at, appointment_reminders.error_message AS appointment_reminders_error_message, appointment_reminders.created_at AS appointment_reminders_created_at, appointment_reminders.updated_at AS appointment_reminders_updated_at 
 FROM appointment_reminders 
 WHERE appointment_reminders.status = %(status_1)s AND appointment_reminders.scheduled_time <= %(scheduled_time_1)s
-2026-01-04 19:34:04,375 INFO sqlalchemy.engine.Engine [generated in 0.00028s] {'status_1': 'pending', 'scheduled_time_1': datetime.datetime(2026, 1, 4, 19, 34, 4, 274173)}
-2026-01-04 19:34:04,382 INFO sqlalchemy.engine.Engine ROLLBACK
+2026-01-04 19:46:59,460 INFO sqlalchemy.engine.Engine [generated in 0.00028s] {'status_1': 'pending', 'scheduled_time_1': datetime.datetime(2026, 1, 4, 19, 46, 59, 204987)}
+2026-01-04 19:46:59,471 INFO sqlalchemy.engine.Engine ROLLBACK
 INFO:     Application startup complete.
-INFO:     127.0.0.1:35684 - "GET /health HTTP/1.1" 200 OK
-2026-01-04 19:39:04,393 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2026-01-04 19:39:04,393 INFO sqlalchemy.engine.Engine SELECT appointment_reminders.id AS appointment_reminders_id, appointment_reminders.appointment_id AS appointment_reminders_appointment_id, appointment_reminders.user_id AS appointment_reminders_user_id, appointment_reminders.reminder_type AS appointment_reminders_reminder_type, appointment_reminders.status AS appointment_reminders_status, appointment_reminders.scheduled_time AS appointment_reminders_scheduled_time, appointment_reminders.sent_at AS appointment_reminders_sent_at, appointment_reminders.error_message AS appointment_reminders_error_message, appointment_reminders.created_at AS appointment_reminders_created_at, appointment_reminders.updated_at AS appointment_reminders_updated_at 
-FROM appointment_reminders 
-WHERE appointment_reminders.status = %(status_1)s AND appointment_reminders.scheduled_time <= %(scheduled_time_1)s
-2026-01-04 19:39:04,393 INFO sqlalchemy.engine.Engine [cached since 300s ago] {'status_1': 'pending', 'scheduled_time_1': datetime.datetime(2026, 1, 4, 19, 39, 4, 388782)}
-2026-01-04 19:39:04,401 INFO sqlalchemy.engine.Engine ROLLBACK
-INFO:     127.0.0.1:49164 - "GET /api/v1/stores?min_rating=4.0&sort_by=rating_desc HTTP/1.1" 307 Temporary Redirect
-2026-01-04 19:41:06,231 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2026-01-04 19:41:06,235 INFO sqlalchemy.engine.Engine SELECT stores.id AS stores_id, stores.name AS stores_name, stores.address AS stores_address, stores.city AS stores_city, stores.state AS stores_state, stores.zip_code AS stores_zip_code, stores.latitude AS stores_latitude, stores.longitude AS stores_longitude, stores.phone AS stores_phone, stores.email AS stores_email, stores.rating AS stores_rating, stores.review_count AS stores_review_count, stores.description AS stores_description, stores.opening_hours AS stores_opening_hours, stores.created_at AS stores_created_at, stores.updated_at AS stores_updated_at 
-FROM stores 
-WHERE stores.rating >= %(rating_1)s ORDER BY stores.rating DESC 
+INFO:     127.0.0.1:57154 - "GET /api/v1/stores?sort_by=recommended&limit=3 HTTP/1.1" 307 Temporary Redirect
+2026-01-04 19:47:12,322 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-01-04 19:47:12,325 INFO sqlalchemy.engine.Engine SELECT stores.id AS stores_id, stores.name AS stores_name, stores.address AS stores_address, stores.city AS stores_city, stores.state AS stores_state, stores.zip_code AS stores_zip_code, stores.latitude AS stores_latitude, stores.longitude AS stores_longitude, stores.phone AS stores_phone, stores.email AS stores_email, stores.rating AS stores_rating, stores.review_count AS stores_review_count, stores.description AS stores_description, stores.opening_hours AS stores_opening_hours, stores.created_at AS stores_created_at, stores.updated_at AS stores_updated_at 
+FROM stores ORDER BY stores.rating * %(rating_1)s + least(stores.review_count / %(review_count_1)s, %(least_1)s) * %(least_2)s DESC 
  LIMIT %(param_1)s, %(param_2)s
-2026-01-04 19:41:06,235 INFO sqlalchemy.engine.Engine [generated in 0.00034s] {'rating_1': 4.0, 'param_1': 0, 'param_2': 100}
-2026-01-04 19:41:06,243 INFO sqlalchemy.engine.Engine ROLLBACK
-INFO:     127.0.0.1:49164 - "GET /api/v1/stores/?min_rating=4.0&sort_by=rating_desc HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49168 - "GET /api/v1/stores?search=nail HTTP/1.1" 307 Temporary Redirect
-2026-01-04 19:41:06,264 INFO sqlalchemy.engine.Engine BEGIN (implicit)
-2026-01-04 19:41:06,266 INFO sqlalchemy.engine.Engine SELECT stores.id AS stores_id, stores.name AS stores_name, stores.address AS stores_address, stores.city AS stores_city, stores.state AS stores_state, stores.zip_code AS stores_zip_code, stores.latitude AS stores_latitude, stores.longitude AS stores_longitude, stores.phone AS stores_phone, stores.email AS stores_email, stores.rating AS stores_rating, stores.review_count AS stores_review_count, stores.description AS stores_description, stores.opening_hours AS stores_opening_hours, stores.created_at AS stores_created_at, stores.updated_at AS stores_updated_at 
-FROM stores 
-WHERE (stores.name LIKE concat('%%', %(name_1)s, '%%')) OR (stores.address LIKE concat('%%', %(address_1)s, '%%')) ORDER BY stores.rating DESC 
+2026-01-04 19:47:12,325 INFO sqlalchemy.engine.Engine [generated in 0.00028s] {'rating_1': 0.7, 'review_count_1': 100.0, 'least_1': 1.0, 'least_2': 0.3, 'param_1': 0, 'param_2': 3}
+2026-01-04 19:47:12,333 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:58384 - "GET /api/v1/stores/?sort_by=recommended&limit=3 HTTP/1.1" 200 OK
+2026-01-04 19:47:17,660 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-01-04 19:47:17,662 INFO sqlalchemy.engine.Engine SELECT stores.id AS stores_id, stores.name AS stores_name, stores.address AS stores_address, stores.city AS stores_city, stores.state AS stores_state, stores.zip_code AS stores_zip_code, stores.latitude AS stores_latitude, stores.longitude AS stores_longitude, stores.phone AS stores_phone, stores.email AS stores_email, stores.rating AS stores_rating, stores.review_count AS stores_review_count, stores.description AS stores_description, stores.opening_hours AS stores_opening_hours, stores.created_at AS stores_created_at, stores.updated_at AS stores_updated_at 
+FROM stores ORDER BY stores.rating DESC, stores.review_count DESC 
  LIMIT %(param_1)s, %(param_2)s
-2026-01-04 19:41:06,266 INFO sqlalchemy.engine.Engine [generated in 0.00039s] {'name_1': 'nail', 'address_1': 'nail', 'param_1': 0, 'param_2': 100}
-2026-01-04 19:41:06,273 INFO sqlalchemy.engine.Engine ROLLBACK
-INFO:     127.0.0.1:49168 - "GET /api/v1/stores/?search=nail HTTP/1.1" 200 OK
+2026-01-04 19:47:17,662 INFO sqlalchemy.engine.Engine [generated in 0.00033s] {'param_1': 0, 'param_2': 3}
+2026-01-04 19:47:17,670 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:53674 - "GET /api/v1/stores/?sort_by=top_rated&limit=3 HTTP/1.1" 200 OK
