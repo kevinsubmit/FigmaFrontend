@@ -5,11 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
-from app.api.deps import get_db, get_current_admin_user, get_current_store_admin
+from app.api.deps import get_db, get_current_admin_user, get_current_store_admin, get_current_user
 from app.models.user import User
-from app.crud import store as crud_store, service as crud_service
+from app.crud import store as crud_store, service as crud_service, store_favorite as crud_favorite
 from app.schemas.store import Store, StoreWithImages, StoreImage, StoreCreate, StoreUpdate, StoreImageCreate
 from app.schemas.service import Service
+from app.schemas.user import UserResponse
 
 router = APIRouter()
 
@@ -20,17 +21,29 @@ def get_stores(
     limit: int = Query(100, ge=1, le=100),
     city: Optional[str] = None,
     search: Optional[str] = None,
+    min_rating: Optional[float] = Query(None, ge=0, le=5),
+    sort_by: Optional[str] = Query(None, regex="^(rating_desc|rating_asc|name_asc|name_desc|review_count_desc)$"),
     db: Session = Depends(get_db)
 ):
     """
-    Get list of stores with optional filters
+    Get list of stores with optional filters and sorting
     
     - **skip**: Number of records to skip (for pagination)
     - **limit**: Maximum number of records to return
     - **city**: Filter by city name
     - **search**: Search in store name and address
+    - **min_rating**: Filter by minimum rating (0-5)
+    - **sort_by**: Sort results (rating_desc, rating_asc, name_asc, name_desc, review_count_desc)
     """
-    stores = crud_store.get_stores(db, skip=skip, limit=limit, city=city, search=search)
+    stores = crud_store.get_stores(
+        db,
+        skip=skip,
+        limit=limit,
+        city=city,
+        search=search,
+        min_rating=min_rating,
+        sort_by=sort_by
+    )
     return stores
 
 
@@ -420,3 +433,93 @@ def get_store_appointment_stats(
             "completed": month_completed
         }
     }
+
+
+
+# ==================== Store Favorites ====================
+
+@router.post("/{store_id}/favorite", status_code=201)
+def add_store_to_favorites(
+    store_id: int,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Add a store to user's favorites (requires authentication)
+    """
+    # Check if store exists
+    store = crud_store.get_store(db, store_id=store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+    
+    # Add to favorites
+    favorite = crud_favorite.add_favorite(db, user_id=current_user.id, store_id=store_id)
+    
+    if not favorite:
+        raise HTTPException(status_code=400, detail="Store already in favorites")
+    
+    return {"message": "Store added to favorites", "store_id": store_id}
+
+
+@router.delete("/{store_id}/favorite", status_code=200)
+def remove_store_from_favorites(
+    store_id: int,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Remove a store from user's favorites (requires authentication)
+    """
+    success = crud_favorite.remove_favorite(db, user_id=current_user.id, store_id=store_id)
+    
+    if not success:
+        raise HTTPException(status_code=404, detail="Store not in favorites")
+    
+    return {"message": "Store removed from favorites", "store_id": store_id}
+
+
+@router.get("/{store_id}/is-favorited", response_model=dict)
+def check_if_store_is_favorited(
+    store_id: int,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Check if a store is in user's favorites (requires authentication)
+    """
+    is_favorited = crud_favorite.is_favorited(db, user_id=current_user.id, store_id=store_id)
+    
+    return {"store_id": store_id, "is_favorited": is_favorited}
+
+
+@router.get("/favorites/my-favorites", response_model=List[Store])
+def get_my_favorite_stores(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get user's favorite stores (requires authentication)
+    """
+    favorites = crud_favorite.get_user_favorites(
+        db,
+        user_id=current_user.id,
+        skip=skip,
+        limit=limit
+    )
+    
+    return favorites
+
+
+@router.get("/favorites/count", response_model=dict)
+def get_my_favorites_count(
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get count of user's favorite stores (requires authentication)
+    """
+    count = crud_favorite.get_favorite_count(db, user_id=current_user.id)
+    
+    return {"count": count}

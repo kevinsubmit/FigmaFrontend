@@ -17,19 +17,42 @@ def get_stores(
     skip: int = 0,
     limit: int = 100,
     city: Optional[str] = None,
-    search: Optional[str] = None
+    search: Optional[str] = None,
+    min_rating: Optional[float] = None,
+    sort_by: Optional[str] = None
 ) -> List[Store]:
-    """Get list of stores with optional filters"""
+    """Get list of stores with optional filters and sorting"""
     query = db.query(Store)
     
+    # Filter by city
     if city:
         query = query.filter(Store.city == city)
     
+    # Search in name and address
     if search:
         query = query.filter(
             (Store.name.contains(search)) |
             (Store.address.contains(search))
         )
+    
+    # Filter by minimum rating
+    if min_rating is not None:
+        query = query.filter(Store.rating >= min_rating)
+    
+    # Sort results
+    if sort_by == "rating_desc":
+        query = query.order_by(Store.rating.desc())
+    elif sort_by == "rating_asc":
+        query = query.order_by(Store.rating.asc())
+    elif sort_by == "name_asc":
+        query = query.order_by(Store.name.asc())
+    elif sort_by == "name_desc":
+        query = query.order_by(Store.name.desc())
+    elif sort_by == "review_count_desc":
+        query = query.order_by(Store.review_count.desc())
+    else:
+        # Default: sort by rating descending
+        query = query.order_by(Store.rating.desc())
     
     return query.offset(skip).limit(limit).all()
 

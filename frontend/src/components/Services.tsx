@@ -4,7 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader } from './ui/Loader';
 import { StoreDetails } from './StoreDetails';
-import { getStores, Store } from '../services/stores.service';
+import { getStores as getStoresAPI, Store, addStoreToFavorites, removeStoreFromFavorites, checkIfStoreFavorited } from '../api/stores';
+import { Search, SlidersHorizontal, Heart, X } from 'lucide-react';
 
 type SortOption = 'recommended' | 'distance' | 'reviews';
 
@@ -24,7 +25,10 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
   const [hasAppliedOffer, setHasAppliedOffer] = useState(!!initialSelectedStore);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('recommended');
+  const [minRating, setMinRating] = useState<number | undefined>(undefined);
+  const [favoriteStores, setFavoriteStores] = useState<Set<number>>(new Set());
   const [selectedStore, setSelectedStore] = useState<Store | null>(initialSelectedStore || null);
   const [stores, setStores] = useState<Store[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +38,11 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
     const fetchStores = async () => {
       try {
         setIsLoading(true);
-        const data = await getStores();
+        const data = await getStoresAPI({
+          search: searchQuery || undefined,
+          min_rating: minRating,
+          sort_by: getSortByParam()
+        });
         setStores(data);
         setError(null);
       } catch (err) {
@@ -46,7 +54,42 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
     };
 
     fetchStores();
-  }, []);
+  }, [searchQuery, minRating, sortBy]);
+  
+  // Convert sortBy to API parameter
+  const getSortByParam = () => {
+    switch (sortBy) {
+      case 'reviews': return 'rating_desc';
+      case 'distance': return undefined; // Not implemented yet
+      default: return 'rating_desc'; // Recommended
+    }
+  };
+  
+  // Toggle favorite
+  const toggleFavorite = async (storeId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert('Please login to add favorites');
+      return;
+    }
+    
+    try {
+      if (favoriteStores.has(storeId)) {
+        await removeStoreFromFavorites(storeId, token);
+        setFavoriteStores(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(storeId);
+          return newSet;
+        });
+      } else {
+        await addStoreToFavorites(storeId, token);
+        setFavoriteStores(prev => new Set(prev).add(storeId));
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+    }
+  };
 
   // Load store from URL parameter
   useEffect(() => {
@@ -188,14 +231,36 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
               <h1 className="text-2xl font-bold text-white tracking-tight">Select Salon</h1>
             </div>
             
-            {/* Sort Button */}
-            <button 
-              onClick={() => setIsSortOpen(true)}
-              className="w-full flex items-center justify-between bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-3 text-sm font-medium text-white hover:bg-[#333] transition-colors"
-            >
-              <span className="text-gray-400">Sort by: <span className="text-white ml-1">{getSortLabel()}</span></span>
-              <ChevronDown className="w-4 h-4 text-gray-400" />
-            </button>
+            {/* Search Bar */}
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search salons..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 rounded-lg bg-[#1a1a1a] border border-[#333] text-white placeholder-gray-400 focus:outline-none focus:border-[#D4AF37]/50"
+              />
+            </div>
+            
+            {/* Sort and Filter Buttons */}
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setIsSortOpen(true)}
+                className="flex-1 flex items-center justify-between bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-3 text-sm font-medium text-white hover:bg-[#333] transition-colors"
+              >
+                <span className="text-gray-400">Sort: <span className="text-white ml-1">{getSortLabel()}</span></span>
+                <ChevronDown className="w-4 h-4 text-gray-400" />
+              </button>
+              
+              <button 
+                onClick={() => setIsFilterOpen(true)}
+                className="flex items-center gap-2 bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-3 text-sm font-medium text-white hover:bg-[#333] transition-colors"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                {minRating && <span className="w-2 h-2 rounded-full bg-[#D4AF37]"></span>}
+              </button>
+            </div>
           </div>
 
           {/* Stores List */}
@@ -209,6 +274,18 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
                     alt={store.name} 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
+                  
+                  {/* Favorite Button */}
+                  <button
+                    onClick={(e) => toggleFavorite(store.id, e)}
+                    className="absolute top-3 left-3 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center hover:bg-black/80 transition-colors z-10"
+                  >
+                    <Heart 
+                      className={`w-5 h-5 ${favoriteStores.has(store.id) ? 'fill-[#D4AF37] text-[#D4AF37]' : 'text-white'}`}
+                    />
+                  </button>
+                  
+                  {/* Rating Badge */}
                   <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-white flex flex-col items-center min-w-[60px]">
                      <span className="text-lg font-bold leading-none">{store.rating?.toFixed(1) || 'N/A'}</span>
                      <span className="text-[10px] text-gray-300">{store.review_count || 0} reviews</span>
@@ -293,6 +370,84 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
                         </div>
                       </button>
                     ))}
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+          
+          {/* Filter Side Drawer */}
+          <AnimatePresence>
+            {isFilterOpen && (
+              <>
+                {/* Backdrop */}
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setIsFilterOpen(false)}
+                  className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm"
+                />
+                
+                {/* Sheet (Side Drawer) */}
+                <motion.div
+                  initial={{ x: '100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '100%' }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  className="fixed top-0 right-0 h-full w-[85%] max-w-sm bg-[#1a1a1a] rounded-l-3xl z-50 border-l border-[#333] pt-[env(safe-area-inset-top)] shadow-2xl flex flex-col"
+                >
+                  {/* Sheet Header */}
+                  <div className="flex justify-between items-center px-6 py-5 border-b border-[#333] mt-2">
+                    <h2 className="text-xl font-bold text-white">Filters</h2>
+                    <button 
+                      onClick={() => setIsFilterOpen(false)}
+                      className="text-[#D4AF37] font-semibold text-base"
+                    >
+                      Done
+                    </button>
+                  </div>
+
+                  {/* Filter Options */}
+                  <div className="px-6 py-4 flex-1 overflow-y-auto">
+                    {/* Minimum Rating */}
+                    <div className="mb-6">
+                      <label className="block text-white font-medium mb-3">Minimum Rating</label>
+                      <div className="space-y-2">
+                        {[undefined, 4.5, 4.0, 3.5, 3.0].map((rating) => (
+                          <button
+                            key={rating || 'all'}
+                            onClick={() => setMinRating(rating)}
+                            className="w-full flex items-center justify-between py-3 border-b border-[#333] last:border-0"
+                          >
+                            <span className={`text-base ${minRating === rating ? 'text-white font-medium' : 'text-gray-400'}`}>
+                              {rating ? `${rating}+ Stars` : 'All Ratings'}
+                            </span>
+                            
+                            {/* Radio Button */}
+                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
+                              minRating === rating 
+                                ? 'border-[#D4AF37] bg-transparent'
+                                : 'border-gray-600 bg-transparent'
+                            }`}>
+                              {minRating === rating && (
+                                <div className="w-2.5 h-2.5 rounded-full bg-[#D4AF37]" />
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* Clear Filters */}
+                    {minRating && (
+                      <button
+                        onClick={() => setMinRating(undefined)}
+                        className="w-full py-3 rounded-lg bg-white/5 border border-[#333] text-[#D4AF37] font-semibold hover:bg-white/10 transition-colors"
+                      >
+                        Clear All Filters
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               </>

@@ -8,7 +8,7 @@ import { Progress } from "./ui/progress";
 import { Settings as SettingsView } from './Settings';
 
 interface ProfileProps {
-  onNavigate?: (page: 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'notifications' | 'my-reviews', subPage?: 'referral') => void;
+  onNavigate?: (page: 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'notifications' | 'my-reviews' | 'my-favorites', subPage?: 'referral') => void;
   onPinClick?: (pinData: any) => void;
 }
 
@@ -499,6 +499,23 @@ export function Profile({ onNavigate, onPinClick }: ProfileProps) {
                 <div className="text-center relative z-10">
                     <p className="text-2xl font-black text-white leading-tight mb-0.5 group-hover:scale-110 transition-transform">3</p>
                     <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] group-hover:text-[#D4AF37] transition-colors">Reviews</p>
+                </div>
+             </motion.button>
+             
+             {/* Favorites */}
+             <motion.button 
+                whileHover={{ y: -4 }}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => onNavigate?.('my-favorites')} 
+                className="relative bg-[#1a1a1a] border border-[#333] hover:border-[#D4AF37]/50 rounded-2xl py-5 px-2 flex flex-col items-center gap-2 group transition-all overflow-hidden shadow-lg"
+             >
+                <div className="absolute inset-0 bg-gradient-to-b from-[#D4AF37]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="w-12 h-12 rounded-2xl bg-[#2a2a2a] flex items-center justify-center group-hover:bg-[#D4AF37] group-hover:rotate-12 transition-all duration-500 shadow-inner">
+                    <Heart className="w-6 h-6 text-[#D4AF37] group-hover:text-black transition-colors" />
+                </div>
+                <div className="text-center relative z-10">
+                    <p className="text-2xl font-black text-white leading-tight mb-0.5 group-hover:scale-110 transition-transform">0</p>
+                    <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] group-hover:text-[#D4AF37] transition-colors">Favorites</p>
                 </div>
              </motion.button>
         </div>

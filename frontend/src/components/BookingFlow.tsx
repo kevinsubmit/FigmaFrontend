@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, Clock, User, MapPin, DollarSign, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, Clock, User, MapPin, DollarSign, Check, Search, SlidersHorizontal, Heart } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { getStores, Store } from '../api/stores';
 import { getServicesByStore, Service } from '../api/services';
@@ -29,6 +29,13 @@ export function BookingFlow({ onBack, onComplete }: BookingFlowProps) {
   const [services, setServices] = useState<Service[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [minRating, setMinRating] = useState<number | undefined>(undefined);
+  const [sortBy, setSortBy] = useState<string>('rating_desc');
+  const [favoriteStores, setFavoriteStores] = useState<Set<number>>(new Set());
 
   // Load stores on mount
   useEffect(() => {
@@ -38,7 +45,11 @@ export function BookingFlow({ onBack, onComplete }: BookingFlowProps) {
   const loadStores = async () => {
     try {
       setLoading(true);
-      const data = await getStores();
+      const data = await getStores({
+        search: searchQuery || undefined,
+        min_rating: minRating,
+        sort_by: sortBy
+      });
       setStores(data);
     } catch (error) {
       console.error('Failed to load stores:', error);
@@ -47,6 +58,13 @@ export function BookingFlow({ onBack, onComplete }: BookingFlowProps) {
       setLoading(false);
     }
   };
+  
+  // Reload stores when search/filter changes
+  useEffect(() => {
+    if (currentStep === 'store') {
+      loadStores();
+    }
+  }, [searchQuery, minRating, sortBy]);
 
   const loadServices = async (storeId: number) => {
     try {
@@ -225,7 +243,81 @@ export function BookingFlow({ onBack, onComplete }: BookingFlowProps) {
           <>
             {/* Store Selection */}
             {currentStep === 'store' && (
-              <div className="space-y-3">
+              <div className="space-y-4">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search stores..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-400 focus:outline-none focus:border-[#D4AF37]/50"
+                  />
+                </div>
+                
+                {/* Filter Button */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-[#D4AF37]/50 transition-colors"
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                    <span className="text-sm">Filters</span>
+                  </button>
+                  
+                  {(minRating || sortBy !== 'rating_desc') && (
+                    <button
+                      onClick={() => {
+                        setMinRating(undefined);
+                        setSortBy('rating_desc');
+                      }}
+                      className="text-sm text-[#D4AF37] hover:underline"
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                </div>
+                
+                {/* Filter Panel */}
+                {showFilters && (
+                  <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-4">
+                    {/* Minimum Rating */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Minimum Rating</label>
+                      <select
+                        value={minRating || ''}
+                        onChange={(e) => setMinRating(e.target.value ? Number(e.target.value) : undefined)}
+                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-[#D4AF37]/50"
+                      >
+                        <option value="">All Ratings</option>
+                        <option value="4.5">4.5+ Stars</option>
+                        <option value="4.0">4.0+ Stars</option>
+                        <option value="3.5">3.5+ Stars</option>
+                        <option value="3.0">3.0+ Stars</option>
+                      </select>
+                    </div>
+                    
+                    {/* Sort By */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">Sort By</label>
+                      <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white focus:outline-none focus:border-[#D4AF37]/50"
+                      >
+                        <option value="rating_desc">Highest Rated</option>
+                        <option value="rating_asc">Lowest Rated</option>
+                        <option value="review_count_desc">Most Reviews</option>
+                        <option value="name_asc">Name (A-Z)</option>
+                        <option value="name_desc">Name (Z-A)</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Store List */}
+                <div className="space-y-3">
                 {stores.map((store) => (
                   <button
                     key={store.id}
@@ -293,7 +385,8 @@ export function BookingFlow({ onBack, onComplete }: BookingFlowProps) {
                       <ChevronRight className="w-5 h-5 text-gray-400" />
                     </div>
                   </button>
-                ))}
+                 ))}
+                </div>
               </div>
             )}
 
