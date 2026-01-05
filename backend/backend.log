@@ -52,3 +52,55 @@ WHERE appointment_reminders.status = %(status_1)s AND appointment_reminders.sche
 2026-01-04 19:49:30,789 INFO sqlalchemy.engine.Engine [generated in 0.00031s] {'status_1': 'pending', 'scheduled_time_1': datetime.datetime(2026, 1, 4, 19, 49, 30, 658462)}
 2026-01-04 19:49:30,797 INFO sqlalchemy.engine.Engine ROLLBACK
 INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/schemas/store.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [11001]
+INFO:     Started server process [11129]
+INFO:     Waiting for application startup.
+2026-01-04 19:51:49,469 INFO sqlalchemy.engine.Engine SELECT DATABASE()
+2026-01-04 19:51:49,469 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-01-04 19:51:49,476 INFO sqlalchemy.engine.Engine SELECT @@sql_mode
+2026-01-04 19:51:49,476 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-01-04 19:51:49,480 INFO sqlalchemy.engine.Engine SELECT @@lower_case_table_names
+2026-01-04 19:51:49,480 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-01-04 19:51:49,487 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-01-04 19:51:49,491 INFO sqlalchemy.engine.Engine SELECT appointment_reminders.id AS appointment_reminders_id, appointment_reminders.appointment_id AS appointment_reminders_appointment_id, appointment_reminders.user_id AS appointment_reminders_user_id, appointment_reminders.reminder_type AS appointment_reminders_reminder_type, appointment_reminders.status AS appointment_reminders_status, appointment_reminders.scheduled_time AS appointment_reminders_scheduled_time, appointment_reminders.sent_at AS appointment_reminders_sent_at, appointment_reminders.error_message AS appointment_reminders_error_message, appointment_reminders.created_at AS appointment_reminders_created_at, appointment_reminders.updated_at AS appointment_reminders_updated_at 
+FROM appointment_reminders 
+WHERE appointment_reminders.status = %(status_1)s AND appointment_reminders.scheduled_time <= %(scheduled_time_1)s
+2026-01-04 19:51:49,491 INFO sqlalchemy.engine.Engine [generated in 0.00025s] {'status_1': 'pending', 'scheduled_time_1': datetime.datetime(2026, 1, 4, 19, 51, 49, 393612)}
+2026-01-04 19:51:49,499 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'app/crud/store.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [11129]
+INFO:     Started server process [11143]
+INFO:     Waiting for application startup.
+2026-01-04 19:52:02,979 INFO sqlalchemy.engine.Engine SELECT DATABASE()
+2026-01-04 19:52:02,980 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-01-04 19:52:02,989 INFO sqlalchemy.engine.Engine SELECT @@sql_mode
+2026-01-04 19:52:02,989 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-01-04 19:52:02,995 INFO sqlalchemy.engine.Engine SELECT @@lower_case_table_names
+2026-01-04 19:52:02,995 INFO sqlalchemy.engine.Engine [raw sql] {}
+2026-01-04 19:52:03,005 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-01-04 19:52:03,008 INFO sqlalchemy.engine.Engine SELECT appointment_reminders.id AS appointment_reminders_id, appointment_reminders.appointment_id AS appointment_reminders_appointment_id, appointment_reminders.user_id AS appointment_reminders_user_id, appointment_reminders.reminder_type AS appointment_reminders_reminder_type, appointment_reminders.status AS appointment_reminders_status, appointment_reminders.scheduled_time AS appointment_reminders_scheduled_time, appointment_reminders.sent_at AS appointment_reminders_sent_at, appointment_reminders.error_message AS appointment_reminders_error_message, appointment_reminders.created_at AS appointment_reminders_created_at, appointment_reminders.updated_at AS appointment_reminders_updated_at 
+FROM appointment_reminders 
+WHERE appointment_reminders.status = %(status_1)s AND appointment_reminders.scheduled_time <= %(scheduled_time_1)s
+2026-01-04 19:52:03,008 INFO sqlalchemy.engine.Engine [generated in 0.00028s] {'status_1': 'pending', 'scheduled_time_1': datetime.datetime(2026, 1, 4, 19, 52, 2, 798003)}
+2026-01-04 19:52:03,016 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     Application startup complete.
+2026-01-04 19:53:02,592 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-01-04 19:53:02,594 INFO sqlalchemy.engine.Engine SELECT stores.id AS stores_id, stores.name AS stores_name, stores.address AS stores_address, stores.city AS stores_city, stores.state AS stores_state, stores.zip_code AS stores_zip_code, stores.latitude AS stores_latitude, stores.longitude AS stores_longitude, stores.phone AS stores_phone, stores.email AS stores_email, stores.rating AS stores_rating, stores.review_count AS stores_review_count, stores.description AS stores_description, stores.opening_hours AS stores_opening_hours, stores.created_at AS stores_created_at, stores.updated_at AS stores_updated_at 
+FROM stores
+2026-01-04 19:53:02,594 INFO sqlalchemy.engine.Engine [generated in 0.00021s] {}
+2026-01-04 19:53:02,602 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:54780 - "GET /api/v1/stores/?user_lat=40.7589&user_lng=-73.9851&limit=3 HTTP/1.1" 200 OK
+2026-01-04 19:53:07,656 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-01-04 19:53:07,657 INFO sqlalchemy.engine.Engine SELECT stores.id AS stores_id, stores.name AS stores_name, stores.address AS stores_address, stores.city AS stores_city, stores.state AS stores_state, stores.zip_code AS stores_zip_code, stores.latitude AS stores_latitude, stores.longitude AS stores_longitude, stores.phone AS stores_phone, stores.email AS stores_email, stores.rating AS stores_rating, stores.review_count AS stores_review_count, stores.description AS stores_description, stores.opening_hours AS stores_opening_hours, stores.created_at AS stores_created_at, stores.updated_at AS stores_updated_at 
+FROM stores
+2026-01-04 19:53:07,657 INFO sqlalchemy.engine.Engine [cached since 5.063s ago] {}
+2026-01-04 19:53:07,664 INFO sqlalchemy.engine.Engine ROLLBACK
+INFO:     127.0.0.1:40232 - "GET /api/v1/stores/?user_lat=40.7589&user_lng=-73.9851&sort_by=distance&limit=3 HTTP/1.1" 200 OK

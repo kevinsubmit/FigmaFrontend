@@ -32,31 +32,57 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
   const [selectedStore, setSelectedStore] = useState<Store | null>(initialSelectedStore || null);
   const [stores, setStores] = useState<Store[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(() => {
+    // Load cached location from localStorage
+    const cached = localStorage.getItem('userLocation');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        // Check if cache is less than 1 hour old
+        if (Date.now() - parsed.timestamp < 3600000) {
+          return { lat: parsed.lat, lng: parsed.lng };
+        }
+      } catch (e) {
+        console.error('Failed to parse cached location:', e);
+      }
+    }
+    return null;
+  });
 
   // Get user location
   useEffect(() => {
-    if (sortBy === 'distance' && !userLocation) {
+    // Always try to get location if we don't have it cached
+    if (!userLocation) {
       if ('geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
-            setUserLocation({
+            const location = {
               lat: position.coords.latitude,
               lng: position.coords.longitude
-            });
+            };
+            setUserLocation(location);
+            // Cache location with timestamp
+            localStorage.setItem('userLocation', JSON.stringify({
+              ...location,
+              timestamp: Date.now()
+            }));
           },
           (error) => {
             console.error('Failed to get user location:', error);
-            // Fallback to recommended if location is denied
-            setSortBy('recommended');
+            // Only fallback if user is trying to sort by distance
+            if (sortBy === 'distance') {
+              setSortBy('recommended');
+            }
           }
         );
       } else {
         console.error('Geolocation is not supported');
-        setSortBy('recommended');
+        if (sortBy === 'distance') {
+          setSortBy('recommended');
+        }
       }
     }
-  }, [sortBy, userLocation]);
+  }, [userLocation, sortBy]);
 
   // Fetch stores from API
   useEffect(() => {
@@ -67,8 +93,9 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
           search: searchQuery || undefined,
           min_rating: minRating,
           sort_by: getSortByParam(),
-          user_lat: sortBy === 'distance' && userLocation ? userLocation.lat : undefined,
-          user_lng: sortBy === 'distance' && userLocation ? userLocation.lng : undefined
+          // Always pass user location if available to get distance info
+          user_lat: userLocation ? userLocation.lat : undefined,
+          user_lng: userLocation ? userLocation.lng : undefined
         });
         setStores(data);
         setError(null);
@@ -335,6 +362,12 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
                         <span>{store.city}, {store.state}</span>
                         <span className="mx-1.5">·</span>
                         <span className="truncate">{store.address}</span>
+                        {store.distance !== undefined && store.distance !== null && (
+                          <>
+                            <span className="mx-1.5">·</span>
+                            <span className="text-[#D4AF37]">{store.distance} mi</span>
+                          </>
+                        )}
                     </div>
                 </div>
               </div>

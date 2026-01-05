@@ -44,17 +44,13 @@ def get_stores(
     if min_rating is not None:
         query = query.filter(Store.rating >= min_rating)
     
-    # Sort results
-    if sort_by == "top_rated":
-        # Sort by rating (highest first), then by review count
-        query = query.order_by(Store.rating.desc(), Store.review_count.desc())
-    elif sort_by == "distance" and user_lat is not None and user_lng is not None:
-        # Calculate distance using Haversine formula
-        # Note: This is a simplified version. For production, consider using PostGIS
+    # Calculate distance for all stores if user location is provided
+    stores_with_distance = None
+    if user_lat is not None and user_lng is not None:
         lat1 = radians(user_lat)
         lng1 = radians(user_lng)
         
-        # Get all stores first (since we need to calculate distance in Python)
+        # Get all stores first
         stores = query.all()
         
         # Calculate distance for each store
@@ -71,26 +67,43 @@ def get_stores(
                 c = 2 * asin(sqrt(a))
                 distance = 3959 * c  # Radius of earth in miles
                 
+                # Attach distance to store object
+                store.distance = round(distance, 1)
                 stores_with_distance.append((store, distance))
             else:
                 # If store doesn't have coordinates, put it at the end
+                store.distance = None
                 stores_with_distance.append((store, float('inf')))
-        
+    
+    # Sort results
+    if sort_by == "top_rated":
+        if stores_with_distance:
+            # Sort by rating, then by review count
+            stores_with_distance.sort(key=lambda x: (-x[0].rating, -x[0].review_count))
+            sorted_stores = [s[0] for s in stores_with_distance]
+            return sorted_stores[skip:skip+limit]
+        else:
+            query = query.order_by(Store.rating.desc(), Store.review_count.desc())
+            return query.offset(skip).limit(limit).all()
+    elif sort_by == "distance" and stores_with_distance:
         # Sort by distance
         stores_with_distance.sort(key=lambda x: x[1])
-        
-        # Extract stores and apply pagination
         sorted_stores = [s[0] for s in stores_with_distance]
         return sorted_stores[skip:skip+limit]
     else:
         # Default: "recommended" - Sort by a combination of rating and review count
-        # Formula: (rating * 0.7) + (normalized_review_count * 0.3)
-        # This gives more weight to rating but also considers popularity
-        query = query.order_by(
-            (Store.rating * 0.7 + func.least(Store.review_count / 100.0, 1.0) * 0.3).desc()
-        )
-    
-    return query.offset(skip).limit(limit).all()
+        if stores_with_distance:
+            # Sort by recommendation score
+            stores_with_distance.sort(
+                key=lambda x: -(x[0].rating * 0.7 + min(x[0].review_count / 100.0, 1.0) * 0.3)
+            )
+            sorted_stores = [s[0] for s in stores_with_distance]
+            return sorted_stores[skip:skip+limit]
+        else:
+            query = query.order_by(
+                (Store.rating * 0.7 + func.least(Store.review_count / 100.0, 1.0) * 0.3).desc()
+            )
+            return query.offset(skip).limit(limit).all()
 
 
 def create_store(db: Session, store: StoreCreate) -> Store:

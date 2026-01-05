@@ -9,6 +9,7 @@ export interface Store {
   image_url: string | null;
   rating: number | null;
   created_at: string;
+  distance?: number | null;  // Distance in miles
 }
 
 export interface StoreHours {

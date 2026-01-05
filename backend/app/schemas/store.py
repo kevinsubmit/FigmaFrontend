@@ -70,6 +70,7 @@ class Store(StoreBase):
     review_count: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    distance: Optional[float] = None  # Distance in miles (calculated when user location is provided)
 
     class Config:
         from_attributes = True
