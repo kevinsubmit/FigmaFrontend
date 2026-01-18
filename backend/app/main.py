@@ -8,8 +8,8 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.api.v1.api import api_router
 from app.services.scheduler import reminder_scheduler
-import os
 import logging
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -53,10 +53,9 @@ app.add_middleware(
 app.include_router(api_router, prefix="/api/v1")
 
 # Mount static files directory for uploads
-UPLOAD_DIR = "/home/ubuntu/FigmaFrontend/backend/uploads"
-if not os.path.exists(UPLOAD_DIR):
-    os.makedirs(UPLOAD_DIR)
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+upload_dir = Path(settings.UPLOAD_DIR)
+upload_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(upload_dir)), name="uploads")
 
 
 @app.get("/")

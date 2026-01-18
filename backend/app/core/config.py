@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     # File Upload
     MAX_UPLOAD_SIZE: int = 10485760  # 10MB
     ALLOWED_IMAGE_EXTENSIONS: str = "jpg,jpeg,png,gif,webp"
+    UPLOAD_DIR: str = "./uploads"
     
     @property
     def allowed_extensions_list(self) -> List[str]:

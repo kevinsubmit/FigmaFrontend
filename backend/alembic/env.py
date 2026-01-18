@@ -28,28 +28,36 @@ database_url = settings.DATABASE_URL
 if database_url.startswith("mysql://"):
     database_url = database_url.replace("mysql://", "mysql+pymysql://", 1)
 
-# Remove problematic SSL parameter and add proper SSL parameters
 parsed = urlparse(database_url)
 query_params = parse_qs(parsed.query)
-# Remove the ssl parameter with JSON value
-if 'ssl' in query_params:
-    del query_params['ssl']
-# Add proper SSL parameters for TiDB
-query_params['ssl_verify_cert'] = ['true']
-query_params['ssl_verify_identity'] = ['true']
 
-# Rebuild URL
-new_query = urlencode(query_params, doseq=True)
-database_url = urlunparse((
-    parsed.scheme,
-    parsed.netloc,
-    parsed.path,
-    parsed.params,
-    new_query,
-    parsed.fragment
-))
+# For sqlite, keep URL as-is to preserve triple slashes
+if parsed.scheme == "sqlite":
+    config.set_main_option("sqlalchemy.url", database_url)
+else:
+    # Remove the ssl parameter with JSON value (if present)
+    if "ssl" in query_params:
+        del query_params["ssl"]
 
-config.set_main_option("sqlalchemy.url", database_url)
+    # Only add SSL params for TiDB Cloud URLs
+    if "tidbcloud.com" in parsed.netloc:
+        query_params["ssl_verify_cert"] = ["true"]
+        query_params["ssl_verify_identity"] = ["true"]
+
+    # Rebuild URL
+    new_query = urlencode(query_params, doseq=True)
+    database_url = urlunparse(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path,
+            parsed.params,
+            new_query,
+            parsed.fragment,
+        )
+    )
+
+    config.set_main_option("sqlalchemy.url", database_url)
 
 # add your model's MetaData object here
 # for 'autogenerate' support

@@ -1,0 +1,10 @@
+backend/.env
+backend/uploads/
+backend/*.log
+backend/venv311/
+backend/.venv/
+backend/nailsdash.db
+**/__pycache__/
+**/*.pyc
+**/.DS_Store
+node_modules/

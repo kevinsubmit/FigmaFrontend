@@ -7,17 +7,19 @@ from typing import List
 import os
 import uuid
 from datetime import datetime
+from pathlib import Path
 
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
 from app.crud import store_portfolio as crud_portfolio
 from app.schemas.store_portfolio import StorePortfolio, StorePortfolioCreate, StorePortfolioUpdate
+from app.core.config import settings
 
 router = APIRouter()
 
 # Upload directory
-UPLOAD_DIR = "/home/ubuntu/FigmaFrontend/backend/uploads/portfolio"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOAD_DIR = Path(settings.UPLOAD_DIR) / "portfolio"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @router.get("/{store_id}", response_model=List[StorePortfolio])
@@ -74,7 +76,7 @@ async def upload_portfolio_image(
     
     # Generate unique filename
     unique_filename = f"{uuid.uuid4()}{file_ext}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+    file_path = UPLOAD_DIR / unique_filename
     
     # Save file
     try:
@@ -147,10 +149,10 @@ def delete_portfolio_item(
     
     # Delete file from filesystem
     if portfolio_item.image_url.startswith('/uploads/'):
-        file_path = f"/home/ubuntu/FigmaFrontend/backend{portfolio_item.image_url}"
-        if os.path.exists(file_path):
+        file_path = Path(settings.UPLOAD_DIR) / portfolio_item.image_url.lstrip("/")
+        if file_path.exists():
             try:
-                os.remove(file_path)
+                file_path.unlink()
             except Exception as e:
                 # Log error but don't fail the request
                 print(f"Failed to delete file {file_path}: {e}")

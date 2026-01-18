@@ -58,6 +58,18 @@ Nailsdashh5/
 
 ## 快速开始
 
+### 一键启动（Docker Compose，推荐）
+
+```bash
+docker compose up --build
+```
+
+访问：
+- 前端：http://localhost:5173
+- 后端文档：http://localhost:8000/api/docs
+
+更多说明：`docs/quickstart.md`
+
 ### 前端开发
 
 ```bash
@@ -73,7 +85,8 @@ npm run dev
 ```bash
 cd backend
 pip install -r requirements.txt
-python init_db.py
+cp .env.example .env
+alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
@@ -197,6 +210,11 @@ python test_api.py
 详细测试报告：`backend/TEST_REPORT.md`
 
 ## API文档
+
+## 文档索引
+
+- 快速启动：`docs/quickstart.md`
+- 常见问题：`docs/FAQ.md`
 
 - [店铺管理模块API文档](docs/Store_Management_API.md)
 - [服务项目管理模块API文档](docs/Service_Management_API.md)
@@ -430,4 +448,3 @@ python3 test_store_hours.py
 - `DELETE /api/v1/notifications/{id}` - 删除通知
 
 详细文档：[预约通知系统 API 文档](docs/Notification_System.md)
-

@@ -3,20 +3,20 @@ Upload endpoints
 """
 from fastapi import APIRouter, UploadFile, File, HTTPException, status, Depends
 from typing import List
-import os
 import uuid
 from pathlib import Path
 import logging
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.utils.image_compression import compress_image
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 # 配置上传目录
-UPLOAD_DIR = Path("/home/ubuntu/FigmaFrontend/backend/uploads")
+UPLOAD_DIR = Path(settings.UPLOAD_DIR)
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # 允许的图片格式

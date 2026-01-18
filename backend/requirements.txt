@@ -20,9 +20,6 @@ pydantic==2.9.2
 pydantic-settings==2.6.0
 email-validator==2.2.0
 
-# CORS and Middleware
-python-cors==1.0.0
-
 # Environment Variables
 python-dotenv==1.0.1
 

@@ -1,4 +1,4 @@
-import { Share, Plus, MoreHorizontal, Crown, Coins, Ticket, Receipt, UserCog, Settings, TrendingUp, Camera, Gift, Users, Pencil, Check, X, AlertCircle, Sparkles, ChevronRight, Bell, Star } from 'lucide-react';
+import { Share, Plus, MoreHorizontal, Crown, Coins, Ticket, Receipt, UserCog, Settings, TrendingUp, Camera, Gift, Users, Pencil, Check, X, AlertCircle, Sparkles, ChevronRight, Bell, Star, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Masonry from 'react-responsive-masonry';
 import { useState, useEffect } from 'react';

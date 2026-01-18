@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: nailsdash-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: nailsdash
+      MYSQL_USER: nailsdash
+      MYSQL_PASSWORD: nailsdash
+      MYSQL_ROOT_PASSWORD: nailsdashroot
+    ports:
+      - "3306:3306"
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - db_data:/var/lib/mysql
+
+  backend:
+    build:
+      context: ./backend
+    container_name: nailsdash-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env.example
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    volumes:
+      - ./backend:/app
+      - backend_uploads:/app/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: nailsdash-frontend
+    restart: unless-stopped
+    env_file:
+      - ./frontend/.env.example
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+
+volumes:
+  db_data:
+  backend_uploads:

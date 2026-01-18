@@ -4,6 +4,18 @@
 
 ---
 
+## ✅ 15分钟启动（推荐：Docker Compose）
+
+```bash
+docker compose up --build
+```
+
+访问：
+- 前端：http://localhost:5173
+- 后端文档：http://localhost:8000/api/docs
+
+---
+
 ## 📋 前置要求
 
 在开始之前，请确保您的电脑已安装以下软件：

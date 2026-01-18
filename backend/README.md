@@ -44,6 +44,14 @@ NailsDashBackend/
 
 ## 快速开始
 
+### Docker Compose（推荐）
+
+```bash
+docker compose up --build
+```
+
+Swagger UI: http://localhost:8000/api/docs
+
 ### 1. 环境要求
 
 - Python 3.9+
@@ -79,12 +87,11 @@ nano .env
 ### 4. 初始化数据库
 
 ```bash
-# 创建数据库迁移
-alembic revision --autogenerate -m "Initial migration"
-
 # 执行迁移
 alembic upgrade head
 ```
+
+可选：快速体验可使用 `python init_db.py` 直接建表（不推荐替代迁移）。
 
 ### 5. 运行开发服务器
 

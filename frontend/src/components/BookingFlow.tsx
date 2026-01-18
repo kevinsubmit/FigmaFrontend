@@ -318,34 +318,35 @@ export function BookingFlow({ onBack, onComplete }: BookingFlowProps) {
                 
                 {/* Store List */}
                 <div className="space-y-3">
-                {stores.map((store) => (
-                  <button
-                    key={store.id}
-                    onClick={() => handleStoreSelect(store)}
-                    className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#D4AF37]/50 transition-all text-left"
-                  >
-                    <div className="flex items-start gap-4">
-                      {store.image_url && (
-                        <img
-                          src={store.image_url}
-                          alt={store.name}
-                          className="w-20 h-20 rounded-xl object-cover"
-                        />
-                      )}
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-white mb-1">{store.name}</h3>
-                        <p className="text-sm text-gray-400 flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          {store.address}
-                        </p>
-                        {store.rating && (
-                          <p className="text-sm text-[#D4AF37] mt-1">★ {store.rating.toFixed(1)}</p>
+                  {stores.map((store) => (
+                    <button
+                      key={store.id}
+                      onClick={() => handleStoreSelect(store)}
+                      className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-[#D4AF37]/50 transition-all text-left"
+                    >
+                      <div className="flex items-start gap-4">
+                        {store.image_url && (
+                          <img
+                            src={store.image_url}
+                            alt={store.name}
+                            className="w-20 h-20 rounded-xl object-cover"
+                          />
                         )}
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-white mb-1">{store.name}</h3>
+                          <p className="text-sm text-gray-400 flex items-center gap-1">
+                            <MapPin className="w-4 h-4" />
+                            {store.address}
+                          </p>
+                          {store.rating && (
+                            <p className="text-sm text-[#D4AF37] mt-1">★ {store.rating.toFixed(1)}</p>
+                          )}
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
                       </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -385,8 +386,7 @@ export function BookingFlow({ onBack, onComplete }: BookingFlowProps) {
                       <ChevronRight className="w-5 h-5 text-gray-400" />
                     </div>
                   </button>
-                 ))}
-                </div>
+                ))}
               </div>
             )}
 

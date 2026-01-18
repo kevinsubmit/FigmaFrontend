@@ -3,8 +3,8 @@
  * Handles all HTTP requests to the backend API
  */
 
-// Force localhost to avoid CORS issues with 127.0.0.1
-const API_BASE_URL = 'http://localhost:8000';
+// API base URL from Vite env
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;

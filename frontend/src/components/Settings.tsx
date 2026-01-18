@@ -277,7 +277,7 @@ export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
               {[
                 { name: 'English', native: 'English' },
                 { name: 'Spanish', native: 'Español' },
-                { name: 'Chinese', native: '简体中文' },
+                { name: 'Chinese', native: 'Simplified Chinese' },
                 { name: 'Korean', native: '한국어' },
                 { name: 'French', native: 'Français' },
                 { name: 'Vietnamese', native: 'Tiếng Việt' }
