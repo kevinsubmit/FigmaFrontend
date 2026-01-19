@@ -364,7 +364,6 @@ Authorization: Bearer {token}
   "appointment_date": "2026-01-10",
   "appointment_time": "14:00:00",
   "status": "pending",
-  "total_price": 25.00,
   "notes": "Please use gentle products",
   "created_at": "2026-01-05T10:00:00"
 }
@@ -373,14 +372,31 @@ Authorization: Bearer {token}
 #### 5.2 获取我的预约列表
 
 ```
-GET /api/v1/appointments/my-appointments
+GET /api/v1/appointments/
 Authorization: Bearer {token}
 ```
 
 **查询参数**：
-- `status`: 状态筛选（pending/confirmed/completed/cancelled）
 - `skip`: 跳过的记录数（默认0）
 - `limit`: 返回的记录数（默认100）
+
+**响应（包含店铺与服务摘要）**：
+```json
+[
+  {
+    "id": 1,
+    "store_id": 1,
+    "service_id": 1,
+    "appointment_date": "2026-01-10",
+    "appointment_time": "14:00:00",
+    "status": "pending",
+    "store_name": "Gilded Tips Studio",
+    "service_name": "Luxury Pedicure",
+    "service_price": 70.0,
+    "service_duration": 70
+  }
+]
+```
 
 #### 5.3 获取预约详情
 
@@ -389,17 +405,18 @@ GET /api/v1/appointments/{appointment_id}
 Authorization: Bearer {token}
 ```
 
-#### 5.4 更新预约状态
+#### 5.4 改期预约
 
 ```
-PATCH /api/v1/appointments/{appointment_id}/status
+POST /api/v1/appointments/{appointment_id}/reschedule
 Authorization: Bearer {token}
 ```
 
 **请求体**：
 ```json
 {
-  "status": "confirmed"
+  "new_date": "2026-01-12",
+  "new_time": "15:30:00"
 }
 ```
 
@@ -413,8 +430,29 @@ Authorization: Bearer {token}
 **请求体**：
 ```json
 {
-  "reason": "Schedule conflict"
+  "cancel_reason": "Schedule conflict"
 }
+```
+
+#### 5.6 更新预约备注
+
+```
+PATCH /api/v1/appointments/{appointment_id}/notes
+Authorization: Bearer {token}
+```
+
+**请求体**：
+```json
+{
+  "notes": "Please use gentle products"
+}
+```
+
+#### 5.7 确认预约（门店管理员）
+
+```
+PATCH /api/v1/appointments/{appointment_id}/confirm
+Authorization: Bearer {admin_token}
 ```
 
 ### 6. 积分模块 (Points)
@@ -790,7 +828,7 @@ Authorization: Bearer {admin_token}
 #### 14.1 获取店铺技师列表
 
 ```
-GET /api/v1/technicians/store/{store_id}
+GET /api/v1/technicians?store_id={store_id}
 ```
 
 **响应**：
@@ -800,9 +838,8 @@ GET /api/v1/technicians/store/{store_id}
     "id": 1,
     "store_id": 1,
     "name": "Alice Smith",
-    "specialty": "Manicure, Pedicure",
+    "specialties": "Manicure, Pedicure",
     "rating": 4.8,
-    "is_active": true,
     "created_at": "2026-01-01T00:00:00"
   }
 ]
@@ -812,6 +849,23 @@ GET /api/v1/technicians/store/{store_id}
 
 ```
 GET /api/v1/technicians/{technician_id}
+```
+
+#### 14.3 获取技师可用时段
+
+```
+GET /api/v1/technicians/{technician_id}/available-slots?date=YYYY-MM-DD&service_id=1
+```
+
+**响应**：
+```json
+[
+  {
+    "start_time": "10:00",
+    "end_time": "11:10",
+    "duration_minutes": 70
+  }
+]
 ```
 
 #### 14.3 创建技师
@@ -831,7 +885,21 @@ Authorization: Bearer {admin_token}
 }
 ```
 
-### 15. 文件上传模块 (Upload)
+### 15. Pin内容模块 (Pins)
+
+#### 15.1 获取Pin列表
+
+```
+GET /api/v1/pins?skip=0&limit=20&tag=French&search=gold
+```
+
+#### 15.2 获取Pin详情
+
+```
+GET /api/v1/pins/{pin_id}
+```
+
+### 16. 文件上传模块 (Upload)
 
 #### 15.1 上传文件
 
