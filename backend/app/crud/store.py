@@ -100,8 +100,12 @@ def get_stores(
             sorted_stores = [s[0] for s in stores_with_distance]
             return sorted_stores[skip:skip+limit]
         else:
+            review_score = case(
+                (Store.review_count / 100.0 > 1.0, 1.0),
+                else_=Store.review_count / 100.0
+            )
             query = query.order_by(
-                (Store.rating * 0.7 + func.least(Store.review_count / 100.0, 1.0) * 0.3).desc()
+                (Store.rating * 0.7 + review_score * 0.3).desc()
             )
             return query.offset(skip).limit(limit).all()
 

@@ -170,6 +170,45 @@ def notify_appointment_completed(db: Session, appointment: Appointment):
     )
 
 
+def notify_appointment_rescheduled(db: Session, appointment: Appointment):
+    """
+    Notify store admin when a customer reschedules an appointment
+    """
+    db.refresh(appointment)
+
+    store_admin = db.query(User).filter(
+        User.store_id == appointment.store_id,
+        User.is_active == True
+    ).first()
+
+    if not store_admin:
+        return
+
+    from app.models.service import Service
+    from app.models.user import User as UserModel
+
+    service = db.query(Service).filter(Service.id == appointment.service_id).first()
+    customer = db.query(UserModel).filter(UserModel.id == appointment.user_id).first()
+
+    service_name = service.name if service else "Unknown Service"
+    customer_name = customer.username if customer else "Unknown Customer"
+
+    title = "Appointment Rescheduled"
+    message = (
+        f"{customer_name} rescheduled {service_name} to "
+        f"{appointment.appointment_date} at {appointment.appointment_time.strftime('%H:%M')}."
+    )
+
+    create_notification(
+        db=db,
+        user_id=store_admin.id,
+        notification_type=NotificationType.APPOINTMENT_CREATED,
+        title=title,
+        message=message,
+        appointment_id=appointment.id
+    )
+
+
 def notify_appointment_reminder_24h(db: Session, appointment: Appointment):
     """
     Send 24-hour reminder notification for upcoming appointment

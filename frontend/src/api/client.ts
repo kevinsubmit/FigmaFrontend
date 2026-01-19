@@ -124,6 +124,21 @@ class APIClient {
   }
 
   /**
+   * PATCH request
+   */
+  async patch<T>(
+    endpoint: string,
+    data?: any,
+    requiresAuth = false
+  ): Promise<T> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+      requiresAuth,
+    });
+  }
+
+  /**
    * DELETE request
    */
   async delete<T>(endpoint: string, requiresAuth = false): Promise<T> {

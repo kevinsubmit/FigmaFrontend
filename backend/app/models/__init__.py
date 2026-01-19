@@ -14,5 +14,6 @@ from app.models.review import Review
 from app.models.review_reply import ReviewReply
 from app.models.appointment_reminder import AppointmentReminder, ReminderType, ReminderStatus
 from app.models.store_favorite import StoreFavorite
+from app.models.pin import Pin, Tag, pin_tags
 
-__all__ = ["User", "VerificationCode", "Store", "StoreImage", "Service", "Appointment", "AppointmentStatus", "Technician", "StoreHours", "TechnicianUnavailable", "Notification", "NotificationType", "Review", "ReviewReply", "AppointmentReminder", "ReminderType", "ReminderStatus", "StoreFavorite"]
+__all__ = ["User", "VerificationCode", "Store", "StoreImage", "Service", "Appointment", "AppointmentStatus", "Technician", "StoreHours", "TechnicianUnavailable", "Notification", "NotificationType", "Review", "ReviewReply", "AppointmentReminder", "ReminderType", "ReminderStatus", "StoreFavorite", "Pin", "Tag", "pin_tags"]

@@ -14,6 +14,11 @@ export interface Appointment {
   notes: string | null;
   created_at: string;
   updated_at: string | null;
+  store_name?: string | null;
+  service_name?: string | null;
+  service_price?: number | null;
+  service_duration?: number | null;
+  technician_name?: string | null;
 }
 
 export interface AppointmentCreate {
@@ -29,14 +34,14 @@ export interface AppointmentCreate {
  * 创建预约
  */
 export const createAppointment = async (data: AppointmentCreate): Promise<Appointment> => {
-  return apiClient.post('/api/v1/appointments', data, true);
+  return apiClient.post('/api/v1/appointments/', data, true);
 };
 
 /**
  * 获取当前用户的预约列表
  */
 export const getMyAppointments = async (): Promise<Appointment[]> => {
-  return apiClient.get('/api/v1/appointments', true);
+  return apiClient.get('/api/v1/appointments/', true);
 };
 
 /**

@@ -15,7 +15,6 @@ import { MyGiftCards } from './components/MyGiftCards';
 import { Deals } from './components/Deals';
 import { VipDescription } from './components/VipDescription';
 import { Notifications } from './components/Notifications';
-import { BookingFlow } from './components/BookingFlow';
 import { Login } from './components/Login';
 import { Register } from './components/Register';
 import { MyReviews } from './components/MyReviews';
@@ -28,7 +27,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { toast } from 'react-toastify';
 import { Sparkles } from 'lucide-react';
 
-export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 'notifications' | 'booking' | 'pin-detail' | 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'login' | 'register' | 'my-reviews' | 'my-favorites' | 'change-password' | 'phone-management' | 'referral';
+export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 'notifications' | 'pin-detail' | 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'login' | 'register' | 'my-reviews' | 'my-favorites' | 'change-password' | 'phone-management' | 'referral';
 
 // Main App Router Component
 function AppRouter() {
@@ -66,7 +65,6 @@ function AppRouter() {
     if (path === '/settings') return 'settings';
     if (path === '/vip-description') return 'vip-description';
     if (path === '/notifications') return 'notifications';
-    if (path === '/booking') return 'booking';
     if (path === '/login') return 'login';
     if (path === '/register') return 'register';
     if (path === '/my-reviews') return 'my-reviews';
@@ -78,7 +76,7 @@ function AppRouter() {
 
   const currentPage = getCurrentPage();
   // Hide bottom nav for full-screen pages and when viewing store details in services page
-  const isFullScreenPage = currentPage === 'pin-detail' || currentPage === 'edit-profile' || currentPage === 'order-history' || currentPage === 'my-points' || currentPage === 'my-coupons' || currentPage === 'my-gift-cards' || currentPage === 'settings' || currentPage === 'vip-description' || currentPage === 'notifications' || currentPage === 'booking' || currentPage === 'login' || currentPage === 'register' || currentPage === 'my-reviews' || currentPage === 'my-favorites' || currentPage === 'change-password' || currentPage === 'phone-management' || (currentPage === 'services' && isViewingStoreDetails);
+  const isFullScreenPage = currentPage === 'pin-detail' || currentPage === 'edit-profile' || currentPage === 'order-history' || currentPage === 'my-points' || currentPage === 'my-coupons' || currentPage === 'my-gift-cards' || currentPage === 'settings' || currentPage === 'vip-description' || currentPage === 'notifications' || currentPage === 'login' || currentPage === 'register' || currentPage === 'my-reviews' || currentPage === 'my-favorites' || currentPage === 'change-password' || currentPage === 'phone-management' || (currentPage === 'services' && isViewingStoreDetails);
 
   const handleNavigate = (page: 'home' | 'services' | 'appointments' | 'profile' | 'deals') => {
     console.log('handleNavigate called with page:', page);
@@ -101,8 +99,13 @@ function AppRouter() {
   const handlePinClick = (pinData: any) => {
     // Save scroll position
     scrollPositions.current[currentPage] = window.scrollY;
-    
-    setSelectedPin(pinData);
+
+    const normalizedPin = {
+      ...pinData,
+      image_url: pinData?.image_url || pinData?.url,
+    };
+
+    setSelectedPin(normalizedPin);
     navigate('/pin-detail');
   };
 
@@ -232,7 +235,8 @@ function AppRouter() {
           <PinDetail 
               onBack={() => navigate('/')} 
               onBookNow={() => {
-                navigate('/services');
+                const pinId = selectedPin?.id;
+                navigate(pinId ? `/services?pin_id=${pinId}` : '/services');
                 toast.info("Style reference added to your booking!", {
                   icon: <Sparkles className="w-4 h-4 text-[#D4AF37]" />,
                   style: { background: '#1a1a1a', border: '1px solid #D4AF3733', color: '#fff' }
@@ -303,16 +307,6 @@ function AppRouter() {
           </ProtectedRoute>
         } />
 
-        <Route path="/booking" element={
-          <ProtectedRoute>
-            <BookingFlow 
-              onBack={() => navigate(-1)}
-              onComplete={() => {
-                navigate('/appointments');
-              }}
-            />
-          </ProtectedRoute>
-        } />
 
         <Route path="/my-reviews" element={
           <ProtectedRoute>

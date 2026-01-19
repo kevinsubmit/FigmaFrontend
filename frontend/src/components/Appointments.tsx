@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, MapPin, User, DollarSign, ChevronRight, X, AlertCircle, Star } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { getMyAppointments, cancelAppointment, Appointment } from '../api/appointments';
-import { getStoreById, Store } from '../api/stores';
-import { getServiceById, Service } from '../api/services';
-import { getTechnicianById, Technician } from '../api/technicians';
+import { Store } from '../api/stores';
+import { Service } from '../api/services';
+import { Technician } from '../api/technicians';
 import ReviewForm from './ReviewForm';
 import { AppointmentDetailsDialog } from './AppointmentDetailsDialog';
 
@@ -13,6 +13,11 @@ interface AppointmentWithDetails extends Appointment {
   store?: Store;
   service?: Service;
   technician?: Technician | null;
+  store_name?: string | null;
+  service_name?: string | null;
+  service_price?: number | null;
+  service_duration?: number | null;
+  technician_name?: string | null;
 }
 
 export function Appointments() {
@@ -35,31 +40,7 @@ export function Appointments() {
     try {
       setLoading(true);
       const data = await getMyAppointments();
-      
-      // Load details for each appointment
-      const appointmentsWithDetails = await Promise.all(
-        data.map(async (apt) => {
-          try {
-            const [store, service, technician] = await Promise.all([
-              getStoreById(apt.store_id),
-              getServiceById(apt.service_id),
-              apt.technician_id ? getTechnicianById(apt.technician_id).catch(() => null) : Promise.resolve(null)
-            ]);
-            
-            return {
-              ...apt,
-              store,
-              service,
-              technician
-            };
-          } catch (error) {
-            console.error('Failed to load appointment details:', error);
-            return apt;
-          }
-        })
-      );
-      
-      setAppointments(appointmentsWithDetails);
+      setAppointments(data);
     } catch (error) {
       console.error('Failed to load appointments:', error);
       toast.error('Failed to load appointments');
@@ -96,12 +77,17 @@ export function Appointments() {
         return 'text-blue-500 bg-blue-500/10';
       case 'cancelled':
         return 'text-red-500 bg-red-500/10';
+      case 'expired':
+        return 'text-gray-400 bg-white/5';
       default:
         return 'text-gray-500 bg-gray-500/10';
     }
   };
 
   const getStatusText = (status: string) => {
+    if (status === 'expired') {
+      return 'Expired';
+    }
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
@@ -125,9 +111,12 @@ export function Appointments() {
   };
 
   const isUpcoming = (apt: Appointment) => {
-    const aptDate = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
-    const now = new Date();
-    return aptDate >= now && apt.status !== 'cancelled' && apt.status !== 'completed';
+    if (apt.status === 'cancelled' || apt.status === 'completed') {
+      return false;
+    }
+
+    const appointmentDateTime = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
+    return appointmentDateTime >= new Date();
   };
 
   const upcomingAppointments = appointments.filter(isUpcoming);
@@ -191,7 +180,7 @@ export function Appointments() {
             </p>
             {activeTab === 'upcoming' && (
               <button
-                onClick={() => navigate('/booking')}
+                onClick={() => navigate('/services')}
                 className="px-6 py-3 rounded-xl bg-[#D4AF37] text-black font-semibold hover:bg-[#b08d2d] transition-colors"
               >
                 Book Now
@@ -200,19 +189,30 @@ export function Appointments() {
           </div>
         ) : (
           <div className="space-y-4">
-            {displayedAppointments.map((apt) => (
+            {displayedAppointments.map((apt) => {
+              const isPast = !isUpcoming(apt);
+              const displayStatus = isPast && (apt.status === 'pending' || apt.status === 'confirmed')
+                ? 'expired'
+                : apt.status;
+
+              return (
               <div
                 key={apt.id}
                 onClick={() => {
+                  if (isPast) {
+                    return;
+                  }
                   setSelectedAppointment(apt);
                   setShowDetailsDialog(true);
                 }}
-                className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-white/20 transition-all cursor-pointer"
+                className={`p-4 rounded-2xl bg-white/5 border border-white/10 transition-all ${
+                  isPast ? 'opacity-60 cursor-default' : 'hover:border-white/20 cursor-pointer'
+                }`}
               >
                 {/* Status Badge */}
                 <div className="flex items-center justify-between mb-3">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(apt.status)}`}>
-                    {getStatusText(apt.status)}
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(displayStatus)}`}>
+                    {getStatusText(displayStatus)}
                   </span>
                   <div className="flex gap-2">
                     {apt.status === 'completed' && (
@@ -227,7 +227,7 @@ export function Appointments() {
                         Review
                       </button>
                     )}
-                    {apt.status === 'pending' && (
+                    {apt.status === 'pending' && !isPast && (
                       <button
                         onClick={() => {
                           setSelectedAppointment(apt);
@@ -242,37 +242,39 @@ export function Appointments() {
                 </div>
 
                 {/* Store Info */}
-                {apt.store && (
+                {apt.store || apt.store_name ? (
                   <div className="mb-3">
-                    <h3 className="font-semibold text-lg text-white mb-1">{apt.store.name}</h3>
-                    <p className="text-sm text-gray-400 flex items-center gap-1">
-                      <MapPin className="w-4 h-4" />
-                      {apt.store.address}
-                    </p>
+                    <h3 className="font-semibold text-lg text-white mb-1">{apt.store?.name || apt.store_name}</h3>
+                    {apt.store?.address && (
+                      <p className="text-sm text-gray-400 flex items-center gap-1">
+                        <MapPin className="w-4 h-4" />
+                        {apt.store.address}
+                      </p>
+                    )}
                   </div>
-                )}
+                ) : null}
 
                 {/* Service Info */}
-                {apt.service && (
+                {apt.service || apt.service_name ? (
                   <div className="flex items-center gap-2 mb-2 text-sm">
-                    <span className="text-white">💅 {apt.service.name}</span>
+                    <span className="text-white">💅 {apt.service?.name || apt.service_name}</span>
                     <span className="text-gray-400">•</span>
                     <span className="text-[#D4AF37] flex items-center gap-1">
                       <DollarSign className="w-3 h-3" />
-                      {apt.service.price.toFixed(2)}
+                      {(apt.service?.price ?? apt.service_price ?? 0).toFixed(2)}
                     </span>
                     <span className="text-gray-400">•</span>
-                    <span className="text-gray-400">{apt.service.duration_minutes} min</span>
+                    <span className="text-gray-400">{apt.service?.duration_minutes ?? apt.service_duration ?? 0} min</span>
                   </div>
-                )}
+                ) : null}
 
                 {/* Technician Info */}
-                {apt.technician && (
+                {apt.technician || apt.technician_name ? (
                   <div className="flex items-center gap-2 mb-3 text-sm text-gray-400">
                     <User className="w-4 h-4" />
-                    <span>with {apt.technician.name}</span>
+                    <span>with {apt.technician?.name || apt.technician_name}</span>
                   </div>
-                )}
+                ) : null}
 
                 {/* Date & Time */}
                 <div className="flex items-center gap-4 text-sm">
@@ -286,7 +288,8 @@ export function Appointments() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -346,7 +349,7 @@ export function Appointments() {
       {/* Floating Book Button */}
       {activeTab === 'upcoming' && (
         <button
-          onClick={() => navigate('/booking')}
+          onClick={() => navigate('/services')}
           className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-[#D4AF37] text-black shadow-lg hover:bg-[#b08d2d] transition-all flex items-center justify-center z-10"
         >
           <span className="text-2xl">+</span>

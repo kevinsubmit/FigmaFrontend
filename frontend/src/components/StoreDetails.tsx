@@ -25,7 +25,7 @@ import {
   ShieldCheck,
   Zap
 } from 'lucide-react';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Masonry from 'react-responsive-masonry';
 import {
@@ -47,9 +47,12 @@ import {
 import { Calendar } from "./ui/calendar";  // Calendar component
 import { getServicesByStoreId, Service as APIService } from '../services/services.service';
 import { Store as APIStore } from '../services/stores.service';
-import { createAppointment } from '../services/appointments.service';
+import { createAppointment, getMyAppointments } from '../services/appointments.service';
 import { getStorePortfolio, PortfolioItem } from '../services/store-portfolio.service';
 import StoreReviews from './StoreReviews';
+import { Pin } from '../api/pins';
+import { getAvailableSlots, getTechniciansByStore, Technician } from '../api/technicians';
+import { getStoreHours, StoreHours } from '../api/stores';
 
 // Use the Store type from stores.service
 type Store = APIStore;
@@ -148,11 +151,13 @@ interface StoreDetailsProps {
   store: Store;
   onBack: () => void;
   onBookingComplete?: (booking: any) => void;
+  referencePin?: Pin;
+  showDistance?: boolean;
 }
 
-export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsProps) {
+export function StoreDetails({ store, onBack, onBookingComplete, referencePin, showDistance = false }: StoreDetailsProps) {
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
-  const [selectedStaff, setSelectedStaff] = useState<any>(null);
+  const [selectedStaff, setSelectedStaff] = useState<Technician | null>(null);
   const [activeTab, setActiveTab] = useState<'services' | 'reviews' | 'portfolio' | 'details'>('services');
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
@@ -188,6 +193,13 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
 
   // Details State
   const [showFullHours, setShowFullHours] = useState(false);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [isSlotsLoading, setIsSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [slotsHint, setSlotsHint] = useState<string>('Times are based on store hours and staff availability.');
+  const [storeHours, setStoreHours] = useState<StoreHours[]>([]);
+  const [isStoreHoursLoading, setIsStoreHoursLoading] = useState(false);
 
   // Shared Observer Target
   const observerTarget = useRef(null);
@@ -415,6 +427,41 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
     return { totalPrice, durationStr, totalMinutes };
   };
 
+  const mapQuery = useMemo(() => {
+    const parts = [store.name, store.address, store.city, store.state].filter(Boolean);
+    return parts.join(' ').trim();
+  }, [store.address, store.city, store.name, store.state]);
+
+  const distanceInfo = useMemo(() => {
+    if (store.distance === undefined || store.distance === null) {
+      return null;
+    }
+    const miles = Number(store.distance);
+    if (Number.isNaN(miles)) {
+      return null;
+    }
+    const roundedMiles = Math.round(miles * 10) / 10;
+    const driveMinutes = Math.max(1, Math.round(roundedMiles * 3));
+    return { miles: roundedMiles, driveMinutes };
+  }, [store.distance]);
+
+  const openMaps = () => {
+    if (!mapQuery) return;
+    const encoded = encodeURIComponent(mapQuery);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encoded}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const notesPreview = useMemo(() => {
+    const parts: string[] = [];
+    if (selectedServices.length > 1) {
+      parts.push(`Multiple services: ${selectedServices.map(s => s.name).join(', ')}`);
+    }
+    if (referencePin) {
+      parts.push(`Reference look: ${referencePin.title} (Pin #${referencePin.id})`);
+    }
+    return parts.join(' | ');
+  }, [selectedServices, referencePin]);
+
   const handleConfirmBooking = async () => {
     if (!selectedDate || !selectedTime) return;
     
@@ -446,16 +493,52 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
       if (!serviceId) {
         throw new Error('No service selected');
       }
+
+      const existingAppointments = await getMyAppointments();
+      const selectedDurationMinutes = parseDurationMinutes(selectedServices[0]?.duration || '');
+      const selectedStartMinutes = parseTimeToMinutes(appointmentTime);
+      const selectedEndMinutes = selectedStartMinutes + selectedDurationMinutes;
+
+      const conflict = existingAppointments.find((apt) => {
+        if (apt.status !== 'pending' && apt.status !== 'confirmed') return false;
+        if (apt.appointment_date !== appointmentDate) return false;
+        if (!apt.service_duration) return false;
+
+        const existingStart = parseTimeToMinutes(apt.appointment_time);
+        const existingEnd = existingStart + apt.service_duration;
+        return selectedStartMinutes < existingEnd && selectedEndMinutes > existingStart;
+      });
+
+      if (conflict) {
+        const existingStart = parseTimeToMinutes(conflict.appointment_time);
+        const existingEnd = existingStart + (conflict.service_duration || 0);
+        const suggestedHour = String(Math.floor(existingEnd / 60)).padStart(2, '0');
+        const suggestedMinute = String(existingEnd % 60).padStart(2, '0');
+        setBookingError(
+          `You already have an appointment from ${conflict.appointment_time.slice(0, 5)} to ${suggestedHour}:${suggestedMinute}. Please choose a time after ${suggestedHour}:${suggestedMinute}.`
+        );
+        setIsBooking(false);
+        return;
+      }
       
+      const notesParts: string[] = [];
+      if (selectedServices.length > 1) {
+        notesParts.push(`Multiple services: ${selectedServices.map(s => s.name).join(', ')}`);
+      }
+      if (referencePin) {
+        notesParts.push(`Reference look: ${referencePin.title} (Pin #${referencePin.id})`);
+      }
+
+      const notes = notesParts.length > 0 ? notesParts.join(' | ') : undefined;
+
       // Call backend API
       const appointment = await createAppointment({
         store_id: store.id,
         service_id: serviceId,
+        technician_id: selectedStaff?.id,
         appointment_date: appointmentDate,
         appointment_time: appointmentTime,
-        notes: selectedServices.length > 1 
-          ? `Multiple services: ${selectedServices.map(s => s.name).join(', ')}`
-          : undefined
+        notes
       });
       
       // Show success state
@@ -494,14 +577,189 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
     }
   };
 
-  const timeSlots = ["09:00", "09:30", "10:00", "11:00", "13:30", "14:00", "15:30", "16:00"];
+  const today = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return now;
+  }, []);
+  const minSelectableDate = today;
 
-  const MOCK_STAFF = [
-    { id: '1', name: 'Linda', role: 'Senior Artist', rating: 4.9, avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100' },
-    { id: '2', name: 'Sarah', role: 'Nail Technician', rating: 4.8, avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=100' },
-    { id: '3', name: 'Jessica', role: 'Master Stylist', rating: 5.0, avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=100' },
-    { id: '4', name: 'Amy', role: 'Artist', rating: 4.7, avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&q=80&w=100' },
-  ];
+  const selectedServiceId = selectedServices[0]?.id;
+  const selectedServiceDuration = selectedServices[0]?.duration || '';
+  const formattedSelectedDate = selectedDate
+    ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
+    : null;
+  const selectedDateKey = formattedSelectedDate;
+
+  const parseDurationMinutes = (duration: string) => {
+    const minutes = parseInt(duration.replace('m', ''), 10);
+    return Number.isNaN(minutes) ? 30 : minutes;
+  };
+
+  const parseTimeToMinutes = (time: string) => {
+    const [hoursStr, minutesStr] = time.split(':');
+    const hours = Number(hoursStr);
+    const minutes = Number(minutesStr);
+    return hours * 60 + minutes;
+  };
+
+  const getStoreHoursForDate = (dateKey: string) => {
+    const selectedDay = new Date(dateKey).getDay();
+    const dayOfWeek = selectedDay === 0 ? 6 : selectedDay - 1;
+    return storeHours.find((hour) => hour.day_of_week === dayOfWeek) || null;
+  };
+
+  const buildSlotsFromStoreHours = (dateKey: string, durationMinutes: number) => {
+    const hoursForDay = getStoreHoursForDate(dateKey);
+    if (!hoursForDay || hoursForDay.is_closed) {
+      return [];
+    }
+
+    const [openHour, openMinute] = hoursForDay.open_time.split(':').map(Number);
+    const [closeHour, closeMinute] = hoursForDay.close_time.split(':').map(Number);
+    const slotInterval = 30;
+
+    const startTime = new Date(dateKey);
+    startTime.setHours(openHour, openMinute, 0, 0);
+
+    const endTime = new Date(dateKey);
+    endTime.setHours(closeHour, closeMinute, 0, 0);
+
+    const durationMs = durationMinutes * 60 * 1000;
+    const slots: string[] = [];
+    const cursor = new Date(startTime);
+
+    while (cursor.getTime() + durationMs <= endTime.getTime()) {
+      const hours = String(cursor.getHours()).padStart(2, '0');
+      const minutes = String(cursor.getMinutes()).padStart(2, '0');
+      slots.push(`${hours}:${minutes}`);
+      cursor.setMinutes(cursor.getMinutes() + slotInterval);
+    }
+
+    return slots;
+  };
+
+  useEffect(() => {
+    const cacheKey = `storeTechnicians:${store.id}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          setTechnicians(parsed);
+        }
+      } catch (error) {
+        console.error('Failed to parse cached technicians:', error);
+      }
+    }
+
+    getTechniciansByStore(store.id)
+      .then((data) => {
+        setTechnicians(data);
+        localStorage.setItem(cacheKey, JSON.stringify(data));
+      })
+      .catch((error) => {
+        console.error('Failed to load technicians:', error);
+        if (!cached) {
+          setTechnicians([]);
+        }
+      });
+  }, [store.id]);
+
+  useEffect(() => {
+    setIsStoreHoursLoading(true);
+    getStoreHours(store.id)
+      .then(setStoreHours)
+      .catch((error) => {
+        console.error('Failed to load store hours:', error);
+        setStoreHours([]);
+      })
+      .finally(() => setIsStoreHoursLoading(false));
+  }, [store.id]);
+
+  useEffect(() => {
+    const loadAvailableSlots = async () => {
+      if (!formattedSelectedDate || !selectedServiceId) {
+        setAvailableSlots([]);
+        return;
+      }
+
+      if (!isStoreHoursLoading) {
+        const hoursForDay = getStoreHoursForDate(formattedSelectedDate);
+
+        if (!hoursForDay) {
+          setAvailableSlots([]);
+          setSlotsError('Store hours are not configured for this date.');
+          return;
+        }
+
+        if (hoursForDay.is_closed) {
+          setAvailableSlots([]);
+          setSlotsError('Store is closed on this date.');
+          return;
+        }
+      }
+
+      setIsSlotsLoading(true);
+      setSlotsError(null);
+
+      try {
+        const durationMinutes = parseDurationMinutes(selectedServiceDuration);
+        const technicianList = selectedStaff
+          ? [selectedStaff]
+          : technicians;
+
+        if (technicianList.length === 0) {
+          const storeSlots = buildSlotsFromStoreHours(formattedSelectedDate, durationMinutes);
+          setAvailableSlots(storeSlots);
+          setSlotsHint('Times are based on store hours. Staff selection is optional.');
+          return;
+        }
+
+        const slotResults = await Promise.all(
+          technicianList.map((tech) =>
+            getAvailableSlots(tech.id, formattedSelectedDate, selectedServiceId).catch(() => [])
+          )
+        );
+
+        const combinedSlots = new Set<string>();
+        slotResults.flat().forEach((slot) => {
+          combinedSlots.add(slot.start_time);
+        });
+
+        const sortedSlots = Array.from(combinedSlots).sort();
+
+        if (formattedSelectedDate === new Date().toISOString().split('T')[0]) {
+          const now = new Date();
+          const minTime = new Date(now.getTime() + 30 * 60 * 1000);
+          const filtered = sortedSlots.filter((time) => {
+            const [hours, minutes] = time.split(':').map(Number);
+            const slotTime = new Date(selectedDate!);
+            slotTime.setHours(hours, minutes, 0, 0);
+            return slotTime >= minTime;
+          });
+          setAvailableSlots(filtered);
+        } else {
+          setAvailableSlots(sortedSlots);
+        }
+        setSlotsHint('Times are based on store hours and staff availability.');
+      } catch (error) {
+        console.error('Failed to load available slots:', error);
+        setAvailableSlots([]);
+        setSlotsError('Unable to load available times. Please try again.');
+      } finally {
+        setIsSlotsLoading(false);
+      }
+    };
+
+    loadAvailableSlots();
+  }, [formattedSelectedDate, selectedServiceId, selectedStaff, technicians, selectedDate, storeHours, isStoreHoursLoading, selectedServiceDuration]);
+
+  useEffect(() => {
+    if (selectedTime && !availableSlots.includes(selectedTime)) {
+      setSelectedTime(null);
+    }
+  }, [selectedTime, availableSlots]);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black animate-in slide-in-from-right duration-500 pb-32">
@@ -832,7 +1090,7 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
         <motion.div 
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 bg-black/95 backdrop-blur-md border-t border-[#333] px-6 py-5 z-40 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]"
+          className="fixed bottom-0 left-0 right-0 bg-black border-t border-[#333] px-6 py-5 z-50 shadow-[0_-10px_30px_rgba(0,0,0,0.5)] pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -1010,10 +1268,12 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
                                         mode="single"
                                         selected={selectedDate}
                                         onSelect={setSelectedDate}
+                                        disabled={{ before: minSelectableDate }}
                                         className="text-white"
                                         classNames={{
                                             day_selected: "bg-[#D4AF37] text-black hover:bg-[#D4AF37] hover:text-black focus:bg-[#D4AF37] focus:text-black",
                                             day_today: "text-[#D4AF37] font-bold border border-[#D4AF37]/30",
+                                            nav_button: "text-gray-200 border border-white/10 hover:text-white hover:bg-white/10",
                                         }}
                                     />
                                 </div>
@@ -1022,55 +1282,74 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
                             {/* Step 2: Select Time */}
                             <div>
                                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Select Time</h3>
-                                <div className="grid grid-cols-4 gap-2">
-                                    {timeSlots.map((time) => (
+                                {isSlotsLoading ? (
+                                  <p className="text-xs text-gray-500">Loading available times...</p>
+                                ) : (
+                                  <>
+                                    <div className="grid grid-cols-4 gap-2">
+                                      {availableSlots.map((time) => (
                                         <button
-                                            key={time}
-                                            onClick={() => setSelectedTime(time)}
-                                            className={`py-3 rounded-xl border font-medium text-sm transition-all ${
-                                                selectedTime === time 
-                                                    ? 'bg-[#D4AF37] border-[#D4AF37] text-black' 
-                                                    : 'bg-[#1a1a1a] border-[#333] text-gray-300 hover:border-[#D4AF37]/50'
-                                            }`}
+                                          key={time}
+                                          onClick={() => setSelectedTime(time)}
+                                          className={`py-3 rounded-xl border font-medium text-sm transition-all ${
+                                            selectedTime === time 
+                                              ? 'bg-[#D4AF37] border-[#D4AF37] text-black' 
+                                              : 'bg-[#1a1a1a] border-[#333] text-gray-300 hover:border-[#D4AF37]/50'
+                                          }`}
                                         >
-                                            {time}
+                                          {time}
                                         </button>
-                                    ))}
-                                </div>
+                                      ))}
+                                    </div>
+                                    {slotsError && (
+                                      <p className="mt-3 text-xs text-red-400">{slotsError}</p>
+                                    )}
+                                    {!slotsError && availableSlots.length === 0 && (
+                                      <p className="mt-3 text-xs text-gray-500">
+                                        No available times for this date.
+                                      </p>
+                                    )}
+                                  </>
+                                )}
+                                <p className="mt-3 text-[10px] text-gray-600 uppercase tracking-widest">
+                                  {slotsHint}
+                                </p>
                             </div>
 
                             {/* Step 3: Select Professional */}
-                            <div>
-                              <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Select Professional</h3>
-                                <span className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded">Optional</span>
-                              </div>
-                              <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4">
-                                <button 
-                                  onClick={() => setSelectedStaff(null)}
-                                  className={`flex-shrink-0 flex flex-col items-center gap-2 group`}
-                                >
-                                  <div className={`w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all ${!selectedStaff ? 'border-[#D4AF37] bg-[#D4AF37]/10' : 'border-[#333] bg-[#1a1a1a]'}`}>
-                                    <User className={`w-8 h-8 ${!selectedStaff ? 'text-[#D4AF37]' : 'text-gray-500'}`} />
-                                  </div>
-                                  <span className={`text-[10px] font-bold uppercase tracking-wider ${!selectedStaff ? 'text-[#D4AF37]' : 'text-gray-500'}`}>Any</span>
-                                </button>
-                                {MOCK_STAFF.map((staff) => (
+                            {technicians.length > 0 && (
+                              <div>
+                                <div className="flex items-center justify-between mb-4">
+                                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Select Professional</h3>
+                                  <span className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded">Optional</span>
+                                </div>
+                                <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4">
                                   <button 
-                                    key={staff.id}
-                                    onClick={() => setSelectedStaff(staff)}
-                                    className="flex-shrink-0 flex flex-col items-center gap-2"
+                                    onClick={() => setSelectedStaff(null)}
+                                    className={`flex-shrink-0 flex flex-col items-center gap-2 group`}
                                   >
-                                    <div className={`relative w-16 h-16 rounded-full overflow-hidden border-2 transition-all ${selectedStaff?.id === staff.id ? 'border-[#D4AF37] scale-105' : 'border-transparent'}`}>
-                                      <img src={staff.avatar} alt={staff.name} className="w-full h-full object-cover" />
+                                    <div className={`w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all ${!selectedStaff ? 'border-[#D4AF37] bg-[#D4AF37]/10' : 'border-[#333] bg-[#1a1a1a]'}`}>
+                                      <User className={`w-8 h-8 ${!selectedStaff ? 'text-[#D4AF37]' : 'text-gray-500'}`} />
                                     </div>
-                                    <div className="text-center">
-                                      <span className={`text-[10px] font-bold block ${selectedStaff?.id === staff.id ? 'text-[#D4AF37]' : 'text-gray-300'}`}>{staff.name}</span>
-                                    </div>
+                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${!selectedStaff ? 'text-[#D4AF37]' : 'text-gray-500'}`}>Any</span>
                                   </button>
-                                ))}
+                                  {technicians.map((staff) => (
+                                    <button 
+                                      key={staff.id}
+                                      onClick={() => setSelectedStaff(staff)}
+                                      className="flex-shrink-0 flex flex-col items-center gap-2"
+                                    >
+                                      <div className={`relative w-16 h-16 rounded-full overflow-hidden border-2 transition-all ${selectedStaff?.id === staff.id ? 'border-[#D4AF37] scale-105' : 'border-transparent'}`}>
+                                        <img src={staff.avatar_url || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100'} alt={staff.name} className="w-full h-full object-cover" />
+                                      </div>
+                                      <div className="text-center">
+                                        <span className={`text-[10px] font-bold block ${selectedStaff?.id === staff.id ? 'text-[#D4AF37]' : 'text-gray-300'}`}>{staff.name}</span>
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
+                            )}
 
                             {/* Staff Info Row (Integrated Summary) */}
                             <div className="flex items-center justify-between py-3 border-b border-[#D4AF37]/10">
@@ -1118,9 +1397,71 @@ export function StoreDetails({ store, onBack, onBookingComplete }: StoreDetailsP
                         <div className="mt-10 flex flex-col gap-3">
                             {bookingError && (
                               <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-3 text-red-400 text-sm">
-                                {bookingError}
+                                <p>{bookingError}</p>
+                                <button
+                                  type="button"
+                                  onClick={handleConfirmBooking}
+                                  className="mt-3 inline-flex items-center justify-center rounded-lg border border-red-500/60 px-3 py-1.5 text-xs font-semibold text-red-200 hover:bg-red-500/10 transition-colors"
+                                >
+                                  Retry booking
+                                </button>
                               </div>
                             )}
+                            <div className="rounded-2xl border border-[#333] bg-[#111] p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <p className="text-xs uppercase tracking-widest text-gray-400">Appointment Summary</p>
+                                <span className="text-[#D4AF37] text-xs font-semibold">${calculateTotals().totalPrice.toFixed(2)}</span>
+                              </div>
+                              <div className="space-y-2 text-sm text-gray-300">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-500">Service</span>
+                                  <span className="text-white font-medium">
+                                    {selectedServices.length > 1
+                                      ? `${selectedServices[0]?.name} +${selectedServices.length - 1}`
+                                      : selectedServices[0]?.name || 'Select service'}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-500">Duration</span>
+                                  <span className="text-white font-medium">{calculateTotals().durationStr}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-gray-500">Time</span>
+                                  <span className="text-white font-medium">
+                                    {selectedDate && selectedTime
+                                      ? `${selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${selectedTime}`
+                                      : 'Select date & time'}
+                                  </span>
+                                </div>
+                                <div className="flex items-start justify-between gap-3">
+                                  <span className="text-gray-500">Location</span>
+                                  <button
+                                    type="button"
+                                    onClick={openMaps}
+                                    className="flex items-center gap-2 text-right text-white hover:text-[#D4AF37] transition-colors"
+                                  >
+                                    <MapPin className="w-4 h-4" />
+                                    <span className="underline decoration-white/30 underline-offset-4">
+                                      {store.address}
+                                    </span>
+                                  </button>
+                                </div>
+                                {showDistance && distanceInfo && (
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-gray-500">Distance</span>
+                                    <span className="text-white font-medium">
+                                      {distanceInfo.miles} mi · ~{distanceInfo.driveMinutes} min drive
+                                    </span>
+                                  </div>
+                                )}
+                                {notesPreview && (
+                                  <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                                    <p className="text-xs uppercase tracking-widest text-gray-500 mb-1">Notes</p>
+                                    <p className="text-xs text-gray-300">{notesPreview}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                             <button 
                                 onClick={handleConfirmBooking}
                                 disabled={!selectedTime || !selectedDate || isBooking}

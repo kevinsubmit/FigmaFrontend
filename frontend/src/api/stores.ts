@@ -21,6 +21,15 @@ export interface StoreHours {
   is_closed: boolean;
 }
 
+export interface StoreImage {
+  id: number;
+  store_id: number;
+  image_url: string;
+  is_primary: number;
+  display_order: number;
+  created_at: string;
+}
+
 /**
  * 获取所有店铺列表
  */
@@ -49,6 +58,13 @@ export const getStoreById = async (storeId: number): Promise<Store> => {
  */
 export const getStoreHours = async (storeId: number): Promise<StoreHours[]> => {
   return apiClient.get(`/api/v1/stores/${storeId}/hours`);
+};
+
+/**
+ * Get store images
+ */
+export const getStoreImages = async (storeId: number): Promise<StoreImage[]> => {
+  return apiClient.get(`/api/v1/stores/${storeId}/images`);
 };
 
 /**

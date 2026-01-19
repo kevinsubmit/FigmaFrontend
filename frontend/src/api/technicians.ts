@@ -20,7 +20,7 @@ export interface AvailableSlot {
  * 获取店铺的美甲师列表
  */
 export const getTechniciansByStore = async (storeId: number): Promise<Technician[]> => {
-  return apiClient.get(`/api/v1/stores/${storeId}/technicians`);
+  return apiClient.get(`/api/v1/technicians?store_id=${storeId}`);
 };
 
 /**

@@ -1,11 +1,12 @@
 import { ChevronDown, Sparkles } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader } from './ui/Loader';
 import { StoreDetails } from './StoreDetails';
-import { getStores as getStoresAPI, Store, addStoreToFavorites, removeStoreFromFavorites, checkIfStoreFavorited } from '../api/stores';
-import { Search, SlidersHorizontal, Heart, X } from 'lucide-react';
+import { getStores as getStoresAPI, Store } from '../api/stores';
+import { SlidersHorizontal, X } from 'lucide-react';
+import { getPinById, Pin } from '../api/pins';
 
 type SortOption = 'recommended' | 'distance' | 'reviews';
 
@@ -19,16 +20,20 @@ interface ServicesProps {
 export function Services({ onBookingSuccess, initialStep, initialSelectedStore, onStoreDetailsChange }: ServicesProps) {
   const { storeId } = useParams<{ storeId: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pinIdParam = searchParams.get('pin_id');
+  const [referencePin, setReferencePin] = useState<Pin | null>(null);
   
   const [step, setStep] = useState(initialStep || 1);
   const [isLoading, setIsLoading] = useState(true);
   const [hasAppliedOffer, setHasAppliedOffer] = useState(!!initialSelectedStore);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSortOpen, setIsSortOpen] = useState(false);
+  const [pendingSortBy, setPendingSortBy] = useState<SortOption>('recommended');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('recommended');
   const [minRating, setMinRating] = useState<number | undefined>(undefined);
-  const [favoriteStores, setFavoriteStores] = useState<Set<number>>(new Set());
+  const [pendingMinRating, setPendingMinRating] = useState<number | undefined>(undefined);
   const [selectedStore, setSelectedStore] = useState<Store | null>(initialSelectedStore || null);
   const [stores, setStores] = useState<Store[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +53,7 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
     }
     return null;
   });
+  const autoSortApplied = useRef(false);
 
   // Get user location
   useEffect(() => {
@@ -66,6 +72,10 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
               ...location,
               timestamp: Date.now()
             }));
+            if (!autoSortApplied.current) {
+              setSortBy('distance');
+              autoSortApplied.current = true;
+            }
           },
           (error) => {
             console.error('Failed to get user location:', error);
@@ -83,6 +93,44 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
       }
     }
   }, [userLocation, sortBy]);
+
+  // Load reference pin if present
+  useEffect(() => {
+    if (!pinIdParam) {
+      setReferencePin(null);
+      return;
+    }
+    const pinId = Number(pinIdParam);
+    if (Number.isNaN(pinId)) {
+      setReferencePin(null);
+      return;
+    }
+    getPinById(pinId)
+      .then(setReferencePin)
+      .catch((error) => {
+        console.error('Failed to load reference pin:', error);
+        setReferencePin(null);
+      });
+  }, [pinIdParam]);
+
+  const clearReferencePin = () => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('pin_id');
+      return next;
+    });
+  };
+
+  const clearSearch = () => setSearchQuery('');
+  const clearFilters = () => {
+    setMinRating(undefined);
+    setSortBy(userLocation ? 'distance' : 'recommended');
+  };
+
+  const getStoreDetailsLink = (id: number) =>
+    pinIdParam ? `/services/${id}?pin_id=${pinIdParam}` : `/services/${id}`;
+
+  const getListLink = () => (pinIdParam ? `/services?pin_id=${pinIdParam}` : '/services');
 
   // Fetch stores from API
   useEffect(() => {
@@ -110,6 +158,18 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
     fetchStores();
   }, [searchQuery, minRating, sortBy, userLocation]);
   
+  useEffect(() => {
+    if (isSortOpen) {
+      setPendingSortBy(sortBy);
+    }
+  }, [isSortOpen, sortBy]);
+
+  useEffect(() => {
+    if (isFilterOpen) {
+      setPendingMinRating(minRating);
+    }
+  }, [isFilterOpen, minRating]);
+  
   // Convert sortBy to API parameter
   const getSortByParam = () => {
     switch (sortBy) {
@@ -119,31 +179,6 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
     }
   };
   
-  // Toggle favorite
-  const toggleFavorite = async (storeId: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert('Please login to add favorites');
-      return;
-    }
-    
-    try {
-      if (favoriteStores.has(storeId)) {
-        await removeStoreFromFavorites(storeId, token);
-        setFavoriteStores(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(storeId);
-          return newSet;
-        });
-      } else {
-        await addStoreToFavorites(storeId, token);
-        setFavoriteStores(prev => new Set(prev).add(storeId));
-      }
-    } catch (error) {
-      console.error('Failed to toggle favorite:', error);
-    }
-  };
 
   // Load store from URL parameter
   useEffect(() => {
@@ -182,8 +217,9 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
       case 'distance':
         // Sort by distance (if available, otherwise keep original order)
         return storesCopy.sort((a, b) => {
-          // For now, keep original order as we don't have user location
-          return 0;
+          const aDistance = a.distance ?? Number.POSITIVE_INFINITY;
+          const bDistance = b.distance ?? Number.POSITIVE_INFINITY;
+          return aDistance - bDistance;
         });
       case 'reviews':
         return storesCopy.sort((a, b) => (b.rating || 0) - (a.rating || 0));
@@ -276,6 +312,31 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
         </div>
       )}
 
+      {referencePin && (
+        <div className="px-6 pt-4">
+          <div className="flex items-center gap-4 rounded-2xl border border-[#D4AF37]/30 bg-[#1a1a1a] p-4">
+            <img
+              src={referencePin.image_url}
+              alt={referencePin.title}
+              className="h-16 w-16 rounded-xl object-cover"
+            />
+            <div className="flex-1">
+              <p className="text-[10px] uppercase tracking-widest text-[#D4AF37]/70">Reference look</p>
+              <p className="text-sm font-semibold">{referencePin.title}</p>
+              {referencePin.tags?.length > 0 && (
+                <p className="text-xs text-gray-400">{referencePin.tags.join(' · ')}</p>
+              )}
+            </div>
+            <button
+              onClick={clearReferencePin}
+              className="text-xs text-gray-300 hover:text-white"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
       {step === 1 ? (
         <>
           {/* Header Area */}
@@ -283,25 +344,18 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
             <div className="mb-4">
               <p className="text-[#D4AF37] text-[10px] font-bold tracking-[0.2em] uppercase mb-1 opacity-90">Step 01</p>
               <h1 className="text-2xl font-bold text-white tracking-tight">Select Salon</h1>
+              <p className="text-xs text-gray-500 mt-1">
+                {stores.length} salons {userLocation ? 'near you' : 'available'}
+              </p>
             </div>
             
-            {/* Search Bar */}
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search salons..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-lg bg-[#1a1a1a] border border-[#333] text-white placeholder-gray-400 focus:outline-none focus:border-[#D4AF37]/50"
-              />
-            </div>
+            {/* Search Bar removed */}
             
             {/* Sort and Filter Buttons */}
             <div className="flex gap-2">
               <button 
                 onClick={() => setIsSortOpen(true)}
-                className="flex-1 flex items-center justify-between bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-3 text-sm font-medium text-white hover:bg-[#333] transition-colors"
+                className="flex-1 flex items-center justify-between bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2.5 text-sm font-medium text-white hover:bg-[#333] transition-colors"
               >
                 <span className="text-gray-400">Sort: <span className="text-white ml-1">{getSortLabel()}</span></span>
                 <ChevronDown className="w-4 h-4 text-gray-400" />
@@ -309,18 +363,41 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
               
               <button 
                 onClick={() => setIsFilterOpen(true)}
-                className="flex items-center gap-2 bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-3 text-sm font-medium text-white hover:bg-[#333] transition-colors"
+                className="flex items-center gap-2 bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2.5 text-sm font-medium text-white hover:bg-[#333] transition-colors"
               >
                 <SlidersHorizontal className="w-4 h-4" />
                 {minRating && <span className="w-2 h-2 rounded-full bg-[#D4AF37]"></span>}
               </button>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <div className="flex items-center gap-1 rounded-full border border-[#333] bg-[#141414] px-3 py-1 text-xs text-gray-300">
+                Sort: <span className="text-white">{getSortLabel()}</span>
+              </div>
+              {minRating && (
+                <button
+                  onClick={() => setMinRating(undefined)}
+                  className="flex items-center gap-1 rounded-full border border-[#333] bg-[#141414] px-3 py-1 text-xs text-gray-300 hover:text-white"
+                >
+                  Rating: <span className="text-white">{minRating}+</span>
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+              {(minRating || sortBy !== (userLocation ? 'distance' : 'recommended')) && (
+                <button
+                  onClick={clearFilters}
+                  className="ml-auto text-[10px] uppercase tracking-widest text-[#D4AF37] hover:text-[#f1d57c]"
+                >
+                  Clear all
+                </button>
+              )}
             </div>
           </div>
 
           {/* Stores List */}
           <div className="px-4 py-6 space-y-8">
             {getSortedStores().map((store) => (
-              <div key={store.id} onClick={() => navigate(`/services/${store.id}`)} className="group cursor-pointer">
+              <div key={store.id} onClick={() => navigate(getStoreDetailsLink(store.id))} className="group cursor-pointer">
                 {/* Main Image */}
                 <div className="relative aspect-[16/10] rounded-xl overflow-hidden mb-3 bg-gray-900 border border-[#333]">
                   <img 
@@ -329,15 +406,7 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   
-                  {/* Favorite Button */}
-                  <button
-                    onClick={(e) => toggleFavorite(store.id, e)}
-                    className="absolute top-3 left-3 w-10 h-10 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center hover:bg-black/80 transition-colors z-10"
-                  >
-                    <Heart 
-                      className={`w-5 h-5 ${favoriteStores.has(store.id) ? 'fill-[#D4AF37] text-[#D4AF37]' : 'text-white'}`}
-                    />
-                  </button>
+                {/* Favorite Button removed */}
                   
                   {/* Rating Badge */}
                   <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-white flex flex-col items-center min-w-[60px]">
@@ -397,7 +466,10 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
                   <div className="flex justify-between items-center px-6 py-5 border-b border-[#333] mt-2">
                     <h2 className="text-xl font-bold text-white">Sort by</h2>
                     <button 
-                      onClick={() => setIsSortOpen(false)}
+                      onClick={() => {
+                        setSortBy(pendingSortBy);
+                        setIsSortOpen(false);
+                      }}
                       className="text-[#D4AF37] font-semibold text-base"
                     >
                       Done
@@ -409,20 +481,20 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
                     {sortOptions.map((option) => (
                       <button
                         key={option.id}
-                        onClick={() => setSortBy(option.id as SortOption)}
+                        onClick={() => setPendingSortBy(option.id as SortOption)}
                         className="w-full flex items-center justify-between py-4 border-b border-[#333] last:border-0"
                       >
-                        <span className={`text-base ${sortBy === option.id ? 'text-white font-medium' : 'text-gray-400'}`}>
+                        <span className={`text-base ${pendingSortBy === option.id ? 'text-white font-medium' : 'text-gray-400'}`}>
                           {option.label}
                         </span>
                         
                         {/* Radio Button Custom */}
                         <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-                          sortBy === option.id 
+                          pendingSortBy === option.id 
                             ? 'border-[#D4AF37] bg-transparent'
                             : 'border-gray-600 bg-transparent'
                         }`}>
-                          {sortBy === option.id && (
+                          {pendingSortBy === option.id && (
                             <div className="w-2.5 h-2.5 rounded-full bg-[#D4AF37]" />
                           )}
                         </div>
@@ -459,7 +531,10 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
                   <div className="flex justify-between items-center px-6 py-5 border-b border-[#333] mt-2">
                     <h2 className="text-xl font-bold text-white">Filters</h2>
                     <button 
-                      onClick={() => setIsFilterOpen(false)}
+                      onClick={() => {
+                        setMinRating(pendingMinRating);
+                        setIsFilterOpen(false);
+                      }}
                       className="text-[#D4AF37] font-semibold text-base"
                     >
                       Done
@@ -475,20 +550,20 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
                         {[undefined, 4.5, 4.0, 3.5, 3.0].map((rating) => (
                           <button
                             key={rating || 'all'}
-                            onClick={() => setMinRating(rating)}
+                            onClick={() => setPendingMinRating(rating)}
                             className="w-full flex items-center justify-between py-3 border-b border-[#333] last:border-0"
                           >
-                            <span className={`text-base ${minRating === rating ? 'text-white font-medium' : 'text-gray-400'}`}>
+                            <span className={`text-base ${pendingMinRating === rating ? 'text-white font-medium' : 'text-gray-400'}`}>
                               {rating ? `${rating}+ Stars` : 'All Ratings'}
                             </span>
                             
                             {/* Radio Button */}
                             <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-                              minRating === rating 
+                              pendingMinRating === rating 
                                 ? 'border-[#D4AF37] bg-transparent'
                                 : 'border-gray-600 bg-transparent'
                             }`}>
-                              {minRating === rating && (
+                              {pendingMinRating === rating && (
                                 <div className="w-2.5 h-2.5 rounded-full bg-[#D4AF37]" />
                               )}
                             </div>
@@ -498,9 +573,9 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
                     </div>
                     
                     {/* Clear Filters */}
-                    {minRating && (
+                    {pendingMinRating && (
                       <button
-                        onClick={() => setMinRating(undefined)}
+                        onClick={() => setPendingMinRating(undefined)}
                         className="w-full py-3 rounded-lg bg-white/5 border border-[#333] text-[#D4AF37] font-semibold hover:bg-white/10 transition-colors"
                       >
                         Clear All Filters
@@ -516,7 +591,9 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
           {selectedStore && (
             <StoreDetails 
                 store={selectedStore} 
-                onBack={() => navigate('/services')} 
+                referencePin={referencePin || undefined}
+                showDistance={!!userLocation}
+                onBack={() => navigate(getListLink())} 
                 onBookingComplete={(booking) => {
                   onBookingSuccess?.(booking);
                   navigate('/appointments');

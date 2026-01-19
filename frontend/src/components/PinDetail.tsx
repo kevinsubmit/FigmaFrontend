@@ -25,10 +25,10 @@ interface PinDetailProps {
   onBookNow: () => void;
   pinData?: {
     id: number;
-    url: string;
+    image_url: string;
     title: string;
-    author: string;
-    likes: number;
+    description?: string;
+    tags?: string[];
     authorAvatar?: string;
   };
 }
@@ -42,13 +42,13 @@ export function PinDetail({ onBack, onBookNow, pinData }: PinDetailProps) {
   // Mock data if no pinData provided
   const data = pinData || {
     id: 1,
-    url: 'https://images.unsplash.com/photo-1754799670410-b282791342c3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwaW5rJTIwbmFpbHMlMjBtYW5pY3VyZXxlbnwxfHx8fDE3NjUxNjI2NDF8MA&ixlib=rb-4.1.0&q=80&w=1080',
+    image_url: 'https://images.unsplash.com/photo-1754799670410-b282791342c3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwaW5rJTIwbmFpbHMlMjBtYW5pY3VyZXxlbnwxfHx8fDE3NjUxNjI2NDF8MA&ixlib=rb-4.1.0&q=80&w=1080',
     title: 'Pink Manicure with Hearts',
-    author: 'Monica Zapata galvis',
-    likes: 163,
+    description: 'Curated inspiration from our studio team.',
+    tags: ['Minimalist', 'French'],
   };
 
-  const [likeCount, setLikeCount] = useState(data.likes);
+  const [likeCount, setLikeCount] = useState(163);
 
   const toggleLike = () => {
     if (isLiked) {
@@ -61,13 +61,13 @@ export function PinDetail({ onBack, onBookNow, pinData }: PinDetailProps) {
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(data.url);
+      await navigator.clipboard.writeText(data.image_url);
       toast.success("Link copied to clipboard");
     } catch (err) {
       // Fallback for environments where Clipboard API is blocked
       try {
         const textArea = document.createElement("textarea");
-        textArea.value = data.url;
+        textArea.value = data.image_url;
         textArea.style.position = "fixed";
         textArea.style.left = "-9999px";
         textArea.style.top = "0";
@@ -156,7 +156,7 @@ export function PinDetail({ onBack, onBookNow, pinData }: PinDetailProps) {
         {/* Main Image Section */}
         <div className="relative w-full rounded-b-[2rem] overflow-hidden bg-gray-900">
           <img 
-            src={data.url} 
+            src={data.image_url} 
             alt={data.title}
             className="w-full h-auto object-cover max-h-[75vh]"
           />
@@ -203,6 +203,23 @@ export function PinDetail({ onBack, onBookNow, pinData }: PinDetailProps) {
               Save
             </button>
           </div>
+
+          {data.description && (
+            <p className="text-sm text-gray-300">{data.description}</p>
+          )}
+
+          {data.tags && data.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {data.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-300"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Comments Section */}
@@ -293,7 +310,7 @@ export function PinDetail({ onBack, onBookNow, pinData }: PinDetailProps) {
                   {/* Image Preview */}
                   <div className="relative w-[60%] aspect-[3/4] rounded-2xl overflow-hidden mb-8 shadow-2xl border border-gray-800">
                      <img 
-                      src={data.url} 
+                      src={data.image_url} 
                       alt={data.title}
                       className="w-full h-full object-cover"
                     />

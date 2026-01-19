@@ -164,7 +164,11 @@ def check_time_conflict(
                 return {
                     "has_conflict": True,
                     "conflict_type": "technician",
-                    "message": f"The technician is already booked from {existing_datetime.strftime('%H:%M')} to {existing_end_time.strftime('%H:%M')}"
+                    "message": (
+                        f"The technician is already booked from {existing_datetime.strftime('%H:%M')} "
+                        f"to {existing_end_time.strftime('%H:%M')}. Please choose a time after "
+                        f"{existing_end_time.strftime('%H:%M')} or pick another technician."
+                    )
                 }
     
     # Check user conflict
@@ -180,7 +184,11 @@ def check_time_conflict(
                 return {
                     "has_conflict": True,
                     "conflict_type": "user",
-                    "message": f"You already have an appointment from {existing_datetime.strftime('%H:%M')} to {existing_end_time.strftime('%H:%M')}"
+                    "message": (
+                        f"You already have an appointment from {existing_datetime.strftime('%H:%M')} "
+                        f"to {existing_end_time.strftime('%H:%M')}. Please choose a time after "
+                        f"{existing_end_time.strftime('%H:%M')}."
+                    )
                 }
     
     return {"has_conflict": False, "conflict_type": None, "message": "No conflict"}

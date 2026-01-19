@@ -1,105 +1,33 @@
-import { Heart, Plus, Search, Loader2, ArrowDown } from 'lucide-react';
+import { Heart, Plus, Search, Loader2, ArrowDown, Sparkles } from 'lucide-react';
 import Masonry from 'react-responsive-masonry';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Loader } from './ui/Loader';
 import { motion } from 'framer-motion';
+import { getPins, Pin } from '../api/pins';
 
 interface HomeProps {
   onNavigate: (page: 'home' | 'services' | 'appointments' | 'profile' | 'deals') => void;
   onPinClick?: (pinData: any) => void;
 }
 
-const MOCK_IMAGES_POOL = [
-  {
-    url: 'https://images.unsplash.com/photo-1754799670410-b282791342c3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwaW5rJTIwbmFpbHMlMjBtYW5pY3VyZXxlbnwxfHx8fDE3NjUxNjI2NDF8MA&ixlib=rb-4.1.0&q=80&w=1080',
-    title: 'Pink Manicure',
-    author: 'Sarah Styles',
-    likes: 124,
-    tags: ['Minimalist']
-  },
-  {
-    url: 'https://images.unsplash.com/photo-1763063556535-5f6174a5c5d4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnbGl0dGVyJTIwbmFpbHMlMjBkZXNpZ258ZW58MXx8fHwxNzY1MTYyNjQxfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    title: 'Glitter Design',
-    author: 'Glam Studio',
-    likes: 89,
-    tags: ['Y2K', 'Chrome']
-  },
-  {
-    url: 'https://images.unsplash.com/photo-1762121903467-8cf5cc423ba5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmcmVuY2glMjBtYW5pY3VyZSUyMG5haWxzfGVufDF8fHx8MTc2NTE1Njc2Nnww&ixlib=rb-4.1.0&q=80&w=1080',
-    title: 'French Manicure',
-    author: 'Chic Beauty',
-    likes: 245,
-    tags: ['French', 'Minimalist']
-  },
-  {
-    url: 'https://images.unsplash.com/photo-1645566370376-af89a31f3862?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhY3J5bGljJTIwbmFpbHMlMjBhcnR8ZW58MXx8fHwxNzY1MTYyNjQzfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    title: 'Acrylic Nails',
-    author: 'Artistic Hands',
-    likes: 56,
-    tags: ['Chrome', 'Y2K']
-  },
-  {
-    url: 'https://images.unsplash.com/photo-1659391542239-9648f307c0b1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnZWwlMjBuYWlscyUyMHBvbGlzaHxlbnwxfHx8fDE3NjUwODg2OTZ8MA&ixlib=rb-4.1.0&q=80&w=1080',
-    title: 'Gel Polish',
-    author: 'Polish Pro',
-    likes: 178,
-    tags: ['Minimalist', 'French']
-  },
-  {
-    url: 'https://images.unsplash.com/photo-1737214475365-e4f06281dcf3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxuYWlsJTIwYXJ0JTIwZGVzaWdufGVufDF8fHx8MTc2NTEwNTkxOHww&ixlib=rb-4.1.0&q=80&w=1080',
-    title: 'Nail Art',
-    author: 'Creative Soul',
-    likes: 92,
-    tags: ['Y2K', 'Chrome']
-  },
-  {
-    url: 'https://images.unsplash.com/photo-1562940215-4314619607a2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiZWF1dHklMjBoYWlyJTIwYmxvd291dCUyMHNhbG9ufGVufDF8fHx8MTc2NTE2MDgwOXww&ixlib=rb-4.1.0&q=80&w=1080',
-    title: 'Blowout Style',
-    author: 'Hair Haven',
-    likes: 312,
-    tags: ['Minimalist']
-  },
-  {
-    url: 'https://images.unsplash.com/photo-1698181842119-a5283dea1440?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtYWtldXAlMjBhcnRpc3QlMjBiZWF1dHl8ZW58MXx8fHwxNzY1MDgwNjQwfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    title: 'Makeup Art',
-    author: 'Face Forward',
-    likes: 156,
-    tags: ['Minimalist']
-  },
-  {
-    url: 'https://images.unsplash.com/photo-1522337660859-02fbefca4702?w=800&auto=format&fit=crop&q=60',
-    title: 'Summer Vibes',
-    author: 'Beach Beauty',
-    likes: 201,
-    tags: ['French', 'Y2K']
-  },
-  {
-    url: 'https://images.unsplash.com/photo-1519017713917-9807534d0b0b?w=800&auto=format&fit=crop&q=60',
-    title: 'Classy Red',
-    author: 'Red Rose',
-    likes: 334,
-    tags: ['Minimalist']
-  },
-  {
-    url: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=800&auto=format&fit=crop&q=60',
-    title: 'Abstract Art',
-    author: 'Modernist',
-    likes: 112,
-    tags: ['Minimalist', 'Chrome']
-  },
-  {
-    url: 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?w=800&auto=format&fit=crop&q=60',
-    title: 'Pastel Dream',
-    author: 'Soft Touch',
-    likes: 145,
-    tags: ['French', 'Minimalist']
-  }
-];
+const TAGS = ['All', 'French', 'Chrome', 'Y2K', 'Minimalist'];
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=1200&auto=format&fit=crop&q=80';
+
+const pickTags = (seed: number) => {
+  const tagPool = TAGS.filter(tag => tag !== 'All');
+  const first = tagPool[seed % tagPool.length];
+  const second = tagPool[(seed + 2) % tagPool.length];
+  return first === second ? [first] : [first, second];
+};
 
 export function Home({ onNavigate, onPinClick }: HomeProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTag, setActiveTag] = useState('All');
-  const [images, setImages] = useState<any[]>([]);
+  const [images, setImages] = useState<Pin[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState('');
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   
   // Infinite Scroll State
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -111,56 +39,72 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
   const touchStart = useRef(0);
   const isPulling = useRef(false);
 
-  const tags = ['All', 'French', 'Chrome', 'Y2K', 'Minimalist'];
+  const tags = TAGS;
 
-  // Helper to get random images
-  const getRandomImages = (count: number, tag: string = 'All') => {
-    let pool = [...MOCK_IMAGES_POOL];
-    if (tag !== 'All') {
-      pool = pool.filter(img => img.tags.includes(tag));
+  const loadPins = async (options?: { reset?: boolean; tag?: string; query?: string }) => {
+    const reset = options?.reset ?? false;
+    const tag = options?.tag ?? activeTag;
+    const query = options?.query ?? searchQuery;
+    const nextOffset = reset ? 0 : offset;
+
+    try {
+      if (reset) {
+        setIsLoading(true);
+      } else {
+        setIsLoadingMore(true);
+      }
+      setError('');
+
+      const pins = await getPins({
+        skip: nextOffset,
+        limit: 8,
+        search: query || undefined,
+        tag: tag === 'All' ? undefined : tag
+      });
+      setImages(prev => reset ? pins : [...prev, ...pins]);
+      setOffset(nextOffset + pins.length);
+      setHasMore(pins.length > 0);
+    } catch (err) {
+      console.error('Failed to load home feed:', err);
+      setError('Unable to load feed. Please try again.');
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
     }
-    
-    // If pool is empty or too small, just use what we have or shuffle again
-    const shuffled = pool.sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, count).map((img, index) => ({
-      ...img,
-      id: Date.now() + index + Math.random(), // Ensure unique IDs
-      likes: Math.floor(Math.random() * 300) + 50
-    }));
   };
 
   // Initial Load
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setImages(getRandomImages(8, activeTag));
-      setIsLoading(false);
-    }, 400);
-    return () => clearTimeout(timer);
+    loadPins({ reset: true, tag: activeTag });
   }, []);
 
   // Update images when tag changes
   useEffect(() => {
     if (!isLoading) {
-      setIsLoadingMore(true);
-      // Simulate switching category
-      setTimeout(() => {
-        setImages(getRandomImages(8, activeTag));
-        setIsLoadingMore(false);
-      }, 300);
+      loadPins({ reset: true, tag: activeTag });
     }
   }, [activeTag]);
 
+  const didMountRef = useRef(false);
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      loadPins({ reset: true, query: searchQuery });
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // Infinite Scroll Logic
   const handleLoadMore = useCallback(() => {
-    if (isLoadingMore || isLoading) return;
-    
-    setIsLoadingMore(true);
-    // Simulate network request
-    setTimeout(() => {
-      setImages(prev => [...prev, ...getRandomImages(6, activeTag)]);
-      setIsLoadingMore(false);
-    }, 800);
-  }, [isLoadingMore, isLoading, activeTag]);
+    if (isLoadingMore || isLoading || !hasMore) return;
+    loadPins();
+  }, [isLoadingMore, isLoading, hasMore, activeTag, searchQuery, offset]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -216,11 +160,8 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
     if (isRefreshing) return;
     setIsRefreshing(true);
     
-    // Simulate refresh
-    setTimeout(() => {
-      setImages(getRandomImages(6));
-      setIsRefreshing(false);
-    }, 800);
+    await loadPins({ reset: true });
+    setIsRefreshing(false);
   };
 
   const handleUploadClick = () => {
@@ -267,11 +208,13 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
         {/* Search Bar */}
         <div className="px-4 py-3">
           <div className="relative group">
-            <input
-              type="text"
-              placeholder="Search for inspiration..."
-              className="w-full bg-[#1a1a1a] border-none rounded-full py-3.5 pl-12 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 transition-all shadow-lg"
-            />
+              <input
+                type="text"
+                placeholder="Search for inspiration..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#1a1a1a] border-none rounded-full py-3.5 pl-12 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 transition-all shadow-lg"
+              />
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-[#D4AF37] transition-colors" />
           </div>
         </div>
@@ -298,6 +241,11 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
 
       {/* Masonry Grid */}
       <div className="px-2 pb-24 pt-2">
+        {error && (
+          <div className="mx-4 mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {error}
+          </div>
+        )}
         <Masonry columnsCount={2} gutter="10px">
           {images.map((image, idx) => (
             <motion.div
@@ -311,13 +259,25 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
               {/* Image Card */}
               <div className="relative overflow-hidden rounded-2xl bg-[#1a1a1a] shadow-xl">
                 <img
-                  src={image.url}
+                  src={image.image_url || FALLBACK_IMAGE}
                   alt={image.title}
                   className={`w-full object-cover transition-transform duration-700 group-hover:scale-110 ${
                     idx % 3 === 0 ? 'aspect-[4/5]' : idx % 2 === 0 ? 'aspect-[2/3]' : 'aspect-[3/4]'
                   }`}
                   loading="lazy"
                 />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <button className="absolute right-3 top-3 h-9 w-9 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Heart className="w-4 h-4 text-[#D4AF37]" />
+                </button>
+                <div className="absolute bottom-3 left-3 right-3 text-white">
+                  <p className="text-sm font-semibold">{image.title}</p>
+                  <p className="text-xs text-gray-300">Curated by admin</p>
+                  <div className="mt-2 flex items-center gap-2 text-[10px] text-[#D4AF37] uppercase tracking-wider">
+                    <Sparkles className="w-3 h-3" />
+                    {image.tags?.slice(0, 2).join(' · ')}
+                  </div>
+                </div>
               </div>
             </motion.div>
           ))}
@@ -325,9 +285,9 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
         
         {/* Load More Indicator */}
         <div ref={observerTarget} className="flex justify-center py-6 h-20 w-full">
-           {isLoadingMore && (
-             <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
-           )}
+          {isLoadingMore && (
+            <Loader2 className="w-8 h-8 text-[#D4AF37] animate-spin" />
+          )}
         </div>
       </div>
 
