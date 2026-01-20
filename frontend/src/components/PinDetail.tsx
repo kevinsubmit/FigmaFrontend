@@ -265,9 +265,6 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
           <div className="px-4 pb-24">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-white">Similar ideas</h2>
-              <span className="text-xs text-gray-500 uppercase tracking-widest">
-                {data.tags?.[0] || 'Tag'}
-              </span>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {relatedPins.map((pin) => (
