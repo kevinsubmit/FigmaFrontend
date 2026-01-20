@@ -106,7 +106,8 @@ function AppRouter() {
     };
 
     setSelectedPin(normalizedPin);
-    navigate('/pin-detail');
+    sessionStorage.setItem('lastPin', JSON.stringify(normalizedPin));
+    navigate(`/pin-detail?id=${normalizedPin.id}`);
   };
 
   const handleSaveProfile = (newData: { avatar: string }) => {
@@ -234,14 +235,25 @@ function AppRouter() {
         <Route path="/pin-detail" element={
           <PinDetail 
               onBack={() => navigate('/')} 
-              onBookNow={() => {
-                const pinId = selectedPin?.id;
-                navigate(pinId ? `/services?pin_id=${pinId}` : '/services');
+              onBookNow={(pinId) => {
+                const resolvedPinId = pinId ?? selectedPin?.id;
+                navigate(resolvedPinId ? `/services?pin_id=${resolvedPinId}` : '/services');
                 toast.info("Style reference added to your booking!", {
                   icon: <Sparkles className="w-4 h-4 text-[#D4AF37]" />,
                   style: { background: '#1a1a1a', border: '1px solid #D4AF3733', color: '#fff' }
                 });
-              }} 
+              }}
+              onTagClick={(tag) => {
+                const params = new URLSearchParams();
+                params.set('tag', tag);
+                params.set('fromPin', '1');
+                navigate(`/?${params.toString()}`);
+              }}
+              onPinClick={(pin) => {
+                setSelectedPin(pin);
+                sessionStorage.setItem('lastPin', JSON.stringify(pin));
+                navigate(`/pin-detail?id=${pin.id}`);
+              }}
               pinData={selectedPin}
             />
         } />

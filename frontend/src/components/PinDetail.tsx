@@ -1,28 +1,29 @@
 import { 
   ArrowLeft, 
-  Heart, 
-  MessageCircle, 
   Share, 
-  MoreHorizontal, 
   ScanLine,
   X,
   Link,
   Instagram,
   Twitter,
   MessageSquare,
-  Copy,
+  MessageCircle,
   Download
 } from 'lucide-react';
 import Masonry from 'react-responsive-masonry';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Loader } from './ui/Loader';
 import { motion, AnimatePresence } from 'motion/react';
 import { Toaster } from './ui/sonner';
 import { toast } from 'sonner@2.0.3';
+import { getPins, getPinById, Pin } from '../api/pins';
 
 interface PinDetailProps {
   onBack: () => void;
-  onBookNow: () => void;
+  onBookNow: (pinId?: number) => void;
+  onTagClick?: (tag: string) => void;
+  onPinClick?: (pinData: Pin) => void;
   pinData?: {
     id: number;
     image_url: string;
@@ -33,31 +34,60 @@ interface PinDetailProps {
   };
 }
 
-export function PinDetail({ onBack, onBookNow, pinData }: PinDetailProps) {
+export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }: PinDetailProps) {
+  const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
-  const [showComments, setShowComments] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
-
-  // Mock data if no pinData provided
-  const data = pinData || {
-    id: 1,
-    image_url: 'https://images.unsplash.com/photo-1754799670410-b282791342c3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwaW5rJTIwbmFpbHMlMjBtYW5pY3VyZXxlbnwxfHx8fDE3NjUxNjI2NDF8MA&ixlib=rb-4.1.0&q=80&w=1080',
-    title: 'Pink Manicure with Hearts',
-    description: 'Curated inspiration from our studio team.',
-    tags: ['Minimalist', 'French'],
-  };
-
-  const [likeCount, setLikeCount] = useState(163);
-
-  const toggleLike = () => {
-    if (isLiked) {
-      setLikeCount(prev => prev - 1);
-    } else {
-      setLikeCount(prev => prev + 1);
+  const [relatedPins, setRelatedPins] = useState<Pin[]>([]);
+  const [resolvedPin, setResolvedPin] = useState<Pin | null>(null);
+  const data = useMemo(() => {
+    if (pinData) {
+      return pinData;
     }
-    setIsLiked(!isLiked);
-  };
+    if (resolvedPin) {
+      return resolvedPin;
+    }
+    return {
+      id: 1,
+      image_url: 'https://images.unsplash.com/photo-1754799670410-b282791342c3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwaW5rJTIwbmFpbHMlMjBtYW5pY3VyZXxlbnwxfHx8fDE3NjUxNjI2NDF8MA&ixlib=rb-4.1.0&q=80&w=1080',
+      title: 'Pink Manicure with Hearts',
+      description: 'Curated inspiration from our studio team.',
+      tags: ['Minimalist', 'French'],
+    };
+  }, [pinData, resolvedPin]);
+
+  useEffect(() => {
+    if (pinData) {
+      setResolvedPin(null);
+      return;
+    }
+    const params = new URLSearchParams(location.search);
+    const pinId = params.get('id');
+    if (!pinId) {
+      const cached = sessionStorage.getItem('lastPin');
+      if (cached) {
+        try {
+          setResolvedPin(JSON.parse(cached));
+        } catch (error) {
+          console.error('Failed to parse cached pin:', error);
+        }
+      }
+      return;
+    }
+    const parsedId = Number(pinId);
+    if (Number.isNaN(parsedId)) return;
+
+    setIsLoading(true);
+    getPinById(parsedId)
+      .then((pin) => {
+        setResolvedPin(pin);
+        sessionStorage.setItem('lastPin', JSON.stringify(pin));
+      })
+      .catch((error) => {
+        console.error('Failed to load pin detail:', error);
+      })
+      .finally(() => setIsLoading(false));
+  }, [location.search, pinData]);
 
   const handleCopyLink = async () => {
     try {
@@ -90,28 +120,56 @@ export function PinDetail({ onBack, onBookNow, pinData }: PinDetailProps) {
     }
   };
 
-  const relatedImages = [
-    {
-      id: 101,
-      url: 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?w=800&auto=format&fit=crop&q=60',
-      title: 'Similar Pink Style'
-    },
-    {
-      id: 102,
-      url: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=800&auto=format&fit=crop&q=60',
-      title: 'Nail Art'
-    },
-    {
-      id: 103,
-      url: 'https://images.unsplash.com/photo-1522337660859-02fbefca4702?w=800&auto=format&fit=crop&q=60',
-      title: 'Manicure'
-    },
-    {
-      id: 104,
-      url: 'https://images.unsplash.com/photo-1519017713917-9807534d0b0b?w=800&auto=format&fit=crop&q=60',
-      title: 'Glam Nails'
+  const handleDownloadImage = async () => {
+    try {
+      const response = await fetch(data.image_url);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${data.title || 'nail-inspo'}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Image downloaded');
+    } catch (error) {
+      console.error('Download failed:', error);
+      toast.error('Failed to download image');
     }
-  ];
+  };
+
+  const handleShareWhatsApp = () => {
+    const text = `${data.title}\n${data.image_url}`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleShareMessage = () => {
+    const text = `${data.title}\n${data.image_url}`;
+    const url = `sms:?&body=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
+  useEffect(() => {
+    const loadRelatedPins = async () => {
+      if (!data.tags || data.tags.length === 0) {
+        setRelatedPins([]);
+        return;
+      }
+      try {
+        const primaryTag = data.tags[0];
+        const pins = await getPins({ skip: 0, limit: 8, tag: primaryTag });
+        const filtered = pins.filter((pin) => pin.id !== data.id);
+        setRelatedPins(filtered.slice(0, 6));
+      } catch (err) {
+        console.error('Failed to load related pins:', err);
+        setRelatedPins([]);
+      }
+    };
+
+    loadRelatedPins();
+  }, [data.id, data.tags?.join('|')]);
 
   useEffect(() => {
     // Simulate loading detailed data
@@ -120,6 +178,10 @@ export function PinDetail({ onBack, onBookNow, pinData }: PinDetailProps) {
     }, 300);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [data.id]);
 
   if (isLoading) {
     return (
@@ -140,7 +202,7 @@ export function PinDetail({ onBack, onBookNow, pinData }: PinDetailProps) {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white pb-24 animate-in fade-in duration-500">
+    <div className="min-h-screen bg-black text-white pb-32 animate-in fade-in duration-500">
       <Toaster />
       {/* Sticky Top Bar for Back Button */}
       <div className="fixed top-0 left-0 right-0 z-50 px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] bg-gradient-to-b from-black/50 to-transparent pointer-events-none">
@@ -165,108 +227,68 @@ export function PinDetail({ onBack, onBookNow, pinData }: PinDetailProps) {
           <button className="absolute bottom-4 right-4 w-10 h-10 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-black/70 transition-colors">
             <ScanLine className="w-5 h-5 text-white" />
           </button>
+
+          <button
+            onClick={() => setIsShareOpen(true)}
+            className="absolute top-4 right-4 w-10 h-10 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
+            aria-label="Share"
+          >
+            <Share className="w-5 h-5 text-white" />
+          </button>
         </div>
 
         {/* Actions Bar */}
         <div className="px-4 py-4 flex flex-col gap-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <div 
-                className="flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-transform active:scale-95" 
-                onClick={toggleLike}
-              >
-                <Heart 
-                  className={`w-7 h-7 transition-colors duration-300 ${isLiked ? 'fill-white text-white' : 'text-white'}`} 
-                />
-                <span className="text-sm font-semibold">{likeCount}</span>
-              </div>
-              <div className="flex items-center gap-1.5 cursor-pointer hover:opacity-80" onClick={() => setShowComments(!showComments)}>
-                <MessageCircle className="w-6 h-6 text-white" />
-                <span className="text-sm font-semibold">2</span>
-              </div>
-              <div className="cursor-pointer hover:opacity-80" onClick={() => setIsShareOpen(true)}>
-                <Share className="w-6 h-6 text-white" />
-              </div>
-            </div>
-            
-            {/* Removed MoreHorizontal */}
-          </div>
+          <div className="flex items-center justify-end" />
           
-          <div className="flex items-center justify-center gap-4 w-full">
-            <button 
-              onClick={onBookNow}
-              className="flex-1 bg-[#2a2a2a] hover:bg-[#333] text-white py-3.5 rounded-full font-bold text-base transition-colors border border-[#D4AF37]/30 whitespace-nowrap"
-            >
-              Book this look
-            </button>
-            <button className="flex-1 bg-[#D4AF37] hover:bg-[#b5952f] text-black py-3.5 rounded-full font-bold text-base transition-colors">
-              Save
-            </button>
+          <div className="flex flex-col gap-2">
+            <p className="text-xs uppercase tracking-widest text-gray-500">Chosen design</p>
+            <h1 className="text-2xl font-bold text-white">{data.title}</h1>
           </div>
-
-          {data.description && (
-            <p className="text-sm text-gray-300">{data.description}</p>
-          )}
 
           {data.tags && data.tags.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {data.tags.map((tag) => (
-                <span
+                <button
                   key={tag}
-                  className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-300"
+                  onClick={() => onTagClick?.(tag)}
+                  className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-300 hover:text-white hover:bg-white/15 transition-colors"
                 >
                   {tag}
-                </span>
+                </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* Comments Section */}
-        {showComments && (
-          <div className="px-4 pb-6 animate-in slide-in-from-top-4 duration-300 border-t border-[#333] pt-4 mt-2">
-             <h3 className="text-lg font-bold mb-4">Comments</h3>
-             
-             {/* Comment List */}
-             <div className="space-y-4 mb-6">
-                <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold text-white shrink-0">
-                    J
+        {relatedPins.length > 0 && (
+          <div className="px-4 pb-24">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-white">Similar ideas</h2>
+              <span className="text-xs text-gray-500 uppercase tracking-widest">
+                {data.tags?.[0] || 'Tag'}
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {relatedPins.map((pin) => (
+                <button
+                  key={pin.id}
+                  onClick={() => onPinClick?.(pin)}
+                  className="group overflow-hidden rounded-2xl border border-[#222] bg-[#111] text-left"
+                >
+                  <div className="aspect-[3/4] overflow-hidden">
+                    <img
+                      src={pin.image_url}
+                      alt={pin.title}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
                   </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">Jessica Lee <span className="text-gray-500 font-normal ml-2">2h</span></p>
-                    <p className="text-sm text-gray-300">Love this design! 😍</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center text-xs font-bold text-white shrink-0">
-                    M
-                  </div>
-                  <div>
-                     <p className="text-sm font-semibold text-white">Maria Garcia <span className="text-gray-500 font-normal ml-2">5h</span></p>
-                     <p className="text-sm text-gray-300">Can I book this for next week?</p>
-                  </div>
-                </div>
-             </div>
-
-             {/* Comment Input */}
-             <div className="flex gap-3 items-center">
-                <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center shrink-0">
-                   <span className="text-xs text-white">You</span>
-                </div>
-                <div className="flex-1 relative">
-                   <input 
-                      type="text" 
-                      placeholder="Add a comment..." 
-                      className="w-full bg-[#1a1a1a] text-white text-sm rounded-full py-2.5 px-4 border border-[#333] focus:border-[#D4AF37] focus:outline-none transition-colors"
-                   />
-                   <button className="absolute right-2 top-1/2 -translate-y-1/2 text-[#D4AF37] text-sm font-bold px-2 hover:text-[#b5952f]">
-                      Post
-                   </button>
-                </div>
-             </div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
+
         {/* Share Sheet Modal */}
         <AnimatePresence>
           {isShareOpen && (
@@ -328,21 +350,30 @@ export function PinDetail({ onBack, onBookNow, pinData }: PinDetailProps) {
                       <span className="text-xs text-gray-400">Copy link</span>
                     </button>
                     
-                    <button className="flex flex-col items-center gap-2 group min-w-[72px]">
+                    <button
+                      className="flex flex-col items-center gap-2 group min-w-[72px]"
+                      onClick={handleDownloadImage}
+                    >
                       <div className="w-14 h-14 rounded-full bg-gray-800 flex items-center justify-center group-hover:bg-gray-700 transition-colors">
                         <Download className="w-7 h-7 text-white" />
                       </div>
                       <span className="text-xs text-gray-400 whitespace-nowrap">Download image</span>
                     </button>
 
-                    <button className="flex flex-col items-center gap-2 group min-w-[72px]">
+                    <button
+                      className="flex flex-col items-center gap-2 group min-w-[72px]"
+                      onClick={handleShareWhatsApp}
+                    >
                       <div className="w-14 h-14 rounded-full bg-[#25D366] flex items-center justify-center group-hover:opacity-90 transition-opacity">
                         <MessageCircle className="w-7 h-7 text-white fill-current" />
                       </div>
                       <span className="text-xs text-gray-400">WhatsApp</span>
                     </button>
 
-                    <button className="flex flex-col items-center gap-2 group min-w-[72px]">
+                    <button
+                      className="flex flex-col items-center gap-2 group min-w-[72px]"
+                      onClick={handleShareMessage}
+                    >
                       <div className="w-14 h-14 rounded-full bg-[#53d769] flex items-center justify-center group-hover:opacity-90 transition-opacity">
                          <MessageSquare className="w-7 h-7 text-white fill-current" />
                       </div>
@@ -368,6 +399,21 @@ export function PinDetail({ onBack, onBookNow, pinData }: PinDetailProps) {
             </>
           )}
         </AnimatePresence>
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur border-t border-[#222] px-5 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-gray-500">Book this look</p>
+            <p className="text-sm text-white">Find salons near you</p>
+          </div>
+          <button
+            onClick={() => onBookNow(data.id)}
+            className="rounded-full bg-[#D4AF37] px-6 py-3 text-sm font-bold text-black hover:bg-[#b5952f] transition-colors"
+          >
+            Choose a salon
+          </button>
+        </div>
       </div>
     </div>
   );

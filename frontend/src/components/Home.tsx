@@ -1,6 +1,7 @@
-import { Heart, Plus, Search, Loader2, ArrowDown, Sparkles } from 'lucide-react';
+import { Heart, Search, Loader2, ArrowDown, Sparkles } from 'lucide-react';
 import Masonry from 'react-responsive-masonry';
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Loader } from './ui/Loader';
 import { motion } from 'framer-motion';
 import { getPins, Pin } from '../api/pins';
@@ -10,24 +11,22 @@ interface HomeProps {
   onPinClick?: (pinData: any) => void;
 }
 
-const TAGS = ['All', 'French', 'Chrome', 'Y2K', 'Minimalist'];
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=1200&auto=format&fit=crop&q=80';
 
-const pickTags = (seed: number) => {
-  const tagPool = TAGS.filter(tag => tag !== 'All');
-  const first = tagPool[seed % tagPool.length];
-  const second = tagPool[(seed + 2) % tagPool.length];
-  return first === second ? [first] : [first, second];
-};
-
 export function Home({ onNavigate, onPinClick }: HomeProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [activeTag, setActiveTag] = useState('All');
   const [images, setImages] = useState<Pin[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchDraft, setSearchDraft] = useState('');
   const [error, setError] = useState('');
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [tags, setTags] = useState<string[]>(['All']);
+  const hasSetSeasonal = useRef(false);
+  const hasSetTagFromUrl = useRef(false);
   
   // Infinite Scroll State
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -38,8 +37,6 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
   const [pullDistance, setPullDistance] = useState(0);
   const touchStart = useRef(0);
   const isPulling = useRef(false);
-
-  const tags = TAGS;
 
   const loadPins = async (options?: { reset?: boolean; tag?: string; query?: string }) => {
     const reset = options?.reset ?? false;
@@ -78,6 +75,44 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
     loadPins({ reset: true, tag: activeTag });
   }, []);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tag = params.get('tag');
+    if (tag && tag !== activeTag) {
+      setActiveTag(tag);
+      setSearchDraft(tag);
+      setSearchQuery(tag);
+    }
+    if (!hasSetTagFromUrl.current) {
+      hasSetTagFromUrl.current = true;
+    }
+  }, [location.search, activeTag]);
+
+  useEffect(() => {
+    const loadTags = async () => {
+      try {
+        const pins = await getPins({ skip: 0, limit: 100 });
+        const tagSet = new Set<string>();
+        pins.forEach((pin) => {
+          pin.tags?.forEach((tag) => tagSet.add(tag));
+        });
+        setTags(['All', ...Array.from(tagSet)]);
+      } catch (err) {
+        console.error('Failed to load tags:', err);
+      }
+    };
+
+    loadTags();
+  }, []);
+
+  useEffect(() => {
+    if (hasSetSeasonal.current) return;
+    if (tags.length > 1) {
+      setActiveTag('All');
+      hasSetSeasonal.current = true;
+    }
+  }, [tags]);
+
   // Update images when tag changes
   useEffect(() => {
     if (!isLoading) {
@@ -85,19 +120,8 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
     }
   }, [activeTag]);
 
-  const didMountRef = useRef(false);
-
   useEffect(() => {
-    if (!didMountRef.current) {
-      didMountRef.current = true;
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      loadPins({ reset: true, query: searchQuery });
-    }, 300);
-
-    return () => clearTimeout(timer);
+    loadPins({ reset: true, query: searchQuery });
   }, [searchQuery]);
 
   // Infinite Scroll Logic
@@ -105,6 +129,19 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
     if (isLoadingMore || isLoading || !hasMore) return;
     loadPins();
   }, [isLoadingMore, isLoading, hasMore, activeTag, searchQuery, offset]);
+
+  const applySearch = () => {
+    setSearchQuery(searchDraft.trim());
+  };
+
+  const clearSearch = () => {
+    setSearchDraft('');
+    setSearchQuery('');
+    setActiveTag('All');
+    if (location.search) {
+      navigate('/', { replace: true });
+    }
+  };
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -164,10 +201,6 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
     setIsRefreshing(false);
   };
 
-  const handleUploadClick = () => {
-    alert('Upload your nail design!');
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black pt-24">
@@ -205,17 +238,31 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
 
       {/* Sticky Header Container */}
       <div className="sticky top-0 z-20 bg-black/95 backdrop-blur-md pb-2 transition-all pt-[env(safe-area-inset-top)]">
-        {/* Search Bar */}
         <div className="px-4 py-3">
           <div className="relative group">
-              <input
-                type="text"
-                placeholder="Search for inspiration..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#1a1a1a] border-none rounded-full py-3.5 pl-12 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 transition-all shadow-lg"
-              />
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-[#D4AF37] transition-colors" />
+            <input
+              type="text"
+              placeholder="Search tags (e.g. snowflake)"
+              value={searchDraft}
+              onChange={(e) => setSearchDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  applySearch();
+                }
+              }}
+              className="w-full bg-[#1a1a1a] border-none rounded-full py-2.5 pl-12 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 transition-all shadow-lg"
+            />
+            {searchDraft && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            )}
           </div>
         </div>
 
@@ -225,7 +272,14 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
             {tags.map((tag) => (
               <button
                 key={tag}
-                onClick={() => setActiveTag(tag)}
+                onClick={() => {
+                  setActiveTag(tag);
+                  setSearchDraft('');
+                  setSearchQuery('');
+                  if (location.search) {
+                    navigate('/', { replace: true });
+                  }
+                }}
                 className={`relative px-5 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                   activeTag === tag
                     ? 'bg-[#D4AF37] text-black shadow-md shadow-[#D4AF37]/20'
@@ -290,15 +344,6 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
           )}
         </div>
       </div>
-
-      {/* Floating Action Button (Main) */}
-      <button
-        onClick={handleUploadClick}
-        className="fixed bottom-24 right-5 w-14 h-14 bg-[#1a1a1a] border border-[#D4AF37]/30 rounded-full flex items-center justify-center shadow-2xl hover:bg-[#252525] transition-all hover:scale-105 active:scale-95 z-50 group"
-        aria-label="Create Pin"
-      >
-        <Plus className="w-7 h-7 text-[#D4AF37]" strokeWidth={2.5} />
-      </button>
     </div>
   );
 }
