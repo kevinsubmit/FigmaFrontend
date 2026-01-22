@@ -20,7 +20,6 @@ import {
   User,
   Loader2,
   ChevronDown,
-  Instagram,
   Navigation,
   ShieldCheck,
   Zap
@@ -389,9 +388,26 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
   };
 
   const handleCall = () => {
-    window.location.href = "tel:(413)381-8496";
+    if (!store.phone) {
+      return;
+    }
+    window.location.href = `tel:${store.phone}`;
     setIsCallDrawerOpen(false);
   };
+
+  const formatTime = (timeString?: string | null) => {
+    if (!timeString) return 'Closed';
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours, 10);
+    if (Number.isNaN(hour)) return timeString;
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const todayIndex = (new Date().getDay() + 6) % 7;
+  const todayHours = storeHours.find((hour) => hour.day_of_week === todayIndex);
 
   const handleBookingClick = (service: Service) => {
     setSelectedServices(prev => {
@@ -1011,11 +1027,18 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                         <div>
                             <div className="flex justify-between items-center mb-3">
                                 <span className="text-gray-300 text-sm">Today</span>
-                                <span className="text-white font-bold text-sm">09:15 - 18:00</span>
+                                <span className="text-white font-bold text-sm">
+                                    {todayHours
+                                      ? (todayHours.is_closed
+                                        ? 'Closed'
+                                        : `${formatTime(todayHours.open_time)} - ${formatTime(todayHours.close_time)}`)
+                                      : 'Hours not set'}
+                                </span>
                             </div>
                             <button 
                                 onClick={() => setShowFullHours(!showFullHours)}
-                                className="flex items-center gap-1 text-[#D4AF37] text-sm font-medium hover:opacity-80 transition-opacity"
+                                disabled={storeHours.length === 0}
+                                className="flex items-center gap-1 text-[#D4AF37] text-sm font-medium hover:opacity-80 transition-opacity disabled:opacity-40"
                             >
                                 Show full week
                                 <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${showFullHours ? 'rotate-180' : ''}`} />
@@ -1030,20 +1053,40 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                                         className="overflow-hidden"
                                     >
                                         <div className="mt-4 space-y-2 pl-4 border-l border-[#333] text-sm">
-                                            {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'].map(day => (
-                                                <div key={day} className="flex justify-between">
-                                                    <span className="text-gray-400">{day}</span>
-                                                    <span className="text-gray-300">09:15 - 18:00</span>
+                                            {storeHours.length === 0 ? (
+                                                <div className="flex justify-between text-gray-500">
+                                                    <span>Hours not set</span>
+                                                    <span>-</span>
                                                 </div>
-                                            ))}
-                                            <div className="flex justify-between text-gray-500">
-                                                <span>Saturday</span>
-                                                <span>10:00 - 16:00</span>
-                                            </div>
-                                            <div className="flex justify-between text-red-400">
-                                                <span>Sunday</span>
-                                                <span>Closed</span>
-                                            </div>
+                                            ) : (
+                                              dayNames.map((day, index) => {
+                                                const hours = storeHours.find((hour) => hour.day_of_week === index);
+                                                if (!hours) {
+                                                  return (
+                                                    <div key={day} className="flex justify-between text-gray-500">
+                                                      <span>{day}</span>
+                                                      <span>Closed</span>
+                                                    </div>
+                                                  );
+                                                }
+                                                if (hours.is_closed || !hours.open_time || !hours.close_time) {
+                                                  return (
+                                                    <div key={day} className="flex justify-between text-red-400">
+                                                      <span>{day}</span>
+                                                      <span>Closed</span>
+                                                    </div>
+                                                  );
+                                                }
+                                                return (
+                                                  <div key={day} className="flex justify-between">
+                                                    <span className="text-gray-400">{day}</span>
+                                                    <span className="text-gray-300">
+                                                      {formatTime(hours.open_time)} - {formatTime(hours.close_time)}
+                                                    </span>
+                                                  </div>
+                                                );
+                                              })
+                                            )}
                                         </div>
                                     </motion.div>
                                 )}
@@ -1056,28 +1099,42 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <Phone className="w-6 h-6 text-gray-400" strokeWidth={1.5} />
-                                <span className="text-white font-medium text-lg tracking-wide">(413) 381-8496</span>
+                                <span className="text-white font-medium text-lg tracking-wide">
+                                  {store.phone || 'No phone listed'}
+                                </span>
                             </div>
                             <button 
                                 onClick={() => setIsCallDrawerOpen(true)}
-                                className="px-5 py-2 border border-[#333] text-white font-medium rounded-lg text-sm hover:bg-[#D4AF37] hover:text-black hover:border-[#D4AF37] transition-all"
+                                disabled={!store.phone}
+                                className="px-5 py-2 border border-[#333] text-white font-medium rounded-lg text-sm hover:bg-[#D4AF37] hover:text-black hover:border-[#D4AF37] transition-all disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-white disabled:hover:border-[#333]"
                             >
                                 Call
                             </button>
                         </div>
+
+                        {store.email && (
+                          <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-4">
+                                  <MessageSquare className="w-6 h-6 text-gray-400" strokeWidth={1.5} />
+                                  <span className="text-white font-medium text-sm tracking-wide break-all">{store.email}</span>
+                              </div>
+                              <a
+                                href={`mailto:${store.email}`}
+                                className="px-5 py-2 border border-[#333] text-white font-medium rounded-lg text-sm hover:bg-[#D4AF37] hover:text-black hover:border-[#D4AF37] transition-all"
+                              >
+                                Email
+                              </a>
+                          </div>
+                        )}
                     </div>
                 </div>
 
-                {/* Social Media */}
-                <div>
-                    <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-6">Social Media & Share</h3>
-                    <div className="flex flex-col items-center justify-center gap-2">
-                        <button className="w-14 h-14 rounded-full bg-[#222] border border-[#333] flex items-center justify-center text-white hover:text-[#D4AF37] hover:border-[#D4AF37] hover:scale-105 transition-all shadow-lg">
-                            <Instagram className="w-7 h-7" />
-                        </button>
-                        <span className="text-xs text-gray-500 font-medium">Instagram</span>
-                    </div>
-                </div>
+                {!store.email && (
+                  <div>
+                      <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3">Contact</h3>
+                      <p className="text-sm text-gray-500">No additional contact details provided.</p>
+                  </div>
+                )}
 
                 {/* Report */}
                 <div className="border-t border-[#333] pt-4 mt-8">
@@ -1182,12 +1239,15 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
             </DrawerHeader>
             <div className="px-6 text-center mb-8">
                 <p className="text-gray-400 mb-6">Would you like to call the salon directly?</p>
-                <div className="text-2xl font-bold text-white tracking-wider mb-2">(413) 381-8496</div>
+                <div className="text-2xl font-bold text-white tracking-wider mb-2">
+                  {store.phone || 'No phone listed'}
+                </div>
             </div>
             <div className="px-6 flex flex-col gap-3">
                 <button 
                     onClick={handleCall}
-                    className="w-full py-4 bg-[#D4AF37] text-black font-bold rounded-2xl flex items-center justify-center gap-3 hover:bg-[#b5952f] transition-all"
+                    disabled={!store.phone}
+                    className="w-full py-4 bg-[#D4AF37] text-black font-bold rounded-2xl flex items-center justify-center gap-3 hover:bg-[#b5952f] transition-all disabled:opacity-40 disabled:hover:bg-[#D4AF37]"
                 >
                     <Phone className="w-5 h-5 fill-black" />
                     Call Now
