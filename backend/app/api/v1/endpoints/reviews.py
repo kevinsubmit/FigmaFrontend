@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -11,6 +12,7 @@ from app.schemas.review import ReviewCreate, ReviewResponse, StoreRatingResponse
 from app.api.deps import get_current_user
 
 router = APIRouter()
+REVIEW_WINDOW_DAYS = 30
 
 
 @router.post("/", response_model=ReviewResponse, status_code=status.HTTP_201_CREATED)
@@ -47,7 +49,15 @@ def create_review(
             detail="You can only review completed appointments"
         )
     
-    # 4. 检查是否已经评价过
+    # 4. 检查评价窗口是否过期
+    appointment_dt = datetime.combine(appointment.appointment_date, appointment.appointment_time)
+    if datetime.now() > appointment_dt + timedelta(days=REVIEW_WINDOW_DAYS):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Review window has expired"
+        )
+
+    # 5. 检查是否已经评价过
     existing_review = db.query(Review).filter(Review.appointment_id == review_data.appointment_id).first()
     if existing_review:
         raise HTTPException(
@@ -55,7 +65,7 @@ def create_review(
             detail="This appointment has already been reviewed"
         )
     
-    # 5. 创建评价
+    # 6. 创建评价
     new_review = Review(
         user_id=current_user.id,
         store_id=appointment.store_id,
@@ -68,7 +78,7 @@ def create_review(
     db.commit()
     db.refresh(new_review)
     
-    # 6. 构建响应（包含用户信息）
+    # 7. 构建响应（包含用户信息）
     response = ReviewResponse.from_orm(new_review)
     response.user_name = current_user.username
     response.user_avatar = current_user.avatar_url
@@ -244,14 +254,24 @@ def update_review(
             detail="You can only update your own reviews"
         )
     
-    # 3. 更新评价
+    # 3. 检查评价窗口是否过期
+    appointment = review.appointment
+    if appointment:
+        appointment_dt = datetime.combine(appointment.appointment_date, appointment.appointment_time)
+        if datetime.now() > appointment_dt + timedelta(days=REVIEW_WINDOW_DAYS):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Review window has expired"
+            )
+
+    # 4. 更新评价
     review.rating = review_data.rating
     review.comment = review_data.comment
     
     db.commit()
     db.refresh(review)
     
-    # 4. 构建响应
+    # 5. 构建响应
     response = ReviewResponse.from_orm(review)
     response.user_name = current_user.username
     response.user_avatar = current_user.avatar_url

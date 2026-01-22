@@ -1,5 +1,5 @@
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import or_
 from app.models.pin import Pin, Tag
 
@@ -11,7 +11,7 @@ def get_pins(
     tag: Optional[str] = None,
     search: Optional[str] = None,
 ) -> List[Pin]:
-    query = db.query(Pin)
+    query = db.query(Pin).options(selectinload(Pin.tags))
 
     if search:
         query = query.filter(
@@ -28,4 +28,9 @@ def get_pins(
 
 
 def get_pin(db: Session, pin_id: int) -> Optional[Pin]:
-    return db.query(Pin).filter(Pin.id == pin_id).first()
+    return (
+        db.query(Pin)
+        .options(selectinload(Pin.tags))
+        .filter(Pin.id == pin_id)
+        .first()
+    )

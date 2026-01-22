@@ -120,10 +120,6 @@ export function Profile({ onNavigate, onPinClick }: ProfileProps) {
     };
     
     fetchUnreadCount();
-    
-    // Poll for new notifications every 30 seconds
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {

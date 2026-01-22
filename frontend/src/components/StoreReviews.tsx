@@ -118,7 +118,10 @@ const StoreReviews: React.FC<StoreReviewsProps> = ({ storeId }) => {
         </div>
       ) : (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold mb-4">Customer Reviews</h3>
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold">Customer Reviews</h3>
+            <p className="text-xs text-gray-500">Verified by completed appointments.</p>
+          </div>
           {reviews.map((review) => (
             <div
               key={review.id}

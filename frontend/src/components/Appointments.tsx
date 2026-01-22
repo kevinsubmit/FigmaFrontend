@@ -22,6 +22,7 @@ interface AppointmentWithDetails extends Appointment {
 
 export function Appointments() {
   const navigate = useNavigate();
+  const REVIEW_WINDOW_DAYS = 30;
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [appointments, setAppointments] = useState<AppointmentWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,6 +118,16 @@ export function Appointments() {
 
     const appointmentDateTime = new Date(`${apt.appointment_date}T${apt.appointment_time}`);
     return appointmentDateTime >= new Date();
+  };
+
+  const getAppointmentDateTime = (apt: Appointment) =>
+    new Date(`${apt.appointment_date}T${apt.appointment_time}`);
+
+  const isReviewWindowOpen = (apt: Appointment) => {
+    const appointmentDateTime = getAppointmentDateTime(apt);
+    const cutoff = new Date(appointmentDateTime);
+    cutoff.setDate(cutoff.getDate() + REVIEW_WINDOW_DAYS);
+    return new Date() <= cutoff;
   };
 
   const upcomingAppointments = appointments.filter(isUpcoming);
@@ -216,16 +227,22 @@ export function Appointments() {
                   </span>
                   <div className="flex gap-2">
                     {apt.status === 'completed' && (
-                      <button
-                        onClick={() => {
-                          setReviewingAppointment(apt);
-                          setShowReviewForm(true);
-                        }}
-                        className="text-sm text-[#D4AF37] hover:text-[#b08d2d] transition-colors flex items-center gap-1"
-                      >
-                        <Star className="w-4 h-4" />
-                        Review
-                      </button>
+                      isReviewWindowOpen(apt) ? (
+                        <button
+                          onClick={() => {
+                            setReviewingAppointment(apt);
+                            setShowReviewForm(true);
+                          }}
+                          className="text-sm text-[#D4AF37] hover:text-[#b08d2d] transition-colors flex items-center gap-1"
+                        >
+                          <Star className="w-4 h-4" />
+                          Review
+                        </button>
+                      ) : (
+                        <span className="text-xs text-gray-500 uppercase tracking-wide">
+                          Review window closed
+                        </span>
+                      )
                     )}
                     {apt.status === 'pending' && !isPast && (
                       <button
@@ -233,9 +250,9 @@ export function Appointments() {
                           setSelectedAppointment(apt);
                           setShowCancelDialog(true);
                         }}
-                        className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                        className="rounded-full border border-[#D4AF37] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10"
                       >
-                        Cancel
+                        Manage
                       </button>
                     )}
                   </div>

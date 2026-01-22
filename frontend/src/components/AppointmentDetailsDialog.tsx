@@ -201,7 +201,7 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
       <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
         <div className="bg-[#0f0f0f] text-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-white/10 shadow-2xl">
           {/* Header */}
-          <div className="sticky top-0 bg-[#0f0f0f]/95 backdrop-blur border-b border-white/10 px-6 py-4 flex items-center justify-between">
+          <div className="sticky top-0 bg-[#0f0f0f] border-b border-white/10 px-6 py-5 flex items-center justify-between">
             <h2 className="text-xl font-semibold text-white">Appointment Details</h2>
             <button
               onClick={onClose}

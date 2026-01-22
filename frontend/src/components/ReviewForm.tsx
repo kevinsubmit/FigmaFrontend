@@ -159,6 +159,9 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
         <h2 className="text-2xl font-bold text-gray-900 mb-6">
           {isEditMode ? 'Edit Review' : 'Write a Review'}
         </h2>
+        <p className="text-xs text-gray-500 mb-5">
+          Reviews are available within 30 days after your appointment.
+        </p>
 
         <form onSubmit={handleSubmit}>
           {/* Rating Stars */}
