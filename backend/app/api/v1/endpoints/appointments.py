@@ -91,13 +91,14 @@ def get_my_appointments(
     
     # Format response
     result = []
-    for appt, store_name, service_name, service_price, service_duration in appointments_data:
+    for appt, store_name, service_name, service_price, service_duration, review_id in appointments_data:
         result.append({
             **appt.__dict__,
             "store_name": store_name,
             "service_name": service_name,
             "service_price": service_price,
-            "service_duration": service_duration
+            "service_duration": service_duration,
+            "review_id": review_id
         })
     
     return result

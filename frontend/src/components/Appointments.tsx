@@ -227,7 +227,7 @@ export function Appointments() {
                   </span>
                   <div className="flex gap-2">
                     {apt.status === 'completed' && (
-                      isReviewWindowOpen(apt) ? (
+                      isReviewWindowOpen(apt) && !apt.review_id ? (
                         <button
                           onClick={() => {
                             setReviewingAppointment(apt);
@@ -240,7 +240,7 @@ export function Appointments() {
                         </button>
                       ) : (
                         <span className="text-xs text-gray-500 uppercase tracking-wide">
-                          Review window closed
+                          {apt.review_id ? 'Reviewed' : 'Review window closed'}
                         </span>
                       )
                     )}

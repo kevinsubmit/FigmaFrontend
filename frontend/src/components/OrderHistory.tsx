@@ -1,98 +1,96 @@
-import { ArrowLeft, ShoppingBag, MapPin, Calendar, CheckCircle2, Clock } from 'lucide-react';
+import { ArrowLeft, ShoppingBag, MapPin, Calendar, CheckCircle2, Clock, Star } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Loader } from './ui/Loader';
+import { toast } from 'react-toastify';
+import { getMyAppointments, Appointment } from '../api/appointments';
+import ReviewForm from './ReviewForm';
+import { Store } from '../api/stores';
+import { Service } from '../api/services';
+import { Technician } from '../api/technicians';
 
 interface OrderHistoryProps {
   onBack: () => void;
 }
 
-interface Order {
-  id: string;
-  shopName: string;
-  date: string;
-  time: string;
-  service: string;
-  amount: number;
-  status: 'completed' | 'upcoming' | 'cancelled';
-  location: string;
+interface AppointmentWithDetails extends Appointment {
+  store?: Store;
+  service?: Service;
+  technician?: Technician | null;
+  store_name?: string | null;
+  service_name?: string | null;
+  service_price?: number | null;
+  service_duration?: number | null;
+  technician_name?: string | null;
 }
 
-// Mock Data
-const MOCK_ORDERS: Order[] = [
-  {
-    id: 'ORD-2023-001',
-    shopName: 'Luxe Nail Spa',
-    date: '2023-12-10',
-    time: '14:30',
-    service: 'Gel Manicure & Pedicure',
-    amount: 128.00,
-    status: 'completed',
-    location: 'Downtown'
-  },
-  {
-    id: 'ORD-2023-002',
-    shopName: 'Golden Glow Studio',
-    date: '2023-11-25',
-    time: '11:00',
-    service: 'Acrylic Full Set',
-    amount: 85.00,
-    status: 'completed',
-    location: 'Westside'
-  },
-  {
-    id: 'ORD-2023-003',
-    shopName: 'Luxe Nail Spa',
-    date: '2023-11-05',
-    time: '16:15',
-    service: 'Nail Art - Custom Design',
-    amount: 45.00,
-    status: 'completed',
-    location: 'Downtown'
-  },
-  {
-    id: 'ORD-2023-004',
-    shopName: 'Pure Beauty Lounge',
-    date: '2023-10-18',
-    time: '10:00',
-    service: 'Classic Manicure',
-    amount: 35.00,
-    status: 'completed',
-    location: 'North Hills'
-  },
-  {
-    id: 'ORD-2023-005',
-    shopName: 'Luxe Nail Spa',
-    date: '2023-12-20',
-    time: '13:00',
-    service: 'Holiday Special Set',
-    amount: 150.00,
-    status: 'upcoming',
-    location: 'Downtown'
-  }
-];
-
 export function OrderHistory({ onBack }: OrderHistoryProps) {
+  const REVIEW_WINDOW_DAYS = 30;
   const [isLoading, setIsLoading] = useState(true);
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [appointments, setAppointments] = useState<AppointmentWithDetails[]>([]);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewingAppointment, setReviewingAppointment] = useState<AppointmentWithDetails | null>(null);
 
   useEffect(() => {
-    // Simulate fetching data
-    const timer = setTimeout(() => {
-      // Sort orders by date descending
-      const sorted = [...MOCK_ORDERS].sort((a, b) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-      setOrders(sorted);
-      setIsLoading(false);
-    }, 600);
-    return () => clearTimeout(timer);
+    const loadAppointments = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getMyAppointments();
+        const sorted = [...data].sort((a, b) => {
+          const aDateTime = new Date(`${a.appointment_date}T${a.appointment_time}`);
+          const bDateTime = new Date(`${b.appointment_date}T${b.appointment_time}`);
+          return bDateTime.getTime() - aDateTime.getTime();
+        });
+        setAppointments(sorted);
+      } catch (error) {
+        console.error('Failed to load order history:', error);
+        toast.error('Failed to load order history');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAppointments();
   }, []);
 
-  const totalSpend = orders
-    .filter(o => o.status === 'completed')
-    .reduce((acc, curr) => acc + curr.amount, 0);
+  const totalSpend = appointments
+    .filter((apt) => apt.status === 'completed')
+    .reduce((acc, curr) => acc + (curr.service_price || 0), 0);
     
-  const totalVisits = orders.filter(o => o.status === 'completed').length;
+  const totalVisits = appointments.filter((apt) => apt.status === 'completed').length;
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      weekday: 'short'
+    });
+  };
+
+  const formatTime = (timeString: string) => {
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  const getAppointmentDateTime = (apt: Appointment) =>
+    new Date(`${apt.appointment_date}T${apt.appointment_time}`);
+
+  const isReviewWindowOpen = (apt: Appointment) => {
+    const appointmentDateTime = getAppointmentDateTime(apt);
+    const cutoff = new Date(appointmentDateTime);
+    cutoff.setDate(cutoff.getDate() + REVIEW_WINDOW_DAYS);
+    return new Date() <= cutoff;
+  };
+
+  const getStatusLabel = (apt: Appointment) => {
+    if (apt.status === 'completed') return 'completed';
+    if (apt.status === 'cancelled') return 'cancelled';
+    return 'upcoming';
+  };
 
   if (isLoading) {
     return (
@@ -143,31 +141,36 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
         <div className="space-y-4">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider pl-1">Recent Activity</h2>
           
-          {orders.length > 0 ? (
+          {appointments.length > 0 ? (
             <div className="space-y-3">
-              {orders.map((order) => (
-                <div key={order.id} className="bg-[#1a1a1a] border border-[#333] rounded-xl p-4 flex flex-col gap-3 group hover:border-[#D4AF37]/30 transition-colors">
+              {appointments.map((apt) => {
+                const statusLabel = getStatusLabel(apt);
+                const canReview = apt.status === 'completed' && isReviewWindowOpen(apt) && !apt.review_id;
+                return (
+                <div key={apt.id} className="bg-[#1a1a1a] border border-[#333] rounded-xl p-4 flex flex-col gap-3 group hover:border-[#D4AF37]/30 transition-colors">
                   <div className="flex justify-between items-start">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-full bg-[#252525] flex items-center justify-center border border-[#333] shrink-0">
                          <ShoppingBag className="w-5 h-5 text-gray-400 group-hover:text-[#D4AF37] transition-colors" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-white">{order.shopName}</h3>
-                        <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                          <MapPin className="w-3 h-3" />
-                          <span>{order.location}</span>
-                        </div>
+                        <h3 className="font-semibold text-white">{apt.store?.name || apt.store_name || 'Salon'}</h3>
+                        {(apt.store?.address || apt.store_name) && (
+                          <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                            <MapPin className="w-3 h-3" />
+                            <span>{apt.store?.address || apt.store_name}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-[#D4AF37]">${order.amount.toFixed(2)}</p>
+                      <p className="font-bold text-[#D4AF37]">${(apt.service_price || 0).toFixed(2)}</p>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
-                        order.status === 'completed' ? 'bg-green-900/30 text-green-400' :
-                        order.status === 'upcoming' ? 'bg-blue-900/30 text-blue-400' :
+                        statusLabel === 'completed' ? 'bg-green-900/30 text-green-400' :
+                        statusLabel === 'upcoming' ? 'bg-blue-900/30 text-blue-400' :
                         'bg-red-900/30 text-red-400'
                       }`}>
-                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                        {statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)}
                       </span>
                     </div>
                   </div>
@@ -175,16 +178,37 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
                   <div className="w-full h-px bg-[#333]" />
                   
                   <div className="flex justify-between items-center text-sm">
-                    <p className="text-gray-300">{order.service}</p>
+                    <p className="text-gray-300">{apt.service?.name || apt.service_name || 'Service'}</p>
                     <div className="flex items-center gap-1 text-xs text-gray-500">
                       <Calendar className="w-3 h-3" />
-                      <span>{order.date}</span>
+                      <span>{formatDate(apt.appointment_date)}</span>
                       <Clock className="w-3 h-3 ml-1" />
-                      <span>{order.time}</span>
+                      <span>{formatTime(apt.appointment_time)}</span>
                     </div>
                   </div>
+
+                  {apt.status === 'completed' && (
+                    <div className="flex justify-end">
+                      {canReview ? (
+                        <button
+                          onClick={() => {
+                            setReviewingAppointment(apt);
+                            setShowReviewForm(true);
+                          }}
+                          className="inline-flex items-center gap-2 rounded-full border border-[#D4AF37] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10"
+                        >
+                          <Star className="w-4 h-4" />
+                          Review
+                        </button>
+                      ) : (
+                        <span className="text-[10px] text-gray-500 uppercase tracking-wide">
+                          {apt.review_id ? 'Reviewed' : 'Review window closed'}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
-              ))}
+              )})}
             </div>
           ) : (
              <div className="text-center py-10 text-gray-500">
@@ -193,6 +217,35 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
           )}
         </div>
       </div>
+
+      {showReviewForm && reviewingAppointment && (
+        <ReviewForm
+          appointmentId={reviewingAppointment.id}
+          onSuccess={() => {
+            setShowReviewForm(false);
+            setReviewingAppointment(null);
+            setIsLoading(true);
+            getMyAppointments()
+              .then((data) => {
+                const sorted = [...data].sort((a, b) => {
+                  const aDateTime = new Date(`${a.appointment_date}T${a.appointment_time}`);
+                  const bDateTime = new Date(`${b.appointment_date}T${b.appointment_time}`);
+                  return bDateTime.getTime() - aDateTime.getTime();
+                });
+                setAppointments(sorted);
+              })
+              .catch((error) => {
+                console.error('Failed to load order history:', error);
+                toast.error('Failed to load order history');
+              })
+              .finally(() => setIsLoading(false));
+          }}
+          onCancel={() => {
+            setShowReviewForm(false);
+            setReviewingAppointment(null);
+          }}
+        />
+      )}
     </div>
   );
 }

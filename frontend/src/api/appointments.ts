@@ -11,6 +11,7 @@ export interface Appointment {
   appointment_date: string; // YYYY-MM-DD
   appointment_time: string; // HH:MM:SS
   status: AppointmentStatus;
+  review_id?: number | null;
   notes: string | null;
   created_at: string;
   updated_at: string | null;

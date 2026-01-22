@@ -7,6 +7,7 @@ from datetime import date, time, datetime, timedelta
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.store import Store
 from app.models.service import Service
+from app.models.review import Review
 from app.schemas.appointment import AppointmentCreate, AppointmentUpdate
 
 
@@ -38,11 +39,14 @@ def get_user_appointments_with_details(db: Session, user_id: int, skip: int = 0,
         Store.name.label('store_name'),
         Service.name.label('service_name'),
         Service.price.label('service_price'),
-        Service.duration_minutes.label('service_duration')
+        Service.duration_minutes.label('service_duration'),
+        Review.id.label('review_id')
     ).join(
         Store, Appointment.store_id == Store.id
     ).join(
         Service, Appointment.service_id == Service.id
+    ).outerjoin(
+        Review, Review.appointment_id == Appointment.id
     ).filter(
         Appointment.user_id == user_id
     ).order_by(

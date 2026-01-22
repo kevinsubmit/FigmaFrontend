@@ -36,6 +36,7 @@ class Appointment(AppointmentBase):
     user_id: int
     technician_id: Optional[int] = None
     status: AppointmentStatus
+    review_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 
