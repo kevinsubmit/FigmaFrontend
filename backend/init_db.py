@@ -2,7 +2,8 @@
 Initialize database tables
 """
 from app.db.session import engine, Base
-from app.models import User
+# Import all models to ensure tables are registered with SQLAlchemy metadata.
+import app.models  # noqa: F401
 
 def init_db():
     """Create all database tables"""
