@@ -154,19 +154,19 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-[#0f0f0f] rounded-2xl shadow-2xl max-w-md w-full p-6 border border-white/10 text-white">
+        <h2 className="text-2xl font-bold text-white mb-3">
           {isEditMode ? 'Edit Review' : 'Write a Review'}
         </h2>
-        <p className="text-xs text-gray-500 mb-5">
+        <p className="text-xs text-gray-400 mb-6">
           Reviews are available within 30 days after your appointment.
         </p>
 
         <form onSubmit={handleSubmit}>
           {/* Rating Stars */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="block text-sm font-medium text-gray-200 mb-3">
               Rating
             </label>
             <div className="flex gap-2">
@@ -177,20 +177,20 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
                   onClick={() => setRating(star)}
                   onMouseEnter={() => setHoverRating(star)}
                   onMouseLeave={() => setHoverRating(0)}
-                  className="transition-transform hover:scale-110"
+                  className="rounded-full p-1 transition-transform hover:scale-110 hover:bg-white/5"
                 >
                   <Star
-                    size={40}
+                    size={44}
                     className={`${
                       star <= (hoverRating || rating)
-                        ? 'fill-amber-400 text-amber-400'
-                        : 'text-gray-300'
+                        ? 'fill-[#D4AF37] text-[#D4AF37] drop-shadow-[0_0_6px_rgba(212,175,55,0.35)]'
+                        : 'text-gray-600'
                     } transition-colors`}
                   />
                 </button>
               ))}
             </div>
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-gray-400 mt-2">
               {rating === 1 && 'Poor'}
               {rating === 2 && 'Fair'}
               {rating === 3 && 'Good'}
@@ -201,7 +201,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
 
           {/* Comment */}
           <div className="mb-6">
-            <label htmlFor="comment" className="block text-sm font-medium text-gray-700 mb-2">
+            <label htmlFor="comment" className="block text-sm font-medium text-gray-200 mb-2">
               Comment (Optional)
             </label>
             <textarea
@@ -210,7 +210,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Share your experience..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent resize-none"
+              className="w-full px-4 py-2 bg-[#151515] border border-white/10 rounded-lg text-white placeholder:text-gray-600 focus:ring-2 focus:ring-[#D4AF37]/60 focus:border-transparent resize-none"
               maxLength={500}
             />
             <p className="text-sm text-gray-500 mt-1 text-right">
@@ -220,7 +220,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
 
           {/* Images */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-200 mb-2">
               Photos (Optional, max 5)
             </label>
             
@@ -232,12 +232,12 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
                     <img
                       src={url.startsWith('http') || url.startsWith('/') ? `http://localhost:8000${url}` : url}
                       alt={`Preview ${index + 1}`}
-                      className="w-full h-full object-cover rounded-lg"
+                      className="w-full h-full object-cover rounded-lg border border-white/10"
                     />
                     <button
                       type="button"
                       onClick={() => handleRemoveImage(index)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      className="absolute top-1 right-1 bg-black/70 text-white rounded-full p-1 hover:bg-black transition-colors"
                     >
                       <X size={16} />
                     </button>
@@ -261,7 +261,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploadingImages}
-                  className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-rose-400 transition-colors flex items-center justify-center gap-2 text-gray-600 hover:text-rose-500 disabled:opacity-50"
+                  className="w-full py-3 border-2 border-dashed border-white/20 rounded-lg hover:border-[#D4AF37]/70 transition-colors flex items-center justify-center gap-2 text-gray-300 hover:text-[#D4AF37] disabled:opacity-50"
                 >
                   {isUploadingImages ? (
                     <>
@@ -284,7 +284,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-2 border border-white/10 text-gray-300 rounded-lg hover:bg-white/5 transition-colors"
               disabled={isSubmitting}
             >
               Cancel
@@ -292,7 +292,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 px-4 py-2 bg-gradient-to-r from-rose-400 to-pink-400 text-white rounded-lg hover:from-rose-500 hover:to-pink-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-4 py-2 bg-[#D4AF37] text-black font-semibold rounded-lg hover:bg-[#c49b2f] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (isEditMode ? 'Updating...' : 'Submitting...') : (isEditMode ? 'Update Review' : 'Submit Review')}
             </button>
