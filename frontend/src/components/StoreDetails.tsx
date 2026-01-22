@@ -834,10 +834,10 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
         <div className="flex items-center gap-2 mb-2">
           <Star className="w-4 h-4 text-[#D4AF37] fill-[#D4AF37]" />
           <span className="text-white font-bold">
-            {(storeRating?.average_rating ?? store.rating)?.toFixed(1) || 'N/A'}
+            {((storeRating?.average_rating ?? store.rating) ?? null)?.toFixed(1) || 'N/A'}
           </span>
           <span className="text-[#D4AF37] text-sm">
-            ({storeRating?.total_reviews ?? store.review_count || 0} reviews)
+            ({((storeRating?.total_reviews ?? store.review_count) ?? 0)} reviews)
           </span>
         </div>
       </div>
