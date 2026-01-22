@@ -996,25 +996,27 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
                             <MapPin className="w-10 h-10 text-black fill-[#D4AF37]" strokeWidth={1.5} />
                         </div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     </div>
                     
                     {/* Floating Info Card */}
-                    <div className="absolute bottom-4 left-4 right-4 bg-[#1a1a1a]/95 backdrop-blur-md border border-[#333] p-3 rounded-xl shadow-2xl flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-full border border-[#333] overflow-hidden flex-shrink-0 bg-black">
-                              <img src={getPrimaryImage()} className="w-full h-full object-cover" alt="Store Logo" />
-                         </div>
-                         <div className="flex-1 min-w-0">
-                             <h3 className="font-bold text-white text-sm truncate">{store.name}</h3>
-                             <p className="text-xs text-gray-400 truncate">{store.address}</p>
-                         </div>
-                         <div className="pl-3 border-l border-[#333]">
-                             <button 
-                                onClick={() => setIsMapDrawerOpen(true)}
-                                className="w-10 h-10 flex items-center justify-center text-[#D4AF37] hover:bg-[#333] rounded-lg transition-colors"
-                             >
-                                 <Navigation className="w-6 h-6 rotate-45" />
-                             </button>
-                         </div>
+                    <div className="absolute bottom-4 left-4 right-4 bg-[#101010]/95 backdrop-blur-md border border-[#333] p-4 rounded-2xl shadow-2xl flex flex-col gap-3">
+                          <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 rounded-full border border-[#333] overflow-hidden flex-shrink-0 bg-black">
+                                  <img src={getPrimaryImage()} className="w-full h-full object-cover" alt="Store Logo" />
+                             </div>
+                             <div className="flex-1 min-w-0">
+                                 <h3 className="font-bold text-white text-sm truncate">{store.name}</h3>
+                                 <p className="text-xs text-gray-300 truncate">{store.address}</p>
+                             </div>
+                          </div>
+                          <button 
+                              onClick={() => setIsMapDrawerOpen(true)}
+                              className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#D4AF37] text-black font-semibold py-2 text-sm hover:bg-[#b5952f] transition-all"
+                          >
+                              <Navigation className="w-4 h-4 rotate-45" />
+                              Open in Maps
+                          </button>
                     </div>
                 </div>
 
