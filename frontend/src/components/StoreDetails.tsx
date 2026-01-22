@@ -51,6 +51,7 @@ import { createAppointment, getMyAppointments } from '../services/appointments.s
 import { getStorePortfolio, PortfolioItem } from '../services/store-portfolio.service';
 import StoreReviews from './StoreReviews';
 import { Pin } from '../api/pins';
+import { getStoreRating, StoreRating } from '../api/reviews';
 import { getAvailableSlots, getTechniciansByStore, Technician } from '../api/technicians';
 import { getStoreHours, StoreHours } from '../api/stores';
 
@@ -190,6 +191,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
   const [reviewsList, setReviewsList] = useState<Review[]>([]);
   const [isReviewsLoading, setIsReviewsLoading] = useState(false);
   const [hasMoreReviews, setHasMoreReviews] = useState(true);
+  const [storeRating, setStoreRating] = useState<StoreRating | null>(null);
 
   // Details State
   const [showFullHours, setShowFullHours] = useState(false);
@@ -270,6 +272,16 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
 
     loadServices();
   }, [store.id]);
+
+  useEffect(() => {
+    if (!store?.id) return;
+    getStoreRating(store.id)
+      .then(setStoreRating)
+      .catch((error) => {
+        console.error('Failed to load store rating:', error);
+        setStoreRating(null);
+      });
+  }, [store?.id]);
 
   // Initial Data Load on Tab Change
   useEffect(() => {
@@ -821,8 +833,12 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
         <p className="text-gray-300 text-sm mb-3">{store.address}</p>
         <div className="flex items-center gap-2 mb-2">
           <Star className="w-4 h-4 text-[#D4AF37] fill-[#D4AF37]" />
-          <span className="text-white font-bold">{store.rating?.toFixed(1) || 'N/A'}</span>
-          <span className="text-[#D4AF37] text-sm">({store.review_count || 0} reviews)</span>
+          <span className="text-white font-bold">
+            {(storeRating?.average_rating ?? store.rating)?.toFixed(1) || 'N/A'}
+          </span>
+          <span className="text-[#D4AF37] text-sm">
+            ({storeRating?.total_reviews ?? store.review_count || 0} reviews)
+          </span>
         </div>
       </div>
 
