@@ -133,18 +133,7 @@ const REVIEW_TEMPLATES: Partial<Review>[] = [
   }
 ];
 
-const PORTFOLIO_BASE_IMAGES = [
-  "https://images.unsplash.com/photo-1604654894610-df63bc536371?w=600&q=80",
-  "https://images.unsplash.com/photo-1632345031435-8727f6897d53?w=600&q=80",
-  "https://images.unsplash.com/photo-1522337660859-02fbefca4702?w=600&q=80",
-  "https://images.unsplash.com/photo-1519017713917-9807534d0b0b?w=600&q=80",
-  "https://images.unsplash.com/photo-1595854341625-f33ee1043f76?w=600&q=80",
-  "https://images.unsplash.com/photo-1562940215-4314619607a2?w=600&q=80",
-  "https://images.unsplash.com/photo-1698181842119-a5283dea1440?w=600&q=80",
-  "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=600&q=80",
-  "https://images.unsplash.com/photo-1522337360705-2b5163795267?w=600&q=80",
-  "https://images.unsplash.com/photo-1457972729786-0411a3b2b626?w=600&q=80"
-];
+const PORTFOLIO_PAGE_SIZE = 20;
 
 const TABS = ['Services', 'Reviews', 'Portfolio', 'Details'];
 
@@ -157,6 +146,7 @@ interface StoreDetailsProps {
 }
 
 export function StoreDetails({ store, onBack, onBookingComplete, referencePin, showDistance = false }: StoreDetailsProps) {
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedStaff, setSelectedStaff] = useState<Technician | null>(null);
   const [activeTab, setActiveTab] = useState<'services' | 'reviews' | 'portfolio' | 'details'>('services');
@@ -186,6 +176,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
   const [isPortfolioLoading, setIsPortfolioLoading] = useState(false);
   const [hasMorePortfolio, setHasMorePortfolio] = useState(true);
   const [portfolioSkip, setPortfolioSkip] = useState(0);
+  const [portfolioError, setPortfolioError] = useState<string | null>(null);
 
   // Reviews State
   const [reviewsList, setReviewsList] = useState<Review[]>([]);
@@ -285,24 +276,27 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
 
   // Initial Data Load on Tab Change
   useEffect(() => {
-    if (activeTab === 'portfolio' && portfolioItems.length === 0) {
-      loadMorePortfolio();
+    if (activeTab === 'portfolio') {
+      setPortfolioItems([]);
+      setPortfolioSkip(0);
+      setHasMorePortfolio(true);
+      setPortfolioError(null);
+      loadPortfolioPage(0, true);
     } else if (activeTab === 'reviews' && reviewsList.length === 0) {
       loadMoreReviews();
     }
-  }, [activeTab]);
+  }, [activeTab, store.id]);
 
   // Infinite Scroll Observer (Shared Logic)
   useEffect(() => {
-    const isPortfolio = activeTab === 'portfolio';
     const isReviews = activeTab === 'reviews';
     
-    // Only run for tabs with infinite scroll
-    if (!isPortfolio && !isReviews) return;
+    // Only run for reviews infinite scroll
+    if (!isReviews) return;
 
-    const isLoading = isPortfolio ? isPortfolioLoading : isReviewsLoading;
-    const hasMore = isPortfolio ? hasMorePortfolio : hasMoreReviews;
-    const loadFunction = isPortfolio ? loadMorePortfolio : loadMoreReviews;
+    const isLoading = isReviewsLoading;
+    const hasMore = hasMoreReviews;
+    const loadFunction = loadMoreReviews;
 
     if (!hasMore || isLoading) return;
 
@@ -320,48 +314,33 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
     }
 
     return () => observer.disconnect();
-  }, [activeTab, hasMorePortfolio, hasMoreReviews, isPortfolioLoading, isReviewsLoading]);
+  }, [activeTab, hasMoreReviews, isReviewsLoading]);
 
-  // Load More Portfolio Items
-  const loadMorePortfolio = async () => {
+  const loadPortfolioPage = async (skip: number, replace: boolean = false) => {
     if (isPortfolioLoading) return;
     setIsPortfolioLoading(true);
 
     try {
-      const items = await getStorePortfolio(store.id, portfolioSkip, 20);
-      
-      if (items.length === 0) {
-        setHasMorePortfolio(false);
+      const items = await getStorePortfolio(store.id, skip, PORTFOLIO_PAGE_SIZE);
+      setPortfolioError(null);
+      if (replace) {
+        setPortfolioItems(items);
       } else {
         setPortfolioItems(prev => [...prev, ...items]);
-        setPortfolioSkip(prev => prev + items.length);
-        
-        // If we got less than requested, no more items
-        if (items.length < 20) {
-          setHasMorePortfolio(false);
-        }
       }
+      setPortfolioSkip(skip + items.length);
+      setHasMorePortfolio(items.length === PORTFOLIO_PAGE_SIZE);
     } catch (error) {
       console.error('Failed to load portfolio:', error);
-      // Fallback to mock data if API fails
-      const newImages = Array.from({ length: 10 }).map((_, i) => {
-        const baseIndex = (portfolioItems.length + i) % PORTFOLIO_BASE_IMAGES.length;
-        return {
-          id: portfolioItems.length + i + 1,
-          store_id: store.id,
-          image_url: `${PORTFOLIO_BASE_IMAGES[baseIndex]}&sig=${portfolioItems.length + i}`,
-          display_order: 0,
-          created_at: new Date().toISOString()
-        };
-      });
-      setPortfolioItems(prev => [...prev, ...newImages]);
-      
-      if (portfolioItems.length + newImages.length >= 50) {
-        setHasMorePortfolio(false);
-      }
+      setPortfolioError('Unable to load portfolio images.');
+      setHasMorePortfolio(false);
     } finally {
       setIsPortfolioLoading(false);
     }
+  };
+
+  const loadMorePortfolio = async () => {
+    await loadPortfolioPage(portfolioSkip);
   };
 
   // Load More Reviews
@@ -939,12 +918,16 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
         {/* PORTFOLIO TAB */}
         {activeTab === 'portfolio' && (
             <div className="animate-in fade-in duration-300 -mx-2">
-                 {portfolioItems.length > 0 ? (
+                 {portfolioError ? (
+                    <div className="text-center py-12 text-gray-500">
+                        {portfolioError}
+                    </div>
+                 ) : portfolioItems.length > 0 ? (
                     <Masonry columnsCount={2} gutter="8px">
                         {portfolioItems.map((item, index) => (
                             <div key={item.id} className="relative group cursor-pointer overflow-hidden rounded-xl bg-gray-900 border border-[#333]">
                                 <img 
-                                    src={item.image_url.startsWith('http') ? item.image_url : `http://localhost:8000${item.image_url}`} 
+                                    src={item.image_url.startsWith('http') ? item.image_url : `${apiBaseUrl}${item.image_url}`} 
                                     alt={item.title || `Portfolio ${index + 1}`} 
                                     className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500"
                                 />
@@ -962,13 +945,20 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                     </div>
                  )}
 
-                 {/* Load More Trigger & Loader */}
-                 <div ref={observerTarget} className="py-8 flex justify-center">
+                 <div className="py-8 flex flex-col items-center gap-3">
                     {isPortfolioLoading && portfolioItems.length > 0 && (
                         <div className="flex items-center gap-2 text-[#D4AF37] text-xs font-bold uppercase tracking-widest">
                              <Loader2 className="w-4 h-4 animate-spin" />
                              Loading
                         </div>
+                    )}
+                    {!isPortfolioLoading && hasMorePortfolio && portfolioItems.length > 0 && (
+                        <button
+                          onClick={loadMorePortfolio}
+                          className="rounded-full border border-[#D4AF37] px-4 py-2 text-xs font-semibold uppercase tracking-widest text-[#D4AF37] hover:bg-[#D4AF37]/10 transition-colors"
+                        >
+                          Load more
+                        </button>
                     )}
                  </div>
             </div>
