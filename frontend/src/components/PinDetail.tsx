@@ -1,6 +1,7 @@
 import { 
   ArrowLeft, 
   Share, 
+  Heart,
   ScanLine,
   X,
   Link,
@@ -38,8 +39,10 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
   const [relatedPins, setRelatedPins] = useState<Pin[]>([]);
   const [resolvedPin, setResolvedPin] = useState<Pin | null>(null);
+  const favoritesKey = 'favorite_pins';
   const data = useMemo(() => {
     if (pinData) {
       return pinData;
@@ -55,6 +58,46 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
       tags: ['Minimalist', 'French'],
     };
   }, [pinData, resolvedPin]);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(favoritesKey);
+      const parsed: Array<{ id: number }> = raw ? JSON.parse(raw) : [];
+      setIsFavorite(parsed.some((pin) => pin.id === data.id));
+    } catch (error) {
+      console.error('Failed to read favorite pins:', error);
+      setIsFavorite(false);
+    }
+  }, [data.id]);
+
+  const handleToggleFavorite = () => {
+    try {
+      const raw = localStorage.getItem(favoritesKey);
+      const parsed: Array<{ id: number; title: string; image_url: string }> = raw ? JSON.parse(raw) : [];
+      const exists = parsed.find((pin) => pin.id === data.id);
+      let updated: typeof parsed = [];
+      if (exists) {
+        updated = parsed.filter((pin) => pin.id !== data.id);
+        toast.success('Removed from favorites');
+        setIsFavorite(false);
+      } else {
+        updated = [
+          {
+            id: data.id,
+            title: data.title,
+            image_url: data.image_url,
+          },
+          ...parsed,
+        ];
+        toast.success('Added to favorites');
+        setIsFavorite(true);
+      }
+      localStorage.setItem(favoritesKey, JSON.stringify(updated));
+    } catch (error) {
+      console.error('Failed to update favorite pins:', error);
+      toast.error('Failed to update favorites');
+    }
+  };
 
   useEffect(() => {
     if (pinData) {
@@ -228,13 +271,22 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
             <ScanLine className="w-5 h-5 text-white" />
           </button>
 
-          <button
-            onClick={() => setIsShareOpen(true)}
-            className="absolute top-4 right-4 w-10 h-10 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
-            aria-label="Share"
-          >
-            <Share className="w-5 h-5 text-white" />
-          </button>
+          <div className="absolute top-4 right-4 flex items-center gap-2">
+            <button
+              onClick={handleToggleFavorite}
+              className="w-10 h-10 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
+              aria-label="Add to favorites"
+            >
+              <Heart className={`w-5 h-5 ${isFavorite ? 'text-[#D4AF37] fill-[#D4AF37]' : 'text-white'}`} />
+            </button>
+            <button
+              onClick={() => setIsShareOpen(true)}
+              className="w-10 h-10 bg-black/50 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
+              aria-label="Share"
+            >
+              <Share className="w-5 h-5 text-white" />
+            </button>
+          </div>
         </div>
 
         {/* Actions Bar */}
