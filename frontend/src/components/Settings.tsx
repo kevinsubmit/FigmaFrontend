@@ -2,7 +2,6 @@ import {
   ChevronLeft, 
   ChevronRight, 
   User, 
-  Gift, 
   Bell, 
   ShieldCheck, 
   Store, 
@@ -11,16 +10,13 @@ import {
   CreditCard, 
   LogOut,
   Share2,
-  Copy,
-  CheckCircle2,
-  Star,
-  Users
+  Star
 } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from "sonner@2.0.3";
 
-type SettingsSection = 'main' | 'referral' | 'language' | 'partnership' | 'about' | 'feedback' | 'vip' | 'notifications' | 'password' | 'phone';
+type SettingsSection = 'main' | 'language' | 'partnership' | 'about' | 'feedback' | 'vip' | 'notifications' | 'password' | 'phone';
 
 interface SettingsProps {
   onBack: () => void;
@@ -30,52 +26,7 @@ interface SettingsProps {
 export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
-  const [isCopied, setIsCopied] = useState(false);
   const [notificationEnabled, setNotificationEnabled] = useState(true);
-
-  const referralCode = "GOLDEN99";
-
-  const handleCopyCode = () => {
-    const textToCopy = referralCode;
-    
-    // Always attempt the fallback first or in combination if the modern API is blocked by policy
-    // In many iframe/sandbox environments, navigator.clipboard is present but throws NotAllowedError
-    fallbackCopyTextToClipboard(textToCopy);
-  };
-
-  const fallbackCopyTextToClipboard = (text: string) => {
-    try {
-      // Create a temporary input element
-      const textArea = document.createElement("textarea");
-      textArea.value = text;
-      
-      // Ensure it's not visible but part of the document
-      textArea.style.position = "fixed";
-      textArea.style.left = "-9999px";
-      textArea.style.top = "0";
-      textArea.style.opacity = "0";
-      document.body.appendChild(textArea);
-      
-      textArea.focus();
-      textArea.select();
-      
-      // Execute copy command
-      const successful = document.execCommand('copy');
-      document.body.removeChild(textArea);
-      
-      if (successful) {
-        setIsCopied(true);
-        toast.success("Referral code copied!");
-        setTimeout(() => setIsCopied(false), 2000);
-      } else {
-        // If execCommand also fails, at least show the code to the user clearly
-        toast.error("Copy blocked by browser. Please manually copy: " + text);
-      }
-    } catch (err) {
-      console.error('Fallback copy failed:', err);
-      toast.error("Please manually copy the code: " + text);
-    }
-  };
 
   const handleLogout = () => {
     toast.success("Successfully logged out");
@@ -105,17 +56,6 @@ export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
           action: () => setActiveSection('language') 
         },
         { label: 'Notifications', icon: Bell, action: () => setActiveSection('notifications') },
-      ]
-    },
-    {
-      title: "Promotions",
-      items: [
-        { 
-          label: 'Refer a Friend', 
-          icon: Gift, 
-          badge: "Get $10", 
-          action: () => setActiveSection('referral') 
-        },
       ]
     },
     {
@@ -204,54 +144,6 @@ export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
               
               <div className="text-center pb-10">
                    <p className="text-xs text-gray-700">Figma Make Beauty Platform • v1.2.0</p>
-              </div>
-            </div>
-          </motion.div>
-        ) : activeSection === 'referral' ? (
-          <motion.div 
-            key="referral"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            className="px-6 pt-10"
-          >
-            <button onClick={handleSectionBack} className="mb-8 flex items-center text-gray-400 hover:text-white">
-              <ChevronLeft className="w-5 h-5" />
-              <span className="font-medium">Back</span>
-            </button>
-
-            <div className="text-center mb-10">
-              <div className="w-20 h-20 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Gift className="w-10 h-10 text-[#D4AF37]" />
-              </div>
-              <h2 className="text-3xl font-bold mb-4">Refer a Friend</h2>
-              <p className="text-gray-400 leading-relaxed max-w-xs mx-auto">
-                Share the glow! Both you and your friend will receive <span className="text-[#D4AF37] font-bold">1 Free Coupon ($10 value)</span> after their first booking.
-              </p>
-            </div>
-
-            <div className="bg-[#111] border border-[#222] rounded-3xl p-6 mb-8 text-center">
-              <p className="text-xs text-gray-500 uppercase font-bold tracking-widest mb-4">Your Referral Code</p>
-              <div className="bg-black border border-[#333] p-4 rounded-2xl flex items-center justify-between group">
-                <span className="text-2xl font-bold tracking-[0.3em] text-white ml-2">{referralCode}</span>
-                <button 
-                  onClick={handleCopyCode}
-                  className="w-12 h-12 rounded-xl bg-[#D4AF37] text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all"
-                >
-                  {isCopied ? <CheckCircle2 className="w-6 h-6" /> : <Copy className="w-6 h-6" />}
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <button className="w-full py-4 bg-white text-black font-bold rounded-2xl flex items-center justify-center gap-3 hover:bg-gray-200 transition-colors">
-                <Share2 className="w-5 h-5" />
-                Share with Friends
-              </button>
-              <div className="flex items-center gap-4 py-4 text-xs text-gray-500 justify-center">
-                <span className="flex items-center gap-1"><Users className="w-3 h-3" /> 12 Referrals</span>
-                <span className="h-1 w-1 bg-gray-700 rounded-full" />
-                <span className="flex items-center gap-1"><Star className="w-3 h-3 text-[#D4AF37]" /> 2 Coupons Earned</span>
               </div>
             </div>
           </motion.div>

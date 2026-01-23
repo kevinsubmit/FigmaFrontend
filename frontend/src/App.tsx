@@ -32,7 +32,7 @@ export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 
 // Main App Router Component
 function AppRouter() {
   const [selectedPin, setSelectedPin] = useState<any>(null);
-  const [settingsSection, setSettingsSection] = useState<'main' | 'referral' | 'vip'>('main');
+  const [settingsSection, setSettingsSection] = useState<'main' | 'vip'>('main');
   const [myBookings, setMyBookings] = useState<any[]>([]);
   const [isViewingStoreDetails, setIsViewingStoreDetails] = useState(false);
   
@@ -120,10 +120,15 @@ function AppRouter() {
     setSelectedPin(null);
   };
 
-  // Improved scroll management: Restore position for each page independently
+  // Improved scroll management: restore for main tabs, reset for sub-pages
   useLayoutEffect(() => {
-    const savedPosition = scrollPositions.current[currentPage] || 0;
-    window.scrollTo(0, savedPosition);
+    const mainTabs: Page[] = ['home', 'services', 'appointments', 'profile', 'deals'];
+    if (mainTabs.includes(currentPage)) {
+      const savedPosition = scrollPositions.current[currentPage] || 0;
+      window.scrollTo(0, savedPosition);
+      return;
+    }
+    window.scrollTo(0, 0);
   }, [currentPage]);
 
   const handleSelectSalon = (salon: any) => {
@@ -209,14 +214,11 @@ function AppRouter() {
                   'my-gift-cards': '/my-gift-cards',
                   'settings': '/settings',
                   'vip-description': '/vip-description',
-                  'my-reviews': '/my-reviews'
+                  'my-reviews': '/my-reviews',
+                  'my-favorites': '/my-favorites',
+                  'referral': '/referral'
                 };
                 navigate(routeMap[page] || '/profile');
-              }}
-              onPinClick={(pin) => {
-                scrollPositions.current[currentPage] = window.scrollY;
-                setSelectedPin(pin);
-                navigate('/pin-detail');
               }}
             />
           </ProtectedRoute>

@@ -1,6 +1,5 @@
-import { Share, Plus, MoreHorizontal, Crown, Coins, Ticket, Receipt, UserCog, Settings, TrendingUp, Camera, Gift, Users, Pencil, Check, X, AlertCircle, Sparkles, ChevronRight, Bell, Star, Heart } from 'lucide-react';
+import { Share, MoreHorizontal, Crown, Coins, Ticket, Receipt, UserCog, Settings, TrendingUp, Camera, Gift, Users, Pencil, Check, X, AlertCircle, Sparkles, ChevronRight, Bell, Star, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import Masonry from 'react-responsive-masonry';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { notificationsService } from '../services/notifications.service';
@@ -10,7 +9,6 @@ import { Settings as SettingsView } from './Settings';
 
 interface ProfileProps {
   onNavigate?: (page: 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'notifications' | 'my-reviews' | 'my-favorites', subPage?: 'referral') => void;
-  onPinClick?: (pinData: any) => void;
 }
 
 // Mock Data
@@ -37,69 +35,8 @@ const VIP_LEVELS = [
   { level: 10, minSpend: 200000, minVisits: 350, benefit: "40% Discount + Black Card Status" },
 ];
 
-const CREATED_PINS = [
-  {
-    id: 101,
-    url: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=800&auto=format&fit=crop&q=60',
-    title: 'My Latest Art',
-    likes: 234
-  },
-  {
-    id: 102,
-    url: 'https://images.unsplash.com/photo-1632345031435-8727f6897d53?w=800&auto=format&fit=crop&q=60',
-    title: 'Pastel Dream',
-    likes: 156
-  },
-  {
-    id: 103,
-    url: 'https://images.unsplash.com/photo-1522337660859-02fbefca4702?w=800&auto=format&fit=crop&q=60',
-    title: 'Summer Vibes',
-    likes: 89
-  },
-  {
-    id: 104,
-    url: 'https://images.unsplash.com/photo-1595854341625-f33ee1043f76?w=800&auto=format&fit=crop&q=60',
-    title: 'Client Work',
-    likes: 412
-  }
-];
-
-const SAVED_PINS = [
-  {
-    id: 201,
-    url: 'https://images.unsplash.com/photo-1519017713917-9807534d0b0b?w=800&auto=format&fit=crop&q=60',
-    title: 'Inspo #1',
-    likes: 1200
-  },
-  {
-    id: 202,
-    url: 'https://images.unsplash.com/photo-1754799670410-b282791342c3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwaW5rJTIwbmFpbHMlMjBtYW5pY3VyZXxlbnwxfHx8fDE3NjUxNjI2NDF8MA&ixlib=rb-4.1.0&q=80&w=1080',
-    title: 'Pink Idea',
-    likes: 340
-  },
-  {
-    id: 203,
-    url: 'https://images.unsplash.com/photo-1763063556535-5f6174a5c5d4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnbGl0dGVyJTIwbmFpbHMlMjBkZXNpZ258ZW58MXx8fHwxNzY1MTYyNjQxfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    title: 'Glitter',
-    likes: 560
-  },
-  {
-    id: 204,
-    url: 'https://images.unsplash.com/photo-1562940215-4314619607a2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiZWF1dHklMjBoYWlyJTIwYmxvd291dCUyMHNhbG9ufGVufDF8fHx8MTc2NTE2MDgwOXww&ixlib=rb-4.1.0&q=80&w=1080',
-    title: 'Hair Inspo',
-    likes: 230
-  },
-  {
-    id: 205,
-    url: 'https://images.unsplash.com/photo-1698181842119-a5283dea1440?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtYWtldXAlMjBhcnRpc3QlMjBiZWF1dHl8ZW58MXx8fHwxNzY1MDgwNjQwfDA&ixlib=rb-4.1.0&q=80&w=1080',
-    title: 'Makeup Look',
-    likes: 890
-  }
-];
-
-export function Profile({ onNavigate, onPinClick }: ProfileProps) {
+export function Profile({ onNavigate }: ProfileProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'created' | 'saved'>('saved');
   const [avatar, setAvatar] = useState(USER_INFO.avatar);
   const [name, setName] = useState(USER_INFO.name);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -182,7 +119,6 @@ export function Profile({ onNavigate, onPinClick }: ProfileProps) {
     );
   }
 
-  const currentPins = activeTab === 'created' ? CREATED_PINS : SAVED_PINS;
 
   return (
     <div className="min-h-screen bg-black text-white pb-24 animate-in fade-in duration-500">
@@ -415,7 +351,7 @@ export function Profile({ onNavigate, onPinClick }: ProfileProps) {
         {/* Referral / Invite Banner (Optimization) */}
         <div className="w-full max-w-md mb-6">
             <button 
-                onClick={() => onNavigate?.('settings', 'referral')}
+                onClick={() => onNavigate?.('referral')}
                 className="w-full bg-gradient-to-r from-[#1a1a1a] to-[#252525] border border-[#D4AF37]/20 rounded-2xl p-4 flex items-center justify-between group active:scale-[0.98] transition-all"
             >
                 <div className="flex items-center gap-4">
@@ -548,106 +484,10 @@ export function Profile({ onNavigate, onPinClick }: ProfileProps) {
                 </div>
              </motion.button>
              
-             {/* Invite Friends */}
-             <motion.button 
-                whileHover={{ y: -4 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={() => onNavigate?.('referral')} 
-                className="relative bg-gradient-to-br from-purple-600 to-pink-600 border border-purple-400 hover:border-[#D4AF37] rounded-2xl py-5 px-2 flex flex-col items-center gap-2 group transition-all overflow-hidden shadow-lg"
-             >
-                <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center group-hover:bg-[#D4AF37] group-hover:scale-110 transition-all duration-500 shadow-inner">
-                    <svg className="w-6 h-6 text-white group-hover:text-black transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                </div>
-                <div className="text-center relative z-10">
-                    <p className="text-[10px] font-black text-white uppercase tracking-[0.15em] group-hover:text-black transition-colors">Invite</p>
-                    <p className="text-[8px] font-bold text-white/80 uppercase tracking-[0.2em] group-hover:text-black/70 transition-colors">Get $10</p>
-                </div>
-             </motion.button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="sticky top-[calc(4.5rem+env(safe-area-inset-top))] z-10 bg-black/80 backdrop-blur-xl border-b border-[#333]">
-        <div className="flex items-center justify-around px-12">
-          <button 
-            onClick={() => setActiveTab('created')}
-            className={`flex flex-col items-center py-4 transition-all relative ${
-              activeTab === 'created' ? 'text-[#D4AF37]' : 'text-gray-500 hover:text-gray-300'
-            }`}
-          >
-            <span className="text-sm font-bold tracking-widest uppercase">My Styles</span>
-            <span className="text-[10px] mt-0.5 opacity-60">12 Posts</span>
-            {activeTab === 'created' && (
-              <motion.div 
-                layoutId="activeProfileTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#D4AF37] rounded-full shadow-[0_0_10px_rgba(212,175,55,0.4)]" 
-              />
-            )}
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('saved')}
-            className={`flex flex-col items-center py-4 transition-all relative ${
-              activeTab === 'saved' ? 'text-[#D4AF37]' : 'text-gray-500 hover:text-gray-300'
-            }`}
-          >
-            <span className="text-sm font-bold tracking-widest uppercase">Inspiration</span>
-            <span className="text-[10px] mt-0.5 opacity-60">48 Saved</span>
-            {activeTab === 'saved' && (
-              <motion.div 
-                layoutId="activeProfileTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#D4AF37] rounded-full shadow-[0_0_10px_rgba(212,175,55,0.4)]" 
-              />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Grid Content */}
-      <div className="px-2 pt-4">
-        {currentPins.length > 0 ? (
-          <Masonry columnsCount={2} gutter="8px">
-            {currentPins.map((pin) => (
-              <div 
-                key={pin.id} 
-                className="mb-2 relative group cursor-pointer"
-                onClick={() => onPinClick?.({ ...pin, author: USER_INFO.name, authorAvatar: USER_INFO.avatar })}
-              >
-                 <div className="relative overflow-hidden rounded-xl bg-gray-900">
-                  <img 
-                    src={pin.url} 
-                    alt={pin.title} 
-                    className="w-full aspect-[3/4] object-cover"
-                  />
-                 </div>
-              </div>
-            ))}
-          </Masonry>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-16 h-16 bg-[#1a1a1a] rounded-full flex items-center justify-center mb-4">
-              <Plus className="w-8 h-8 text-[#D4AF37]" />
-            </div>
-            <h3 className="text-white font-bold mb-2">Create your first Pin</h3>
-            <p className="text-gray-400 text-sm max-w-[200px]">
-              Upload photos to share your nail art designs with the world.
-            </p>
-          </div>
-        )}
-      </div>
-      {/* Floating Action Button (Only for Created Tab) */}
-      {activeTab === 'created' && (
-        <button
-          onClick={() => alert('Upload your nail design!')}
-          className="fixed bottom-24 right-5 w-14 h-14 bg-[#1a1a1a] border border-[#D4AF37]/30 rounded-full flex items-center justify-center shadow-2xl hover:bg-[#252525] transition-all hover:scale-105 active:scale-95 z-50 group"
-          aria-label="Create Pin"
-        >
-          <Plus className="w-7 h-7 text-[#D4AF37]" strokeWidth={2.5} />
-        </button>
-      )}
+      
 
       {/* Settings Modal */}
       <AnimatePresence>
