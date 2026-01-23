@@ -2,10 +2,19 @@ import { Share, MoreHorizontal, Crown, Coins, Ticket, Receipt, UserCog, Settings
 import { motion, AnimatePresence } from 'motion/react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import apiClient from '../lib/api';
 import { notificationsService } from '../services/notifications.service';
+import pointsService from '../services/points.service';
+import couponsService from '../services/coupons.service';
+import giftCardsService from '../services/gift-cards.service';
+import { getMyAppointments } from '../api/appointments';
+import { getMyReviews } from '../api/reviews';
+import { getMyFavoritesCount } from '../api/stores';
+import usersService from '../services/users.service';
 import { Loader } from './ui/Loader';
 import { Progress } from "./ui/progress";
 import { Settings as SettingsView } from './Settings';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ProfileProps {
   onNavigate?: (page: 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'notifications' | 'my-reviews' | 'my-favorites', subPage?: 'referral') => void;
@@ -36,6 +45,7 @@ const VIP_LEVELS = [
 ];
 
 export function Profile({ onNavigate }: ProfileProps) {
+  const { user, refreshUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [avatar, setAvatar] = useState(USER_INFO.avatar);
   const [name, setName] = useState(USER_INFO.name);
@@ -44,6 +54,15 @@ export function Profile({ onNavigate }: ProfileProps) {
   const [nameError, setNameError] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [stats, setStats] = useState({
+    points: 0,
+    coupons: 0,
+    giftCardBalance: 0,
+    orders: 0,
+    reviews: 0,
+    favorites: 0,
+  });
   
   // Fetch unread notification count
   useEffect(() => {
@@ -60,6 +79,63 @@ export function Profile({ onNavigate }: ProfileProps) {
   }, []);
 
   useEffect(() => {
+    if (!user || isEditingName) {
+      return;
+    }
+
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    const nextName = user.full_name || user.username || USER_INFO.name;
+    const nextAvatar = user.avatar_url
+      ? (user.avatar_url.startsWith('http') ? user.avatar_url : `${apiBaseUrl}${user.avatar_url}`)
+      : USER_INFO.avatar;
+
+    setAvatar(nextAvatar);
+    setName(nextName);
+    setTempName(nextName);
+  }, [user]);
+
+
+  useEffect(() => {
+    const loadProfileStats = async () => {
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+      if (!token) {
+        return;
+      }
+
+      try {
+        const results = await Promise.allSettled([
+          pointsService.getBalance(token),
+          couponsService.getMyCoupons(token, 'available'),
+          getMyAppointments(),
+          getMyReviews(token),
+          getMyFavoritesCount(token),
+          giftCardsService.getSummary(token),
+        ]);
+
+        const pointsResult = results[0].status === 'fulfilled' ? results[0].value : null;
+        const couponsResult = results[1].status === 'fulfilled' ? results[1].value : [];
+        const appointmentsResult = results[2].status === 'fulfilled' ? results[2].value : [];
+        const reviewsResult = results[3].status === 'fulfilled' ? results[3].value : [];
+        const favoritesResult = results[4].status === 'fulfilled' ? results[4].value : null;
+        const giftSummaryResult = results[5].status === 'fulfilled' ? results[5].value : null;
+
+        setStats({
+          points: pointsResult?.available_points ?? 0,
+          coupons: couponsResult.length,
+          giftCardBalance: giftSummaryResult?.total_balance ?? 0,
+          orders: appointmentsResult.length,
+          reviews: reviewsResult.length,
+          favorites: favoritesResult?.count ?? 0,
+        });
+      } catch (error) {
+        console.error('Failed to load profile stats:', error);
+      }
+    };
+
+    loadProfileStats();
+  }, []);
+
+  useEffect(() => {
     // Simulate data loading
     const timer = setTimeout(() => {
       setIsLoading(false);
@@ -67,15 +143,49 @@ export function Profile({ onNavigate }: ProfileProps) {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setAvatar(url);
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Invalid file type. Please upload an image.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size exceeds 5MB limit');
+      return;
+    }
+
+    try {
+      setIsUploadingAvatar(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await apiClient.post('/auth/me/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const uploadedAvatar = response.data?.avatar_url
+        ? (response.data.avatar_url.startsWith('http')
+            ? response.data.avatar_url
+            : `${apiBaseUrl}${response.data.avatar_url}`)
+        : avatar;
+
+      setAvatar(uploadedAvatar);
+      await refreshUser();
+      toast.success('Avatar updated successfully', { duration: 1200 });
+    } catch (error) {
+      console.error('Failed to upload avatar:', error);
+      toast.error('Failed to update avatar');
+    } finally {
+      setIsUploadingAvatar(false);
     }
   };
 
-  const handleSaveName = () => {
+  const handleSaveName = async () => {
     const trimmedName = tempName.trim();
     
     // Validation
@@ -99,10 +209,17 @@ export function Profile({ onNavigate }: ProfileProps) {
       return;
     }
 
-    setName(trimmedName);
-    setIsEditingName(false);
-    setNameError('');
-    toast.success('Name updated successfully');
+    try {
+      await usersService.updateProfile({ full_name: trimmedName });
+      setName(trimmedName);
+      setIsEditingName(false);
+      setNameError('');
+      await refreshUser();
+      toast.success('Name updated successfully', { duration: 1200 });
+    } catch (error) {
+      console.error('Failed to update name:', error);
+      toast.error('Failed to update name');
+    }
   };
 
   const handleCancelName = () => {
@@ -150,73 +267,20 @@ export function Profile({ onNavigate }: ProfileProps) {
       </div>
 
         <div className="flex flex-col items-center px-6 mt-2">
-        <div className="relative group mb-4">
+        <div className="relative mb-4">
             <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#D4AF37]">
               <img 
                 src={avatar} 
                 alt={name} 
-                className="w-full h-full object-cover group-hover:opacity-75 transition-opacity"
+                className="w-full h-full object-cover"
               />
             </div>
-            <label className="absolute inset-0 flex items-center justify-center cursor-pointer">
-                <div className="bg-black/50 rounded-full p-2 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Camera className="w-6 h-6 text-white" />
-                </div>
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  className="hidden" 
-                  onChange={handleAvatarChange}
-                />
-            </label>
         </div>
 
         <div className="w-full max-w-[280px] flex flex-col items-center mb-4">
-          {isEditingName ? (
-            <div className="w-full space-y-2 animate-in zoom-in-95 duration-200">
-              <div className="flex items-center gap-2 w-full">
-                <input
-                  autoFocus
-                  type="text"
-                  value={tempName}
-                  onChange={(e) => {
-                    setTempName(e.target.value);
-                    if (nameError) setNameError('');
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSaveName();
-                    if (e.key === 'Escape') handleCancelName();
-                  }}
-                  className={`w-full bg-[#1a1a1a] border ${nameError ? 'border-red-500' : 'border-[#D4AF37]'} rounded-lg px-3 py-1 text-white text-xl font-bold focus:outline-none focus:ring-1 focus:ring-[#D4AF37] text-center`}
-                />
-                <div className="flex gap-1">
-                  <button 
-                    onClick={handleSaveName}
-                    className="p-1.5 bg-[#D4AF37] rounded-md text-black hover:bg-[#b08d2d] transition-colors"
-                  >
-                    <Check className="w-4 h-4" strokeWidth={3} />
-                  </button>
-                  <button 
-                    onClick={handleCancelName}
-                    className="p-1.5 bg-[#333] rounded-md text-white hover:bg-[#444] transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              {nameError && (
-                <p className="text-red-500 text-[10px] font-medium flex items-center justify-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {nameError}
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="flex items-center justify-center gap-2 group cursor-pointer" onClick={() => setIsEditingName(true)}>
-              <h1 className="text-2xl font-bold tracking-tight">{name}</h1>
-              <Pencil className="w-4 h-4 text-[#D4AF37] opacity-0 group-hover:opacity-100 transition-opacity" />
-            </div>
-          )}
+          <div className="flex items-center justify-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight">{name}</h1>
+          </div>
           <button
             onClick={() => onNavigate?.('edit-profile')}
             className="mt-2 text-sm text-[#D4AF37] hover:text-[#B8941F] transition-colors flex items-center gap-1"
@@ -383,7 +447,7 @@ export function Profile({ onNavigate }: ProfileProps) {
                        <Coins className="w-6 h-6 text-[#D4AF37] group-hover:text-black transition-colors" />
                    </div>
                    <div className="text-center">
-                       <p className="text-2xl font-black text-white leading-tight group-hover:scale-110 transition-transform">1,240</p>
+                       <p className="text-2xl font-black text-white leading-tight group-hover:scale-110 transition-transform">{stats.points.toLocaleString()}</p>
                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] group-hover:text-[#D4AF37] transition-colors">Total Points</p>
                    </div>
 
@@ -409,7 +473,7 @@ export function Profile({ onNavigate }: ProfileProps) {
                     <Ticket className="w-6 h-6 text-[#D4AF37] group-hover:text-black transition-colors" />
                 </div>
                 <div className="text-center relative z-10">
-                    <p className="text-2xl font-black text-white leading-tight mb-0.5 group-hover:scale-110 transition-transform">3</p>
+                    <p className="text-2xl font-black text-white leading-tight mb-0.5 group-hover:scale-110 transition-transform">{stats.coupons}</p>
                     <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] group-hover:text-[#D4AF37] transition-colors">Coupons</p>
                 </div>
              </motion.button>
@@ -428,7 +492,7 @@ export function Profile({ onNavigate }: ProfileProps) {
                     <Gift className="w-6 h-6 text-[#D4AF37] group-hover:text-black transition-colors" />
                 </div>
                 <div className="text-center relative z-10">
-                    <p className="text-2xl font-black text-white leading-tight mb-0.5 group-hover:scale-110 transition-transform">$85.00</p>
+                    <p className="text-2xl font-black text-white leading-tight mb-0.5 group-hover:scale-110 transition-transform">${stats.giftCardBalance.toFixed(2)}</p>
                     <p className="text-[9px] font-black text-[#D4AF37] uppercase tracking-[0.2em]">Gift Cards</p>
                 </div>
              </motion.button>
@@ -445,7 +509,7 @@ export function Profile({ onNavigate }: ProfileProps) {
                     <Receipt className="w-6 h-6 text-[#D4AF37] group-hover:text-black transition-colors" />
                 </div>
                 <div className="text-center relative z-10">
-                    <p className="text-2xl font-black text-white leading-tight mb-0.5 group-hover:scale-110 transition-transform">5</p>
+                    <p className="text-2xl font-black text-white leading-tight mb-0.5 group-hover:scale-110 transition-transform">{stats.orders}</p>
                     <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] group-hover:text-[#D4AF37] transition-colors">Orders</p>
                 </div>
              </motion.button>
@@ -462,7 +526,7 @@ export function Profile({ onNavigate }: ProfileProps) {
                     <Star className="w-6 h-6 text-[#D4AF37] group-hover:text-black transition-colors" />
                 </div>
                 <div className="text-center relative z-10">
-                    <p className="text-2xl font-black text-white leading-tight mb-0.5 group-hover:scale-110 transition-transform">3</p>
+                    <p className="text-2xl font-black text-white leading-tight mb-0.5 group-hover:scale-110 transition-transform">{stats.reviews}</p>
                     <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] group-hover:text-[#D4AF37] transition-colors">Reviews</p>
                 </div>
              </motion.button>
@@ -479,7 +543,7 @@ export function Profile({ onNavigate }: ProfileProps) {
                     <Heart className="w-6 h-6 text-[#D4AF37] group-hover:text-black transition-colors" />
                 </div>
                 <div className="text-center relative z-10">
-                    <p className="text-2xl font-black text-white leading-tight mb-0.5 group-hover:scale-110 transition-transform">0</p>
+                    <p className="text-2xl font-black text-white leading-tight mb-0.5 group-hover:scale-110 transition-transform">{stats.favorites}</p>
                     <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] group-hover:text-[#D4AF37] transition-colors">Favorites</p>
                 </div>
              </motion.button>

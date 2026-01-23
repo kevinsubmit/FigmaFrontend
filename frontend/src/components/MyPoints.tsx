@@ -22,7 +22,7 @@ export function MyPoints({ onBack }: MyPointsProps) {
       setIsLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
       if (!token) {
         setError('Please login to view points');
         setIsLoading(false);

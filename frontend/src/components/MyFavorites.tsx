@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Heart, MapPin, Star } from 'lucide-react';
+import { ArrowLeft, Heart, MapPin, Star } from 'lucide-react';
 import { getMyFavoriteStores, Store, removeStoreFromFavorites } from '../api/stores';
 import { toast } from 'react-toastify';
 
@@ -77,25 +77,22 @@ export function MyFavorites() {
   return (
     <div className="min-h-screen bg-black text-white pb-20">
       {/* Header */}
-      <div className="bg-black/95 backdrop-blur-md px-6 py-4 pt-[calc(1rem+env(safe-area-inset-top))] sticky top-0 z-10 border-b border-[#333]">
-        <div className="flex items-center gap-4 mb-4">
-          <button
-            onClick={() => navigate('/profile')}
-            className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold">My Favorites</h1>
-            <p className="text-sm text-gray-400">
-              {stores.length} {stores.length === 1 ? 'salon' : 'salons'} · {favoritePins.length} {favoritePins.length === 1 ? 'design' : 'designs'}
-            </p>
-          </div>
-        </div>
+      <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-black/80 backdrop-blur-md border-b border-[#333]">
+        <button
+          onClick={() => navigate('/profile')}
+          className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors"
+        >
+          <ArrowLeft className="w-6 h-6 text-white" />
+        </button>
+        <h1 className="text-lg font-bold">My Favorites</h1>
+        <div className="w-8" />
       </div>
 
       {/* Content */}
       <div className="px-4 py-6">
+        <div className="mb-4 text-sm text-gray-400">
+          {stores.length} {stores.length === 1 ? 'salon' : 'salons'} · {favoritePins.length} {favoritePins.length === 1 ? 'design' : 'designs'}
+        </div>
         {stores.length === 0 && favoritePins.length === 0 ? (
           <div className="text-center py-12">
             <Heart className="w-16 h-16 text-gray-600 mx-auto mb-4" />

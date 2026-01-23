@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Edit2, Trash2, Loader2, MessageSquare } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Star, Edit2, Trash2, Loader2, MessageSquare } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { getMyReviews, deleteReview, Review } from '../api/reviews';
 import { getStoreById, Store } from '../api/stores';
@@ -10,6 +11,7 @@ interface ReviewWithStore extends Review {
 }
 
 export function MyReviews() {
+  const navigate = useNavigate();
   const [reviews, setReviews] = useState<ReviewWithStore[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
@@ -105,10 +107,15 @@ export function MyReviews() {
   return (
     <div className="min-h-screen bg-black text-white pb-20">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-lg border-b border-white/10">
-        <div className="px-4 py-4">
-          <h1 className="text-2xl font-bold">My Reviews</h1>
-        </div>
+      <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-black/80 backdrop-blur-md border-b border-[#333]">
+        <button
+          onClick={() => navigate('/profile')}
+          className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors"
+        >
+          <ArrowLeft className="w-6 h-6 text-white" />
+        </button>
+        <h1 className="text-lg font-bold">My Reviews</h1>
+        <div className="w-8" />
       </div>
 
       {/* Content */}

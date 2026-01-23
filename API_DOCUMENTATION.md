@@ -153,6 +153,17 @@ Authorization: Bearer {token}
 }
 ```
 
+#### 1.5 上传头像
+
+```
+POST /api/v1/auth/me/avatar
+Authorization: Bearer {token}
+Content-Type: multipart/form-data
+```
+
+**请求体**：
+- `file`: 图片文件（jpg/png/webp，<=5MB）
+
 ### 2. 用户模块 (Users)
 
 #### 2.1 获取用户列表
@@ -542,7 +553,29 @@ POST /api/v1/coupons/exchange/{coupon_id}
 Authorization: Bearer {token}
 ```
 
-### 8. 通知模块 (Notifications)
+#### 7.6 获取优惠券详情
+
+```
+GET /api/v1/coupons/{coupon_id}
+```
+
+### 8. 礼品卡模块 (Gift Cards)
+
+#### 8.1 获取礼品卡汇总
+
+```
+GET /api/v1/gift-cards/summary
+Authorization: Bearer {token}
+```
+
+#### 8.2 获取我的礼品卡列表
+
+```
+GET /api/v1/gift-cards/my-cards
+Authorization: Bearer {token}
+```
+
+### 9. 通知模块 (Notifications)
 
 #### 8.1 获取通知列表
 
@@ -591,7 +624,7 @@ DELETE /api/v1/notifications/{notification_id}
 Authorization: Bearer {token}
 ```
 
-### 9. 推荐模块 (Referrals)
+### 10. 推荐模块 (Referrals)
 
 #### 9.1 获取我的推荐码
 
@@ -648,7 +681,7 @@ Authorization: Bearer {token}
 ]
 ```
 
-### 10. 评价模块 (Reviews)
+### 11. 评价模块 (Reviews)
 
 #### 10.1 创建评价
 
@@ -699,7 +732,7 @@ DELETE /api/v1/reviews/{review_id}
 Authorization: Bearer {token}
 ```
 
-### 11. 店铺营业时间模块 (Store Hours)
+### 12. 店铺营业时间模块 (Store Hours)
 
 #### 11.1 获取店铺营业时间
 
@@ -739,7 +772,7 @@ Authorization: Bearer {admin_token}
 }
 ```
 
-### 12. 店铺节假日模块 (Store Holidays)
+### 13. 店铺节假日模块 (Store Holidays)
 
 #### 12.1 获取店铺节假日列表
 
@@ -777,7 +810,7 @@ Authorization: Bearer {admin_token}
 }
 ```
 
-### 13. 店铺作品集模块 (Store Portfolio)
+### 14. 店铺作品集模块 (Store Portfolio)
 
 #### 13.1 获取店铺作品集
 
@@ -823,7 +856,7 @@ DELETE /api/v1/store-portfolio/{portfolio_id}
 Authorization: Bearer {admin_token}
 ```
 
-### 14. 技师模块 (Technicians)
+### 15. 技师模块 (Technicians)
 
 #### 14.1 获取店铺技师列表
 
@@ -885,7 +918,7 @@ Authorization: Bearer {admin_token}
 }
 ```
 
-### 15. Pin内容模块 (Pins)
+### 16. Pin内容模块 (Pins)
 
 #### 15.1 获取Pin列表
 
@@ -899,7 +932,7 @@ GET /api/v1/pins?skip=0&limit=20&tag=French&search=gold
 GET /api/v1/pins/{pin_id}
 ```
 
-### 16. 文件上传模块 (Upload)
+### 17. 文件上传模块 (Upload)
 
 #### 15.1 上传文件
 

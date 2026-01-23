@@ -406,13 +406,17 @@ async def upload_avatar(
     filename = f"avatar_{current_user.id}_{uuid.uuid4().hex}{file_extension}"
     
     # Save file
-    upload_dir = Path("/home/ubuntu/FigmaFrontend/backend/uploads/avatars")
+    from app.core.config import settings
+    upload_dir = Path(settings.UPLOAD_DIR) / "avatars"
     upload_dir.mkdir(parents=True, exist_ok=True)
     file_path = upload_dir / filename
     
     # Compress image if needed
     from app.utils.image_compression import compress_image
-    compressed_content = compress_image(file_content, max_width=500, target_size_kb=200)
+    try:
+        compressed_content, _ = compress_image(file_content, max_width=500, target_size_kb=200)
+    except Exception:
+        compressed_content = file_content
     
     with open(file_path, "wb") as f:
         f.write(compressed_content)

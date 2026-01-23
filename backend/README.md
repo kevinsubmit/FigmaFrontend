@@ -116,6 +116,7 @@ python -m app.main
 - `POST /api/v1/auth/register` - 用户注册
 - `POST /api/v1/auth/login` - 用户登录
 - `GET /api/v1/auth/me` - 获取当前用户信息
+- `POST /api/v1/auth/me/avatar` - 上传头像
 - `POST /api/v1/auth/refresh` - 刷新Token
 
 ### 店铺 (Stores)
@@ -153,9 +154,17 @@ python -m app.main
 
 ### 优惠券 (Coupons)
 
-- `GET /api/v1/coupons` - 获取优惠券列表
-- `POST /api/v1/coupons/{id}/claim` - 领取优惠券
-- `GET /api/v1/coupons/my` - 获取我的优惠券
+- `GET /api/v1/coupons/available` - 获取可领取优惠券
+- `GET /api/v1/coupons/exchangeable` - 获取可积分兑换优惠券
+- `GET /api/v1/coupons/my-coupons` - 获取我的优惠券
+- `POST /api/v1/coupons/claim` - 领取优惠券
+- `POST /api/v1/coupons/exchange/{coupon_id}` - 积分兑换优惠券
+- `GET /api/v1/coupons/{coupon_id}` - 获取优惠券详情
+
+### 礼品卡 (Gift Cards)
+
+- `GET /api/v1/gift-cards/summary` - 获取礼品卡汇总（余额/数量）
+- `GET /api/v1/gift-cards/my-cards` - 获取我的礼品卡列表
 
 ### Pin内容 (Pins)
 

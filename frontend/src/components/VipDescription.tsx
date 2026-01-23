@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronLeft, Crown, Sparkles, Star, ShieldCheck, Gem } from 'lucide-react';
+import { ArrowLeft, Crown, Sparkles, Star, ShieldCheck, Gem } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface VipDescriptionProps {
@@ -41,16 +41,15 @@ export function VipDescription({ onBack }: VipDescriptionProps) {
   return (
     <div className="min-h-screen bg-black text-white pb-12">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-lg border-b border-white/5">
-        <div className="flex items-center px-4 h-16">
-          <button onClick={onBack} className="p-2 -ml-2">
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <h1 className="ml-2 text-lg font-medium tracking-tight">VIP Membership</h1>
-        </div>
+      <header className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-black/80 backdrop-blur-md border-b border-[#333]">
+        <button onClick={onBack} className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors">
+          <ArrowLeft className="w-6 h-6 text-white" />
+        </button>
+        <h1 className="text-lg font-bold">VIP Membership</h1>
+        <div className="w-8" />
       </header>
 
-      <div className="pt-24 px-6">
+      <div className="pt-10 px-6">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

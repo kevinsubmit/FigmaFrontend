@@ -17,5 +17,10 @@ from app.models.store_favorite import StoreFavorite
 from app.models.store_portfolio import StorePortfolio
 from app.models.referral import Referral
 from app.models.pin import Pin, Tag, pin_tags
+from app.models.gift_card import GiftCard
+from app.models.user_points import UserPoints
+from app.models.point_transaction import PointTransaction, TransactionType
+from app.models.coupon import Coupon, CouponType, CouponCategory
+from app.models.user_coupon import UserCoupon, CouponStatus
 
-__all__ = ["User", "VerificationCode", "Store", "StoreImage", "Service", "Appointment", "AppointmentStatus", "Technician", "StoreHours", "TechnicianUnavailable", "Notification", "NotificationType", "Review", "ReviewReply", "AppointmentReminder", "ReminderType", "ReminderStatus", "StoreFavorite", "StorePortfolio", "Referral", "Pin", "Tag", "pin_tags"]
+__all__ = ["User", "VerificationCode", "Store", "StoreImage", "Service", "Appointment", "AppointmentStatus", "Technician", "StoreHours", "TechnicianUnavailable", "Notification", "NotificationType", "Review", "ReviewReply", "AppointmentReminder", "ReminderType", "ReminderStatus", "StoreFavorite", "StorePortfolio", "Referral", "Pin", "Tag", "pin_tags", "GiftCard", "UserPoints", "PointTransaction", "TransactionType", "Coupon", "CouponType", "CouponCategory", "UserCoupon", "CouponStatus"]

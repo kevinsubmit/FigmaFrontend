@@ -125,17 +125,15 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
   return (
     <div className="min-h-screen bg-black text-white pb-12 animate-in slide-in-from-right duration-300">
       {/* Header */}
-      <div className="bg-black/95 backdrop-blur-md px-4 py-4 pt-[calc(1rem+env(safe-area-inset-top))] sticky top-0 z-20 border-b border-[#333] flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={onBack}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-[#1a1a1a] hover:bg-[#333] transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-white" />
-          </button>
-          <h1 className="text-xl font-bold tracking-tight">My Gift Cards</h1>
-        </div>
-        {/* Removed Plus button as requested to maintain exclusive asset logic */}
+      <div className="sticky top-0 z-50 flex items-center justify-between px-4 py-3 bg-black/80 backdrop-blur-md border-b border-[#333]">
+        <button 
+          onClick={onBack}
+          className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors"
+        >
+          <ArrowLeft className="w-6 h-6 text-white" />
+        </button>
+        <h1 className="text-lg font-bold">My Gift Cards</h1>
+        <div className="w-8" />
       </div>
 
       <div className="px-6 py-6">

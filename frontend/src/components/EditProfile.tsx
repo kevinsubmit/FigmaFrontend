@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Camera, User, Mail, Phone, Calendar, Users } from 'lucide-react';
 import { toast } from 'react-toastify';
 import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1`;
 
 interface UserProfile {
   id: number;
@@ -19,6 +20,7 @@ interface UserProfile {
 
 const EditProfile: React.FC = () => {
   const navigate = useNavigate();
+  const { refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -36,7 +38,7 @@ const EditProfile: React.FC = () => {
 
   const fetchProfile = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
       const response = await axios.get(`${API_BASE_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -73,7 +75,7 @@ const EditProfile: React.FC = () => {
 
     setUploading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
       const formData = new FormData();
       formData.append('file', file);
 
@@ -85,7 +87,8 @@ const EditProfile: React.FC = () => {
       });
 
       setProfile(prev => prev ? { ...prev, avatar_url: response.data.avatar_url } : null);
-      toast.success('Avatar updated successfully!');
+      await refreshUser();
+      toast.success('Avatar updated successfully!', { autoClose: 1200 });
     } catch (error) {
       console.error('Failed to upload avatar:', error);
       toast.error('Failed to upload avatar');
@@ -99,7 +102,7 @@ const EditProfile: React.FC = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
       
       // Prepare update data (only include non-empty fields)
       const updateData: any = {};
@@ -112,7 +115,8 @@ const EditProfile: React.FC = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      toast.success('Profile updated successfully!');
+      await refreshUser();
+      toast.success('Profile updated successfully!', { autoClose: 1200 });
       navigate('/profile');
     } catch (error: any) {
       console.error('Failed to update profile:', error);
@@ -164,7 +168,7 @@ const EditProfile: React.FC = () => {
               <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center">
                 {profile.avatar_url ? (
                   <img
-                    src={`http://localhost:8000${profile.avatar_url}`}
+                    src={`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${profile.avatar_url}`}
                     alt="Avatar"
                     className="w-full h-full object-cover"
                   />
