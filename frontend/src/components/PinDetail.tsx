@@ -78,7 +78,7 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
       let updated: typeof parsed = [];
       if (exists) {
         updated = parsed.filter((pin) => pin.id !== data.id);
-        toast.success('Removed from favorites');
+        toast.success('Removed from favorites', { duration: 1200 });
         setIsFavorite(false);
       } else {
         updated = [
@@ -89,7 +89,7 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
           },
           ...parsed,
         ];
-        toast.success('Added to favorites');
+        toast.success('Added to favorites', { duration: 1200 });
         setIsFavorite(true);
       }
       localStorage.setItem(favoritesKey, JSON.stringify(updated));
@@ -135,7 +135,7 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(data.image_url);
-      toast.success("Link copied to clipboard");
+      toast.success("Link copied to clipboard", { duration: 1200 });
     } catch (err) {
       // Fallback for environments where Clipboard API is blocked
       try {
@@ -153,12 +153,12 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
         document.body.removeChild(textArea);
         
         if (successful) {
-          toast.success("Link copied to clipboard");
+          toast.success("Link copied to clipboard", { duration: 1200 });
         } else {
-          toast.error("Failed to copy link");
+          toast.error("Failed to copy link", { duration: 1200 });
         }
       } catch (fallbackErr) {
-        toast.error("Failed to copy link");
+        toast.error("Failed to copy link", { duration: 1200 });
       }
     }
   };
