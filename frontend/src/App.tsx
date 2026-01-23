@@ -44,6 +44,13 @@ function AppRouter() {
     document.body.style.overflow = '';
     document.body.style.removeProperty('overflow');
   }, [location.pathname]);
+
+  // Disable browser scroll restoration to avoid landing mid-page on subroutes
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+  }, []);
   
   // Create a ref to store scroll positions for each page
   const scrollPositions = useRef<Record<string, number>>({});
@@ -71,6 +78,7 @@ function AppRouter() {
     if (path === '/my-favorites') return 'my-favorites';
     if (path === '/change-password') return 'change-password';
     if (path === '/phone-management') return 'phone-management';
+    if (path === '/referral') return 'referral';
     return 'home';
   };
 
@@ -130,6 +138,18 @@ function AppRouter() {
     }
     window.scrollTo(0, 0);
   }, [currentPage]);
+
+  // Ensure sub-pages always start at top on navigation (Safari needs multiple ticks)
+  useEffect(() => {
+    const mainTabs: Page[] = ['home', 'services', 'appointments', 'profile', 'deals'];
+    if (!mainTabs.includes(currentPage)) {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      window.scrollTo(0, 0);
+      requestAnimationFrame(() => window.scrollTo(0, 0));
+      setTimeout(() => window.scrollTo(0, 0), 50);
+    }
+  }, [location.pathname, currentPage]);
 
   const handleSelectSalon = (salon: any) => {
     // Save current scroll

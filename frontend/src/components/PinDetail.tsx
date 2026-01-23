@@ -132,6 +132,10 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
       .finally(() => setIsLoading(false));
   }, [location.search, pinData]);
 
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname, location.search]);
+
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(data.image_url);
