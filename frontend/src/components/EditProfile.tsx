@@ -145,17 +145,16 @@ const EditProfile: React.FC = () => {
   return (
     <div className="min-h-screen bg-black text-white pb-20">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-black/90 backdrop-blur-sm border-b border-gray-800">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/profile')}
-              className="p-2 hover:bg-gray-800 rounded-full transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <h1 className="text-2xl font-bold">Edit Profile</h1>
-          </div>
+      <div className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-[#333]">
+        <div className="flex items-center justify-between px-4 py-3">
+          <button
+            onClick={() => navigate('/settings')}
+            className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors"
+          >
+            <ArrowLeft className="w-6 h-6 text-white" />
+          </button>
+          <h1 className="text-lg font-bold">Edit Profile</h1>
+          <div className="w-8" />
         </div>
       </div>
 

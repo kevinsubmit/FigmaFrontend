@@ -1,5 +1,5 @@
 import { Share, MoreHorizontal, Crown, Coins, Ticket, Receipt, UserCog, Settings, TrendingUp, Camera, Gift, Users, Pencil, Check, X, AlertCircle, Sparkles, ChevronRight, Bell, Star, Heart } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import apiClient from '../lib/api';
@@ -13,7 +13,6 @@ import { getMyFavoritesCount } from '../api/stores';
 import usersService from '../services/users.service';
 import { Loader } from './ui/Loader';
 import { Progress } from "./ui/progress";
-import { Settings as SettingsView } from './Settings';
 import { useAuth } from '../contexts/AuthContext';
 
 interface ProfileProps {
@@ -52,7 +51,6 @@ export function Profile({ onNavigate }: ProfileProps) {
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(USER_INFO.name);
   const [nameError, setNameError] = useState('');
-  const [showSettings, setShowSettings] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [stats, setStats] = useState({
@@ -258,7 +256,7 @@ export function Profile({ onNavigate }: ProfileProps) {
             )}
           </button>
           <button 
-            onClick={() => setShowSettings(true)}
+            onClick={() => onNavigate?.('settings')}
             className="p-2 rounded-full bg-[#1a1a1a] border border-[#333] hover:bg-[#333] text-white transition-colors"
           >
             <Settings className="w-4 h-4" />
@@ -281,13 +279,6 @@ export function Profile({ onNavigate }: ProfileProps) {
           <div className="flex items-center justify-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight">{name}</h1>
           </div>
-          <button
-            onClick={() => onNavigate?.('edit-profile')}
-            className="mt-2 text-sm text-[#D4AF37] hover:text-[#B8941F] transition-colors flex items-center gap-1"
-          >
-            <Pencil className="w-3 h-3" />
-            Edit Profile
-          </button>
         </div>
         
         {/* VIP Membership Section */}
@@ -553,20 +544,6 @@ export function Profile({ onNavigate }: ProfileProps) {
 
       
 
-      {/* Settings Modal */}
-      <AnimatePresence>
-        {showSettings && (
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'tween', ease: 'easeInOut', duration: 0.3 }}
-            className="fixed inset-0 z-[60] bg-black"
-          >
-            <SettingsView onBack={() => setShowSettings(false)} />
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

@@ -328,7 +328,13 @@ function AppRouter() {
 
         <Route path="/vip-description" element={
           <VipDescription 
-              onBack={() => navigate('/profile')}
+              onBack={() => {
+                if (location.state?.from === 'settings') {
+                  navigate('/settings');
+                } else {
+                  navigate('/profile');
+                }
+              }}
             />
         } />
 
