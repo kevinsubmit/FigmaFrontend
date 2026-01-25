@@ -44,7 +44,8 @@ class APIClient {
    */
   private async request<T>(
     endpoint: string,
-    options: RequestOptions = {}
+    options: RequestOptions = {},
+    allowRetry: boolean = true
   ): Promise<T> {
     const { requiresAuth = false, headers = {}, ...restOptions } = options;
 
@@ -67,6 +68,15 @@ class APIClient {
     try {
       const response = await fetch(`${this.baseURL}${endpoint}`, config);
 
+      if (response.status === 401 && requiresAuth && allowRetry) {
+        const refreshed = await this.refreshToken();
+        if (refreshed) {
+          (config.headers as Record<string, string>)['Authorization'] = `Bearer ${refreshed}`;
+          return this.request<T>(endpoint, options, false);
+        }
+        this.removeToken();
+      }
+
       // Handle non-OK responses
       if (!response.ok) {
         const error = await response.json().catch(() => ({
@@ -81,6 +91,41 @@ class APIClient {
       console.error('API Request Error:', error);
       throw error;
     }
+  }
+
+  /**
+   * Refresh access token
+   */
+  private async refreshToken(): Promise<string | null> {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) {
+      return null;
+    }
+
+    try {
+      const response = await fetch(`${this.baseURL}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = await response.json();
+      if (data.access_token) {
+        localStorage.setItem('access_token', data.access_token);
+        if (data.refresh_token) {
+          localStorage.setItem('refresh_token', data.refresh_token);
+        }
+        return data.access_token as string;
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+    }
+
+    return null;
   }
 
   /**

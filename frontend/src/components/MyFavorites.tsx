@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, MapPin, Star } from 'lucide-react';
 import { getMyFavoriteStores, Store, removeStoreFromFavorites } from '../api/stores';
+import { getMyFavoritePins, Pin, removePinFromFavorites } from '../api/pins';
 import { toast } from 'react-toastify';
 
 export function MyFavorites() {
@@ -9,34 +10,29 @@ export function MyFavorites() {
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
-  const [favoritePins, setFavoritePins] = useState<Array<{ id: number; title: string; image_url: string }>>([]);
+  const [favoritePins, setFavoritePins] = useState<Pin[]>([]);
 
   useEffect(() => {
     loadFavorites();
   }, []);
 
   const loadFavorites = async () => {
-    const rawPins = localStorage.getItem('favorite_pins');
-    if (rawPins) {
-      try {
-        setFavoritePins(JSON.parse(rawPins));
-      } catch (error) {
-        console.error('Failed to parse favorite pins:', error);
-        setFavoritePins([]);
-      }
-    }
-
     const token = localStorage.getItem('access_token');
     if (!token) {
       setStores([]);
+      setFavoritePins([]);
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      const data = await getMyFavoriteStores(token);
-      setStores(data);
+      const [storeData, pinData] = await Promise.all([
+        getMyFavoriteStores(token),
+        getMyFavoritePins(token)
+      ]);
+      setStores(storeData);
+      setFavoritePins(pinData);
     } catch (error) {
       console.error('Failed to load favorites:', error);
       toast.error('Failed to load favorites');
@@ -46,7 +42,7 @@ export function MyFavorites() {
   };
 
   const handleRemoveFavorite = async (storeId: number) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
     if (!token) return;
 
     try {
@@ -60,10 +56,17 @@ export function MyFavorites() {
   };
 
   const handleRemoveFavoritePin = (pinId: number) => {
-    const updated = favoritePins.filter((pin) => pin.id !== pinId);
-    setFavoritePins(updated);
-    localStorage.setItem('favorite_pins', JSON.stringify(updated));
-    toast.success('Removed from favorites');
+    const token = localStorage.getItem('access_token');
+    if (!token) return;
+    removePinFromFavorites(pinId, token)
+      .then(() => {
+        setFavoritePins(favoritePins.filter((pin) => pin.id !== pinId));
+        toast.success('Removed from favorites');
+      })
+      .catch((error) => {
+        console.error('Failed to remove favorite pin:', error);
+        toast.error('Failed to remove favorites');
+      });
   };
 
   if (loading) {

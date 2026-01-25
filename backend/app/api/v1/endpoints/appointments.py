@@ -464,12 +464,18 @@ def complete_appointment(
 
     # Award points based on service price (1 point per $1)
     if service.price is not None:
-        crud_points.award_points_for_appointment(
+        points_txn = crud_points.award_points_for_appointment(
             db=db,
             user_id=updated_appointment.user_id,
             appointment_id=updated_appointment.id,
             amount_spent=service.price
         )
+        if points_txn:
+            notification_service.notify_points_earned(
+                db=db,
+                appointment=updated_appointment,
+                points=points_txn.amount
+            )
     
     # Send notification to customer
     notification_service.notify_appointment_completed(db, updated_appointment)

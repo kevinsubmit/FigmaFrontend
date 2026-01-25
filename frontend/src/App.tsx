@@ -23,6 +23,7 @@ import ChangePassword from './components/ChangePassword';
 import PhoneManagement from './components/PhoneManagement';
 import ReferralPage from './components/ReferralPage';
 import { AuthProvider } from './contexts/AuthContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { toast } from 'react-toastify';
 import { Sparkles } from 'lucide-react';
@@ -234,6 +235,7 @@ function AppRouter() {
                   'my-gift-cards': '/my-gift-cards',
                   'settings': '/settings',
                   'vip-description': '/vip-description',
+                  'notifications': '/notifications',
                   'my-reviews': '/my-reviews',
                   'my-favorites': '/my-favorites',
                   'referral': '/referral'
@@ -403,10 +405,12 @@ function AppRouter() {
 // Main App Component with Router Provider
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AppRouter />
-      </BrowserRouter>
-    </AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRouter />
+        </BrowserRouter>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }

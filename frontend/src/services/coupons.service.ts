@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1`;
+import apiClient from '../lib/api';
 
 export interface Coupon {
   id: number;
@@ -35,9 +33,10 @@ class CouponsService {
    * Get all available coupons
    */
   async getAvailableCoupons(skip: number = 0, limit: number = 50): Promise<Coupon[]> {
-    const response = await axios.get(`${API_BASE_URL}/coupons/available`, {
-      params: { skip, limit },
-    });
+    const response = await apiClient.get<Coupon[]>(
+      '/coupons/available',
+      { params: { skip, limit } }
+    );
     return response.data;
   }
 
@@ -45,11 +44,9 @@ class CouponsService {
    * Get coupons that can be exchanged with points
    */
   async getExchangeableCoupons(token: string): Promise<Coupon[]> {
-    const response = await axios.get(`${API_BASE_URL}/coupons/exchangeable`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await apiClient.get<Coupon[]>(
+      '/coupons/exchangeable'
+    );
     return response.data;
   }
 
@@ -67,12 +64,10 @@ class CouponsService {
       params.status = status;
     }
 
-    const response = await axios.get(`${API_BASE_URL}/coupons/my-coupons`, {
-      params,
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await apiClient.get<UserCoupon[]>(
+      '/coupons/my-coupons',
+      { params }
+    );
     return response.data;
   }
 
@@ -80,14 +75,9 @@ class CouponsService {
    * Claim a coupon
    */
   async claimCoupon(token: string, couponId: number, source: string = 'system'): Promise<UserCoupon> {
-    const response = await axios.post(
-      `${API_BASE_URL}/coupons/claim`,
-      { coupon_id: couponId, source },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+    const response = await apiClient.post<UserCoupon>(
+      '/coupons/claim',
+      { coupon_id: couponId, source }
     );
     return response.data;
   }
@@ -96,14 +86,9 @@ class CouponsService {
    * Exchange points for coupon
    */
   async exchangeCoupon(token: string, couponId: number): Promise<UserCoupon> {
-    const response = await axios.post(
-      `${API_BASE_URL}/coupons/exchange/${couponId}`,
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+    const response = await apiClient.post<UserCoupon>(
+      `/coupons/exchange/${couponId}`,
+      {}
     );
     return response.data;
   }
@@ -112,7 +97,7 @@ class CouponsService {
    * Get coupon details
    */
   async getCouponDetails(couponId: number): Promise<Coupon> {
-    const response = await axios.get(`${API_BASE_URL}/coupons/${couponId}`);
+    const response = await apiClient.get<Coupon>(`/coupons/${couponId}`);
     return response.data;
   }
 }

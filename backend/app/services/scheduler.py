@@ -7,7 +7,8 @@ import logging
 from datetime import datetime
 from app.db.session import SessionLocal
 from app.services.reminder_service import process_pending_reminders
-from app.crud.gift_card import expire_pending_transfers
+from app.services.notification_service import notify_gift_card_expiring
+from app.crud import gift_card as gift_card_crud
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +40,21 @@ class ReminderScheduler:
                     logger.info(f"Checking for pending reminders at {datetime.now()}")
                     stats = process_pending_reminders(db)
                     logger.info(f"Reminder check complete: {stats}")
-                    expired_count = expire_pending_transfers(db)
+                    expired_count = gift_card_crud.expire_pending_transfers(db)
                     if expired_count:
                         logger.info(f"Gift card transfers expired: {expired_count}")
+
+                    expiring_cards = gift_card_crud.get_pending_transfers_expiring_soon(db, within_hours=48)
+                    for card in expiring_cards:
+                        notify_gift_card_expiring(
+                            db=db,
+                            purchaser_id=card.purchaser_id,
+                            recipient_phone=card.recipient_phone,
+                            expires_at=card.claim_expires_at
+                        )
+                        gift_card_crud.mark_transfer_expiry_notified(db, card)
+                    if expiring_cards:
+                        db.commit()
                 finally:
                     db.close()
                 

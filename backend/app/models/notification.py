@@ -14,6 +14,12 @@ class NotificationType(str, enum.Enum):
     APPOINTMENT_CANCELLED = "appointment_cancelled"
     APPOINTMENT_COMPLETED = "appointment_completed"
     APPOINTMENT_REMINDER = "appointment_reminder"  # 24h reminder
+    COUPON_GRANTED = "coupon_granted"
+    POINTS_EARNED = "points_earned"
+    GIFT_CARD_SENT = "gift_card_sent"
+    GIFT_CARD_RECEIVED = "gift_card_received"
+    GIFT_CARD_CLAIMED = "gift_card_claimed"
+    GIFT_CARD_EXPIRING = "gift_card_expiring"
 
 
 class Notification(Base):

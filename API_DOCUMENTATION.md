@@ -671,6 +671,19 @@ Authorization: Bearer {token}
 
 ### 9. 通知模块 (Notifications)
 
+**通知类型**：
+- `appointment_created`：用户创建预约（通知门店管理员）
+- `appointment_confirmed`：门店确认预约（通知用户）
+- `appointment_cancelled`：取消预约（按取消方通知对应用户/门店管理员）
+- `appointment_completed`：预约完成（通知用户）
+- `appointment_reminder`：预约提醒（24h/1h，通知用户）
+- `coupon_granted`：管理员发券（通知用户）
+- `points_earned`：积分到账（订单完成后通知用户）
+- `gift_card_sent`：礼品卡赠送成功（通知发送者）
+- `gift_card_received`：礼品卡收到/领取（通知接收者）
+- `gift_card_claimed`：礼品卡被领取（通知发送者）
+- `gift_card_expiring`：礼品卡即将过期（pending_transfer 且 48h 内，通知发送者）
+
 #### 8.1 获取通知列表
 
 ```
@@ -1024,6 +1037,41 @@ GET /api/v1/pins?skip=0&limit=20&tag=French&search=gold
 
 ```
 GET /api/v1/pins/{pin_id}
+```
+
+#### 15.3 收藏Pin
+
+```
+POST /api/v1/pins/{pin_id}/favorite
+Authorization: Bearer {token}
+```
+
+#### 15.4 取消收藏Pin
+
+```
+DELETE /api/v1/pins/{pin_id}/favorite
+Authorization: Bearer {token}
+```
+
+#### 15.5 判断Pin是否收藏
+
+```
+GET /api/v1/pins/{pin_id}/is-favorited
+Authorization: Bearer {token}
+```
+
+#### 15.6 获取我的收藏Pin
+
+```
+GET /api/v1/pins/favorites/my-favorites
+Authorization: Bearer {token}
+```
+
+#### 15.7 获取收藏Pin数量
+
+```
+GET /api/v1/pins/favorites/count
+Authorization: Bearer {token}
 ```
 
 ### 17. 文件上传模块 (Upload)

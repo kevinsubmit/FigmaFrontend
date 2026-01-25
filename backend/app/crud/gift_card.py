@@ -157,6 +157,7 @@ def transfer_existing_gift_card(
     gift_card.claim_expires_at = now + timedelta(days=claim_days)
     gift_card.claimed_by_user_id = None
     gift_card.claimed_at = None
+    gift_card.transfer_expiry_notified = False
 
     if not gift_card.claim_code:
         gift_card.claim_code = _generate_unique_code(db, GiftCard.claim_code, length=8, prefix="GC")
@@ -271,3 +272,24 @@ def expire_pending_transfers(db: Session) -> int:
 
     db.commit()
     return len(pending_cards)
+
+
+def get_pending_transfers_expiring_soon(db: Session, within_hours: int = 72) -> List[GiftCard]:
+    now = datetime.utcnow()
+    soon = now + timedelta(hours=within_hours)
+    return (
+        db.query(GiftCard)
+        .filter(
+            GiftCard.status == "pending_transfer",
+            GiftCard.claim_expires_at.isnot(None),
+            GiftCard.claim_expires_at > now,
+            GiftCard.claim_expires_at <= soon,
+            GiftCard.transfer_expiry_notified == False
+        )
+        .all()
+    )
+
+
+def mark_transfer_expiry_notified(db: Session, gift_card: GiftCard) -> None:
+    gift_card.transfer_expiry_notified = True
+    db.add(gift_card)

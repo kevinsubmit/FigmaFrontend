@@ -16,6 +16,7 @@ from app.schemas.coupons import (
 )
 from app.crud import coupons as crud_coupons
 from app.crud import user as crud_user
+from app.services import notification_service
 
 
 router = APIRouter()
@@ -160,6 +161,19 @@ def grant_coupon_to_user(
             coupon_id=request.coupon_id,
             source="admin"
         )
+        coupon = crud_coupons.get_coupon(db, request.coupon_id)
+        if coupon:
+            if coupon.type == "fixed_amount":
+                discount_text = f"${coupon.discount_value:g} off"
+            else:
+                discount_text = f"{coupon.discount_value:g}% off"
+            notification_service.notify_coupon_granted(
+                db=db,
+                user_id=user.id,
+                coupon_name=coupon.name,
+                discount_text=discount_text,
+                expires_at=user_coupon.expires_at
+            )
         return user_coupon
     except ValueError as e:
         raise HTTPException(

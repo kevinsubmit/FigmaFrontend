@@ -11,12 +11,15 @@ import {
   CreditCard, 
   LogOut,
   Share2,
-  Star
+  Star,
+  CheckCircle2
 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from "sonner@2.0.3";
+import authService from '../services/auth.service';
+import { LANGUAGE_OPTIONS, useLanguage } from '../contexts/LanguageContext';
 
 type SettingsSection = 'main' | 'language' | 'partnership' | 'about' | 'feedback' | 'vip' | 'notifications' | 'password' | 'phone';
 
@@ -28,8 +31,9 @@ interface SettingsProps {
 export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
-  const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [notificationEnabled, setNotificationEnabled] = useState(true);
+  const { language, setLanguage, t } = useLanguage();
+  const selectedLanguageLabel = LANGUAGE_OPTIONS.find((option) => option.code === language)?.name ?? 'English';
 
   const renderSectionHeader = (title: string) => (
     <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-md border-b border-[#333]">
@@ -44,8 +48,9 @@ export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
   );
 
   const handleLogout = () => {
-    toast.success("Successfully logged out");
-    onBack();
+    authService.logout();
+    toast.success(t('settings.logoutSuccess'));
+    navigate('/login', { replace: true });
   };
 
   const handleSectionBack = () => {
@@ -58,33 +63,33 @@ export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
 
   const sections = [
     {
-      title: "Account & Preferences",
+      title: t('settings.account'),
       items: [
-        { label: 'Profile Settings', icon: User, action: () => navigate('/edit-profile') },
-        { label: 'Change Password', icon: ShieldCheck, action: () => setActiveSection('password') },
-        { label: 'Phone Number', icon: Bell, action: () => setActiveSection('phone') },
-        { label: 'VIP Membership', icon: Star, badge: "VIP 3", action: () => navigate('/vip-description', { state: { from: 'settings' } }) },
+        { label: t('settings.profileSettings'), icon: User, action: () => navigate('/edit-profile') },
+        { label: t('settings.changePassword'), icon: ShieldCheck, action: () => setActiveSection('password') },
+        { label: t('settings.phoneNumber'), icon: Bell, action: () => setActiveSection('phone') },
+        { label: t('settings.vipMembership'), icon: Star, badge: "VIP 3", action: () => navigate('/vip-description', { state: { from: 'settings' } }) },
         { 
-          label: 'Language', 
+          label: t('settings.language'), 
           icon: Share2, // Using Share2 as a proxy for language/globe if Globe is not checked
-          badge: selectedLanguage,
+          badge: selectedLanguageLabel,
           action: () => setActiveSection('language') 
         },
-        { label: 'Notifications', icon: Bell, action: () => setActiveSection('notifications') },
+        { label: t('settings.notifications'), icon: Bell, action: () => setActiveSection('notifications') },
       ]
     },
     {
-      title: "Platform",
+      title: t('settings.platform'),
       items: [
-        { label: 'Feedback & Support', icon: MessageSquare, action: () => setActiveSection('feedback') },
-        { label: 'Partnership Inquiry', icon: Store, action: () => setActiveSection('partnership') },
-        { label: 'Privacy & Safety', icon: ShieldCheck, action: () => console.log('Privacy') },
+        { label: t('settings.feedbackSupport'), icon: MessageSquare, action: () => setActiveSection('feedback') },
+        { label: t('settings.partnershipInquiry'), icon: Store, action: () => setActiveSection('partnership') },
+        { label: t('settings.privacySafety'), icon: ShieldCheck, action: () => console.log('Privacy') },
       ]
     },
     {
-      title: "Others",
+      title: t('settings.others'),
       items: [
-        { label: 'About Us', icon: Info, action: () => setActiveSection('about') },
+        { label: t('settings.aboutUs'), icon: Info, action: () => setActiveSection('about') },
       ]
     }
   ];
@@ -106,7 +111,7 @@ export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
                 <button onClick={onBack} className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors">
                   <ArrowLeft className="w-6 h-6 text-white" />
                 </button>
-                <h1 className="text-lg font-bold">Settings</h1>
+                <h1 className="text-lg font-bold">{t('settings.title')}</h1>
                 <div className="w-8" />
               </div>
             </div>
@@ -155,7 +160,7 @@ export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
                 className="w-full flex items-center justify-center gap-2 p-4 mt-4 bg-[#111] border border-[#222] text-red-400 font-bold rounded-2xl hover:bg-red-500/5 hover:border-red-500/20 transition-all active:scale-95"
               >
                 <LogOut className="w-5 h-5" />
-                Logout
+                {t('settings.logout')}
               </button>
               
               <div className="text-center pb-10">
@@ -171,38 +176,31 @@ export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
             exit={{ opacity: 0, x: 20 }}
             className="pb-16"
           >
-            {renderSectionHeader('Language')}
+            {renderSectionHeader(t('settings.language'))}
 
             <div className="px-6 pt-6">
               <p className="text-gray-400 mb-8 leading-relaxed">
-                Select your preferred language for the application interface.
+                {t('settings.languageDescription')}
               </p>
 
               <div className="bg-[#111] border border-[#222] rounded-2xl overflow-hidden">
-                {[
-                  { name: 'English', native: 'English' },
-                  { name: 'Spanish', native: 'Español' },
-                  { name: 'Chinese', native: 'Simplified Chinese' },
-                  { name: 'Korean', native: '한국어' },
-                  { name: 'French', native: 'Français' },
-                  { name: 'Vietnamese', native: 'Tiếng Việt' }
-                ].map((lang, idx, arr) => (
-                  <div key={lang.name}>
+                {LANGUAGE_OPTIONS.map((lang, idx, arr) => (
+                  <div key={lang.code}>
                     <button
                       onClick={() => {
-                        setSelectedLanguage(lang.name);
-                        toast.success(`Language changed to ${lang.name}`);
+                        setLanguage(lang.code);
+                        toast.success(t('settings.languageChanged', { language: lang.name }));
                         setTimeout(() => setActiveSection('main'), 500);
                       }}
                       className="w-full flex items-center justify-between p-5 hover:bg-[#1a1a1a] transition-colors"
                     >
                       <div className="flex flex-col items-start">
-                        <span className={`text-base font-medium ${selectedLanguage === lang.name ? 'text-[#D4AF37]' : 'text-white'}`}>
+                        <span className={`text-base font-medium ${language === lang.code ? 'text-[#D4AF37]' : 'text-white'}`}>
                           {lang.native}
                         </span>
                         <span className="text-xs text-gray-500">{lang.name}</span>
                       </div>
-                      {selectedLanguage === lang.name && (
+                      {language === lang.code && (
                         <CheckCircle2 className="w-5 h-5 text-[#D4AF37]" />
                       )}
                     </button>

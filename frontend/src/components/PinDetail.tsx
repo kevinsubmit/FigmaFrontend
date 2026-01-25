@@ -18,7 +18,7 @@ import { Loader } from './ui/Loader';
 import { motion, AnimatePresence } from 'motion/react';
 import { Toaster } from './ui/sonner';
 import { toast } from 'sonner@2.0.3';
-import { getPins, getPinById, Pin } from '../api/pins';
+import { addPinToFavorites, checkIfPinFavorited, getPinById, getPins, Pin, removePinFromFavorites } from '../api/pins';
 
 interface PinDetailProps {
   onBack: () => void;
@@ -37,12 +37,12 @@ interface PinDetailProps {
 
 export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }: PinDetailProps) {
   const location = useLocation();
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   const [isLoading, setIsLoading] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [relatedPins, setRelatedPins] = useState<Pin[]>([]);
   const [resolvedPin, setResolvedPin] = useState<Pin | null>(null);
-  const favoritesKey = 'favorite_pins';
   const data = useMemo(() => {
     if (pinData) {
       return pinData;
@@ -58,41 +58,40 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
       tags: ['Minimalist', 'French'],
     };
   }, [pinData, resolvedPin]);
+  const resolvedImageUrl = data.image_url?.startsWith('http')
+    ? data.image_url
+    : `${apiBaseUrl}${data.image_url}`;
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(favoritesKey);
-      const parsed: Array<{ id: number }> = raw ? JSON.parse(raw) : [];
-      setIsFavorite(parsed.some((pin) => pin.id === data.id));
-    } catch (error) {
-      console.error('Failed to read favorite pins:', error);
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+    if (!token) {
       setIsFavorite(false);
+      return;
     }
+    checkIfPinFavorited(data.id, token)
+      .then((result) => setIsFavorite(result.is_favorited))
+      .catch((error) => {
+        console.error('Failed to check favorite pin:', error);
+        setIsFavorite(false);
+      });
   }, [data.id]);
 
-  const handleToggleFavorite = () => {
+  const handleToggleFavorite = async () => {
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+    if (!token) {
+      toast.error('Please sign in to save favorites');
+      return;
+    }
     try {
-      const raw = localStorage.getItem(favoritesKey);
-      const parsed: Array<{ id: number; title: string; image_url: string }> = raw ? JSON.parse(raw) : [];
-      const exists = parsed.find((pin) => pin.id === data.id);
-      let updated: typeof parsed = [];
-      if (exists) {
-        updated = parsed.filter((pin) => pin.id !== data.id);
+      if (isFavorite) {
+        await removePinFromFavorites(data.id, token);
         toast.success('Removed from favorites', { duration: 1200 });
         setIsFavorite(false);
       } else {
-        updated = [
-          {
-            id: data.id,
-            title: data.title,
-            image_url: data.image_url,
-          },
-          ...parsed,
-        ];
+        await addPinToFavorites(data.id, token);
         toast.success('Added to favorites', { duration: 1200 });
         setIsFavorite(true);
       }
-      localStorage.setItem(favoritesKey, JSON.stringify(updated));
     } catch (error) {
       console.error('Failed to update favorite pins:', error);
       toast.error('Failed to update favorites');
@@ -138,13 +137,13 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(data.image_url);
+      await navigator.clipboard.writeText(resolvedImageUrl);
       toast.success("Link copied to clipboard", { duration: 1200 });
     } catch (err) {
       // Fallback for environments where Clipboard API is blocked
       try {
         const textArea = document.createElement("textarea");
-        textArea.value = data.image_url;
+        textArea.value = resolvedImageUrl;
         textArea.style.position = "fixed";
         textArea.style.left = "-9999px";
         textArea.style.top = "0";
@@ -169,7 +168,7 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
 
   const handleDownloadImage = async () => {
     try {
-      const response = await fetch(data.image_url);
+      const response = await fetch(resolvedImageUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -187,13 +186,13 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
   };
 
   const handleShareWhatsApp = () => {
-    const text = `${data.title}\n${data.image_url}`;
+    const text = `${data.title}\n${resolvedImageUrl}`;
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const handleShareMessage = () => {
-    const text = `${data.title}\n${data.image_url}`;
+    const text = `${data.title}\n${resolvedImageUrl}`;
     const url = `sms:?&body=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
@@ -265,7 +264,7 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
         {/* Main Image Section */}
         <div className="relative w-full rounded-b-[2rem] overflow-hidden bg-gray-900">
           <img 
-            src={data.image_url} 
+            src={resolvedImageUrl} 
             alt={data.title}
             className="w-full h-auto object-cover max-h-[75vh]"
           />
@@ -331,7 +330,7 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
                 >
                   <div className="aspect-[3/4] overflow-hidden">
                     <img
-                      src={pin.image_url}
+                      src={pin.image_url.startsWith('http') ? pin.image_url : `${apiBaseUrl}${pin.image_url}`}
                       alt={pin.title}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
@@ -385,7 +384,7 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
                   {/* Image Preview */}
                   <div className="relative w-[60%] aspect-[3/4] rounded-2xl overflow-hidden mb-8 shadow-2xl border border-gray-800">
                      <img 
-                      src={data.image_url} 
+                      src={resolvedImageUrl} 
                       alt={data.title}
                       className="w-full h-full object-cover"
                     />

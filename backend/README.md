@@ -178,9 +178,11 @@ python -m app.main
 
 - `GET /api/v1/pins` - 获取Pin列表
 - `GET /api/v1/pins/{id}` - 获取Pin详情
-- `POST /api/v1/pins` - 创建Pin
-- `POST /api/v1/pins/{id}/like` - 点赞Pin
-- `POST /api/v1/pins/{id}/save` - 保存Pin
+- `POST /api/v1/pins/{id}/favorite` - 收藏Pin
+- `DELETE /api/v1/pins/{id}/favorite` - 取消收藏Pin
+- `GET /api/v1/pins/{id}/is-favorited` - 判断Pin是否收藏
+- `GET /api/v1/pins/favorites/my-favorites` - 获取我的收藏Pin
+- `GET /api/v1/pins/favorites/count` - 获取收藏Pin数量
 
 ## 数据库迁移
 
@@ -273,6 +275,7 @@ mypy app/
 | SECRET_KEY | JWT密钥 | - |
 | ALGORITHM | JWT算法 | HS256 |
 | ACCESS_TOKEN_EXPIRE_MINUTES | Access Token过期时间（分钟） | 30 |
+| REFRESH_TOKEN_EXPIRE_DAYS | Refresh Token过期时间（天） | 30 |
 | CORS_ORIGINS | 允许的CORS源 | - |
 | AWS_ACCESS_KEY_ID | AWS访问密钥 | - |
 | AWS_SECRET_ACCESS_KEY | AWS密钥 | - |

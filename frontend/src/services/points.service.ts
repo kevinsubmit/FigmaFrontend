@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1`;
+import apiClient from '../lib/api';
 
 export interface PointsBalance {
   user_id: number;
@@ -24,11 +22,7 @@ class PointsService {
    * Get user's points balance
    */
   async getBalance(token: string): Promise<PointsBalance> {
-    const response = await axios.get(`${API_BASE_URL}/points/balance`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await apiClient.get<PointsBalance>('/points/balance');
     return response.data;
   }
 
@@ -36,12 +30,10 @@ class PointsService {
    * Get user's point transaction history
    */
   async getTransactions(token: string, skip: number = 0, limit: number = 50): Promise<PointTransaction[]> {
-    const response = await axios.get(`${API_BASE_URL}/points/transactions`, {
-      params: { skip, limit },
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const response = await apiClient.get<PointTransaction[]>(
+      '/points/transactions',
+      { params: { skip, limit } }
+    );
     return response.data;
   }
 
@@ -49,15 +41,10 @@ class PointsService {
    * Test: Award points (for testing only)
    */
   async testAwardPoints(token: string, amount: number): Promise<any> {
-    const response = await axios.post(
-      `${API_BASE_URL}/points/test-award`,
+    const response = await apiClient.post(
+      '/points/test-award',
       null,
-      {
-        params: { amount },
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      { params: { amount } }
     );
     return response.data;
   }

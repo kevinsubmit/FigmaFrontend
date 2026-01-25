@@ -19,7 +19,9 @@ from app.schemas.gift_card import (
     GiftCardTransferStatus
 )
 from app.crud import gift_card as crud_gift_cards
+from app.crud import user as crud_user
 from app.services.gift_card_service import send_gift_card_sms
+from app.services import notification_service
 from app.core.config import settings
 
 router = APIRouter()
@@ -69,6 +71,21 @@ def purchase_gift_card(
             amount=request.amount,
             expires_at=gift_card.claim_expires_at
         )
+        notification_service.notify_gift_card_sent(
+            db=db,
+            purchaser_id=current_user.id,
+            amount=request.amount,
+            recipient_phone=gift_card.recipient_phone,
+            expires_at=gift_card.claim_expires_at
+        )
+        recipient_user = crud_user.get_by_phone(db, phone=gift_card.recipient_phone)
+        if recipient_user:
+            notification_service.notify_gift_card_received(
+                db=db,
+                recipient_id=recipient_user.id,
+                amount=request.amount,
+                expires_at=gift_card.claim_expires_at
+            )
 
     return GiftCardPurchaseResponse(
         gift_card=gift_card,
@@ -108,6 +125,21 @@ def transfer_gift_card(
         amount=updated_card.balance,
         expires_at=updated_card.claim_expires_at
     )
+    notification_service.notify_gift_card_sent(
+        db=db,
+        purchaser_id=current_user.id,
+        amount=updated_card.balance,
+        recipient_phone=updated_card.recipient_phone,
+        expires_at=updated_card.claim_expires_at
+    )
+    recipient_user = crud_user.get_by_phone(db, phone=updated_card.recipient_phone)
+    if recipient_user:
+        notification_service.notify_gift_card_received(
+            db=db,
+            recipient_id=recipient_user.id,
+            amount=updated_card.balance,
+            expires_at=updated_card.claim_expires_at
+        )
 
     return GiftCardPurchaseResponse(
         gift_card=updated_card,
@@ -142,6 +174,20 @@ def claim_gift_card(
         claimed = crud_gift_cards.claim_gift_card(db, gift_card, current_user.id, current_user.phone)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    recipient_name = current_user.full_name or current_user.username or "A user"
+    notification_service.notify_gift_card_claimed(
+        db=db,
+        purchaser_id=claimed.purchaser_id,
+        recipient_name=recipient_name,
+        amount=claimed.balance
+    )
+    notification_service.notify_gift_card_received(
+        db=db,
+        recipient_id=current_user.id,
+        amount=claimed.balance,
+        expires_at=claimed.claim_expires_at
+    )
 
     return GiftCardClaimResponse(gift_card=claimed)
 

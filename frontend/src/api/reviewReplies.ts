@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+import apiClient from '../lib/api';
 
 export interface ReviewReply {
   id: number;
@@ -23,35 +21,23 @@ export interface UpdateReplyData {
 
 // 创建回复
 export const createReply = async (data: CreateReplyData, token: string): Promise<ReviewReply> => {
-  const response = await axios.post(`${API_BASE_URL}/review-replies/`, data, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await apiClient.post<ReviewReply>('/review-replies/', data);
   return response.data;
 };
 
 // 更新回复
 export const updateReply = async (replyId: number, data: UpdateReplyData, token: string): Promise<ReviewReply> => {
-  const response = await axios.put(`${API_BASE_URL}/review-replies/${replyId}`, data, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await apiClient.put<ReviewReply>(`/review-replies/${replyId}`, data);
   return response.data;
 };
 
 // 删除回复
 export const deleteReply = async (replyId: number, token: string): Promise<void> => {
-  await axios.delete(`${API_BASE_URL}/review-replies/${replyId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  await apiClient.delete(`/review-replies/${replyId}`);
 };
 
 // 获取评价的回复
 export const getReviewReply = async (reviewId: number): Promise<ReviewReply> => {
-  const response = await axios.get(`${API_BASE_URL}/review-replies/review/${reviewId}`);
+  const response = await apiClient.get<ReviewReply>(`/review-replies/review/${reviewId}`);
   return response.data;
 };

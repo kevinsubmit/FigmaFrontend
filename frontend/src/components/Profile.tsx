@@ -9,7 +9,7 @@ import couponsService from '../services/coupons.service';
 import giftCardsService from '../services/gift-cards.service';
 import { getMyAppointments } from '../api/appointments';
 import { getMyReviews } from '../api/reviews';
-import { getMyFavoritesCount } from '../api/stores';
+import { getMyFavoritePinsCount } from '../api/pins';
 import usersService from '../services/users.service';
 import { Loader } from './ui/Loader';
 import { Progress } from "./ui/progress";
@@ -106,13 +106,14 @@ export function Profile({ onNavigate }: ProfileProps) {
           couponsService.getMyCoupons(token, 'available'),
           getMyAppointments(),
           getMyReviews(token),
-          getMyFavoritesCount(token),
+          getMyFavoritePinsCount(token),
           giftCardsService.getSummary(token),
         ]);
 
         const pointsResult = results[0].status === 'fulfilled' ? results[0].value : null;
         const couponsResult = results[1].status === 'fulfilled' ? results[1].value : [];
         const appointmentsResult = results[2].status === 'fulfilled' ? results[2].value : [];
+        const completedAppointments = appointmentsResult.filter((apt) => apt.status === 'completed');
         const reviewsResult = results[3].status === 'fulfilled' ? results[3].value : [];
         const favoritesResult = results[4].status === 'fulfilled' ? results[4].value : null;
         const giftSummaryResult = results[5].status === 'fulfilled' ? results[5].value : null;
@@ -121,7 +122,7 @@ export function Profile({ onNavigate }: ProfileProps) {
           points: pointsResult?.available_points ?? 0,
           coupons: couponsResult.length,
           giftCardBalance: giftSummaryResult?.total_balance ?? 0,
-          orders: appointmentsResult.length,
+          orders: completedAppointments.length,
           reviews: reviewsResult.length,
           favorites: favoritesResult?.count ?? 0,
         });

@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1`;
+import apiClient from '../lib/api';
 
 export interface Review {
   id: number;
@@ -43,11 +41,7 @@ export interface CreateReviewData {
 
 // 创建评价
 export const createReview = async (data: CreateReviewData, token: string): Promise<Review> => {
-  const response = await axios.post(`${API_BASE_URL}/reviews/`, data, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await apiClient.post<Review>('/reviews/', data);
   return response.data;
 };
 
@@ -57,15 +51,16 @@ export const getStoreReviews = async (
   skip: number = 0,
   limit: number = 20
 ): Promise<Review[]> => {
-  const response = await axios.get(`${API_BASE_URL}/reviews/stores/${storeId}`, {
-    params: { skip, limit },
-  });
+  const response = await apiClient.get<Review[]>(
+    `/reviews/stores/${storeId}`,
+    { params: { skip, limit } }
+  );
   return response.data;
 };
 
 // 获取店铺评分统计
 export const getStoreRating = async (storeId: number): Promise<StoreRating> => {
-  const response = await axios.get(`${API_BASE_URL}/reviews/stores/${storeId}/rating`);
+  const response = await apiClient.get<StoreRating>(`/reviews/stores/${storeId}/rating`);
   return response.data;
 };
 
@@ -75,12 +70,10 @@ export const getMyReviews = async (
   skip: number = 0,
   limit: number = 20
 ): Promise<Review[]> => {
-  const response = await axios.get(`${API_BASE_URL}/reviews/my-reviews`, {
-    params: { skip, limit },
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await apiClient.get<Review[]>(
+    '/reviews/my-reviews',
+    { params: { skip, limit } }
+  );
   return response.data;
 };
 
@@ -90,21 +83,13 @@ export const updateReview = async (
   data: CreateReviewData,
   token: string
 ): Promise<Review> => {
-  const response = await axios.put(`${API_BASE_URL}/reviews/${reviewId}`, data, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  const response = await apiClient.put<Review>(`/reviews/${reviewId}`, data);
   return response.data;
 };
 
 // 删除评价
 export const deleteReview = async (reviewId: number, token: string): Promise<void> => {
-  await axios.delete(`${API_BASE_URL}/reviews/${reviewId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+  await apiClient.delete(`/reviews/${reviewId}`);
 };
 
 // 上传图片
@@ -114,11 +99,8 @@ export const uploadImages = async (files: File[], token: string): Promise<string
     formData.append('files', file);
   });
 
-  const response = await axios.post(`${API_BASE_URL}/upload/images`, formData, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'multipart/form-data',
-    },
+  const response = await apiClient.post<string[]>('/upload/images', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
   });
   return response.data;
 };

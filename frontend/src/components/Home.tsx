@@ -12,6 +12,8 @@ interface HomeProps {
 }
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=1200&auto=format&fit=crop&q=80';
+const PAGE_SIZE = 8;
+const HOME_CACHE_KEY = 'home_cache_v1';
 
 export function Home({ onNavigate, onPinClick }: HomeProps) {
   const location = useLocation();
@@ -27,6 +29,8 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
   const [tags, setTags] = useState<string[]>(['All']);
   const hasSetSeasonal = useRef(false);
   const hasSetTagFromUrl = useRef(false);
+  const hasInitialized = useRef(false);
+  const skipNextLoad = useRef(false);
   
   // Infinite Scroll State
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -54,26 +58,22 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
 
       const pins = await getPins({
         skip: nextOffset,
-        limit: 8,
+        limit: PAGE_SIZE,
         search: query || undefined,
         tag: tag === 'All' ? undefined : tag
       });
       setImages(prev => reset ? pins : [...prev, ...pins]);
-      setOffset(nextOffset + pins.length);
-      setHasMore(pins.length > 0);
+      setOffset(prev => (reset ? pins.length : prev + pins.length));
+      setHasMore(pins.length === PAGE_SIZE);
     } catch (err) {
       console.error('Failed to load home feed:', err);
       setError('Unable to load feed. Please try again.');
+      setHasMore(false);
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
   };
-
-  // Initial Load
-  useEffect(() => {
-    loadPins({ reset: true, tag: activeTag });
-  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -91,6 +91,21 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
   useEffect(() => {
     const loadTags = async () => {
       try {
+        if (tags.length > 1) {
+          return;
+        }
+        const cached = sessionStorage.getItem(HOME_CACHE_KEY);
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed?.tags?.length > 1) {
+              setTags(parsed.tags);
+              return;
+            }
+          } catch (error) {
+            console.error('Failed to parse home cache for tags:', error);
+          }
+        }
         const pins = await getPins({ skip: 0, limit: 100 });
         const tagSet = new Set<string>();
         pins.forEach((pin) => {
@@ -103,7 +118,7 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
     };
 
     loadTags();
-  }, []);
+  }, [tags.length]);
 
   useEffect(() => {
     if (hasSetSeasonal.current) return;
@@ -113,22 +128,22 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
     }
   }, [tags]);
 
-  // Update images when tag changes
   useEffect(() => {
-    if (!isLoading) {
-      loadPins({ reset: true, tag: activeTag });
+    if (!hasInitialized.current) {
+      return;
     }
-  }, [activeTag]);
-
-  useEffect(() => {
-    loadPins({ reset: true, query: searchQuery });
-  }, [searchQuery]);
+    if (skipNextLoad.current) {
+      skipNextLoad.current = false;
+      return;
+    }
+    loadPins({ reset: true, tag: activeTag, query: searchQuery });
+  }, [activeTag, searchQuery]);
 
   // Infinite Scroll Logic
   const handleLoadMore = useCallback(() => {
-    if (isLoadingMore || isLoading || !hasMore) return;
+    if (isLoadingMore || isLoading || !hasMore || error) return;
     loadPins();
-  }, [isLoadingMore, isLoading, hasMore, activeTag, searchQuery, offset]);
+  }, [isLoadingMore, isLoading, hasMore, error, activeTag, searchQuery, offset]);
 
   const applySearch = () => {
     setSearchQuery(searchDraft.trim());
@@ -196,10 +211,56 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
   const handleRefresh = async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    
+    sessionStorage.removeItem(HOME_CACHE_KEY);
     await loadPins({ reset: true });
     setIsRefreshing(false);
   };
+
+  useEffect(() => {
+    if (hasInitialized.current) {
+      return;
+    }
+    const cached = sessionStorage.getItem(HOME_CACHE_KEY);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed?.images?.length) {
+          skipNextLoad.current = true;
+          setImages(parsed.images);
+          setTags(parsed.tags || ['All']);
+          setActiveTag(parsed.activeTag || 'All');
+          setSearchQuery(parsed.searchQuery || '');
+          setSearchDraft(parsed.searchDraft || '');
+          setOffset(parsed.offset || parsed.images.length || 0);
+          setHasMore(parsed.hasMore ?? true);
+          setIsLoading(false);
+          setIsLoadingMore(false);
+          hasInitialized.current = true;
+          return;
+        }
+      } catch (error) {
+        console.error('Failed to restore home cache:', error);
+      }
+    }
+    hasInitialized.current = true;
+    loadPins({ reset: true, tag: activeTag, query: searchQuery });
+  }, []);
+
+  useEffect(() => {
+    if (!hasInitialized.current || isLoading) {
+      return;
+    }
+    const cachePayload = {
+      images,
+      tags,
+      activeTag,
+      searchQuery,
+      searchDraft,
+      offset,
+      hasMore,
+    };
+    sessionStorage.setItem(HOME_CACHE_KEY, JSON.stringify(cachePayload));
+  }, [images, tags, activeTag, searchQuery, searchDraft, offset, hasMore, isLoading]);
 
   if (isLoading) {
     return (

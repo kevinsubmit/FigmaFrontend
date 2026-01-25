@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1`;
+import apiClient from '../lib/api';
 
 export interface GiftCardSummary {
   total_balance: number;
@@ -49,62 +47,49 @@ export interface GiftCardClaimResponse {
 }
 
 class GiftCardsService {
-  private getAuthHeader(token: string) {
-    return {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    };
-  }
-
   async getSummary(token: string): Promise<GiftCardSummary> {
-    const response = await axios.get(
-      `${API_BASE_URL}/gift-cards/summary`,
-      this.getAuthHeader(token)
+    const response = await apiClient.get<GiftCardSummary>(
+      '/gift-cards/summary'
     );
     return response.data;
   }
 
   async getMyGiftCards(token: string, skip: number = 0, limit: number = 50): Promise<GiftCard[]> {
-    const response = await axios.get(`${API_BASE_URL}/gift-cards/my-cards`, {
-      params: { skip, limit },
-      ...this.getAuthHeader(token),
-    });
+    const response = await apiClient.get<GiftCard[]>(
+      '/gift-cards/my-cards',
+      { params: { skip, limit } }
+    );
     return response.data;
   }
 
   async purchaseGiftCard(token: string, payload: GiftCardPurchaseRequest): Promise<GiftCardPurchaseResponse> {
-    const response = await axios.post(
-      `${API_BASE_URL}/gift-cards/purchase`,
-      payload,
-      this.getAuthHeader(token)
+    const response = await apiClient.post<GiftCardPurchaseResponse>(
+      '/gift-cards/purchase',
+      payload
     );
     return response.data;
   }
 
   async transferGiftCard(token: string, giftCardId: number, payload: GiftCardTransferRequest): Promise<GiftCardPurchaseResponse> {
-    const response = await axios.post(
-      `${API_BASE_URL}/gift-cards/${giftCardId}/transfer`,
-      payload,
-      this.getAuthHeader(token)
+    const response = await apiClient.post<GiftCardPurchaseResponse>(
+      `/gift-cards/${giftCardId}/transfer`,
+      payload
     );
     return response.data;
   }
 
   async revokeGiftCard(token: string, giftCardId: number): Promise<{ gift_card: GiftCard }> {
-    const response = await axios.post(
-      `${API_BASE_URL}/gift-cards/${giftCardId}/revoke`,
-      {},
-      this.getAuthHeader(token)
+    const response = await apiClient.post<{ gift_card: GiftCard }>(
+      `/gift-cards/${giftCardId}/revoke`,
+      {}
     );
     return response.data;
   }
 
   async claimGiftCard(token: string, claimCode: string): Promise<GiftCardClaimResponse> {
-    const response = await axios.post(
-      `${API_BASE_URL}/gift-cards/claim`,
-      { claim_code: claimCode },
-      this.getAuthHeader(token)
+    const response = await apiClient.post<GiftCardClaimResponse>(
+      '/gift-cards/claim',
+      { claim_code: claimCode }
     );
     return response.data;
   }
@@ -115,10 +100,12 @@ class GiftCardsService {
     recipient_phone?: string | null;
     claim_expires_at?: string | null;
   }> {
-    const response = await axios.get(
-      `${API_BASE_URL}/gift-cards/${giftCardId}/transfer-status`,
-      this.getAuthHeader(token)
-    );
+    const response = await apiClient.get<{
+      gift_card_id: number;
+      status: string;
+      recipient_phone?: string | null;
+      claim_expires_at?: string | null;
+    }>(`/gift-cards/${giftCardId}/transfer-status`);
     return response.data;
   }
 }

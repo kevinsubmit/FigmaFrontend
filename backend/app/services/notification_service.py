@@ -266,3 +266,120 @@ def notify_appointment_reminder_1h(db: Session, appointment: Appointment):
         message=message,
         appointment_id=appointment.id
     )
+
+
+def notify_coupon_granted(db: Session, user_id: int, coupon_name: str, discount_text: str, expires_at: Optional[datetime]):
+    """
+    Notify user when a coupon is granted
+    """
+    title = "New Coupon Received"
+    message = f"You received {coupon_name} ({discount_text})."
+    if expires_at:
+        message += f" Expires on {expires_at.strftime('%b %d, %Y')}."
+
+    create_notification(
+        db=db,
+        user_id=user_id,
+        notification_type=NotificationType.COUPON_GRANTED,
+        title=title,
+        message=message
+    )
+
+
+def notify_points_earned(db: Session, appointment: Appointment, points: int):
+    """
+    Notify user when points are earned
+    """
+    from app.models.service import Service
+    from app.models.store import Store
+
+    service = db.query(Service).filter(Service.id == appointment.service_id).first()
+    store = db.query(Store).filter(Store.id == appointment.store_id).first()
+
+    service_name = service.name if service else "your service"
+    store_name = store.name if store else "the salon"
+
+    title = "Points Earned"
+    message = f"You earned {points} points for {service_name} at {store_name}."
+
+    create_notification(
+        db=db,
+        user_id=appointment.user_id,
+        notification_type=NotificationType.POINTS_EARNED,
+        title=title,
+        message=message,
+        appointment_id=appointment.id
+    )
+
+
+def notify_gift_card_sent(db: Session, purchaser_id: int, amount: float, recipient_phone: Optional[str], expires_at: Optional[datetime]):
+    """
+    Notify purchaser when a gift card is sent
+    """
+    title = "Gift Card Sent"
+    recipient_text = recipient_phone or "the recipient"
+    message = f"You sent a gift card for ${amount:.2f} to {recipient_text}."
+    if expires_at:
+        message += f" Claim expires on {expires_at.strftime('%b %d, %Y')}."
+
+    create_notification(
+        db=db,
+        user_id=purchaser_id,
+        notification_type=NotificationType.GIFT_CARD_SENT,
+        title=title,
+        message=message
+    )
+
+
+def notify_gift_card_received(db: Session, recipient_id: int, amount: float, expires_at: Optional[datetime]):
+    """
+    Notify recipient when a gift card is sent to them
+    """
+    title = "Gift Card Received"
+    message = f"You received a gift card for ${amount:.2f}."
+    if expires_at:
+        message += f" Claim by {expires_at.strftime('%b %d, %Y')}."
+
+    create_notification(
+        db=db,
+        user_id=recipient_id,
+        notification_type=NotificationType.GIFT_CARD_RECEIVED,
+        title=title,
+        message=message
+    )
+
+
+def notify_gift_card_claimed(db: Session, purchaser_id: int, recipient_name: str, amount: float):
+    """
+    Notify purchaser when a gift card is claimed
+    """
+    title = "Gift Card Claimed"
+    message = f"{recipient_name} claimed your gift card for ${amount:.2f}."
+
+    create_notification(
+        db=db,
+        user_id=purchaser_id,
+        notification_type=NotificationType.GIFT_CARD_CLAIMED,
+        title=title,
+        message=message
+    )
+
+
+def notify_gift_card_expiring(db: Session, purchaser_id: int, recipient_phone: Optional[str], expires_at: Optional[datetime]):
+    """
+    Notify purchaser when a gift card transfer is expiring soon
+    """
+    title = "Gift Card Expiring Soon"
+    recipient_text = recipient_phone or "the recipient"
+    if expires_at:
+        message = f"The gift card sent to {recipient_text} will expire on {expires_at.strftime('%b %d, %Y')}."
+    else:
+        message = f"The gift card sent to {recipient_text} is expiring soon."
+
+    create_notification(
+        db=db,
+        user_id=purchaser_id,
+        notification_type=NotificationType.GIFT_CARD_EXPIRING,
+        title=title,
+        message=message
+    )

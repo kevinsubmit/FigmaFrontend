@@ -3,7 +3,7 @@
  * Handles API calls for store holidays
  */
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+import apiClient from '../lib/api';
 
 export interface StoreHoliday {
   id: number;
@@ -23,23 +23,11 @@ export async function getStoreHolidays(
   endDate?: string
 ): Promise<StoreHoliday[]> {
   try {
-    let url = `${API_BASE_URL}/stores/holidays/${storeId}`;
-    const params = new URLSearchParams();
-    
-    if (startDate) params.append('start_date', startDate);
-    if (endDate) params.append('end_date', endDate);
-    
-    if (params.toString()) {
-      url += `?${params.toString()}`;
-    }
-    
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch holidays: ${response.statusText}`);
-    }
-    
-    return await response.json();
+    const response = await apiClient.get<StoreHoliday[]>(
+      `/stores/holidays/${storeId}`,
+      { params: { start_date: startDate, end_date: endDate } }
+    );
+    return response.data;
   } catch (error) {
     console.error('Error fetching store holidays:', error);
     throw error;
@@ -54,15 +42,10 @@ export async function checkHoliday(
   checkDate: string
 ): Promise<{ is_holiday: boolean; date: string }> {
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/stores/holidays/${storeId}/check/${checkDate}`
+    const response = await apiClient.get<{ is_holiday: boolean; date: string }>(
+      `/stores/holidays/${storeId}/check/${checkDate}`
     );
-    
-    if (!response.ok) {
-      throw new Error(`Failed to check holiday: ${response.statusText}`);
-    }
-    
-    return await response.json();
+    return response.data;
   } catch (error) {
     console.error('Error checking holiday:', error);
     throw error;

@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { toast } from 'sonner@2.0.3';
 import Masonry from 'react-responsive-masonry';
 import {
   Carousel,
@@ -52,7 +53,7 @@ import StoreReviews from './StoreReviews';
 import { Pin } from '../api/pins';
 import { getStoreRating, StoreRating } from '../api/reviews';
 import { getAvailableSlots, getTechniciansByStore, Technician } from '../api/technicians';
-import { getStoreHours, StoreHours } from '../api/stores';
+import { addStoreToFavorites, checkIfStoreFavorited, getStoreHours, removeStoreFromFavorites, StoreHours } from '../api/stores';
 
 // Use the Store type from stores.service
 type Store = APIStore;
@@ -192,32 +193,82 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
   const [slotsHint, setSlotsHint] = useState<string>('Times are based on store hours and staff availability.');
   const [storeHours, setStoreHours] = useState<StoreHours[]>([]);
   const [isStoreHoursLoading, setIsStoreHoursLoading] = useState(false);
+  const [isStoreFavorited, setIsStoreFavorited] = useState(false);
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
 
   // Shared Observer Target
   const observerTarget = useRef(null);
 
-  // Combine cover image and thumbnails for the gallery
+  // Combine cover image and thumbnails for the gallery (match Services cards)
   const getPrimaryImage = (): string => {
     if (store.images && store.images.length > 0) {
-      const primaryImage = store.images.find(img => img.is_primary === 1);
+      const primaryImage = store.images.find((img) => img.is_primary === 1);
       return primaryImage?.image_url || store.images[0].image_url;
     }
     return 'https://images.unsplash.com/photo-1619607146034-5a05296c8f9a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080';
   };
-  
-  const getAllImages = (): string[] => {
-    if (store.images && store.images.length > 0) {
+
+  const fallbackThumbnails = [
+    'https://images.unsplash.com/photo-1673985402265-46c4d2e53982?w=400&q=80',
+    'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400&q=80',
+    'https://images.unsplash.com/photo-1522337660859-02fbefca4702?w=400&q=80',
+    'https://images.unsplash.com/photo-1519017713917-9807534d0b0b?w=400&q=80',
+  ];
+
+  const getThumbnailImages = (): string[] => {
+    if (store.images && store.images.length > 1) {
       return store.images
-        .sort((a, b) => {
-          // Primary image first
-          if (a.is_primary === 1) return -1;
-          if (b.is_primary === 1) return 1;
-          // Then by display order
-          return a.display_order - b.display_order;
-        })
-        .map(img => img.image_url);
+        .filter((img) => img.is_primary !== 1)
+        .sort((a, b) => a.display_order - b.display_order)
+        .slice(0, 4)
+        .map((img) => img.image_url);
     }
-    return [getPrimaryImage()];
+    return fallbackThumbnails;
+  };
+
+  const getAllImages = (): string[] => {
+    const primary = getPrimaryImage();
+    const thumbnails = getThumbnailImages();
+    return Array.from(new Set([primary, ...thumbnails]));
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+    if (!token) {
+      setIsStoreFavorited(false);
+      return;
+    }
+    checkIfStoreFavorited(store.id, token)
+      .then((result) => setIsStoreFavorited(result.is_favorited))
+      .catch((error) => {
+        console.error('Failed to check store favorite:', error);
+        setIsStoreFavorited(false);
+      });
+  }, [store.id]);
+
+  const handleToggleFavorite = async () => {
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+    if (!token) {
+      toast.error('Please sign in to save favorites', { duration: 1200 });
+      return;
+    }
+    try {
+      setIsFavoriteLoading(true);
+      if (isStoreFavorited) {
+        await removeStoreFromFavorites(store.id, token);
+        setIsStoreFavorited(false);
+        toast.success('Removed from favorites', { duration: 1200 });
+      } else {
+        await addStoreToFavorites(store.id, token);
+        setIsStoreFavorited(true);
+        toast.success('Added to favorites', { duration: 1200 });
+      }
+    } catch (error) {
+      console.error('Failed to toggle store favorite:', error);
+      toast.error('Failed to update favorites', { duration: 1200 });
+    } finally {
+      setIsFavoriteLoading(false);
+    }
   };
   
   const galleryImages = getAllImages();
@@ -810,7 +861,19 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
           </CarouselContent>
         </Carousel>
 
-        <div className="absolute bottom-4 right-4 flex gap-1.5 z-20">
+        <button
+          onClick={handleToggleFavorite}
+          disabled={isFavoriteLoading}
+          className={`absolute top-4 right-4 z-10 w-10 h-10 rounded-full flex items-center justify-center border transition-all ${
+            isStoreFavorited
+              ? 'bg-[#D4AF37] border-[#D4AF37] text-black'
+              : 'bg-black/60 border-white/20 text-white hover:border-[#D4AF37]'
+          } ${isFavoriteLoading ? 'opacity-60 cursor-not-allowed' : ''}`}
+        >
+          <Heart className={`w-5 h-5 ${isStoreFavorited ? 'fill-black' : 'fill-transparent'}`} />
+        </button>
+
+        <div className="absolute bottom-4 right-4 flex gap-1.5 z-10">
           {galleryImages.map((_, index) => (
             <div 
               key={index}

@@ -35,12 +35,12 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
       try {
         setIsLoading(true);
         const data = await getMyAppointments();
-        const sorted = [...data].sort((a, b) => {
+        const completedOnly = data.filter((apt) => apt.status === 'completed');
+        setAppointments([...completedOnly].sort((a, b) => {
           const aDateTime = new Date(`${a.appointment_date}T${a.appointment_time}`);
           const bDateTime = new Date(`${b.appointment_date}T${b.appointment_time}`);
           return bDateTime.getTime() - aDateTime.getTime();
-        });
-        setAppointments(sorted);
+        }));
       } catch (error) {
         console.error('Failed to load order history:', error);
         toast.error('Failed to load order history');

@@ -1,7 +1,7 @@
 """
 Gift card database model
 """
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, func
+from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, Boolean, func
 from app.db.session import Base
 
 
@@ -23,6 +23,7 @@ class GiftCard(Base):
     claim_expires_at = Column(DateTime(timezone=True), nullable=True)
     claimed_by_user_id = Column(Integer, ForeignKey("backend_users.id"), nullable=True, index=True)
     claimed_at = Column(DateTime(timezone=True), nullable=True)
+    transfer_expiry_notified = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
