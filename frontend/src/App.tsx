@@ -22,13 +22,18 @@ import { MyFavorites } from './components/MyFavorites';
 import ChangePassword from './components/ChangePassword';
 import PhoneManagement from './components/PhoneManagement';
 import ReferralPage from './components/ReferralPage';
+import LanguageSettings from './components/LanguageSettings';
+import FeedbackSupport from './components/FeedbackSupport';
+import PartnershipInquiry from './components/PartnershipInquiry';
+import PrivacySafety from './components/PrivacySafety';
+import AboutUs from './components/AboutUs';
 import { AuthProvider } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { toast } from 'react-toastify';
 import { Sparkles } from 'lucide-react';
 
-export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 'notifications' | 'pin-detail' | 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'login' | 'register' | 'my-reviews' | 'my-favorites' | 'change-password' | 'phone-management' | 'referral';
+export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 'notifications' | 'pin-detail' | 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'login' | 'register' | 'my-reviews' | 'my-favorites' | 'change-password' | 'phone-management' | 'referral' | 'language' | 'feedback-support' | 'partnership' | 'privacy-safety' | 'about';
 
 // Main App Router Component
 function AppRouter() {
@@ -80,12 +85,17 @@ function AppRouter() {
     if (path === '/change-password') return 'change-password';
     if (path === '/phone-management') return 'phone-management';
     if (path === '/referral') return 'referral';
+    if (path === '/language') return 'language';
+    if (path === '/feedback-support') return 'feedback-support';
+    if (path === '/partnership') return 'partnership';
+    if (path === '/privacy-safety') return 'privacy-safety';
+    if (path === '/about') return 'about';
     return 'home';
   };
 
   const currentPage = getCurrentPage();
   // Hide bottom nav for full-screen pages and when viewing store details in services page
-  const isFullScreenPage = currentPage === 'pin-detail' || currentPage === 'edit-profile' || currentPage === 'order-history' || currentPage === 'my-points' || currentPage === 'my-coupons' || currentPage === 'my-gift-cards' || currentPage === 'settings' || currentPage === 'vip-description' || currentPage === 'notifications' || currentPage === 'login' || currentPage === 'register' || currentPage === 'my-reviews' || currentPage === 'my-favorites' || currentPage === 'change-password' || currentPage === 'phone-management' || (currentPage === 'services' && isViewingStoreDetails);
+  const isFullScreenPage = currentPage === 'pin-detail' || currentPage === 'edit-profile' || currentPage === 'order-history' || currentPage === 'my-points' || currentPage === 'my-coupons' || currentPage === 'my-gift-cards' || currentPage === 'settings' || currentPage === 'vip-description' || currentPage === 'notifications' || currentPage === 'login' || currentPage === 'register' || currentPage === 'my-reviews' || currentPage === 'my-favorites' || currentPage === 'change-password' || currentPage === 'phone-management' || currentPage === 'referral' || currentPage === 'language' || currentPage === 'feedback-support' || currentPage === 'partnership' || currentPage === 'privacy-safety' || currentPage === 'about' || (currentPage === 'services' && isViewingStoreDetails);
 
   const handleNavigate = (page: 'home' | 'services' | 'appointments' | 'profile' | 'deals') => {
     console.log('handleNavigate called with page:', page);
@@ -385,6 +395,36 @@ function AppRouter() {
         <Route path="/phone-management" element={
           <ProtectedRoute>
             <PhoneManagement />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/language" element={
+          <ProtectedRoute>
+            <LanguageSettings />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/feedback-support" element={
+          <ProtectedRoute>
+            <FeedbackSupport />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/partnership" element={
+          <ProtectedRoute>
+            <PartnershipInquiry />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/privacy-safety" element={
+          <ProtectedRoute>
+            <PrivacySafety />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/about" element={
+          <ProtectedRoute>
+            <AboutUs />
           </ProtectedRoute>
         } />
 

@@ -14,7 +14,7 @@ import {
   Star,
   CheckCircle2
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from "sonner@2.0.3";
@@ -34,6 +34,10 @@ export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const { language, setLanguage, t } = useLanguage();
   const selectedLanguageLabel = LANGUAGE_OPTIONS.find((option) => option.code === language)?.name ?? 'English';
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [activeSection]);
 
   const renderSectionHeader = (title: string) => (
     <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-md border-b border-[#333]">
@@ -66,30 +70,30 @@ export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
       title: t('settings.account'),
       items: [
         { label: t('settings.profileSettings'), icon: User, action: () => navigate('/edit-profile') },
-        { label: t('settings.changePassword'), icon: ShieldCheck, action: () => setActiveSection('password') },
-        { label: t('settings.phoneNumber'), icon: Bell, action: () => setActiveSection('phone') },
+        { label: t('settings.changePassword'), icon: ShieldCheck, action: () => navigate('/change-password') },
+        { label: t('settings.phoneNumber'), icon: Bell, action: () => navigate('/phone-management') },
         { label: t('settings.vipMembership'), icon: Star, badge: "VIP 3", action: () => navigate('/vip-description', { state: { from: 'settings' } }) },
         { 
           label: t('settings.language'), 
           icon: Share2, // Using Share2 as a proxy for language/globe if Globe is not checked
           badge: selectedLanguageLabel,
-          action: () => setActiveSection('language') 
+          action: () => navigate('/language')
         },
-        { label: t('settings.notifications'), icon: Bell, action: () => setActiveSection('notifications') },
+        { label: t('settings.notifications'), icon: Bell, action: () => navigate('/notifications') },
       ]
     },
     {
       title: t('settings.platform'),
       items: [
-        { label: t('settings.feedbackSupport'), icon: MessageSquare, action: () => setActiveSection('feedback') },
-        { label: t('settings.partnershipInquiry'), icon: Store, action: () => setActiveSection('partnership') },
-        { label: t('settings.privacySafety'), icon: ShieldCheck, action: () => console.log('Privacy') },
+        { label: t('settings.feedbackSupport'), icon: MessageSquare, action: () => navigate('/feedback-support') },
+        { label: t('settings.partnershipInquiry'), icon: Store, action: () => navigate('/partnership') },
+        { label: t('settings.privacySafety'), icon: ShieldCheck, action: () => navigate('/privacy-safety') },
       ]
     },
     {
       title: t('settings.others'),
       items: [
-        { label: t('settings.aboutUs'), icon: Info, action: () => setActiveSection('about') },
+        { label: t('settings.aboutUs'), icon: Info, action: () => navigate('/about') },
       ]
     }
   ];

@@ -2,7 +2,7 @@ import { Star, MapPin, Tag, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { getPromotions, Promotion } from '../api/promotions';
-import { Store } from '../api/stores';
+import { Store, getStoreImages, StoreImage } from '../api/stores';
 import { apiClient } from '../api/client';
 
 interface DealsProps {
@@ -39,6 +39,7 @@ export function Deals({ onBack, onSelectSalon }: DealsProps) {
   const [activeTab, setActiveTab] = useState<'store' | 'platform'>('store');
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [stores, setStores] = useState<Record<number, Store>>({});
+  const [storeImages, setStoreImages] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,6 +74,30 @@ export function Deals({ onBack, onSelectSalon }: DealsProps) {
           }
         });
         setStores(storeMap);
+
+        const imagePairs = await Promise.all(
+          storeIds.map(async (id) => {
+            try {
+              const images = await getStoreImages(id);
+              if (!images.length) return [id, null] as const;
+              const primary = images.find((image) => image.is_primary === 1);
+              const sorted = [...images].sort((a, b) => a.display_order - b.display_order);
+              const chosen = primary || sorted[0];
+              return [id, chosen?.image_url || null] as const;
+            } catch {
+              return [id, null] as const;
+            }
+          })
+        );
+
+        if (!mounted) return;
+        const imageMap: Record<number, string> = {};
+        imagePairs.forEach(([id, url]) => {
+          if (url) {
+            imageMap[id] = url;
+          }
+        });
+        setStoreImages(imageMap);
       } catch (err: any) {
         if (!mounted) return;
         setError(err?.message || 'Failed to load deals');
@@ -149,7 +174,7 @@ export function Deals({ onBack, onSelectSalon }: DealsProps) {
           {filteredPromotions.map((promotion) => {
             const store = promotion.store_id ? stores[promotion.store_id] : undefined;
             const hasStore = !!store;
-            const coverImage = store?.image_url || '';
+            const coverImage = (store?.id ? storeImages[store.id] : undefined) || store?.image_url || '';
             const priceRange = promotion.service_rules[0]
               ? formatPriceRange(
                   promotion.service_rules[0].min_price,

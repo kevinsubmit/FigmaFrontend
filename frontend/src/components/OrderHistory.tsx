@@ -30,6 +30,26 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewingAppointment, setReviewingAppointment] = useState<AppointmentWithDetails | null>(null);
 
+  const parseLocalDate = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    if (!year || !month || !day) {
+      return new Date(dateString);
+    }
+    return new Date(year, month - 1, day);
+  };
+
+  const parseLocalDateTime = (dateString: string, timeString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const [hoursRaw, minutesRaw = '0', secondsRaw = '0'] = timeString.split(':');
+    const hours = Number(hoursRaw);
+    const minutes = Number(minutesRaw);
+    const seconds = Number(secondsRaw);
+    if (!year || !month || !day || Number.isNaN(hours)) {
+      return new Date(`${dateString}T${timeString}`);
+    }
+    return new Date(year, month - 1, day, hours, minutes, seconds);
+  };
+
   useEffect(() => {
     const loadAppointments = async () => {
       try {
@@ -37,8 +57,8 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
         const data = await getMyAppointments();
         const completedOnly = data.filter((apt) => apt.status === 'completed');
         setAppointments([...completedOnly].sort((a, b) => {
-          const aDateTime = new Date(`${a.appointment_date}T${a.appointment_time}`);
-          const bDateTime = new Date(`${b.appointment_date}T${b.appointment_time}`);
+          const aDateTime = parseLocalDateTime(a.appointment_date, a.appointment_time);
+          const bDateTime = parseLocalDateTime(b.appointment_date, b.appointment_time);
           return bDateTime.getTime() - aDateTime.getTime();
         }));
       } catch (error) {
@@ -59,7 +79,7 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
   const totalVisits = appointments.filter((apt) => apt.status === 'completed').length;
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    const date = parseLocalDate(dateString);
     return date.toLocaleDateString('en-US', { 
       month: 'short', 
       day: 'numeric', 
@@ -77,7 +97,7 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
   };
 
   const getAppointmentDateTime = (apt: Appointment) =>
-    new Date(`${apt.appointment_date}T${apt.appointment_time}`);
+    parseLocalDateTime(apt.appointment_date, apt.appointment_time);
 
   const isReviewWindowOpen = (apt: Appointment) => {
     const appointmentDateTime = getAppointmentDateTime(apt);

@@ -108,8 +108,8 @@ const EditProfile: React.FC = () => {
       const updateData: any = {};
       if (formData.full_name) updateData.full_name = formData.full_name;
       if (formData.email) updateData.email = formData.email;
-      if (formData.gender) updateData.gender = formData.gender;
-      if (formData.date_of_birth) updateData.date_of_birth = formData.date_of_birth;
+      if (!isGenderSet && formData.gender) updateData.gender = formData.gender;
+      if (!isDateOfBirthSet && formData.date_of_birth) updateData.birthday = formData.date_of_birth;
 
       await axios.put(`${API_BASE_URL}/users/profile`, updateData, {
         headers: { Authorization: `Bearer ${token}` }
@@ -140,7 +140,8 @@ const EditProfile: React.FC = () => {
     );
   }
 
-  const isDateOfBirthSet = profile.date_of_birth !== null;
+  const isGenderSet = profile.gender !== null && profile.gender !== '';
+  const isDateOfBirthSet = profile.date_of_birth !== null && profile.date_of_birth !== '';
 
   return (
     <div className="min-h-screen bg-black text-white pb-20">
@@ -278,7 +279,8 @@ const EditProfile: React.FC = () => {
                 name="gender"
                 value={formData.gender}
                 onChange={handleInputChange}
-                className="flex-1 bg-transparent outline-none"
+                disabled={isGenderSet}
+                className={`flex-1 bg-transparent outline-none ${isGenderSet ? 'text-gray-500' : ''}`}
               >
                 <option value="">Select gender</option>
                 <option value="male">Male</option>
@@ -286,6 +288,9 @@ const EditProfile: React.FC = () => {
                 <option value="other">Other</option>
               </select>
             </div>
+            {isGenderSet && (
+              <p className="text-xs text-gray-500 mt-1">Gender cannot be changed once set</p>
+            )}
           </div>
 
           {/* Date of Birth */}

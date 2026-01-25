@@ -505,8 +505,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
 
   const openMaps = () => {
     if (!mapQuery) return;
-    const encoded = encodeURIComponent(mapQuery);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encoded}`, '_blank', 'noopener,noreferrer');
+    setIsMapDrawerOpen(true);
   };
 
   const notesPreview = useMemo(() => {
@@ -1525,7 +1524,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                             </div>
                         </div>
 
-                        <div className="mt-10 flex flex-col gap-3">
+                        <div className="flex flex-col gap-3">
                             {bookingError && (
                               <div className="bg-red-500/10 border border-red-500/50 rounded-xl p-3 text-red-400 text-sm">
                                 <p>{bookingError}</p>

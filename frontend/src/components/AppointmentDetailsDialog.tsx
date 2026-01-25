@@ -40,8 +40,28 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
   const canCancelByStatus = appointment.status === 'pending' || appointment.status === 'confirmed';
   const canRescheduleByStatus = appointment.status === 'pending' || appointment.status === 'confirmed';
   const canEditNotes = appointment.status !== 'cancelled' && appointment.status !== 'completed';
+  const parseLocalDateTime = (dateString: string, timeString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const [hoursRaw, minutesRaw = '0', secondsRaw = '0'] = timeString.split(':');
+    const hours = Number(hoursRaw);
+    const minutes = Number(minutesRaw);
+    const seconds = Number(secondsRaw);
+    if (!year || !month || !day || Number.isNaN(hours)) {
+      return new Date(`${dateString}T${timeString}`);
+    }
+    return new Date(year, month - 1, day, hours, minutes, seconds);
+  };
+
+  const parseLocalDate = (dateString: string) => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    if (!year || !month || !day) {
+      return new Date(dateString);
+    }
+    return new Date(year, month - 1, day);
+  };
+
   const appointmentDateTime = useMemo(
-    () => new Date(`${appointment.appointment_date}T${appointment.appointment_time}`),
+    () => parseLocalDateTime(appointment.appointment_date, appointment.appointment_time),
     [appointment.appointment_date, appointment.appointment_time]
   );
   const cutoffDateTime = useMemo(
@@ -270,7 +290,7 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
                 <div>
                   <div className="text-xs uppercase tracking-widest text-gray-400">Date</div>
                   <div className="font-semibold text-white">
-                    {new Date(appointment.appointment_date).toLocaleDateString('en-US', {
+                    {parseLocalDate(appointment.appointment_date).toLocaleDateString('en-US', {
                       weekday: 'short',
                       month: 'short',
                       day: 'numeric'

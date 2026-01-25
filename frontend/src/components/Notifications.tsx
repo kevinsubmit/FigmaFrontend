@@ -25,6 +25,7 @@ export function Notifications({ onBack, onNavigate }: NotificationsProps) {
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     fetchNotifications();
   }, [filter]);
 

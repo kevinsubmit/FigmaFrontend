@@ -10,4 +10,15 @@ Run `npm i` to install the dependencies.
 Copy `.env.example` to `.env` and adjust API base URL if needed.
 
 Run `npm run dev` to start the development server.
+
+## Notable routes
+
+- `/settings`
+- `/change-password`
+- `/phone-management`
+- `/language`
+- `/feedback-support`
+- `/partnership`
+- `/privacy-safety`
+- `/about`
   

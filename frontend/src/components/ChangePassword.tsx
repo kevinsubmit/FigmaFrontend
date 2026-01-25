@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+import { apiClient } from '../api/client';
 
 const ChangePassword: React.FC = () => {
   const navigate = useNavigate();
@@ -62,16 +60,13 @@ const ChangePassword: React.FC = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.put(
-        `${API_BASE_URL}/users/password`,
+      await apiClient.put(
+        '/api/v1/users/password',
         {
           current_password: formData.currentPassword,
           new_password: formData.newPassword
         },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
+        true
       );
 
       toast.success('Password updated successfully!');
@@ -93,24 +88,22 @@ const ChangePassword: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-black text-white pb-20">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-black/90 backdrop-blur-sm border-b border-gray-800">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/profile')}
-              className="p-2 hover:bg-gray-800 rounded-full transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6" />
-            </button>
-            <h1 className="text-2xl font-bold">Change Password</h1>
-          </div>
+    <div className="min-h-screen bg-black text-white pb-safe animate-in fade-in duration-300">
+      <div className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-[#333]">
+        <div className="flex items-center justify-between px-4 py-3">
+          <button
+            onClick={() => navigate('/settings')}
+            className="p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors"
+          >
+            <ArrowLeft className="w-6 h-6 text-white" />
+          </button>
+          <h1 className="text-lg font-bold">Change Password</h1>
+          <div className="w-8" />
         </div>
       </div>
 
       {/* Content */}
-      <div className="container mx-auto px-4 py-6">
+      <div className="px-4 py-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Info Box */}
           <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 flex items-start gap-3">
