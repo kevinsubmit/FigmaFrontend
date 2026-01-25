@@ -575,6 +575,69 @@ GET /api/v1/gift-cards/my-cards
 Authorization: Bearer {token}
 ```
 
+#### 8.3 购买礼品卡（可赠送）
+
+```
+POST /api/v1/gift-cards/purchase
+Authorization: Bearer {token}
+```
+
+**请求体**：
+```json
+{
+  "amount": 50,
+  "recipient_phone": "4151234567",
+  "message": "Enjoy your nails!"
+}
+```
+
+**说明**：
+- `recipient_phone` 为空表示购买给自己。
+- 默认赠送领取有效期 30 天，未领取可撤销。
+
+#### 8.4 领取礼品卡
+
+```
+POST /api/v1/gift-cards/claim
+Authorization: Bearer {token}
+```
+
+**请求体**：
+```json
+{
+  "claim_code": "GC8D9K2A3"
+}
+```
+
+#### 8.5 撤销赠送（未领取）
+
+```
+POST /api/v1/gift-cards/{gift_card_id}/revoke
+Authorization: Bearer {token}
+```
+
+#### 8.6 赠送已有礼品卡（整卡）
+
+```
+POST /api/v1/gift-cards/{gift_card_id}/transfer
+Authorization: Bearer {token}
+```
+
+**请求体**：
+```json
+{
+  "recipient_phone": "4151234567",
+  "message": "Enjoy your nails!"
+}
+```
+
+#### 8.7 查询赠送状态
+
+```
+GET /api/v1/gift-cards/{gift_card_id}/transfer-status
+Authorization: Bearer {token}
+```
+
 ### 9. 通知模块 (Notifications)
 
 #### 8.1 获取通知列表

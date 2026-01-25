@@ -92,6 +92,7 @@ alembic upgrade head
 ```
 
 可选：快速体验可使用 `python init_db.py` 直接建表（不推荐替代迁移）。
+如已有数据库且需要礼品卡赠送字段，请执行 `python migrate_gift_cards_transfer.py`。
 
 ### 5. 运行开发服务器
 
@@ -165,6 +166,11 @@ python -m app.main
 
 - `GET /api/v1/gift-cards/summary` - 获取礼品卡汇总（余额/数量）
 - `GET /api/v1/gift-cards/my-cards` - 获取我的礼品卡列表
+- `POST /api/v1/gift-cards/purchase` - 购买礼品卡（可赠送）
+- `POST /api/v1/gift-cards/{gift_card_id}/transfer` - 赠送已有礼品卡（整卡）
+- `POST /api/v1/gift-cards/claim` - 领取礼品卡
+- `POST /api/v1/gift-cards/{gift_card_id}/revoke` - 撤销赠送（未领取）
+- `GET /api/v1/gift-cards/{gift_card_id}/transfer-status` - 查询赠送状态
 
 ### Pin内容 (Pins)
 

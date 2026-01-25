@@ -1,66 +1,96 @@
-import { ArrowLeft, Copy, Check, Info, CreditCard, Plus, ChevronRight, Gift, Clock, Send, Mail, User, ShieldCheck, QrCode } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, Copy, Check, Gift, Clock, Send, Phone, ShieldCheck, QrCode, XCircle, Ticket } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
+import giftCardsService, { GiftCard } from '../services/gift-cards.service';
 
 interface GiftingData {
-  recipientEmail: string;
-  recipientName: string;
+  recipientPhone: string;
   amount: number;
   message: string;
 }
-
-interface GiftCard {
-  id: string;
-  code: string;
-  balance: number;
-  originalValue: number;
-  expiryDate: string;
-  status: 'active' | 'expired';
-  lastUsed?: string;
-  purchaseDate: string; // Added to show it was bought at salon
-}
-
-const INITIAL_GIFT_CARDS: GiftCard[] = [
-  {
-    id: '1',
-    code: 'GLAM-8829-9912',
-    balance: 50.00,
-    originalValue: 50.00,
-    expiryDate: 'Dec 31, 2026',
-    status: 'active',
-    purchaseDate: 'Nov 12, 2025'
-  },
-  {
-    id: '2',
-    code: 'GOLD-1102-5543',
-    balance: 100.00,
-    originalValue: 100.00,
-    expiryDate: 'Oct 15, 2025',
-    status: 'active',
-    purchaseDate: 'Dec 05, 2025'
-  }
-];
 
 interface MyGiftCardsProps {
   onBack: () => void;
 }
 
 export function MyGiftCards({ onBack }: MyGiftCardsProps) {
-  const [giftCards, setGiftCards] = useState<GiftCard[]>(INITIAL_GIFT_CARDS);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [giftCards, setGiftCards] = useState<GiftCard[]>([]);
   const [isGiftingOpen, setIsGiftingOpen] = useState(false);
-  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [selectedCard, setSelectedCard] = useState<GiftCard | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [showQRCode, setShowQRCode] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isClaimOpen, setIsClaimOpen] = useState(false);
+  const [claimCode, setClaimCode] = useState('');
+  const [isClaiming, setIsClaiming] = useState(false);
   const [giftData, setGiftData] = useState<GiftingData>({
-    recipientEmail: '',
-    recipientName: '',
-    amount: 50,
+    recipientPhone: '',
+    amount: 0,
     message: ''
   });
 
-  const handleCopy = (code: string, id: string) => {
+  useEffect(() => {
+    const loadGiftCards = async () => {
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const cards = await giftCardsService.getMyGiftCards(token);
+        setGiftCards(cards);
+      } catch (error) {
+        console.error('Failed to load gift cards:', error);
+        toast.error('Unable to load gift cards');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadGiftCards();
+  }, []);
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return 'No expiration';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'No expiration';
+    return date.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
+  };
+
+  const formatPhone = (phone?: string | null) => {
+    if (!phone) return '';
+    return phone.length === 11 && phone.startsWith('1') ? `+${phone}` : phone;
+  };
+
+  const totalBalance = useMemo(
+    () => giftCards.filter((card) => card.status === 'active').reduce((acc, card) => acc + card.balance, 0),
+    [giftCards]
+  );
+
+  const sortedCards = useMemo(() => {
+    const priority = (status: GiftCard['status']) => {
+      if (status === 'pending_transfer') return 0;
+      if (status === 'active') return 1;
+      if (status === 'revoked') return 2;
+      return 3;
+    };
+    return [...giftCards].sort((a, b) => {
+      const statusDiff = priority(a.status) - priority(b.status);
+      if (statusDiff !== 0) return statusDiff;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+  }, [giftCards]);
+
+  const statusColor = (status: GiftCard['status']) => {
+    if (status === 'pending_transfer') return 'text-[#D4AF37]';
+    if (status === 'active') return 'text-emerald-400';
+    if (status === 'revoked') return 'text-red-400';
+    return 'text-gray-500';
+  };
+
+  const handleCopy = (code: string) => {
     try {
       // Create a temporary textarea to copy text as a fallback for Clipboard API restrictions in some environments
       const textArea = document.createElement("textarea");
@@ -79,47 +109,98 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
       document.body.removeChild(textArea);
 
       if (successful) {
-        setCopiedId(id);
         toast.success('Card code copied to clipboard');
-        setTimeout(() => setCopiedId(null), 2000);
       } else {
         throw new Error('Copy command was unsuccessful');
       }
     } catch (err) {
       console.error('Fallback copy failed: ', err);
       // Even if it fails, we show the UI feedback so the user knows where the code is
-      setCopiedId(id);
       toast.error('Could not copy automatically. Please long-press to copy.');
-      setTimeout(() => setCopiedId(null), 2000);
     }
   };
 
-  const totalBalance = giftCards.reduce((acc, card) => acc + card.balance, 0);
-
-  const handleSendGift = () => {
-    if (!giftData.recipientEmail || !giftData.recipientName) {
-      toast.error('Please fill in recipient details');
+  const handleSendGift = async () => {
+    if (!selectedCard) {
+      toast.error('Please select a gift card');
       return;
     }
-    
-    setIsSending(true);
-    // Simulate API call and Ownership Transfer
-    setTimeout(() => {
-      setIsSending(false);
+
+    if (!giftData.recipientPhone) {
+      toast.error('Please enter a valid phone number');
+      return;
+    }
+
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+    if (!token) {
+      toast.error('Please sign in to send a gift card');
+      return;
+    }
+
+    try {
+      setIsSending(true);
+      const response = await giftCardsService.transferGiftCard(token, selectedCard.id, {
+        recipient_phone: giftData.recipientPhone,
+        message: giftData.message || undefined
+      });
+      setGiftCards((prev) => prev.map((card) => (card.id === response.gift_card.id ? response.gift_card : card)));
       setIsGiftingOpen(false);
-      
-      // Transfer logic: Remove the card from the user's list after sending
-      if (selectedCardId) {
-        setGiftCards(prev => prev.filter(c => c.id !== selectedCardId));
-      }
-      
-      toast.success(`Gift Sent Successfully!`, {
-        description: `Your $${giftData.amount} card has been transferred to ${giftData.recipientName}.`,
+      toast.success('Gift sent successfully', {
+        description: `A ${formatPhone(response.gift_card.recipient_phone)} gift card is pending claim.`,
         style: { background: '#1a1a1a', border: '1px solid #D4AF3733', color: '#fff' }
       });
-      setGiftData({ recipientEmail: '', recipientName: '', amount: 50, message: '' });
-      setSelectedCardId(null);
-    }, 2500);
+      setGiftData({ recipientPhone: '', amount: 0, message: '' });
+      setSelectedCard(null);
+    } catch (error) {
+      console.error('Failed to send gift card:', error);
+      toast.error('Failed to send gift card');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleRevoke = async (card: GiftCard) => {
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+    if (!token) {
+      toast.error('Please sign in to manage transfers');
+      return;
+    }
+
+    try {
+      const response = await giftCardsService.revokeGiftCard(token, card.id);
+      setGiftCards((prev) => prev.map((item) => (item.id === card.id ? response.gift_card : item)));
+      toast.success('Transfer canceled', { duration: 1200 });
+    } catch (error) {
+      console.error('Failed to revoke gift card:', error);
+      toast.error('Unable to cancel transfer');
+    }
+  };
+
+  const handleClaim = async () => {
+    if (!claimCode.trim()) {
+      toast.error('Please enter a claim code');
+      return;
+    }
+
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+    if (!token) {
+      toast.error('Please sign in to claim a gift card');
+      return;
+    }
+
+    try {
+      setIsClaiming(true);
+      const response = await giftCardsService.claimGiftCard(token, claimCode.trim());
+      setGiftCards((prev) => prev.map((card) => (card.id === response.gift_card.id ? response.gift_card : card)));
+      setIsClaimOpen(false);
+      setClaimCode('');
+      toast.success('Gift card claimed', { duration: 1200 });
+    } catch (error) {
+      console.error('Failed to claim gift card:', error);
+      toast.error('Unable to claim gift card');
+    } finally {
+      setIsClaiming(false);
+    }
   };
 
   return (
@@ -156,7 +237,7 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
                 </div>
                 <div className="flex items-center gap-2 bg-black/40 px-4 py-1.5 rounded-full border border-[#333] text-[10px] text-gray-400 font-bold uppercase tracking-wider">
                     <Check className="w-3 h-3 text-[#D4AF37]" />
-                    {giftCards.length} Active Cards
+                    {giftCards.filter((card) => card.status === 'active').length} Active Cards
                 </div>
             </div>
         </div>
@@ -165,12 +246,23 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
         <div className="space-y-6">
             <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest">My Collection</h3>
-                <div className="flex items-center gap-1.5 text-[10px] text-gray-400 font-bold uppercase">
-                    {giftCards.length} Items
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setIsClaimOpen(true)}
+                    className="flex items-center gap-1.5 text-[10px] text-[#D4AF37] font-black uppercase tracking-widest hover:text-white transition-colors"
+                  >
+                    <Ticket className="w-3 h-3" /> Claim
+                  </button>
                 </div>
             </div>
 
-            {giftCards.map((card) => (
+            {isLoading && (
+              <div className="py-12 text-center text-xs text-gray-500 uppercase tracking-[0.3em]">
+                Loading gift cards...
+              </div>
+            )}
+
+            {sortedCards.map((card) => (
                 <motion.div 
                     key={card.id}
                     layout
@@ -196,23 +288,26 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
                             </div>
                             <div className="text-right">
                                 <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Purchased</p>
-                                <p className="text-[11px] font-bold text-gray-300">{card.purchaseDate}</p>
+                                <p className="text-[11px] font-bold text-gray-300">{formatDate(card.created_at)}</p>
+                                <span className={`mt-2 inline-flex items-center justify-end text-[9px] font-bold uppercase tracking-[0.2em] ${statusColor(card.status)}`}>
+                                  {card.status.replace('_', ' ')}
+                                </span>
                             </div>
                         </div>
 
                         <div className="space-y-4">
                             {/* Card Code Area */}
                             <div className="bg-black border border-[#222] rounded-xl p-3 flex items-center justify-between group">
-                                <code className="text-[#D4AF37] font-mono text-sm tracking-wider">{card.code}</code>
+                                <code className="text-[#D4AF37] font-mono text-sm tracking-wider">{card.card_number}</code>
                                 <div className="flex gap-1">
                                     <button 
-                                        onClick={() => setShowQRCode(card.code)}
+                                        onClick={() => setShowQRCode(card.card_number)}
                                         className="p-2 rounded-lg bg-[#D4AF37]/10 text-[#D4AF37] hover:bg-[#D4AF37]/20 transition-all"
                                     >
                                         <QrCode className="w-4 h-4" />
                                     </button>
                                     <button 
-                                        onClick={() => handleCopy(card.code, card.id)}
+                                        onClick={() => handleCopy(card.card_number)}
                                         className="p-2 rounded-lg bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#333] transition-all"
                                     >
                                         <Copy className="w-4 h-4" />
@@ -220,23 +315,47 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
                                 </div>
                             </div>
 
-                            {/* Actions: Send to Friend */}
-                            <button 
+                            {card.status === 'pending_transfer' && (
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-500">
+                                  <span>Pending transfer</span>
+                                  <span>{formatPhone(card.recipient_phone)}</span>
+                                </div>
+                                <button
+                                  onClick={() => handleRevoke(card)}
+                                  className="w-full bg-[#1a1a1a] border border-[#A33] hover:bg-[#3a1111] text-[#ffb4b4] py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                                >
+                                  <XCircle className="w-3.5 h-3.5" />
+                                  Cancel transfer
+                                </button>
+                              </div>
+                            )}
+
+                            {card.status === 'active' && (
+                              <button
                                 onClick={() => {
-                                  setSelectedCardId(card.id);
-                                  setGiftData({ ...giftData, amount: card.balance });
+                                  setSelectedCard(card);
+                                  setGiftData((prev) => ({
+                                    ...prev,
+                                    amount: card.balance
+                                  }));
                                   setIsGiftingOpen(true);
                                 }}
-                                className="w-full bg-[#1a1a1a] border border-[#D4AF37]/30 hover:bg-[#D4AF37] hover:text-black text-[#D4AF37] py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 group"
-                            >
-                                <Send className="w-3.5 h-3.5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                                Send to a Friend
-                            </button>
+                                className="w-full bg-[#1a1a1a] border border-[#D4AF37]/30 hover:bg-[#D4AF37] hover:text-black text-[#D4AF37] py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                              >
+                                <Send className="w-3.5 h-3.5" />
+                                Send this card
+                              </button>
+                            )}
 
                             <div className="flex items-center justify-between pt-2">
                                 <div className="flex items-center gap-1.5">
                                     <Clock className="w-3 h-3 text-gray-600" />
-                                    <span className="text-[9px] text-gray-600 font-medium">Valid until {card.expiryDate}</span>
+                                    <span className="text-[9px] text-gray-600 font-medium">
+                                      {card.status === 'pending_transfer'
+                                        ? `Claim by ${formatDate(card.claim_expires_at)}`
+                                        : `Valid until ${formatDate(card.expires_at)}`}
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -244,7 +363,7 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
                 </motion.div>
             ))}
 
-            {giftCards.length === 0 && (
+            {!isLoading && giftCards.length === 0 && (
               <div className="py-20 flex flex-col items-center justify-center text-center px-10">
                 <div className="w-20 h-20 bg-[#111] border border-[#222] rounded-full flex items-center justify-center mb-6">
                   <Gift className="w-10 h-10 text-gray-700" />
@@ -346,35 +465,26 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
               </div>
 
               <div className="space-y-6">
-                {/* Amount Display (Non-editable) */}
+                {/* Amount Display */}
                 <div className="bg-black border border-[#D4AF37]/30 rounded-2xl p-6 flex flex-col items-center shadow-[inset_0_0_20px_rgba(212,175,55,0.05)]">
-                  <p className="text-[#D4AF37] text-[10px] font-black uppercase tracking-[0.3em] mb-2">Transfer Amount</p>
+                  <p className="text-[#D4AF37] text-[10px] font-black uppercase tracking-[0.3em] mb-2">Gift Amount</p>
                   <div className="flex items-start gap-1">
                     <span className="text-xl font-bold text-[#D4AF37] mt-1">$</span>
-                    <h3 className="text-5xl font-black text-white tracking-tighter italic">{giftData.amount.toFixed(2)}</h3>
+                    <h3 className="text-5xl font-black text-white tracking-tighter italic">
+                      {selectedCard ? selectedCard.balance.toFixed(2) : giftData.amount.toFixed(2)}
+                    </h3>
                   </div>
-                  <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-3 opacity-60">Full Balance Transfer Only</p>
+                  <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-3 opacity-60">Full balance transfer only</p>
                 </div>
 
                 <div className="space-y-4">
                   <div className="relative group">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-[#D4AF37] transition-colors" />
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-[#D4AF37] transition-colors" />
                     <input 
                       type="text"
-                      placeholder="Recipient Name"
-                      value={giftData.recipientName}
-                      onChange={(e) => setGiftData({ ...giftData, recipientName: e.target.value })}
-                      className="w-full bg-black border border-[#333] focus:border-[#D4AF37] rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-gray-600 outline-none transition-all"
-                    />
-                  </div>
-
-                  <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-[#D4AF37] transition-colors" />
-                    <input 
-                      type="email"
-                      placeholder="Recipient Email"
-                      value={giftData.recipientEmail}
-                      onChange={(e) => setGiftData({ ...giftData, recipientEmail: e.target.value })}
+                      placeholder="Recipient Phone"
+                      value={giftData.recipientPhone}
+                      onChange={(e) => setGiftData({ ...giftData, recipientPhone: e.target.value })}
                       className="w-full bg-black border border-[#333] focus:border-[#D4AF37] rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-gray-600 outline-none transition-all"
                     />
                   </div>
@@ -414,6 +524,60 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
                     <ShieldCheck className="w-3 h-3" /> Secure Payment Powered by GlamPay
                   </p>
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Claim Modal */}
+      <AnimatePresence>
+        {isClaimOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[105] bg-black/90 backdrop-blur-xl p-6 flex flex-col justify-end"
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="bg-[#111] border border-[#333] rounded-t-[2.5rem] p-8 -mx-6 -mb-6 pb-12 shadow-[0_-20px_50px_rgba(0,0,0,0.8)]"
+            >
+              <div className="w-12 h-1.5 bg-[#333] rounded-full mx-auto mb-8" />
+              <div className="flex items-center gap-5 mb-8">
+                <button
+                  onClick={() => setIsClaimOpen(false)}
+                  className="w-12 h-12 rounded-full bg-[#1a1a1a] border border-[#333] flex items-center justify-center hover:bg-[#252525] active:scale-90 transition-all shadow-lg"
+                >
+                  <ArrowLeft className="w-6 h-6 text-white" />
+                </button>
+                <div>
+                  <h2 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">Claim a Gift</h2>
+                  <p className="text-[#D4AF37] text-[10px] font-black uppercase tracking-widest mt-1">Enter your code</p>
+                </div>
+              </div>
+
+              <div className="space-y-5">
+                <div className="relative group">
+                  <Ticket className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-[#D4AF37] transition-colors" />
+                  <input
+                    type="text"
+                    placeholder="Claim Code"
+                    value={claimCode}
+                    onChange={(e) => setClaimCode(e.target.value.toUpperCase())}
+                    className="w-full bg-black border border-[#333] focus:border-[#D4AF37] rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-gray-600 outline-none transition-all tracking-widest"
+                  />
+                </div>
+                <button
+                  disabled={isClaiming}
+                  onClick={handleClaim}
+                  className="w-full bg-[#D4AF37] hover:bg-[#b5952f] disabled:opacity-50 disabled:cursor-not-allowed text-black font-black uppercase py-5 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(212,175,55,0.3)] active:scale-[0.98]"
+                >
+                  {isClaiming ? 'Claiming...' : 'Claim Gift Card'}
+                </button>
               </div>
             </motion.div>
           </motion.div>

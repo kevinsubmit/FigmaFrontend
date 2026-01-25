@@ -2,12 +2,25 @@
 Gift cards endpoints
 """
 from typing import List
-from fastapi import APIRouter, Depends
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
-from app.schemas.gift_card import GiftCardResponse, GiftCardSummary
+from app.schemas.gift_card import (
+    GiftCardResponse,
+    GiftCardSummary,
+    GiftCardPurchaseRequest,
+    GiftCardPurchaseResponse,
+    GiftCardTransferRequest,
+    GiftCardClaimRequest,
+    GiftCardClaimResponse,
+    GiftCardRevokeResponse,
+    GiftCardTransferStatus
+)
 from app.crud import gift_card as crud_gift_cards
+from app.services.gift_card_service import send_gift_card_sms
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -33,3 +46,148 @@ def get_gift_card_summary(
     current_user: User = Depends(get_current_user)
 ):
     return crud_gift_cards.get_gift_card_summary(db=db, user_id=current_user.id)
+
+
+@router.post("/purchase", response_model=GiftCardPurchaseResponse)
+def purchase_gift_card(
+    request: GiftCardPurchaseRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    gift_card, claim_code = crud_gift_cards.create_gift_card_purchase(
+        db=db,
+        purchaser_id=current_user.id,
+        amount=request.amount,
+        recipient_phone=request.recipient_phone,
+        message=request.message
+    )
+    sms_sent = False
+    if request.recipient_phone and claim_code and gift_card.claim_expires_at:
+        sms_sent = send_gift_card_sms(
+            phone=request.recipient_phone,
+            claim_code=claim_code,
+            amount=request.amount,
+            expires_at=gift_card.claim_expires_at
+        )
+
+    return GiftCardPurchaseResponse(
+        gift_card=gift_card,
+        sms_sent=sms_sent,
+        claim_expires_at=gift_card.claim_expires_at,
+        claim_code=claim_code if settings.DEBUG else None
+    )
+
+
+@router.post("/{gift_card_id}/transfer", response_model=GiftCardPurchaseResponse)
+def transfer_gift_card(
+    gift_card_id: int,
+    request: GiftCardTransferRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    gift_card = crud_gift_cards.get_gift_card_by_id(db, gift_card_id)
+    if not gift_card:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Gift card not found")
+
+    if gift_card.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+    try:
+        updated_card = crud_gift_cards.transfer_existing_gift_card(
+            db=db,
+            gift_card=gift_card,
+            recipient_phone=request.recipient_phone,
+            message=request.message
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    sms_sent = send_gift_card_sms(
+        phone=request.recipient_phone,
+        claim_code=updated_card.claim_code,
+        amount=updated_card.balance,
+        expires_at=updated_card.claim_expires_at
+    )
+
+    return GiftCardPurchaseResponse(
+        gift_card=updated_card,
+        sms_sent=sms_sent,
+        claim_expires_at=updated_card.claim_expires_at,
+        claim_code=updated_card.claim_code if settings.DEBUG else None
+    )
+
+
+@router.post("/claim", response_model=GiftCardClaimResponse)
+def claim_gift_card(
+    request: GiftCardClaimRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    gift_card = crud_gift_cards.get_gift_card_by_claim_code(db, request.claim_code)
+    if not gift_card:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Gift card not found")
+
+    if gift_card.status != "pending_transfer":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Gift card is not claimable")
+
+    now = datetime.utcnow()
+    if gift_card.claim_expires_at and gift_card.claim_expires_at < now:
+        crud_gift_cards.claim_gift_card(db, gift_card, current_user.id, current_user.phone)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Gift card claim expired")
+
+    if gift_card.recipient_phone and gift_card.recipient_phone != current_user.phone:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Recipient phone mismatch")
+
+    try:
+        claimed = crud_gift_cards.claim_gift_card(db, gift_card, current_user.id, current_user.phone)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    return GiftCardClaimResponse(gift_card=claimed)
+
+
+@router.post("/{gift_card_id}/revoke", response_model=GiftCardRevokeResponse)
+def revoke_gift_card(
+    gift_card_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    gift_card = crud_gift_cards.get_gift_card_by_id(db, gift_card_id)
+    if not gift_card:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Gift card not found")
+
+    if gift_card.status != "pending_transfer":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Gift card cannot be revoked")
+
+    now = datetime.utcnow()
+    if gift_card.claim_expires_at and gift_card.claim_expires_at < now:
+        crud_gift_cards.claim_gift_card(db, gift_card, current_user.id, current_user.phone)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Gift card already expired")
+
+    try:
+        revoked = crud_gift_cards.revoke_gift_card(db, gift_card, current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+
+    return GiftCardRevokeResponse(gift_card=revoked)
+
+
+@router.get("/{gift_card_id}/transfer-status", response_model=GiftCardTransferStatus)
+def get_transfer_status(
+    gift_card_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    gift_card = crud_gift_cards.get_gift_card_by_id(db, gift_card_id)
+    if not gift_card:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Gift card not found")
+
+    if gift_card.user_id != current_user.id and gift_card.purchaser_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+    return GiftCardTransferStatus(
+        gift_card_id=gift_card.id,
+        status=gift_card.status,
+        recipient_phone=gift_card.recipient_phone,
+        claim_expires_at=gift_card.claim_expires_at
+    )
