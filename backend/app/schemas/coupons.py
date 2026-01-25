@@ -61,6 +61,12 @@ class ClaimCouponRequest(BaseModel):
     source: str = "system"  # "system", "points", "referral", "activity"
 
 
+class GrantCouponRequest(BaseModel):
+    """Admin grant coupon request"""
+    phone: str
+    coupon_id: int
+
+
 class UseCouponRequest(BaseModel):
     """Use coupon request"""
     user_coupon_id: int

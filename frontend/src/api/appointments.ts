@@ -4,6 +4,7 @@ export type AppointmentStatus = 'pending' | 'confirmed' | 'completed' | 'cancell
 
 export interface Appointment {
   id: number;
+  order_number?: string | null;
   user_id: number;
   store_id: number;
   service_id: number;

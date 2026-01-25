@@ -11,9 +11,11 @@ from app.schemas.coupons import (
     CouponResponse,
     CouponCreate,
     UserCouponResponse,
-    ClaimCouponRequest
+    ClaimCouponRequest,
+    GrantCouponRequest
 )
 from app.crud import coupons as crud_coupons
+from app.crud import user as crud_user
 
 
 router = APIRouter()
@@ -134,6 +136,36 @@ def create_coupon(
     coupon_data = coupon.dict()
     new_coupon = crud_coupons.create_coupon(db, coupon_data)
     return new_coupon
+
+
+@router.post("/grant", response_model=UserCouponResponse)
+def grant_coupon_to_user(
+    request: GrantCouponRequest,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Grant coupon to a specific user by phone (admin only).
+    """
+    user = crud_user.get_by_phone(db, phone=request.phone)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    try:
+        user_coupon = crud_coupons.claim_coupon(
+            db=db,
+            user_id=user.id,
+            coupon_id=request.coupon_id,
+            source="admin"
+        )
+        return user_coupon
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
 
 @router.get("/{coupon_id}", response_model=CouponResponse)

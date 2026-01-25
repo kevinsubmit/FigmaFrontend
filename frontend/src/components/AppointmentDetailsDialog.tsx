@@ -202,7 +202,14 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
         <div className="bg-[#0f0f0f] text-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-white/10 shadow-2xl">
           {/* Header */}
           <div className="sticky top-0 bg-[#0f0f0f] border-b border-white/10 px-6 py-5 flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-white">Appointment Details</h2>
+            <div>
+              <h2 className="text-xl font-semibold text-white">Appointment Details</h2>
+              {appointment.order_number && (
+                <p className="text-[11px] uppercase tracking-[0.25em] text-gray-500 mt-2">
+                  Order {appointment.order_number}
+                </p>
+              )}
+            </div>
             <button
               onClick={onClose}
               className="p-2 hover:bg-white/10 rounded-full transition-colors"

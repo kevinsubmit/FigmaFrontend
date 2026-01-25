@@ -155,10 +155,15 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
                       </div>
                       <div>
                         <h3 className="font-semibold text-white">{apt.store?.name || apt.store_name || 'Salon'}</h3>
-                        {(apt.store?.address || apt.store_name) && (
+                        {apt.order_number && (
+                          <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500 mt-1">
+                            Order {apt.order_number}
+                          </div>
+                        )}
+                        {apt.store?.address && (
                           <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
                             <MapPin className="w-3 h-3" />
-                            <span>{apt.store?.address || apt.store_name}</span>
+                            <span>{apt.store.address}</span>
                           </div>
                         )}
                       </div>

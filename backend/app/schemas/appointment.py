@@ -30,6 +30,11 @@ class AppointmentUpdate(BaseModel):
     notes: Optional[str] = None
 
 
+class AppointmentComplete(BaseModel):
+    """Appointment complete schema"""
+    user_coupon_id: Optional[int] = None
+
+
 class Appointment(AppointmentBase):
     """Appointment response schema"""
     id: int

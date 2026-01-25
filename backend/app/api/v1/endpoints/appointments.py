@@ -15,12 +15,14 @@ from app.schemas.appointment import (
     AppointmentWithDetails,
     AppointmentCancel,
     AppointmentReschedule,
-    AppointmentNotesUpdate
+    AppointmentNotesUpdate,
+    AppointmentComplete
 )
 from app.schemas.user import UserResponse
 from app.models.appointment import AppointmentStatus
 from app.services import notification_service
 from app.services import reminder_service
+from app.crud import coupons as crud_coupons
 
 router = APIRouter()
 
@@ -361,6 +363,7 @@ def confirm_appointment(
 @router.patch("/{appointment_id}/complete", response_model=Appointment)
 def complete_appointment(
     appointment_id: int,
+    payload: AppointmentComplete = None,
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user)
 ):
@@ -416,6 +419,48 @@ def complete_appointment(
         appointment_id=appointment_id,
         appointment=AppointmentUpdate(status=AppointmentStatus.COMPLETED)
     )
+
+    # Apply coupon if provided (admin selected)
+    if payload and payload.user_coupon_id:
+        user_coupon = crud_coupons.get_user_coupon(
+            db, payload.user_coupon_id, updated_appointment.user_id
+        )
+        if not user_coupon:
+            raise HTTPException(
+                status_code=400,
+                detail="Coupon not found for this user"
+            )
+
+        coupon = crud_coupons.get_coupon(db, user_coupon.coupon_id)
+        if not coupon:
+            raise HTTPException(
+                status_code=400,
+                detail="Coupon template not found"
+            )
+
+        discount = crud_coupons.calculate_discount(
+            coupon=coupon,
+            original_amount=service.price or 0
+        )
+
+        if discount <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Coupon is not applicable to this appointment amount"
+            )
+
+        try:
+            crud_coupons.use_coupon(
+                db=db,
+                user_coupon_id=payload.user_coupon_id,
+                user_id=updated_appointment.user_id,
+                appointment_id=updated_appointment.id
+            )
+        except ValueError as e:
+            raise HTTPException(
+                status_code=400,
+                detail=str(e)
+            )
 
     # Award points based on service price (1 point per $1)
     if service.price is not None:

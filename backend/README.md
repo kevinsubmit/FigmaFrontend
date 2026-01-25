@@ -142,6 +142,7 @@ python -m app.main
 - `POST /api/v1/appointments` - 创建预约（返回 `order_number`）
 - `PUT /api/v1/appointments/{id}` - 更新预约
 - `DELETE /api/v1/appointments/{id}` - 取消预约
+- `PATCH /api/v1/appointments/{id}/complete` - 完成预约（可选用券）
 
 ### VIP会员 (VIP)
 
@@ -159,6 +160,7 @@ python -m app.main
 - `GET /api/v1/coupons/exchangeable` - 获取可积分兑换优惠券
 - `GET /api/v1/coupons/my-coupons` - 获取我的优惠券
 - `POST /api/v1/coupons/claim` - 领取优惠券
+- `POST /api/v1/coupons/grant` - 管理员发券（按手机号）
 - `POST /api/v1/coupons/exchange/{coupon_id}` - 积分兑换优惠券
 - `GET /api/v1/coupons/{coupon_id}` - 获取优惠券详情
 

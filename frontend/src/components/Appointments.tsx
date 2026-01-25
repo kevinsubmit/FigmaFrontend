@@ -262,6 +262,11 @@ export function Appointments() {
                 {apt.store || apt.store_name ? (
                   <div className="mb-3">
                     <h3 className="font-semibold text-lg text-white mb-1">{apt.store?.name || apt.store_name}</h3>
+                    {apt.order_number && (
+                      <div className="text-[11px] uppercase tracking-[0.2em] text-gray-500 font-semibold">
+                        Order {apt.order_number}
+                      </div>
+                    )}
                     {apt.store?.address && (
                       <p className="text-sm text-gray-400 flex items-center gap-1">
                         <MapPin className="w-4 h-4" />

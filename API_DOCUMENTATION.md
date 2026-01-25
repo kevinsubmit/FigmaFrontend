@@ -468,6 +468,20 @@ PATCH /api/v1/appointments/{appointment_id}/confirm
 Authorization: Bearer {admin_token}
 ```
 
+#### 5.8 完成预约（门店管理员）
+
+```
+PATCH /api/v1/appointments/{appointment_id}/complete
+Authorization: Bearer {admin_token}
+```
+
+**请求体（可选）**：
+```json
+{
+  "user_coupon_id": 123
+}
+```
+
 ### 6. 积分模块 (Points)
 
 #### 6.1 获取积分余额
@@ -544,6 +558,21 @@ Authorization: Bearer {token}
 **请求体**：
 ```json
 {
+  "coupon_id": 1
+}
+```
+
+#### 7.4.1 管理员发券（按手机号）
+
+```
+POST /api/v1/coupons/grant
+Authorization: Bearer {admin_token}
+```
+
+**请求体**：
+```json
+{
+  "phone": "4151234567",
   "coupon_id": 1
 }
 ```
