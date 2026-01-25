@@ -255,29 +255,31 @@ function AppRouter() {
 
         {/* Sub-pages / Overlays */}
         <Route path="/pin-detail" element={
-          <PinDetail 
-              onBack={() => navigate('/')} 
-              onBookNow={(pinId) => {
-                const resolvedPinId = pinId ?? selectedPin?.id;
-                navigate(resolvedPinId ? `/services?pin_id=${resolvedPinId}` : '/services');
-                toast.info("Style reference added to your booking!", {
-                  icon: <Sparkles className="w-4 h-4 text-[#D4AF37]" />,
-                  style: { background: '#1a1a1a', border: '1px solid #D4AF3733', color: '#fff' }
-                });
-              }}
-              onTagClick={(tag) => {
-                const params = new URLSearchParams();
-                params.set('tag', tag);
-                params.set('fromPin', '1');
-                navigate(`/?${params.toString()}`);
-              }}
-              onPinClick={(pin) => {
-                setSelectedPin(pin);
-                sessionStorage.setItem('lastPin', JSON.stringify(pin));
-                navigate(`/pin-detail?id=${pin.id}`);
-              }}
-              pinData={selectedPin}
-            />
+          <ProtectedRoute>
+            <PinDetail 
+                onBack={() => navigate('/')} 
+                onBookNow={(pinId) => {
+                  const resolvedPinId = pinId ?? selectedPin?.id;
+                  navigate(resolvedPinId ? `/services?pin_id=${resolvedPinId}` : '/services');
+                  toast.info("Style reference added to your booking!", {
+                    icon: <Sparkles className="w-4 h-4 text-[#D4AF37]" />,
+                    style: { background: '#1a1a1a', border: '1px solid #D4AF3733', color: '#fff' }
+                  });
+                }}
+                onTagClick={(tag) => {
+                  const params = new URLSearchParams();
+                  params.set('tag', tag);
+                  params.set('fromPin', '1');
+                  navigate(`/?${params.toString()}`);
+                }}
+                onPinClick={(pin) => {
+                  setSelectedPin(pin);
+                  sessionStorage.setItem('lastPin', JSON.stringify(pin));
+                  navigate(`/pin-detail?id=${pin.id}`);
+                }}
+                pinData={selectedPin}
+              />
+          </ProtectedRoute>
         } />
 
         <Route path="/edit-profile" element={
@@ -287,21 +289,27 @@ function AppRouter() {
         } />
 
         <Route path="/order-history" element={
-          <OrderHistory 
-              onBack={() => navigate('/profile')}
-            />
+          <ProtectedRoute>
+            <OrderHistory 
+                onBack={() => navigate('/profile')}
+              />
+          </ProtectedRoute>
         } />
 
         <Route path="/my-points" element={
-          <MyPoints 
-              onBack={() => navigate('/profile')}
-            />
+          <ProtectedRoute>
+            <MyPoints 
+                onBack={() => navigate('/profile')}
+              />
+          </ProtectedRoute>
         } />
 
         <Route path="/my-coupons" element={
-          <MyCoupons 
-              onBack={() => navigate('/profile')}
-            />
+          <ProtectedRoute>
+            <MyCoupons 
+                onBack={() => navigate('/profile')}
+              />
+          </ProtectedRoute>
         } />
         
         <Route path="/referral" element={
@@ -311,31 +319,37 @@ function AppRouter() {
         } />
 
         <Route path="/my-gift-cards" element={
-          <MyGiftCards 
-              onBack={() => navigate('/profile')}
-            />
+          <ProtectedRoute>
+            <MyGiftCards 
+                onBack={() => navigate('/profile')}
+              />
+          </ProtectedRoute>
         } />
 
         <Route path="/settings" element={
-          <Settings
-              initialSection={settingsSection}
-              onBack={() => {
-                navigate('/profile');
-                setSettingsSection('main');
-              }}
-            />
+          <ProtectedRoute>
+            <Settings
+                initialSection={settingsSection}
+                onBack={() => {
+                  navigate('/profile');
+                  setSettingsSection('main');
+                }}
+              />
+          </ProtectedRoute>
         } />
 
         <Route path="/vip-description" element={
-          <VipDescription 
-              onBack={() => {
-                if (location.state?.from === 'settings') {
-                  navigate('/settings');
-                } else {
-                  navigate('/profile');
-                }
-              }}
-            />
+          <ProtectedRoute>
+            <VipDescription 
+                onBack={() => {
+                  if (location.state?.from === 'settings') {
+                    navigate('/settings');
+                  } else {
+                    navigate('/profile');
+                  }
+                }}
+              />
+          </ProtectedRoute>
         } />
 
         <Route path="/notifications" element={

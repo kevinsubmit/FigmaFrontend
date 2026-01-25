@@ -20,6 +20,7 @@ class Appointment(Base):
     __tablename__ = "appointments"
 
     id = Column(Integer, primary_key=True, index=True)
+    order_number = Column(String(32), unique=True, nullable=True, index=True)
     user_id = Column(Integer, nullable=False, index=True)
     store_id = Column(Integer, nullable=False, index=True)
     service_id = Column(Integer, nullable=False, index=True)

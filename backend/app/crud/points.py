@@ -122,6 +122,20 @@ def get_point_transactions(
 
 def award_points_for_appointment(db: Session, user_id: int, appointment_id: int, amount_spent: float) -> Optional[PointTransaction]:
     """Award points for completed appointment (1 point per $1 spent)"""
+    existing = (
+        db.query(PointTransaction)
+        .join(UserPoints)
+        .filter(
+            UserPoints.user_id == user_id,
+            PointTransaction.reference_type == "appointment",
+            PointTransaction.reference_id == appointment_id,
+            PointTransaction.type == TransactionType.EARN
+        )
+        .first()
+    )
+    if existing:
+        return None
+
     points_to_award = int(amount_spent)  # $1 = 1 point
     
     if points_to_award <= 0:

@@ -139,7 +139,7 @@ python -m app.main
 
 - `GET /api/v1/appointments` - 获取预约列表
 - `GET /api/v1/appointments/{id}` - 获取预约详情
-- `POST /api/v1/appointments` - 创建预约
+- `POST /api/v1/appointments` - 创建预约（返回 `order_number`）
 - `PUT /api/v1/appointments/{id}` - 更新预约
 - `DELETE /api/v1/appointments/{id}` - 取消预约
 

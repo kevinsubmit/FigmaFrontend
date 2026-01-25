@@ -368,6 +368,7 @@ Authorization: Bearer {token}
 ```json
 {
   "id": 1,
+  "order_number": "ORD260105000001",
   "user_id": 123,
   "store_id": 1,
   "service_id": 1,
@@ -396,6 +397,7 @@ Authorization: Bearer {token}
 [
   {
     "id": 1,
+    "order_number": "ORD260105000001",
     "store_id": 1,
     "service_id": 1,
     "appointment_date": "2026-01-10",

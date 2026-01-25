@@ -7,6 +7,7 @@ from typing import List, Optional
 
 from app.api.deps import get_db, get_current_user
 from app.crud import appointment as crud_appointment
+from app.crud import points as crud_points
 from app.schemas.appointment import (
     Appointment,
     AppointmentCreate,
@@ -415,6 +416,15 @@ def complete_appointment(
         appointment_id=appointment_id,
         appointment=AppointmentUpdate(status=AppointmentStatus.COMPLETED)
     )
+
+    # Award points based on service price (1 point per $1)
+    if service.price is not None:
+        crud_points.award_points_for_appointment(
+            db=db,
+            user_id=updated_appointment.user_id,
+            appointment_id=updated_appointment.id,
+            amount_spent=service.price
+        )
     
     # Send notification to customer
     notification_service.notify_appointment_completed(db, updated_appointment)

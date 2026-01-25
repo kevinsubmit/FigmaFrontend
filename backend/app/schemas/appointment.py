@@ -33,6 +33,7 @@ class AppointmentUpdate(BaseModel):
 class Appointment(AppointmentBase):
     """Appointment response schema"""
     id: int
+    order_number: Optional[str] = None
     user_id: int
     technician_id: Optional[int] = None
     status: AppointmentStatus

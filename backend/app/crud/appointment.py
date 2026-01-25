@@ -66,6 +66,11 @@ def create_appointment(db: Session, appointment: AppointmentCreate, user_id: int
     db.add(db_appointment)
     db.commit()
     db.refresh(db_appointment)
+    if not db_appointment.order_number:
+        date_part = datetime.utcnow().strftime("%y%m%d")
+        db_appointment.order_number = f"ORD{date_part}{db_appointment.id:06d}"
+        db.commit()
+        db.refresh(db_appointment)
     return db_appointment
 
 
