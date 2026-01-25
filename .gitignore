@@ -8,3 +8,7 @@ backend/nailsdash.db
 **/*.pyc
 **/.DS_Store
 node_modules/
+.DS_Store
+**/__pycache__/
+*.pyc
+backend/nailsdash.db
