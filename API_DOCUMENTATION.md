@@ -1098,6 +1098,72 @@ file: <binary_file_data>
 }
 ```
 
+### 18. 促销活动模块 (Promotions)
+
+#### 18.1 获取促销列表
+
+```
+GET /api/v1/promotions?skip=0&limit=50&store_id=1&scope=store&active_only=true&include_platform=true
+```
+
+#### 18.2 获取促销详情
+
+```
+GET /api/v1/promotions/{promotion_id}
+```
+
+#### 18.3 创建促销（管理员）
+
+```
+POST /api/v1/promotions/
+Authorization: Bearer {admin_token}
+```
+
+**请求体**：
+```json
+{
+  "scope": "store",
+  "store_id": 1,
+  "title": "Holiday Deals",
+  "type": "holiday",
+  "discount_type": "percentage",
+  "discount_value": 20,
+  "rules": "Valid for select services",
+  "start_at": "2026-11-20T00:00:00Z",
+  "end_at": "2026-11-30T23:59:59Z",
+  "is_active": true,
+  "service_rules": [
+    {
+      "service_id": 3,
+      "min_price": 30,
+      "max_price": 120
+    }
+  ]
+}
+```
+
+#### 18.4 更新促销（管理员）
+
+```
+PUT /api/v1/promotions/{promotion_id}
+Authorization: Bearer {admin_token}
+```
+
+**请求体（示例）**：
+```json
+{
+  "title": "Holiday Deals - Updated",
+  "discount_value": 25,
+  "service_rules": [
+    {
+      "service_id": 3,
+      "min_price": 40,
+      "max_price": 150
+    }
+  ]
+}
+```
+
 ## 错误处理
 
 ### 常见错误码

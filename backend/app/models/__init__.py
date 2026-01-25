@@ -23,5 +23,6 @@ from app.models.user_points import UserPoints
 from app.models.point_transaction import PointTransaction, TransactionType
 from app.models.coupon import Coupon, CouponType, CouponCategory
 from app.models.user_coupon import UserCoupon, CouponStatus
+from app.models.promotion import Promotion, PromotionService, PromotionScope, PromotionDiscountType
 
-__all__ = ["User", "VerificationCode", "Store", "StoreImage", "Service", "Appointment", "AppointmentStatus", "Technician", "StoreHours", "TechnicianUnavailable", "Notification", "NotificationType", "Review", "ReviewReply", "AppointmentReminder", "ReminderType", "ReminderStatus", "StoreFavorite", "StorePortfolio", "Referral", "Pin", "Tag", "pin_tags", "PinFavorite", "GiftCard", "GiftCardTransaction", "UserPoints", "PointTransaction", "TransactionType", "Coupon", "CouponType", "CouponCategory", "UserCoupon", "CouponStatus"]
+__all__ = ["User", "VerificationCode", "Store", "StoreImage", "Service", "Appointment", "AppointmentStatus", "Technician", "StoreHours", "TechnicianUnavailable", "Notification", "NotificationType", "Review", "ReviewReply", "AppointmentReminder", "ReminderType", "ReminderStatus", "StoreFavorite", "StorePortfolio", "Referral", "Pin", "Tag", "pin_tags", "PinFavorite", "GiftCard", "GiftCardTransaction", "UserPoints", "PointTransaction", "TransactionType", "Coupon", "CouponType", "CouponCategory", "UserCoupon", "CouponStatus", "Promotion", "PromotionService", "PromotionScope", "PromotionDiscountType"]
