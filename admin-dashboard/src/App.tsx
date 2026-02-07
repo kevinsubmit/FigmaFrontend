@@ -3,6 +3,9 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import Login from './pages/Login';
+import Register from './pages/Register';
+import StoreApplication from './pages/StoreApplication';
+import Applications from './pages/Applications';
 import Dashboard from './pages/Dashboard';
 import AppointmentsList from './pages/AppointmentsList';
 import AppointmentDetail from './pages/AppointmentDetail';
@@ -14,12 +17,22 @@ import Coupons from './pages/Coupons';
 import GiftCards from './pages/GiftCards';
 import Reviews from './pages/Reviews';
 import More from './pages/More';
+import ServiceCatalogPage from './pages/ServiceCatalog';
 
 const App = () => (
   <AuthProvider>
     <Routes>
       <Route path="/" element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/admin/login" element={<Login />} />
+      <Route path="/admin/register" element={<Register />} />
+      <Route
+        path="/admin/store-application"
+        element={
+          <ProtectedRoute>
+            <StoreApplication />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/admin/dashboard"
@@ -110,10 +123,26 @@ const App = () => (
         }
       />
       <Route
+        path="/admin/service-catalog"
+        element={
+          <ProtectedRoute>
+            <ServiceCatalogPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/admin/more"
         element={
           <ProtectedRoute>
             <More />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/applications"
+        element={
+          <ProtectedRoute>
+            <Applications />
           </ProtectedRoute>
         }
       />

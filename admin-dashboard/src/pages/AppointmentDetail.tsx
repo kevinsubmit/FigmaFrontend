@@ -77,6 +77,11 @@ const AppointmentDetail: React.FC = () => {
         <div className="card-surface p-4">
           <p className="text-xs uppercase tracking-[0.2em] text-gray-500 mb-2">Status</p>
           <span className="badge">{appointment.status}</span>
+          {appointment.cancel_reason && (
+            <p className="mt-3 text-sm text-gray-300">
+              Cancel reason: <span className="text-gray-400">{appointment.cancel_reason}</span>
+            </p>
+          )}
         </div>
         <div className="card-surface p-4 space-y-3">
           <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Cancel Reason</label>
@@ -88,6 +93,14 @@ const AppointmentDetail: React.FC = () => {
             placeholder="Optional"
           />
         </div>
+        {appointment.status === 'pending' && (
+          <button
+            onClick={() => updateStatus('confirmed')}
+            className="w-full rounded-xl border border-gold-500/60 py-3 text-sm font-semibold text-gold-300"
+          >
+            Confirm Appointment
+          </button>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => updateStatus('completed')}

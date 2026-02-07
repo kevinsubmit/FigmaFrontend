@@ -2,35 +2,36 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '../layout/AdminLayout';
 import { TopBar } from '../layout/TopBar';
-import { getStores, Store } from '../api/stores';
+import { getStoreById, getStores, Store } from '../api/stores';
 import { useAuth } from '../context/AuthContext';
 
 const StoresList: React.FC = () => {
   const navigate = useNavigate();
-  const { role, user } = useAuth();
+  const { user } = useAuth();
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
 
   const queryParams = useMemo(() => {
-    const params: Record<string, any> = { limit: 100 };
-    if (role === 'store_admin' && user?.store_id) {
-      params.store_id = user.store_id;
-    }
-    return params;
-  }, [role, user]);
+    return { limit: 100 };
+  }, []);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const data = await getStores(queryParams);
-        setStores(data);
+        if (user?.store_id) {
+          const store = await getStoreById(user.store_id);
+          setStores(store ? [store] : []);
+        } else {
+          const data = await getStores(queryParams);
+          setStores(data);
+        }
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, [queryParams]);
+  }, [queryParams, user?.store_id]);
 
   return (
     <AdminLayout>

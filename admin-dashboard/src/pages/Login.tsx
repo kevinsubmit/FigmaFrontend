@@ -74,6 +74,16 @@ const Login: React.FC = () => {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
+        <div className="text-center text-xs text-gray-500">
+          Need a store admin account?{' '}
+          <button
+            onClick={() => navigate('/admin/register')}
+            className="text-gold-300 underline-offset-4 hover:underline"
+            type="button"
+          >
+            Apply here
+          </button>
+        </div>
       </div>
     </div>
   );

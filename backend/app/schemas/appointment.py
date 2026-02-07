@@ -35,6 +35,13 @@ class AppointmentComplete(BaseModel):
     user_coupon_id: Optional[int] = None
 
 
+class AppointmentStatusUpdate(BaseModel):
+    """Appointment status update (admin)"""
+    status: AppointmentStatus
+    cancel_reason: Optional[str] = None
+    user_coupon_id: Optional[int] = None
+
+
 class Appointment(AppointmentBase):
     """Appointment response schema"""
     id: int
@@ -42,6 +49,7 @@ class Appointment(AppointmentBase):
     user_id: int
     technician_id: Optional[int] = None
     status: AppointmentStatus
+    cancel_reason: Optional[str] = None
     review_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None

@@ -1,7 +1,7 @@
 """
 Coupons API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.api.deps import get_db, get_current_user, get_current_admin_user
@@ -32,6 +32,21 @@ def get_available_coupons(
     Get all available coupons (public)
     """
     coupons = crud_coupons.get_active_coupons(db, skip, limit)
+    return coupons
+
+
+@router.get("/", response_model=List[CouponResponse])
+def get_coupons(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    active_only: Optional[bool] = None,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get coupon templates (admin only)
+    """
+    coupons = crud_coupons.get_coupons(db, skip=skip, limit=limit, active_only=active_only)
     return coupons
 
 

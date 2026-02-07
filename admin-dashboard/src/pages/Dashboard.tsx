@@ -1,13 +1,31 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarCheck, Coins, Sparkles, Store } from 'lucide-react';
 import { AdminLayout } from '../layout/AdminLayout';
 import { TopBar } from '../layout/TopBar';
 import { useAuth } from '../context/AuthContext';
+import { getStoreById } from '../api/stores';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, role } = useAuth();
+  const [storeName, setStoreName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadStoreName = async () => {
+      if (role !== 'store_admin' || !user?.store_id) {
+        setStoreName(null);
+        return;
+      }
+      try {
+        const store = await getStoreById(user.store_id);
+        setStoreName(store.name);
+      } catch (error) {
+        setStoreName(null);
+      }
+    };
+    loadStoreName();
+  }, [role, user?.store_id]);
 
   return (
     <AdminLayout>
@@ -16,7 +34,7 @@ const Dashboard: React.FC = () => {
         <div className="card-surface p-5">
           <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Welcome</p>
           <h2 className="mt-2 text-2xl font-semibold">
-            {user?.full_name || user?.username || 'Admin'}
+            {storeName || user?.full_name || user?.username || 'Admin'}
           </h2>
           <p className="mt-1 text-sm text-gray-500">
             Role: {role === 'super_admin' ? 'Super Admin' : 'Store Admin'}

@@ -11,6 +11,7 @@ class Service(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     store_id = Column(Integer, nullable=False, index=True)
+    catalog_id = Column(Integer, nullable=True, index=True)
     name = Column(String(255), nullable=False, index=True)
     description = Column(Text)
     price = Column(Float, nullable=False)

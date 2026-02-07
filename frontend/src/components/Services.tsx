@@ -4,9 +4,10 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader } from './ui/Loader';
 import { StoreDetails } from './StoreDetails';
-import { getStores as getStoresAPI, Store } from '../api/stores';
+import { getStoreImages, getStores as getStoresAPI, Store, StoreImage } from '../api/stores';
 import { SlidersHorizontal, X } from 'lucide-react';
 import { getPinById, Pin } from '../api/pins';
+import { getStoreRating, StoreRating } from '../api/reviews';
 
 type SortOption = 'recommended' | 'distance' | 'reviews';
 
@@ -36,6 +37,8 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
   const [pendingMinRating, setPendingMinRating] = useState<number | undefined>(undefined);
   const [selectedStore, setSelectedStore] = useState<Store | null>(initialSelectedStore || null);
   const [stores, setStores] = useState<Store[]>([]);
+  const [storeImageMap, setStoreImageMap] = useState<Record<number, StoreImage[]>>({});
+  const [storeRatingMap, setStoreRatingMap] = useState<Record<number, StoreRating>>({});
   const [error, setError] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(() => {
     // Load cached location from localStorage
@@ -157,6 +160,76 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
 
     fetchStores();
   }, [searchQuery, minRating, sortBy, userLocation]);
+
+  useEffect(() => {
+    if (stores.length === 0) return;
+    const missingStoreIds = stores
+      .map((store) => store.id)
+      .filter((storeId) => storeImageMap[storeId] === undefined);
+    if (missingStoreIds.length === 0) return;
+
+    let isCancelled = false;
+    Promise.all(
+      missingStoreIds.map(async (storeId) => {
+        try {
+          const images = await getStoreImages(storeId);
+          return [storeId, images] as const;
+        } catch (error) {
+          console.error(`Failed to load images for store ${storeId}:`, error);
+          return [storeId, []] as const;
+        }
+      })
+    ).then((entries) => {
+      if (isCancelled) return;
+      setStoreImageMap((prev) => {
+        const next = { ...prev };
+        entries.forEach(([storeId, images]) => {
+          next[storeId] = images.sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0));
+        });
+        return next;
+      });
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [stores, storeImageMap]);
+
+  useEffect(() => {
+    if (stores.length === 0) return;
+    const missingStoreIds = stores
+      .map((store) => store.id)
+      .filter((storeId) => storeRatingMap[storeId] === undefined);
+    if (missingStoreIds.length === 0) return;
+
+    let isCancelled = false;
+    Promise.all(
+      missingStoreIds.map(async (storeId) => {
+        try {
+          const rating = await getStoreRating(storeId);
+          return [storeId, rating] as const;
+        } catch (error) {
+          console.error(`Failed to load rating for store ${storeId}:`, error);
+          return [storeId, null] as const;
+        }
+      })
+    ).then((entries) => {
+      if (isCancelled) return;
+      setStoreRatingMap((prev) => {
+        const next = { ...prev };
+        entries.forEach(([storeId, rating]) => {
+          if (rating) {
+            next[storeId] = rating;
+          }
+        });
+        return next;
+      });
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [stores, storeRatingMap]);
   
   useEffect(() => {
     if (isSortOpen) {
@@ -222,7 +295,11 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
           return aDistance - bDistance;
         });
       case 'reviews':
-        return storesCopy.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        return storesCopy.sort((a, b) => {
+          const aRating = storeRatingMap[a.id]?.average_rating ?? a.rating ?? 0;
+          const bRating = storeRatingMap[b.id]?.average_rating ?? b.rating ?? 0;
+          return bRating - aRating;
+        });
       default:
         return storesCopy; // Recommended (default order)
     }
@@ -244,29 +321,46 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
 
   // Helper function to get primary image or first image
   const getPrimaryImage = (store: Store): string => {
-    if (store.images && store.images.length > 0) {
-      const primaryImage = store.images.find(img => img.is_primary === 1);
-      return primaryImage?.image_url || store.images[0].image_url;
+    const storefrontImages = storeImageMap[store.id] || [];
+    if (storefrontImages.length > 0) {
+      const primaryImage = storefrontImages.find(img => img.is_primary === 1);
+      const imageUrl = primaryImage?.image_url || storefrontImages[0].image_url;
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      return `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
     }
     return 'https://images.unsplash.com/photo-1619607146034-5a05296c8f9a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080';
   };
 
   // Helper function to get thumbnail images (excluding primary)
   const getThumbnailImages = (store: Store): string[] => {
-    if (store.images && store.images.length > 1) {
-      return store.images
+    const storefrontImages = storeImageMap[store.id] || [];
+    if (storefrontImages.length > 1) {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      return storefrontImages
         .filter(img => img.is_primary !== 1)
         .sort((a, b) => a.display_order - b.display_order)
         .slice(0, 4)
-        .map(img => img.image_url);
+        .map((img) => {
+          const imageUrl = img.image_url;
+          if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
+          return `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+        });
     }
-    // Fallback thumbnails
-    return [
-      "https://images.unsplash.com/photo-1673985402265-46c4d2e53982?w=400&q=80",
-      "https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400&q=80",
-      "https://images.unsplash.com/photo-1522337660859-02fbefca4702?w=400&q=80",
-      "https://images.unsplash.com/photo-1519017713917-9807534d0b0b?w=400&q=80"
-    ].slice(0, 4);
+    return [];
+  };
+
+  const getDisplayRating = (store: Store): number | null => {
+    const apiRating = storeRatingMap[store.id]?.average_rating;
+    if (typeof apiRating === 'number') return apiRating;
+    if (typeof store.rating === 'number') return store.rating;
+    return null;
+  };
+
+  const getDisplayReviewCount = (store: Store): number => {
+    const apiReviewCount = storeRatingMap[store.id]?.total_reviews;
+    if (typeof apiReviewCount === 'number') return apiReviewCount;
+    return store.review_count || 0;
   };
 
   if (isLoading) {
@@ -410,8 +504,8 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
                   
                   {/* Rating Badge */}
                   <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-white flex flex-col items-center min-w-[60px]">
-                     <span className="text-lg font-bold leading-none">{store.rating?.toFixed(1) || 'N/A'}</span>
-                     <span className="text-[10px] text-gray-300">{store.review_count || 0} reviews</span>
+                     <span className="text-lg font-bold leading-none">{getDisplayRating(store)?.toFixed(1) || 'N/A'}</span>
+                     <span className="text-[10px] text-gray-300">{getDisplayReviewCount(store)} reviews</span>
                   </div>
                 </div>
 

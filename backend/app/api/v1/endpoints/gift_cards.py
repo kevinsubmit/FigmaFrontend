@@ -1,11 +1,11 @@
 """
 Gift cards endpoints
 """
-from typing import List
+from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user, get_current_admin_user
 from app.models.user import User
 from app.schemas.gift_card import (
     GiftCardResponse,
@@ -25,6 +25,22 @@ from app.services import notification_service
 from app.core.config import settings
 
 router = APIRouter()
+
+
+@router.get("/", response_model=List[GiftCardResponse])
+def get_gift_cards(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    return crud_gift_cards.get_gift_cards(
+        db=db,
+        skip=skip,
+        limit=limit,
+        status=status
+    )
 
 
 @router.get("/my-cards", response_model=List[GiftCardResponse])

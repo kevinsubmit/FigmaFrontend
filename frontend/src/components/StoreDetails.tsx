@@ -53,7 +53,15 @@ import StoreReviews from './StoreReviews';
 import { Pin } from '../api/pins';
 import { getStoreRating, StoreRating } from '../api/reviews';
 import { getAvailableSlots, getTechniciansByStore, Technician } from '../api/technicians';
-import { addStoreToFavorites, checkIfStoreFavorited, getStoreHours, removeStoreFromFavorites, StoreHours } from '../api/stores';
+import {
+  addStoreToFavorites,
+  checkIfStoreFavorited,
+  getStoreHours,
+  getStoreImages,
+  removeStoreFromFavorites,
+  StoreHours,
+  StoreImage,
+} from '../api/stores';
 
 // Use the Store type from stores.service
 type Store = APIStore;
@@ -195,15 +203,23 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
   const [isStoreHoursLoading, setIsStoreHoursLoading] = useState(false);
   const [isStoreFavorited, setIsStoreFavorited] = useState(false);
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
+  const [storefrontImages, setStorefrontImages] = useState<StoreImage[]>(store.images || []);
 
   // Shared Observer Target
   const observerTarget = useRef(null);
 
+  const resolveStoreImageUrl = (url?: string | null): string => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return `${apiBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
   // Combine cover image and thumbnails for the gallery (match Services cards)
   const getPrimaryImage = (): string => {
-    if (store.images && store.images.length > 0) {
-      const primaryImage = store.images.find((img) => img.is_primary === 1);
-      return primaryImage?.image_url || store.images[0].image_url;
+    if (storefrontImages && storefrontImages.length > 0) {
+      const primaryImage = storefrontImages.find((img) => img.is_primary === 1);
+      const raw = primaryImage?.image_url || storefrontImages[0].image_url;
+      return resolveStoreImageUrl(raw);
     }
     return 'https://images.unsplash.com/photo-1619607146034-5a05296c8f9a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080';
   };
@@ -216,12 +232,12 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
   ];
 
   const getThumbnailImages = (): string[] => {
-    if (store.images && store.images.length > 1) {
-      return store.images
+    if (storefrontImages && storefrontImages.length > 1) {
+      return storefrontImages
         .filter((img) => img.is_primary !== 1)
         .sort((a, b) => a.display_order - b.display_order)
         .slice(0, 4)
-        .map((img) => img.image_url);
+        .map((img) => resolveStoreImageUrl(img.image_url));
     }
     return fallbackThumbnails;
   };
@@ -231,6 +247,22 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
     const thumbnails = getThumbnailImages();
     return Array.from(new Set([primary, ...thumbnails]));
   };
+
+  useEffect(() => {
+    setStorefrontImages(store.images || []);
+  }, [store.id, store.images]);
+
+  useEffect(() => {
+    getStoreImages(store.id)
+      .then((rows) => {
+        if (rows.length > 0) {
+          setStorefrontImages(rows);
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to load store images:', error);
+      });
+  }, [store.id]);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token') || localStorage.getItem('token');
@@ -456,9 +488,97 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
+  const parseOpeningHoursFallback = useCallback((): StoreHours[] => {
+    if (!store.opening_hours) return [];
+
+    const normalized: StoreHours[] = [];
+    const dayKeyToIndex: Record<string, number> = {
+      mon: 0,
+      tue: 1,
+      wed: 2,
+      thu: 3,
+      fri: 4,
+      sat: 5,
+      sun: 6,
+    };
+
+    try {
+      const parsed = JSON.parse(store.opening_hours);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        Object.entries(parsed as Record<string, string>).forEach(([key, value]) => {
+          const dayIndex = dayKeyToIndex[key.toLowerCase()];
+          if (dayIndex === undefined) return;
+
+          if (!value || value.toLowerCase() === 'closed') {
+            normalized.push({
+              id: -1000 - dayIndex,
+              store_id: store.id,
+              day_of_week: dayIndex,
+              open_time: '00:00',
+              close_time: '00:00',
+              is_closed: true,
+            });
+            return;
+          }
+
+          const [openRaw, closeRaw] = value.split('-');
+          if (!openRaw || !closeRaw) return;
+          normalized.push({
+            id: -1000 - dayIndex,
+            store_id: store.id,
+            day_of_week: dayIndex,
+            open_time: openRaw.trim(),
+            close_time: closeRaw.trim(),
+            is_closed: false,
+          });
+        });
+        return normalized.sort((a, b) => a.day_of_week - b.day_of_week);
+      }
+    } catch {
+      // fallback to legacy text format below
+    }
+
+    const legacy = store.opening_hours.match(/^(.+)\s+(\d{2}:\d{2})-(\d{2}:\d{2})$/);
+    if (!legacy) return [];
+    const daysPart = legacy[1].trim();
+    const openTime = legacy[2];
+    const closeTime = legacy[3];
+    const dayTokenToIndex: Record<string, number> = {
+      Mon: 0,
+      Tue: 1,
+      Wed: 2,
+      Thu: 3,
+      Fri: 4,
+      Sat: 5,
+      Sun: 6,
+    };
+
+    daysPart
+      .split(',')
+      .map((token) => token.trim())
+      .forEach((token) => {
+        const dayIndex = dayTokenToIndex[token];
+        if (dayIndex === undefined) return;
+        normalized.push({
+          id: -2000 - dayIndex,
+          store_id: store.id,
+          day_of_week: dayIndex,
+          open_time: openTime,
+          close_time: closeTime,
+          is_closed: false,
+        });
+      });
+    return normalized.sort((a, b) => a.day_of_week - b.day_of_week);
+  }, [store.id, store.opening_hours]);
+
+  const effectiveStoreHours = useMemo(() => {
+    if (storeHours.length > 0) return storeHours;
+    return parseOpeningHoursFallback();
+  }, [storeHours, parseOpeningHoursFallback]);
+
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   const todayIndex = (new Date().getDay() + 6) % 7;
-  const todayHours = storeHours.find((hour) => hour.day_of_week === todayIndex);
+  const todayHours = effectiveStoreHours.find((hour) => hour.day_of_week === todayIndex);
 
   const handleBookingClick = (service: Service) => {
     setSelectedServices(prev => {
@@ -663,7 +783,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
   const getStoreHoursForDate = (dateKey: string) => {
     const selectedDay = new Date(dateKey).getDay();
     const dayOfWeek = selectedDay === 0 ? 6 : selectedDay - 1;
-    return storeHours.find((hour) => hour.day_of_week === dayOfWeek) || null;
+    return effectiveStoreHours.find((hour) => hour.day_of_week === dayOfWeek) || null;
   };
 
   const buildSlotsFromStoreHours = (dateKey: string, durationMinutes: number) => {
@@ -810,7 +930,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
     };
 
     loadAvailableSlots();
-  }, [formattedSelectedDate, selectedServiceId, selectedStaff, technicians, selectedDate, storeHours, isStoreHoursLoading, selectedServiceDuration]);
+  }, [formattedSelectedDate, selectedServiceId, selectedStaff, technicians, selectedDate, effectiveStoreHours, isStoreHoursLoading, selectedServiceDuration]);
 
   useEffect(() => {
     if (selectedTime && !availableSlots.includes(selectedTime)) {
@@ -1101,7 +1221,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                             </div>
                             <button 
                                 onClick={() => setShowFullHours(!showFullHours)}
-                                disabled={storeHours.length === 0}
+                                disabled={effectiveStoreHours.length === 0}
                                 className="flex items-center gap-1 text-[#D4AF37] text-sm font-medium hover:opacity-80 transition-opacity disabled:opacity-40"
                             >
                                 Show full week
@@ -1117,14 +1237,14 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                                         className="overflow-hidden"
                                     >
                                         <div className="mt-4 space-y-2 pl-4 border-l border-[#333] text-sm">
-                                            {storeHours.length === 0 ? (
+                                            {effectiveStoreHours.length === 0 ? (
                                                 <div className="flex justify-between text-gray-500">
                                                     <span>Hours not set</span>
                                                     <span>-</span>
                                                 </div>
                                             ) : (
                                               dayNames.map((day, index) => {
-                                                const hours = storeHours.find((hour) => hour.day_of_week === index);
+                                                const hours = effectiveStoreHours.find((hour) => hour.day_of_week === index);
                                                 if (!hours) {
                                                   return (
                                                     <div key={day} className="flex justify-between text-gray-500">

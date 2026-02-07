@@ -13,10 +13,11 @@ export interface Appointment {
   appointment_time: string;
   status: string;
   notes?: string | null;
+  cancel_reason?: string | null;
 }
 
 export const getAppointments = async (params?: Record<string, any>) => {
-  const response = await api.get('/appointments', { params });
+  const response = await api.get('/appointments/admin', { params });
   return response.data as Appointment[];
 };
 

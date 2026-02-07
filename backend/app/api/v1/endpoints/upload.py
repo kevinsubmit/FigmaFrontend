@@ -19,8 +19,9 @@ router = APIRouter()
 UPLOAD_DIR = Path(settings.UPLOAD_DIR)
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-# 允许的图片格式
-ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+# 允许的图片格式（仅 JPG/JPEG/PNG）
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"}
+ALLOWED_MIME_TYPES = {"image/jpeg", "image/jpg", "image/png"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
 
@@ -44,11 +45,17 @@ async def upload_images(
     
     for file in files:
         # 检查文件扩展名
-        file_ext = Path(file.filename).suffix.lower()
+        filename = file.filename or ""
+        file_ext = Path(filename).suffix.lower()
         if file_ext not in ALLOWED_EXTENSIONS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"File type {file_ext} not allowed. Allowed types: {', '.join(ALLOWED_EXTENSIONS)}"
+                detail="File type not allowed. Allowed formats: jpg, jpeg, png"
+            )
+        if file.content_type and file.content_type.lower() not in ALLOWED_MIME_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File type not allowed. Allowed formats: jpg, jpeg, png"
             )
         
         # 读取文件内容

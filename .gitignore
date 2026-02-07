@@ -1,6 +1,7 @@
 backend/.env
 backend/uploads/
 backend/*.log
+backend/*.pid
 backend/venv311/
 backend/.venv/
 backend/nailsdash.db
@@ -12,3 +13,10 @@ node_modules/
 **/__pycache__/
 *.pyc
 backend/nailsdash.db
+frontend/*.pid
+frontend/*.log
+admin-dashboard/.env
+admin-dashboard/dist/
+admin-dashboard/*.log
+admin-dashboard/*.pid
+.run/

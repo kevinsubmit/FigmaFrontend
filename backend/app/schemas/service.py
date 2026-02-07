@@ -18,6 +18,7 @@ class ServiceBase(BaseModel):
 class ServiceCreate(ServiceBase):
     """Service create schema"""
     store_id: int
+    catalog_id: Optional[int] = None
 
 
 class ServiceUpdate(BaseModel):
@@ -27,6 +28,7 @@ class ServiceUpdate(BaseModel):
     price: Optional[float] = None
     duration_minutes: Optional[int] = None
     category: Optional[str] = None
+    catalog_id: Optional[int] = None
     is_active: Optional[int] = None
 
 
@@ -34,9 +36,61 @@ class Service(ServiceBase):
     """Service response schema"""
     id: int
     store_id: int
+    catalog_id: Optional[int] = None
     is_active: int
     created_at: datetime
     updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+
+
+class ServiceCatalogBase(BaseModel):
+    """Service catalog base schema"""
+    name: str
+    category: Optional[str] = None
+    description: Optional[str] = None
+    default_duration_minutes: Optional[int] = None
+    is_active: int = 1
+    sort_order: int = 0
+
+
+class ServiceCatalogCreate(ServiceCatalogBase):
+    """Create service catalog item"""
+    pass
+
+
+class ServiceCatalogUpdate(BaseModel):
+    """Update service catalog item"""
+    name: Optional[str] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    default_duration_minutes: Optional[int] = None
+    is_active: Optional[int] = None
+    sort_order: Optional[int] = None
+
+
+class ServiceCatalog(ServiceCatalogBase):
+    """Service catalog response"""
+    id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class StoreServiceAssign(BaseModel):
+    """Assign a catalog service to a store with store-specific pricing"""
+    catalog_id: int
+    price: float
+    duration_minutes: int
+    description: Optional[str] = None
+
+
+class StoreServiceUpdate(BaseModel):
+    """Update store-specific service config"""
+    price: Optional[float] = None
+    duration_minutes: Optional[int] = None
+    description: Optional[str] = None
+    is_active: Optional[int] = None

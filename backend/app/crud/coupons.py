@@ -24,6 +24,24 @@ def get_active_coupons(db: Session, skip: int = 0, limit: int = 50) -> List[Coup
         .all()
 
 
+def get_coupons(
+    db: Session,
+    skip: int = 0,
+    limit: int = 50,
+    active_only: Optional[bool] = None
+) -> List[Coupon]:
+    """Get coupons (optionally filter by active status)"""
+    query = db.query(Coupon)
+    if active_only is True:
+        query = query.filter(Coupon.is_active == True)
+
+    return query\
+        .order_by(Coupon.created_at.desc())\
+        .offset(skip)\
+        .limit(limit)\
+        .all()
+
+
 def get_exchangeable_coupons(db: Session) -> List[Coupon]:
     """Get coupons that can be exchanged with points"""
     return db.query(Coupon)\

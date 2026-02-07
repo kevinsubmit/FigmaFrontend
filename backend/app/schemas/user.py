@@ -54,6 +54,8 @@ class UserInDB(UserBase):
     phone_verified: bool
     is_active: bool
     is_admin: bool
+    store_id: Optional[int] = None
+    store_admin_status: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     

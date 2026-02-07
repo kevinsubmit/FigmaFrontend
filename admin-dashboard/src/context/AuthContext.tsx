@@ -10,6 +10,7 @@ export interface AdminUser {
   full_name?: string | null;
   is_admin: boolean;
   store_id?: number | null;
+  store_admin_status?: string | null;
 }
 
 interface AuthContextValue {
@@ -35,6 +36,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const refreshUser = async () => {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
     try {
       const data = await fetchCurrentUser();
       setUser(data);

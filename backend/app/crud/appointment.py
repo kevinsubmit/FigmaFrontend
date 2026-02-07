@@ -57,6 +57,41 @@ def get_user_appointments_with_details(db: Session, user_id: int, skip: int = 0,
     return appointments
 
 
+def get_appointments_with_details(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    store_id: Optional[int] = None,
+    status: Optional[AppointmentStatus] = None
+):
+    """Get appointments with store and service details (admin)"""
+    appointments = db.query(
+        Appointment,
+        Store.name.label('store_name'),
+        Service.name.label('service_name'),
+        Service.price.label('service_price'),
+        Service.duration_minutes.label('service_duration'),
+        Review.id.label('review_id')
+    ).join(
+        Store, Appointment.store_id == Store.id
+    ).join(
+        Service, Appointment.service_id == Service.id
+    ).outerjoin(
+        Review, Review.appointment_id == Appointment.id
+    )
+
+    if store_id is not None:
+        appointments = appointments.filter(Appointment.store_id == store_id)
+
+    if status is not None:
+        appointments = appointments.filter(Appointment.status == status)
+
+    return appointments.order_by(
+        Appointment.appointment_date.desc(),
+        Appointment.appointment_time.desc()
+    ).offset(skip).limit(limit).all()
+
+
 def create_appointment(db: Session, appointment: AppointmentCreate, user_id: int) -> Appointment:
     """Create new appointment"""
     db_appointment = Appointment(

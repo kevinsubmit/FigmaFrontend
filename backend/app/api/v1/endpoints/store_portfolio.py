@@ -9,9 +9,9 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_store_admin
 from app.models.user import User
-from app.crud import store_portfolio as crud_portfolio
+from app.crud import store as crud_store, store_portfolio as crud_portfolio
 from app.schemas.store_portfolio import StorePortfolio, StorePortfolioCreate, StorePortfolioUpdate
 from app.core.config import settings
 
@@ -52,7 +52,7 @@ async def upload_portfolio_image(
     title: str = None,
     description: str = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_store_admin)
 ):
     """
     Upload a portfolio image (requires authentication)
@@ -62,16 +62,34 @@ async def upload_portfolio_image(
     - **title**: Optional title for the work
     - **description**: Optional description
     """
-    # TODO: Add authorization check (only store manager/admin can upload)
-    # For now, any authenticated user can upload
+    store = crud_store.get_store(db, store_id=store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    if not current_user.is_admin and current_user.store_id != store_id:
+        raise HTTPException(status_code=403, detail="You can only upload portfolio images for your own store")
     
-    # Validate file type
-    allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
-    file_ext = os.path.splitext(file.filename)[1].lower()
+    # Validate file type (JPG/JPEG/PNG only)
+    allowed_extensions = {'.jpg', '.jpeg', '.png'}
+    allowed_mime_types = {"image/jpeg", "image/jpg", "image/png"}
+    mime_to_ext = {
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/png": ".png",
+    }
+    filename = file.filename or ""
+    file_ext = os.path.splitext(filename)[1].lower()
+    if not file_ext and file.content_type:
+        file_ext = mime_to_ext.get(file.content_type.lower(), "")
     if file_ext not in allowed_extensions:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid file type. Allowed types: {', '.join(allowed_extensions)}"
+            detail="Invalid file type. Allowed formats: jpg, jpeg, png"
+        )
+    if file.content_type and file.content_type.lower() not in allowed_mime_types:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Allowed formats: jpg, jpeg, png"
         )
     
     # Generate unique filename
@@ -108,14 +126,18 @@ def update_portfolio_item(
     portfolio_id: int,
     portfolio_data: StorePortfolioUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_store_admin)
 ):
     """
     Update a portfolio item (requires authentication)
     
     - **portfolio_id**: Portfolio item ID
     """
-    # TODO: Add authorization check (only store manager/admin can update)
+    existing = crud_portfolio.get_portfolio_item(db, portfolio_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Portfolio item not found")
+    if not current_user.is_admin and current_user.store_id != existing.store_id:
+        raise HTTPException(status_code=403, detail="You can only update portfolio images for your own store")
     
     portfolio_item = crud_portfolio.update_portfolio_item(
         db,
@@ -133,19 +155,19 @@ def update_portfolio_item(
 def delete_portfolio_item(
     portfolio_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_store_admin)
 ):
     """
     Delete a portfolio item (requires authentication)
     
     - **portfolio_id**: Portfolio item ID
     """
-    # TODO: Add authorization check (only store manager/admin can delete)
-    
     # Get portfolio item to delete the file
     portfolio_item = crud_portfolio.get_portfolio_item(db, portfolio_id)
     if not portfolio_item:
         raise HTTPException(status_code=404, detail="Portfolio item not found")
+    if not current_user.is_admin and current_user.store_id != portfolio_item.store_id:
+        raise HTTPException(status_code=403, detail="You can only delete portfolio images for your own store")
     
     # Delete file from filesystem
     if portfolio_item.image_url.startswith('/uploads/'):

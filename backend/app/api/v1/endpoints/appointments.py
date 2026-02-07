@@ -16,7 +16,8 @@ from app.schemas.appointment import (
     AppointmentCancel,
     AppointmentReschedule,
     AppointmentNotesUpdate,
-    AppointmentComplete
+    AppointmentComplete,
+    AppointmentStatusUpdate
 )
 from app.schemas.user import UserResponse
 from app.models.appointment import AppointmentStatus
@@ -104,6 +105,70 @@ def get_my_appointments(
             "review_id": review_id
         })
     
+    return result
+
+
+@router.get("/admin", response_model=List[AppointmentWithDetails])
+def get_admin_appointments(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=200),
+    status: Optional[str] = Query(None, description="Filter by status"),
+    store_id: Optional[int] = Query(None, description="Filter by store ID (super admin only)"),
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get appointments with details (Store admin only)
+
+    - Super admin can view appointments from any store
+    - Store manager can only view appointments from their own store
+    """
+    if not current_user.is_admin and not current_user.store_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Only store administrators can view appointments"
+        )
+    if not current_user.is_admin and current_user.store_admin_status != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail="Store admin approval required"
+        )
+
+    resolved_store_id = store_id
+    if not current_user.is_admin:
+        resolved_store_id = current_user.store_id
+    elif store_id is None:
+        resolved_store_id = None
+
+    status_enum = None
+    if status:
+        try:
+            status_enum = AppointmentStatus(status)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid status"
+            )
+
+    appointments_data = crud_appointment.get_appointments_with_details(
+        db,
+        skip=skip,
+        limit=limit,
+        store_id=resolved_store_id,
+        status=status_enum
+    )
+
+    result = []
+    for appt, store_name, service_name, service_price, service_duration, review_id in appointments_data:
+        result.append({
+            **appt.__dict__,
+            "store_name": store_name,
+            "service_name": service_name,
+            "service_price": service_price,
+            "service_duration": service_duration,
+            "review_id": review_id
+        })
+
     return result
 
 
@@ -294,6 +359,164 @@ def update_appointment_notes(
     return updated_appointment
 
 
+@router.put("/{appointment_id}/status", response_model=Appointment)
+def update_appointment_status(
+    appointment_id: int,
+    status_update: AppointmentStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Update appointment status (Store admin only)
+
+    Supports: confirmed, completed, cancelled
+    """
+    from app.models.service import Service
+
+    # Verify user is store admin
+    if not current_user.is_admin and not current_user.store_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Only store administrators can update appointment status"
+        )
+    if not current_user.is_admin and current_user.store_admin_status != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail="Store admin approval required"
+        )
+
+    appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    service = db.query(Service).filter(Service.id == appointment.service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    if not current_user.is_admin and service.store_id != current_user.store_id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only update appointments from your own store"
+        )
+
+    target_status = status_update.status
+    if target_status == AppointmentStatus.CONFIRMED:
+        if appointment.status == AppointmentStatus.CANCELLED:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot confirm a cancelled appointment"
+            )
+        if appointment.status == AppointmentStatus.COMPLETED:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot confirm a completed appointment"
+            )
+
+        updated_appointment = crud_appointment.update_appointment(
+            db,
+            appointment_id=appointment_id,
+            appointment=AppointmentUpdate(status=AppointmentStatus.CONFIRMED)
+        )
+        notification_service.notify_appointment_confirmed(db, updated_appointment)
+        return updated_appointment
+
+    if target_status == AppointmentStatus.COMPLETED:
+        if appointment.status == AppointmentStatus.CANCELLED:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot complete a cancelled appointment"
+            )
+        if appointment.status == AppointmentStatus.COMPLETED:
+            raise HTTPException(
+                status_code=400,
+                detail="Appointment is already completed"
+            )
+
+        updated_appointment = crud_appointment.update_appointment(
+            db,
+            appointment_id=appointment_id,
+            appointment=AppointmentUpdate(status=AppointmentStatus.COMPLETED)
+        )
+
+        if status_update.user_coupon_id:
+            user_coupon = crud_coupons.get_user_coupon(
+                db, status_update.user_coupon_id, updated_appointment.user_id
+            )
+            if not user_coupon:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Coupon not found for this user"
+                )
+
+            coupon = crud_coupons.get_coupon(db, user_coupon.coupon_id)
+            if not coupon:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Coupon template not found"
+                )
+
+            discount = crud_coupons.calculate_discount(
+                coupon=coupon,
+                original_amount=service.price or 0
+            )
+
+            if discount <= 0:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Coupon is not applicable to this appointment amount"
+                )
+
+            try:
+                crud_coupons.use_coupon(
+                    db=db,
+                    user_coupon_id=status_update.user_coupon_id,
+                    user_id=updated_appointment.user_id,
+                    appointment_id=updated_appointment.id
+                )
+            except ValueError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=str(e)
+                )
+
+        if service.price is not None:
+            points_txn = crud_points.award_points_for_appointment(
+                db=db,
+                user_id=updated_appointment.user_id,
+                appointment_id=updated_appointment.id,
+                amount_spent=service.price
+            )
+            if points_txn:
+                notification_service.notify_points_earned(
+                    db=db,
+                    appointment=updated_appointment,
+                    points=points_txn.amount
+                )
+
+        notification_service.notify_appointment_completed(db, updated_appointment)
+        return updated_appointment
+
+    if target_status == AppointmentStatus.CANCELLED:
+        if appointment.status == AppointmentStatus.CANCELLED:
+            raise HTTPException(status_code=400, detail="Appointment is already cancelled")
+        if appointment.status == AppointmentStatus.COMPLETED:
+            raise HTTPException(status_code=400, detail="Cannot cancel a completed appointment")
+
+        cancelled_appointment = crud_appointment.cancel_appointment_with_reason(
+            db,
+            appointment_id=appointment_id,
+            cancel_reason=status_update.cancel_reason,
+            cancelled_by=current_user.id
+        )
+        notification_service.notify_appointment_cancelled(
+            db, cancelled_appointment, cancelled_by_admin=True
+        )
+        reminder_service.handle_appointment_cancellation(db, appointment_id)
+        return cancelled_appointment
+
+    raise HTTPException(status_code=400, detail="Unsupported status update")
+
+
 @router.patch("/{appointment_id}/confirm", response_model=Appointment)
 def confirm_appointment(
     appointment_id: int,
@@ -314,6 +537,11 @@ def confirm_appointment(
         raise HTTPException(
             status_code=403,
             detail="Only store administrators can confirm appointments"
+        )
+    if not current_user.is_admin and current_user.store_admin_status != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail="Store admin approval required"
         )
     
     # Get appointment
@@ -380,6 +608,11 @@ def complete_appointment(
         raise HTTPException(
             status_code=403,
             detail="Only store administrators can complete appointments"
+        )
+    if not current_user.is_admin and current_user.store_admin_status != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail="Store admin approval required"
         )
     
     # Get appointment

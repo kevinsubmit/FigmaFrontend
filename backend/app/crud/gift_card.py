@@ -54,6 +54,25 @@ def get_user_gift_cards(db: Session, user_id: int, skip: int = 0, limit: int = 5
     )
 
 
+def get_gift_cards(
+    db: Session,
+    skip: int = 0,
+    limit: int = 50,
+    status: Optional[str] = None
+) -> List[GiftCard]:
+    query = db.query(GiftCard)
+    if status:
+        query = query.filter(GiftCard.status == status)
+
+    return (
+        query
+        .order_by(GiftCard.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+
+
 def get_gift_card_summary(db: Session, user_id: int) -> Dict[str, float]:
     total_count = (
         db.query(func.count(GiftCard.id))
