@@ -47,7 +47,8 @@ def get_services(
 
 def get_store_services(db: Session, store_id: int, include_inactive: bool = False) -> List[Service]:
     """Get all services for a specific store"""
-    query = db.query(Service).filter(Service.store_id == store_id)
+    # Only expose services linked to super-admin catalog.
+    query = db.query(Service).filter(Service.store_id == store_id, Service.catalog_id.isnot(None))
     if not include_inactive:
         query = query.filter(Service.is_active == 1)
     return query.order_by(Service.id.desc()).all()

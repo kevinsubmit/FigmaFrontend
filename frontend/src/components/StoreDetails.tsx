@@ -63,6 +63,13 @@ import {
   StoreImage,
 } from '../api/stores';
 
+const formatLocalDateYYYYMMDD = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // Use the Store type from stores.service
 type Store = APIStore;
 
@@ -664,6 +671,15 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
       
       // Format time as HH:MM:SS
       const appointmentTime = `${String(appointmentHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+
+      const selectedDateTime = new Date(selectedDate);
+      selectedDateTime.setHours(appointmentHours, minutes, 0, 0);
+      const now = new Date();
+      if (selectedDateTime <= now) {
+        setBookingError('Past time cannot be booked. Please choose a future time.');
+        setIsBooking(false);
+        return;
+      }
       
       // Get first service ID (for now, we only support single service booking)
       const serviceId = selectedServices[0]?.id;
@@ -906,7 +922,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
 
         const sortedSlots = Array.from(combinedSlots).sort();
 
-        if (formattedSelectedDate === new Date().toISOString().split('T')[0]) {
+        if (formattedSelectedDate === formatLocalDateYYYYMMDD(new Date())) {
           const now = new Date();
           const minTime = new Date(now.getTime() + 30 * 60 * 1000);
           const filtered = sortedSlots.filter((time) => {

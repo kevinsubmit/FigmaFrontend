@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 
 const tabs = [
   { label: 'Home', to: '/admin/dashboard', icon: Home },
-  { label: 'Orders', to: '/admin/appointments', icon: CalendarCheck },
+  { label: 'Appointments', to: '/admin/appointments', icon: CalendarCheck },
   { label: 'Stores', to: '/admin/stores', icon: Store },
   { label: 'Promos', to: '/admin/promotions', icon: Sparkles },
   { label: 'More', to: '/admin/more', icon: MoreHorizontal },

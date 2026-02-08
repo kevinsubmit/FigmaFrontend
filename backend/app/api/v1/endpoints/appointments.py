@@ -4,6 +4,7 @@ Appointments API endpoints
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime
 
 from app.api.deps import get_db, get_current_user
 from app.crud import appointment as crud_appointment
@@ -28,6 +29,15 @@ from app.crud import coupons as crud_coupons
 
 router = APIRouter()
 
+def _ensure_not_past_appointment(appointment_date, appointment_time):
+    appointment_datetime = datetime.combine(appointment_date, appointment_time)
+    now = datetime.now()
+    if appointment_datetime <= now:
+        raise HTTPException(
+            status_code=400,
+            detail="Past time cannot be booked. Please select a future time."
+        )
+
 
 @router.post("/", response_model=Appointment)
 def create_appointment(
@@ -39,6 +49,7 @@ def create_appointment(
     Create a new appointment (requires authentication)
     """
     user_id = current_user.id
+    _ensure_not_past_appointment(appointment.appointment_date, appointment.appointment_time)
 
     service = db.query(Service).filter(Service.id == appointment.service_id).first()
     if not service:
@@ -287,10 +298,33 @@ def reschedule_appointment(
     
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
+
+    _ensure_not_past_appointment(reschedule_data.new_date, reschedule_data.new_time)
     
-    # Check if appointment belongs to current user
+    # Appointment owner can reschedule. Store admins can reschedule appointments in their store.
     if appointment.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to reschedule this appointment")
+        from app.models.service import Service
+
+        if not current_user.is_admin and not current_user.store_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Not authorized to reschedule this appointment"
+            )
+        if not current_user.is_admin and current_user.store_admin_status != "approved":
+            raise HTTPException(
+                status_code=403,
+                detail="Store admin approval required"
+            )
+
+        service = db.query(Service).filter(Service.id == appointment.service_id).first()
+        if not service:
+            raise HTTPException(status_code=404, detail="Service not found")
+
+        if not current_user.is_admin and service.store_id != current_user.store_id:
+            raise HTTPException(
+                status_code=403,
+                detail="You can only reschedule appointments from your own store"
+            )
     
     # Check if appointment can be rescheduled
     if appointment.status == AppointmentStatus.CANCELLED:
@@ -354,9 +388,30 @@ def update_appointment_notes(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     
-    # Check if appointment belongs to current user
+    # Appointment owner can edit notes. Store admins can edit notes for their store.
     if appointment.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to update this appointment")
+        from app.models.service import Service
+
+        if not current_user.is_admin and not current_user.store_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Not authorized to update this appointment"
+            )
+        if not current_user.is_admin and current_user.store_admin_status != "approved":
+            raise HTTPException(
+                status_code=403,
+                detail="Store admin approval required"
+            )
+
+        service = db.query(Service).filter(Service.id == appointment.service_id).first()
+        if not service:
+            raise HTTPException(status_code=404, detail="Service not found")
+
+        if not current_user.is_admin and service.store_id != current_user.store_id:
+            raise HTTPException(
+                status_code=403,
+                detail="You can only update notes for appointments from your own store"
+            )
     
     # Update notes
     updated_appointment = crud_appointment.update_appointment(

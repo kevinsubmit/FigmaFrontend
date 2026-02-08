@@ -7,6 +7,13 @@ import { Service } from '../api/services';
 import { Technician } from '../api/technicians';
 import { cancelAppointment, rescheduleAppointment, updateAppointmentNotes } from '../api/appointments';
 
+const formatLocalDateYYYYMMDD = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 interface AppointmentWithDetails extends Appointment {
   store?: Store;
   service?: Service;
@@ -458,7 +465,7 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
                   type="date"
                   value={newDate}
                   onChange={(e) => setNewDate(e.target.value)}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={formatLocalDateYYYYMMDD(new Date())}
                     className="w-full px-4 py-3 pr-11 rounded-xl bg-white/10 text-white placeholder-gray-500 border border-white/10 focus:ring-2 focus:ring-[#D4AF37]/60 focus:border-transparent"
                   />
                   <Calendar className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
