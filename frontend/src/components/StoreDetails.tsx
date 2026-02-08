@@ -954,6 +954,13 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
     }
   }, [selectedTime, availableSlots]);
 
+  useEffect(() => {
+    // Clear stale booking error once user adjusts date/time.
+    if (bookingError) {
+      setBookingError(null);
+    }
+  }, [selectedDate, selectedTime]);
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black animate-in slide-in-from-right duration-500 pb-32">
       {/* Header */}

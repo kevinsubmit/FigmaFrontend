@@ -1,7 +1,7 @@
 """
 Appointments API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
@@ -25,6 +25,7 @@ from app.models.appointment import AppointmentStatus
 from app.models.service import Service
 from app.services import notification_service
 from app.services import reminder_service
+from app.services import risk_service
 from app.crud import coupons as crud_coupons
 
 router = APIRouter()
@@ -41,6 +42,7 @@ def _ensure_not_past_appointment(appointment_date, appointment_time):
 
 @router.post("/", response_model=Appointment)
 def create_appointment(
+    request: Request,
     appointment: AppointmentCreate,
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user)
@@ -50,6 +52,24 @@ def create_appointment(
     """
     user_id = current_user.id
     _ensure_not_past_appointment(appointment.appointment_date, appointment.appointment_time)
+    ip_address = request.client.host if request.client else None
+
+    decision = risk_service.evaluate_booking_request(
+        db,
+        user_id=user_id,
+        appointment_date=appointment.appointment_date,
+        ip_address=ip_address,
+    )
+    if not decision.allowed:
+        risk_service.log_risk_event(
+            db,
+            user_id=user_id,
+            event_type="booking_blocked",
+            ip_address=ip_address,
+            reason=decision.error_code,
+            meta={"appointment_date": str(appointment.appointment_date)},
+        )
+        raise HTTPException(status_code=decision.status_code, detail=decision.message)
 
     service = db.query(Service).filter(Service.id == appointment.service_id).first()
     if not service:
@@ -79,6 +99,14 @@ def create_appointment(
         db,
         appointment=appointment,
         user_id=user_id
+    )
+    risk_service.log_risk_event(
+        db,
+        user_id=user_id,
+        event_type="appointment_created",
+        appointment_id=db_appointment.id,
+        ip_address=ip_address,
+        meta={"appointment_date": str(db_appointment.appointment_date)},
     )
     
     # Send notification to store admin
@@ -274,6 +302,14 @@ def cancel_appointment(
         cancel_reason=cancel_data.cancel_reason,
         cancelled_by=current_user.id
     )
+    risk_service.log_risk_event(
+        db,
+        user_id=current_user.id,
+        event_type="appointment_cancelled",
+        appointment_id=cancelled_appointment.id,
+        reason="cancel_by_user",
+    )
+    risk_service.refresh_user_risk_state(db, user_id=current_user.id)
     
     # Send notification (cancelled by customer)
     notification_service.notify_appointment_cancelled(db, cancelled_appointment, cancelled_by_admin=False)
@@ -572,6 +608,15 @@ def update_appointment_status(
             cancel_reason=status_update.cancel_reason,
             cancelled_by=current_user.id
         )
+        risk_service.log_risk_event(
+            db,
+            user_id=cancelled_appointment.user_id,
+            event_type="appointment_cancelled",
+            appointment_id=cancelled_appointment.id,
+            reason="cancel_by_admin",
+            meta={"admin_id": current_user.id},
+        )
+        risk_service.refresh_user_risk_state(db, user_id=cancelled_appointment.user_id)
         notification_service.notify_appointment_cancelled(
             db, cancelled_appointment, cancelled_by_admin=True
         )
@@ -650,6 +695,73 @@ def confirm_appointment(
     notification_service.notify_appointment_confirmed(db, updated_appointment)
     
     return updated_appointment
+
+
+@router.post("/{appointment_id}/no-show", response_model=Appointment)
+def mark_appointment_no_show(
+    appointment_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Mark appointment as no-show (Store admin only).
+
+    Since current status enum doesn't include no_show yet, we persist it as cancelled
+    with a no-show reason and log a dedicated risk event for scoring.
+    """
+    from app.models.service import Service
+
+    if not current_user.is_admin and not current_user.store_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Only store administrators can mark no-show"
+        )
+    if not current_user.is_admin and current_user.store_admin_status != "approved":
+        raise HTTPException(
+            status_code=403,
+            detail="Store admin approval required"
+        )
+
+    appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    service = db.query(Service).filter(Service.id == appointment.service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    if not current_user.is_admin and service.store_id != current_user.store_id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only mark no-show for appointments from your own store"
+        )
+
+    if appointment.status == AppointmentStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="Cannot mark completed appointment as no-show")
+    if appointment.status == AppointmentStatus.CANCELLED:
+        raise HTTPException(status_code=400, detail="Appointment is already cancelled")
+
+    no_show_appointment = crud_appointment.cancel_appointment_with_reason(
+        db,
+        appointment_id=appointment_id,
+        cancel_reason="No show",
+        cancelled_by=current_user.id
+    )
+    risk_service.log_risk_event(
+        db,
+        user_id=no_show_appointment.user_id,
+        event_type="appointment_no_show",
+        appointment_id=no_show_appointment.id,
+        reason="marked_by_admin",
+        meta={"admin_id": current_user.id},
+    )
+    risk_service.refresh_user_risk_state(db, user_id=no_show_appointment.user_id)
+    notification_service.notify_appointment_cancelled(
+        db, no_show_appointment, cancelled_by_admin=True
+    )
+    reminder_service.handle_appointment_cancellation(db, appointment_id)
+
+    return no_show_appointment
 
 
 @router.patch("/{appointment_id}/complete", response_model=Appointment)

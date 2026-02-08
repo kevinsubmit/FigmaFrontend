@@ -18,6 +18,7 @@ import GiftCards from './pages/GiftCards';
 import Reviews from './pages/Reviews';
 import More from './pages/More';
 import ServiceCatalogPage from './pages/ServiceCatalog';
+import RiskControl from './pages/RiskControl';
 
 const App = () => (
   <AuthProvider>
@@ -135,6 +136,14 @@ const App = () => (
         element={
           <ProtectedRoute>
             <More />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/risk-control"
+        element={
+          <ProtectedRoute>
+            <RiskControl />
           </ProtectedRoute>
         }
       />

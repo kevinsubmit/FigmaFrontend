@@ -37,6 +37,11 @@ export const updateAppointmentStatus = async (id: number, payload: { status: str
   return response.data;
 };
 
+export const markAppointmentNoShow = async (id: number) => {
+  const response = await api.post(`/appointments/${id}/no-show`);
+  return response.data as Appointment;
+};
+
 export const rescheduleAppointment = async (
   id: number,
   payload: { new_date: string; new_time: string },

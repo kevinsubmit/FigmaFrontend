@@ -17,6 +17,7 @@ import { TopBar } from '../layout/TopBar';
 import {
   Appointment,
   getAppointments,
+  markAppointmentNoShow,
   rescheduleAppointment,
   updateAppointmentNotes,
   updateAppointmentStatus,
@@ -394,6 +395,21 @@ const AppointmentsList: React.FC = () => {
       toast.error(error?.response?.data?.detail || 'Failed to update notes');
     } finally {
       setSavingNotes(false);
+    }
+  };
+
+  const markNoShow = async () => {
+    if (!selected) return;
+    setUpdatingStatus('cancelled');
+    try {
+      const updated = await markAppointmentNoShow(selected.id);
+      setAppointments((prev) => prev.map((apt) => (apt.id === updated.id ? { ...apt, ...updated } : apt)));
+      syncSelected({ ...selected, ...updated });
+      toast.success('Appointment marked as no-show');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Failed to mark no-show');
+    } finally {
+      setUpdatingStatus(null);
     }
   };
 
@@ -804,7 +820,7 @@ const AppointmentsList: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => updateStatus('confirmed')}
                   disabled={!!updatingStatus}
@@ -825,6 +841,13 @@ const AppointmentsList: React.FC = () => {
                   className="rounded-lg border border-neutral-600 px-3 py-2 text-sm text-gray-200 disabled:opacity-50"
                 >
                   Cancel
+                </button>
+                <button
+                  onClick={markNoShow}
+                  disabled={!!updatingStatus}
+                  className="rounded-lg border border-rose-500/50 px-3 py-2 text-sm text-rose-200 disabled:opacity-50"
+                >
+                  No Show
                 </button>
               </div>
             </div>
