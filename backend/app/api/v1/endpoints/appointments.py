@@ -21,6 +21,7 @@ from app.schemas.appointment import (
 )
 from app.schemas.user import UserResponse
 from app.models.appointment import AppointmentStatus
+from app.models.service import Service
 from app.services import notification_service
 from app.services import reminder_service
 from app.crud import coupons as crud_coupons
@@ -38,6 +39,14 @@ def create_appointment(
     Create a new appointment (requires authentication)
     """
     user_id = current_user.id
+
+    service = db.query(Service).filter(Service.id == appointment.service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+    if service.store_id != appointment.store_id:
+        raise HTTPException(status_code=400, detail="Service does not belong to this store")
+    if service.is_active != 1:
+        raise HTTPException(status_code=400, detail="Service is not available")
     
     # Check for conflicts using improved conflict checker
     conflict_result = crud_appointment.check_time_conflict(

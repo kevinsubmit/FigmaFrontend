@@ -3,7 +3,9 @@ import apiClient from '../lib/api';
 export interface Service {
   id: number;
   store_id: number;
+  catalog_id?: number | null;
   name: string;
+  name_snapshot?: string | null;
   description: string | null;
   price: number;
   duration_minutes: number;
@@ -40,5 +42,6 @@ export const getServiceById = async (serviceId: number): Promise<Service> => {
  * 根据店铺ID获取服务列表
  */
 export const getServicesByStoreId = async (storeId: number): Promise<Service[]> => {
-  return getServices({ store_id: storeId });
+  const response = await apiClient.get(`/services/store/${storeId}`);
+  return response.data;
 };

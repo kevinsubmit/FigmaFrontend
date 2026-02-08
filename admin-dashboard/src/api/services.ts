@@ -5,6 +5,7 @@ export interface Service {
   store_id: number;
   catalog_id?: number | null;
   name: string;
+  name_snapshot?: string | null;
   category?: string | null;
   description?: string | null;
   price: number;
@@ -28,7 +29,7 @@ export const getServices = async (params?: Record<string, any>) => {
 };
 
 export const getStoreServices = async (storeId: number, params?: Record<string, any>) => {
-  const response = await api.get(`/services/stores/${storeId}`, { params });
+  const response = await api.get(`/services/store/${storeId}`, { params });
   return response.data as Service[];
 };
 
@@ -37,7 +38,7 @@ export const getServiceCatalog = async (params?: Record<string, any>) => {
   if (typeof safeParams.limit === 'number' && safeParams.limit > 200) {
     safeParams.limit = 200;
   }
-  const response = await api.get('/services/catalog', { params: safeParams });
+  const response = await api.get('/services/admin/catalog', { params: safeParams });
   return response.data as ServiceCatalogItem[];
 };
 
@@ -77,7 +78,7 @@ export const addServiceToStore = async (
     description?: string;
   }
 ) => {
-  const response = await api.post(`/services/stores/${storeId}`, payload);
+  const response = await api.post(`/services/store/${storeId}`, payload);
   return response.data as Service;
 };
 
@@ -91,10 +92,10 @@ export const updateStoreService = async (
     is_active?: number;
   }
 ) => {
-  const response = await api.patch(`/services/stores/${storeId}/${serviceId}`, payload);
+  const response = await api.patch(`/services/store/${storeId}/${serviceId}`, payload);
   return response.data as Service;
 };
 
 export const removeStoreService = async (storeId: number, serviceId: number) => {
-  await api.delete(`/services/stores/${storeId}/${serviceId}`);
+  await api.delete(`/services/store/${storeId}/${serviceId}`);
 };

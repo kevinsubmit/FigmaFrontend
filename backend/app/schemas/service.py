@@ -1,7 +1,7 @@
 """
 Service Schemas
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
@@ -10,8 +10,8 @@ class ServiceBase(BaseModel):
     """Service base schema"""
     name: str
     description: Optional[str] = None
-    price: float
-    duration_minutes: int
+    price: float = Field(gt=0)
+    duration_minutes: int = Field(gt=0)
     category: Optional[str] = None
 
 
@@ -37,6 +37,7 @@ class Service(ServiceBase):
     id: int
     store_id: int
     catalog_id: Optional[int] = None
+    name_snapshot: Optional[str] = None
     is_active: int
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -83,14 +84,14 @@ class ServiceCatalog(ServiceCatalogBase):
 class StoreServiceAssign(BaseModel):
     """Assign a catalog service to a store with store-specific pricing"""
     catalog_id: int
-    price: float
-    duration_minutes: int
+    price: float = Field(gt=0)
+    duration_minutes: int = Field(gt=0)
     description: Optional[str] = None
 
 
 class StoreServiceUpdate(BaseModel):
     """Update store-specific service config"""
-    price: Optional[float] = None
-    duration_minutes: Optional[int] = None
+    price: Optional[float] = Field(default=None, gt=0)
+    duration_minutes: Optional[int] = Field(default=None, gt=0)
     description: Optional[str] = None
     is_active: Optional[int] = None

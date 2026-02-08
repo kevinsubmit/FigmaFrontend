@@ -20,3 +20,8 @@ class Service(Base):
     is_active = Column(Integer, default=1)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    @property
+    def name_snapshot(self) -> str:
+        # Compatibility field for frontend contract.
+        return self.name

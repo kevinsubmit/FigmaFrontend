@@ -152,7 +152,7 @@ def assign_catalog_service_to_store(
     store_id: int,
     payload: StoreServiceAssign,
 ) -> Service:
-    """Create a store service from catalog with store-specific price/duration"""
+    """Create or update a store service from catalog with store-specific price/duration"""
     catalog_item = get_catalog_item(db, payload.catalog_id)
     if not catalog_item:
         raise ValueError("Catalog item not found")
@@ -163,7 +163,15 @@ def assign_catalog_service_to_store(
         .first()
     )
     if existing:
-        raise ValueError("Service already added to this store")
+        existing.price = payload.price
+        existing.duration_minutes = payload.duration_minutes
+        existing.description = payload.description if payload.description is not None else catalog_item.description
+        existing.name = catalog_item.name
+        existing.category = catalog_item.category
+        existing.is_active = 1
+        db.commit()
+        db.refresh(existing)
+        return existing
 
     db_service = Service(
         store_id=store_id,
@@ -194,6 +202,17 @@ def update_store_service(
     update_data = payload.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(service, field, value)
+    db.commit()
+    db.refresh(service)
+    return service
+
+
+def deactivate_service(db: Session, service_id: int) -> Optional[Service]:
+    """Soft deactivate service instead of deleting history rows."""
+    service = get_service(db, service_id=service_id)
+    if not service:
+        return None
+    service.is_active = 0
     db.commit()
     db.refresh(service)
     return service

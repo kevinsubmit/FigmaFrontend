@@ -23,6 +23,22 @@ from app.schemas.service import (
 router = APIRouter()
 
 
+def _query_service_catalog(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=200),
+    active_only: bool = Query(False),
+    category: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    return crud_service.get_catalog_items(
+        db,
+        skip=skip,
+        limit=limit,
+        active_only=active_only,
+        category=category,
+    )
+
+
 @router.get("/catalog", response_model=List[ServiceCatalog])
 def get_service_catalog(
     skip: int = Query(0, ge=0),
@@ -31,14 +47,21 @@ def get_service_catalog(
     category: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    """Get service catalog list"""
-    return crud_service.get_catalog_items(
-        db,
-        skip=skip,
-        limit=limit,
-        active_only=active_only,
-        category=category,
-    )
+    """Public catalog endpoint kept for backward compatibility."""
+    return _query_service_catalog(skip, limit, active_only, category, db)
+
+
+@router.get("/admin/catalog", response_model=List[ServiceCatalog])
+def get_service_catalog_admin(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=200),
+    active_only: bool = Query(False),
+    category: Optional[str] = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_store_admin),
+):
+    """Admin/store-admin catalog endpoint."""
+    return _query_service_catalog(skip, limit, active_only, category, db)
 
 
 @router.post("/admin/catalog", response_model=ServiceCatalog, status_code=201)
@@ -66,6 +89,7 @@ def update_service_catalog_item(
 
 
 @router.get("/stores/{store_id}", response_model=List[Service])
+@router.get("/store/{store_id}", response_model=List[Service])
 def get_store_services(
     store_id: int,
     include_inactive: bool = Query(False),
@@ -76,6 +100,7 @@ def get_store_services(
 
 
 @router.post("/stores/{store_id}", response_model=Service, status_code=201)
+@router.post("/store/{store_id}", response_model=Service, status_code=201)
 def add_service_to_store_from_catalog(
     store_id: int,
     payload: StoreServiceAssign,
@@ -96,6 +121,7 @@ def add_service_to_store_from_catalog(
 
 
 @router.patch("/stores/{store_id}/{service_id}", response_model=Service)
+@router.patch("/store/{store_id}/{service_id}", response_model=Service)
 def update_store_service(
     store_id: int,
     service_id: int,
@@ -118,6 +144,7 @@ def update_store_service(
 
 
 @router.delete("/stores/{store_id}/{service_id}", status_code=204)
+@router.delete("/store/{store_id}/{service_id}", status_code=204)
 def remove_store_service(
     store_id: int,
     service_id: int,
@@ -134,7 +161,7 @@ def remove_store_service(
     if not current_user.is_admin and current_user.store_id != store_id:
         raise HTTPException(status_code=403, detail="You can only manage services for your own store")
 
-    crud_service.delete_service(db, service_id=service_id)
+    crud_service.deactivate_service(db, service_id=service_id)
     return None
 
 
@@ -255,7 +282,7 @@ def delete_service(
             detail="You can only delete services from your own store",
         )
 
-    crud_service.delete_service(db, service_id=service_id)
+    crud_service.deactivate_service(db, service_id=service_id)
     return None
 
 

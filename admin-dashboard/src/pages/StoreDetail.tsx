@@ -473,10 +473,12 @@ const StoreDetail: React.FC = () => {
     setServiceDeletingId(serviceId);
     try {
       await removeStoreService(store.id, serviceId);
-      setServices((prev) => prev.filter((row) => row.id !== serviceId));
-      toast.success('Service removed');
+      setServices((prev) =>
+        prev.map((row) => (row.id === serviceId ? { ...row, is_active: 0 } : row))
+      );
+      toast.success('Service deactivated');
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Failed to remove service');
+      toast.error(error?.response?.data?.detail || 'Failed to deactivate service');
     } finally {
       setServiceDeletingId(null);
     }
@@ -615,7 +617,8 @@ const StoreDetail: React.FC = () => {
                     {!catalogLoading && (
                       <div className="space-y-2 max-h-80 overflow-auto pr-1">
                         {catalog.map((item) => {
-                          const exists = services.some((service) => service.catalog_id === item.id);
+                          const existingService = services.find((service) => service.catalog_id === item.id);
+                          const existsActive = !!existingService && existingService.is_active === 1;
                           return (
                             <div key={item.id} className="rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2">
                               <div className="flex items-start justify-between gap-2">
@@ -626,10 +629,10 @@ const StoreDetail: React.FC = () => {
                                 <button
                                   type="button"
                                   onClick={() => handleAddCatalogService(item)}
-                                  disabled={exists || addingCatalogId === item.id}
+                                  disabled={existsActive || addingCatalogId === item.id}
                                   className="rounded-lg border border-neutral-700 px-2 py-1 text-xs text-gray-200 disabled:opacity-50"
                                 >
-                                  {exists ? 'Added' : addingCatalogId === item.id ? 'Adding...' : 'Add'}
+                                  {existsActive ? 'Added' : addingCatalogId === item.id ? 'Adding...' : existingService ? 'Re-Add' : 'Add'}
                                 </button>
                               </div>
                             </div>
@@ -709,7 +712,7 @@ const StoreDetail: React.FC = () => {
                               disabled={serviceDeletingId === service.id}
                               className="rounded-lg border border-red-500/40 px-2 py-1 text-xs text-red-300 disabled:opacity-50"
                             >
-                              {serviceDeletingId === service.id ? 'Removing...' : 'Remove'}
+                              {serviceDeletingId === service.id ? 'Deactivating...' : 'Deactivate'}
                             </button>
                           </div>
                         </div>
