@@ -12,12 +12,10 @@ import {
   getCustomerDetail,
   getCustomers,
 } from '../api/customers';
+import { formatApiDateTimeET } from '../utils/time';
 
 const formatDateTime = (value?: string | null) => {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
+  return formatApiDateTimeET(value, true);
 };
 
 const maskPhone = (phone?: string | null) => {

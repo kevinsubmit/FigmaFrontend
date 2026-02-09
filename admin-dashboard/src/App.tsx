@@ -23,6 +23,7 @@ import RiskControl from './pages/RiskControl';
 import HomeFeedManager from './pages/HomeFeedManager';
 import Customers from './pages/Customers';
 import Security from './pages/Security';
+import Logs from './pages/Logs';
 
 const App = () => (
   <AuthProvider>
@@ -181,6 +182,14 @@ const App = () => (
           element={
             <ProtectedRoute>
               <Security />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/logs"
+          element={
+            <ProtectedRoute>
+              <Logs />
             </ProtectedRoute>
           }
         />

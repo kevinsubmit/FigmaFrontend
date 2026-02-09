@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from app.api.deps import get_db, get_current_user
 from app.crud import appointment as crud_appointment
@@ -26,13 +27,15 @@ from app.models.service import Service
 from app.services import notification_service
 from app.services import reminder_service
 from app.services import risk_service
+from app.services import log_service
 from app.crud import coupons as crud_coupons
 
 router = APIRouter()
+ET_TZ = ZoneInfo("America/New_York")
 
 def _ensure_not_past_appointment(appointment_date, appointment_time):
-    appointment_datetime = datetime.combine(appointment_date, appointment_time)
-    now = datetime.now()
+    appointment_datetime = datetime.combine(appointment_date, appointment_time).replace(tzinfo=ET_TZ)
+    now = datetime.now(ET_TZ)
     if appointment_datetime <= now:
         raise HTTPException(
             status_code=400,
@@ -324,6 +327,7 @@ def cancel_appointment(
 
 @router.post("/{appointment_id}/reschedule", response_model=Appointment)
 def reschedule_appointment(
+    request: Request,
     appointment_id: int,
     reschedule_data: AppointmentReschedule,
     current_user: UserResponse = Depends(get_current_user),
@@ -407,12 +411,32 @@ def reschedule_appointment(
         reschedule_data.new_date,
         reschedule_data.new_time
     )
+
+    if current_user.is_admin or current_user.store_id:
+        store_id_value = service.store_id if "service" in locals() and service else None
+        if store_id_value is None:
+            service_for_log = db.query(Service).filter(Service.id == appointment.service_id).first()
+            store_id_value = service_for_log.store_id if service_for_log else None
+        log_service.create_audit_log(
+            db,
+            request=request,
+            operator_user_id=current_user.id,
+            module="appointments",
+            action="appointment.reschedule",
+            message="调整预约时间",
+            target_type="appointment",
+            target_id=str(rescheduled_appointment.id),
+            store_id=store_id_value,
+            before={"date": str(appointment.appointment_date), "time": str(appointment.appointment_time)},
+            after={"date": str(rescheduled_appointment.appointment_date), "time": str(rescheduled_appointment.appointment_time)},
+        )
     
     return rescheduled_appointment
 
 
 @router.patch("/{appointment_id}/notes", response_model=Appointment)
 def update_appointment_notes(
+    request: Request,
     appointment_id: int,
     notes_data: AppointmentNotesUpdate,
     current_user: UserResponse = Depends(get_current_user),
@@ -457,12 +481,32 @@ def update_appointment_notes(
         appointment_id=appointment_id,
         appointment=AppointmentUpdate(notes=notes_data.notes)
     )
+
+    if current_user.is_admin or current_user.store_id:
+        store_id_value = service.store_id if "service" in locals() and service else None
+        if store_id_value is None:
+            service_for_log = db.query(Service).filter(Service.id == appointment.service_id).first()
+            store_id_value = service_for_log.store_id if service_for_log else None
+        log_service.create_audit_log(
+            db,
+            request=request,
+            operator_user_id=current_user.id,
+            module="appointments",
+            action="appointment.notes.update",
+            message="更新预约备注",
+            target_type="appointment",
+            target_id=str(updated_appointment.id),
+            store_id=store_id_value,
+            before={"notes": appointment.notes},
+            after={"notes": updated_appointment.notes},
+        )
     
     return updated_appointment
 
 
 @router.put("/{appointment_id}/status", response_model=Appointment)
 def update_appointment_status(
+    request: Request,
     appointment_id: int,
     status_update: AppointmentStatusUpdate,
     db: Session = Depends(get_db),
@@ -520,6 +564,19 @@ def update_appointment_status(
             appointment=AppointmentUpdate(status=AppointmentStatus.CONFIRMED)
         )
         notification_service.notify_appointment_confirmed(db, updated_appointment)
+        log_service.create_audit_log(
+            db,
+            request=request,
+            operator_user_id=current_user.id,
+            module="appointments",
+            action="appointment.status.confirmed",
+            message="预约状态改为已确认",
+            target_type="appointment",
+            target_id=str(updated_appointment.id),
+            store_id=service.store_id if service else None,
+            before={"status": str(appointment.status.value if hasattr(appointment.status, "value") else appointment.status)},
+            after={"status": str(updated_appointment.status.value if hasattr(updated_appointment.status, "value") else updated_appointment.status)},
+        )
         return updated_appointment
 
     if target_status == AppointmentStatus.COMPLETED:
@@ -596,6 +653,20 @@ def update_appointment_status(
                 )
 
         notification_service.notify_appointment_completed(db, updated_appointment)
+        log_service.create_audit_log(
+            db,
+            request=request,
+            operator_user_id=current_user.id,
+            module="appointments",
+            action="appointment.status.completed",
+            message="预约状态改为已完成",
+            target_type="appointment",
+            target_id=str(updated_appointment.id),
+            store_id=service.store_id if service else None,
+            before={"status": str(appointment.status.value if hasattr(appointment.status, "value") else appointment.status)},
+            after={"status": str(updated_appointment.status.value if hasattr(updated_appointment.status, "value") else updated_appointment.status)},
+            meta={"used_coupon": bool(status_update.user_coupon_id)},
+        )
         return updated_appointment
 
     if target_status == AppointmentStatus.CANCELLED:
@@ -623,6 +694,20 @@ def update_appointment_status(
             db, cancelled_appointment, cancelled_by_admin=True
         )
         reminder_service.handle_appointment_cancellation(db, appointment_id)
+        log_service.create_audit_log(
+            db,
+            request=request,
+            operator_user_id=current_user.id,
+            module="appointments",
+            action="appointment.status.cancelled",
+            message="预约状态改为已取消",
+            target_type="appointment",
+            target_id=str(cancelled_appointment.id),
+            store_id=service.store_id if service else None,
+            before={"status": str(appointment.status.value if hasattr(appointment.status, "value") else appointment.status)},
+            after={"status": str(cancelled_appointment.status.value if hasattr(cancelled_appointment.status, "value") else cancelled_appointment.status)},
+            meta={"cancel_reason": status_update.cancel_reason},
+        )
         return cancelled_appointment
 
     raise HTTPException(status_code=400, detail="Unsupported status update")
@@ -630,6 +715,7 @@ def update_appointment_status(
 
 @router.patch("/{appointment_id}/confirm", response_model=Appointment)
 def confirm_appointment(
+    request: Request,
     appointment_id: int,
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user)
@@ -695,12 +781,26 @@ def confirm_appointment(
     
     # Send notification to customer
     notification_service.notify_appointment_confirmed(db, updated_appointment)
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="appointments",
+        action="appointment.confirm",
+        message="确认预约",
+        target_type="appointment",
+        target_id=str(updated_appointment.id),
+        store_id=service.store_id if service else None,
+        before={"status": str(appointment.status.value if hasattr(appointment.status, "value") else appointment.status)},
+        after={"status": str(updated_appointment.status.value if hasattr(updated_appointment.status, "value") else updated_appointment.status)},
+    )
     
     return updated_appointment
 
 
 @router.post("/{appointment_id}/no-show", response_model=Appointment)
 def mark_appointment_no_show(
+    request: Request,
     appointment_id: int,
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user)
@@ -762,12 +862,29 @@ def mark_appointment_no_show(
         db, no_show_appointment, cancelled_by_admin=True
     )
     reminder_service.handle_appointment_cancellation(db, appointment_id)
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="appointments",
+        action="appointment.no_show",
+        message="标记预约为未到店",
+        target_type="appointment",
+        target_id=str(no_show_appointment.id),
+        store_id=service.store_id if service else None,
+        before={"status": str(appointment.status.value if hasattr(appointment.status, "value") else appointment.status)},
+        after={
+            "status": str(no_show_appointment.status.value if hasattr(no_show_appointment.status, "value") else no_show_appointment.status),
+            "cancel_reason": no_show_appointment.cancel_reason,
+        },
+    )
 
     return no_show_appointment
 
 
 @router.patch("/{appointment_id}/complete", response_model=Appointment)
 def complete_appointment(
+    request: Request,
     appointment_id: int,
     payload: AppointmentComplete = None,
     db: Session = Depends(get_db),
@@ -890,5 +1007,19 @@ def complete_appointment(
     
     # Send notification to customer
     notification_service.notify_appointment_completed(db, updated_appointment)
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="appointments",
+        action="appointment.complete",
+        message="完成预约",
+        target_type="appointment",
+        target_id=str(updated_appointment.id),
+        store_id=service.store_id if service else None,
+        before={"status": str(appointment.status.value if hasattr(appointment.status, "value") else appointment.status)},
+        after={"status": str(updated_appointment.status.value if hasattr(updated_appointment.status, "value") else updated_appointment.status)},
+        meta={"used_coupon": bool(payload and payload.user_coupon_id)},
+    )
     
     return updated_appointment

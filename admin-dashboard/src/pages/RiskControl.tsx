@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { AdminLayout } from '../layout/AdminLayout';
 import { TopBar } from '../layout/TopBar';
 import { getRiskUsers, RiskUserItem, updateRiskUser } from '../api/risk';
+import { formatApiDateTimeET, isFutureThanNowByApiTimestamp } from '../utils/time';
 
 const RiskControl: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -34,7 +35,7 @@ const RiskControl: React.FC = () => {
   }, []);
 
   const restrictedCount = useMemo(
-    () => users.filter((u) => u.restricted_until && new Date(u.restricted_until) > new Date()).length,
+    () => users.filter((u) => isFutureThanNowByApiTimestamp(u.restricted_until)).length,
     [users],
   );
 
@@ -106,7 +107,7 @@ const RiskControl: React.FC = () => {
         ) : (
           <div className="space-y-3">
             {users.map((user) => {
-              const isRestricted = !!(user.restricted_until && new Date(user.restricted_until) > new Date());
+              const isRestricted = isFutureThanNowByApiTimestamp(user.restricted_until);
               return (
                 <div key={user.user_id} className="card-surface p-4">
                   <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -118,7 +119,7 @@ const RiskControl: React.FC = () => {
                         risk={user.risk_level} | cancel_7d={user.cancel_7d} | no_show_30d={user.no_show_30d}
                       </p>
                       {isRestricted && (
-                        <p className="text-xs text-rose-600 mt-1">Restricted until: {user.restricted_until}</p>
+                        <p className="text-xs text-rose-600 mt-1">Restricted until: {formatApiDateTimeET(user.restricted_until, true)}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2">

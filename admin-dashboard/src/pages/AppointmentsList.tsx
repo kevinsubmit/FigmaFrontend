@@ -24,6 +24,7 @@ import {
 } from '../api/appointments';
 import { getServiceCatalog } from '../api/services';
 import { useAuth } from '../context/AuthContext';
+import { formatApiDateTimeET, formatYmdAsETDate, getTodayYmdET } from '../utils/time';
 
 type ViewMode = 'day' | 'week';
 type StatusOption = 'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled';
@@ -74,9 +75,7 @@ const parseDateTime = (date: string, time: string) => {
 };
 
 const formatDayHeader = (value: string) => {
-  const date = safeParseDate(value);
-  if (!date) return value;
-  return date.toLocaleDateString(undefined, {
+  return formatYmdAsETDate(value, {
     weekday: 'short',
     month: 'short',
     day: '2-digit',
@@ -84,9 +83,7 @@ const formatDayHeader = (value: string) => {
 };
 
 const formatDateTitle = (value: string) => {
-  const date = safeParseDate(value);
-  if (!date) return value;
-  return date.toLocaleDateString(undefined, {
+  return formatYmdAsETDate(value, {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
@@ -95,10 +92,7 @@ const formatDateTitle = (value: string) => {
 };
 
 const formatCreatedAt = (value?: string | null) => {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
+  return formatApiDateTimeET(value, true);
 };
 
 const normalizeStatus = (status?: string | null): StatusOption => {
@@ -158,7 +152,7 @@ const AppointmentsList: React.FC = () => {
   const [serviceFilter, setServiceFilter] = useState('all');
   const [staffFilter, setStaffFilter] = useState('all');
   const [viewMode, setViewMode] = useState<ViewMode>('day');
-  const [dateCursor, setDateCursor] = useState(toDateInput(new Date()));
+  const [dateCursor, setDateCursor] = useState(getTodayYmdET());
   const [selected, setSelected] = useState<Appointment | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [editDate, setEditDate] = useState('');
@@ -463,7 +457,7 @@ const AppointmentsList: React.FC = () => {
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button
-                onClick={() => setDateCursor(toDateInput(new Date()))}
+                onClick={() => setDateCursor(getTodayYmdET())}
                 className="rounded-lg border border-blue-100 px-2.5 py-2 text-xs text-slate-700 hover:border-gold-500"
               >
                 Today

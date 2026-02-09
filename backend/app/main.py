@@ -14,11 +14,14 @@ from pathlib import Path
 from datetime import datetime
 import ipaddress
 import json
+import time
+import uuid
 
 from app.core.security import decode_token
 from app.db.session import SessionLocal
 from app.models.security import SecurityBlockLog, SecurityIPRule
 from app.models.user import User
+from app.services import log_service
 
 logger = logging.getLogger(__name__)
 
@@ -69,12 +72,60 @@ def _extract_client_ip(request) -> str:
     return request.client.host if request.client else ""
 
 
+def _extract_request_id(request) -> str:
+    incoming = request.headers.get("x-request-id")
+    if incoming and incoming.strip():
+        return incoming.strip()
+    return uuid.uuid4().hex
+
+
+def _resolve_operator_user_id(db, request) -> int | None:
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.lower().startswith("bearer "):
+        return None
+    token = auth_header.split(" ", 1)[1]
+    try:
+        payload = decode_token(token)
+        token_user_id = payload.get("sub")
+        token_phone = payload.get("phone")
+        if token_user_id is not None:
+            try:
+                user_obj = db.query(User).filter(User.id == int(token_user_id)).first()
+                if user_obj:
+                    return user_obj.id
+            except (TypeError, ValueError):
+                # 兼容历史 token: sub 可能是手机号或用户名
+                user_obj = (
+                    db.query(User)
+                    .filter((User.phone == str(token_user_id)) | (User.username == str(token_user_id)))
+                    .first()
+                )
+                if user_obj:
+                    return user_obj.id
+        if token_phone:
+            user_obj = db.query(User).filter(User.phone == str(token_phone)).first()
+            if user_obj:
+                return user_obj.id
+        return None
+    except Exception:
+        return None
+
+
 def _determine_scope(path: str) -> str | None:
     if path == "/api/v1/auth/login":
         return "admin_login"
     if path.startswith("/api/v1/"):
         return "admin_api"
     return None
+
+
+def _extract_module(path: str) -> str:
+    parts = [segment for segment in path.split("/") if segment]
+    if len(parts) >= 3 and parts[0] == "api" and parts[1] == "v1":
+        return parts[2]
+    if len(parts) >= 1:
+        return parts[0]
+    return "unknown"
 
 
 def _rule_matches_ip(target_type: str, target_value: str, ip_value: str) -> bool:
@@ -131,18 +182,7 @@ async def security_ip_guard(request, call_next):
 
         matched_rule = min(deny_rules, key=lambda item: item.priority) if deny_rules else None
 
-        user_id = None
-        auth_header = request.headers.get("authorization", "")
-        if auth_header.lower().startswith("bearer "):
-            token = auth_header.split(" ", 1)[1]
-            try:
-                payload = decode_token(token)
-                token_user_id = payload.get("sub")
-                if token_user_id:
-                    user_obj = db.query(User).filter(User.id == int(token_user_id)).first()
-                    user_id = user_obj.id if user_obj else None
-            except Exception:
-                user_id = None
+        user_id = _resolve_operator_user_id(db, request)
 
         db.add(
             SecurityBlockLog(
@@ -158,10 +198,106 @@ async def security_ip_guard(request, call_next):
             )
         )
         db.commit()
+        request_id = _extract_request_id(request)
+        log_service.create_system_log(
+            db,
+            log_type="security",
+            level="warn",
+            module="security",
+            action="security.ip_deny",
+            message="请求被IP策略拦截",
+            operator_user_id=user_id,
+            target_type="security_ip_rule",
+            target_id=str(matched_rule.id) if matched_rule else None,
+            request_id=request_id,
+            ip_address=client_ip,
+            user_agent=request.headers.get("user-agent"),
+            path=request.url.path,
+            method=request.method,
+            status_code=403,
+            meta={"scope": scope, "query": str(request.url.query or "")},
+        )
 
-        return JSONResponse(status_code=403, content={"detail": "Access denied by security policy"})
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "Access denied by security policy"},
+            headers={"X-Request-Id": request_id},
+        )
     finally:
         db.close()
+
+
+@app.middleware("http")
+async def access_log_middleware(request, call_next):
+    start_time = time.perf_counter()
+    request_id = _extract_request_id(request)
+    path = request.url.path
+    method = request.method
+    client_ip = _extract_client_ip(request)
+    module = _extract_module(path)
+
+    # response default values
+    status_code = 500
+    message = "internal_error"
+
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        message = "success" if status_code < 400 else "request_failed"
+    except Exception as exc:
+        latency_ms = int((time.perf_counter() - start_time) * 1000)
+        db = SessionLocal()
+        try:
+            operator_user_id = _resolve_operator_user_id(db, request)
+            log_service.create_system_log(
+                db,
+                log_type="error",
+                level="critical",
+                module=module,
+                action="http.request",
+                message=str(exc),
+                operator_user_id=operator_user_id,
+                request_id=request_id,
+                ip_address=client_ip,
+                user_agent=request.headers.get("user-agent"),
+                path=path,
+                method=method,
+                status_code=500,
+                latency_ms=latency_ms,
+                meta={"query": str(request.url.query or "")},
+            )
+        finally:
+            db.close()
+        raise
+
+    latency_ms = int((time.perf_counter() - start_time) * 1000)
+    db = SessionLocal()
+    try:
+        operator_user_id = _resolve_operator_user_id(db, request)
+        log_type = "error" if status_code >= 500 else "access"
+        level = "error" if status_code >= 500 else ("warn" if status_code >= 400 else "info")
+        log_service.create_system_log(
+            db,
+            log_type=log_type,
+            level=level,
+            module=module,
+            action="http.request",
+            message=message,
+            operator_user_id=operator_user_id,
+            request_id=request_id,
+            ip_address=client_ip,
+            user_agent=request.headers.get("user-agent"),
+            path=path,
+            method=method,
+            status_code=status_code,
+            latency_ms=latency_ms,
+            meta={"query": str(request.url.query or "")},
+        )
+    finally:
+        db.close()
+
+    response.headers.setdefault("X-Request-Id", request_id)
+    return response
 
 
 @app.middleware("http")

@@ -68,12 +68,17 @@ class APIClient {
       },
     };
 
-    // Add authorization header if required
-    if (requiresAuth) {
-      const token = this.getToken();
-      if (token) {
-        (config.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-      }
+    // If local token exists and caller did not provide Authorization, attach it.
+    // This keeps public endpoints public while allowing backend logs to resolve operator.
+    const token = this.getToken();
+    const hasAuthorization = Boolean((config.headers as Record<string, string>)['Authorization']);
+    if (token && !hasAuthorization) {
+      (config.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+    }
+
+    // For explicitly protected routes, no token means request should fail as before.
+    if (requiresAuth && !token) {
+      throw new Error('Authentication required');
     }
 
     try {

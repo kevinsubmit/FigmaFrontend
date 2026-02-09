@@ -2,7 +2,7 @@
 API v1 router
 """
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, stores, services, appointments, technicians, store_hours, technician_unavailable, notifications, reviews, upload, review_replies, users, store_portfolio, store_holidays, points, coupons, referrals, pins, gift_cards, promotions, store_admin_applications, risk, customers, security
+from app.api.v1.endpoints import auth, stores, services, appointments, technicians, store_hours, technician_unavailable, notifications, reviews, upload, review_replies, users, store_portfolio, store_holidays, points, coupons, referrals, pins, gift_cards, promotions, store_admin_applications, risk, customers, security, logs
 
 api_router = APIRouter()
 
@@ -31,3 +31,4 @@ api_router.include_router(store_admin_applications.router, prefix="/store-admin-
 api_router.include_router(risk.router, prefix="/risk", tags=["Risk Control"])
 api_router.include_router(customers.router, prefix="/customers", tags=["Customers"])
 api_router.include_router(security.router, prefix="/security", tags=["Security"])
+api_router.include_router(logs.router, prefix="/logs", tags=["Logs"])

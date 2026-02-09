@@ -13,6 +13,7 @@ import {
   SecuritySummary,
   updateSecurityIPRule,
 } from '../api/security';
+import { formatApiDateTimeET } from '../utils/time';
 
 type RuleForm = {
   rule_type: 'allow' | 'deny';
@@ -37,10 +38,7 @@ const defaultRuleForm: RuleForm = {
 };
 
 const formatDateTime = (value?: string | null) => {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString();
+  return formatApiDateTimeET(value, true);
 };
 
 const Security: React.FC = () => {
@@ -84,7 +82,7 @@ const Security: React.FC = () => {
       const currentPage = Math.floor(nextSkip / nextLimit) + 1;
       setLogPageInput(String(currentPage));
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Failed to load block logs');
+      toast.error(error?.response?.data?.detail || '加载拦截日志失败');
     } finally {
       setLogsLoading(false);
     }
@@ -102,7 +100,7 @@ const Security: React.FC = () => {
       await loadBlockLogs(0, logLimit);
       setLogSkip(0);
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Failed to load security data');
+      toast.error(error?.response?.data?.detail || '加载安全数据失败');
     } finally {
       setLoading(false);
     }
@@ -114,7 +112,7 @@ const Security: React.FC = () => {
 
   const saveRule = async () => {
     if (!ruleForm.target_value.trim()) {
-      toast.error('Target value is required');
+      toast.error('目标值不能为空');
       return;
     }
     setSavingRule(true);
@@ -134,7 +132,7 @@ const Security: React.FC = () => {
       setEditingRuleId(null);
       await loadData();
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Failed to save rule');
+      toast.error(error?.response?.data?.detail || '保存规则失败');
     } finally {
       setSavingRule(false);
     }
@@ -164,13 +162,13 @@ const Security: React.FC = () => {
       });
       await loadData();
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Failed to update rule status');
+      toast.error(error?.response?.data?.detail || '更新规则状态失败');
     }
   };
 
   const quickBlock = async () => {
     if (!quickBlockValue.trim()) {
-      toast.error('IP/CIDR is required');
+      toast.error('IP/CIDR 不能为空');
       return;
     }
     try {
@@ -179,66 +177,66 @@ const Security: React.FC = () => {
         target_value: quickBlockValue.trim(),
         scope: 'admin_api',
         duration_hours: 24,
-        reason: 'Quick block from security console',
+        reason: '后台安全页快速封禁',
       });
       setQuickBlockValue('');
       await loadData();
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Quick block failed');
+      toast.error(error?.response?.data?.detail || '快速封禁失败');
     }
   };
 
   return (
     <AdminLayout>
-      <TopBar title="Security" subtitle="IP access policy, block logs and quick control" />
+      <TopBar title="安全策略" subtitle="IP访问策略、拦截日志与快速封禁" />
       <div className="px-4 py-5 space-y-4 lg:px-6">
         <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           <div className="card-surface p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Today Blocks</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">今日拦截</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{summary?.today_block_count ?? 0}</p>
           </div>
           <div className="card-surface p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Last 24h Blocks</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">近24小时拦截</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{summary?.last_24h_block_count ?? 0}</p>
           </div>
           <div className="card-surface p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Active Deny Rules</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">生效拒绝规则</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{summary?.active_deny_rule_count ?? 0}</p>
           </div>
           <div className="card-surface p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Active Allow Rules</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">生效放行规则</p>
             <p className="mt-2 text-2xl font-semibold text-slate-900">{summary?.active_allow_rule_count ?? 0}</p>
           </div>
         </div>
 
         <div className="card-surface p-4 space-y-3">
-          <p className="text-sm font-semibold text-slate-900">Quick Block</p>
+          <p className="text-sm font-semibold text-slate-900">快速封禁</p>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_auto_auto]">
             <input
               value={quickBlockValue}
               onChange={(event) => setQuickBlockValue(event.target.value)}
-              placeholder="IP or CIDR, e.g. 1.2.3.4 or 1.2.3.0/24"
+              placeholder="输入IP或CIDR，例如 1.2.3.4 或 1.2.3.0/24"
               className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900 placeholder:text-slate-500 outline-none focus:border-gold-500"
             />
             <button onClick={quickBlock} className="rounded-xl border border-rose-500/40 px-4 py-2.5 text-sm text-slate-900">
-              Block 24h
+              封禁24小时
             </button>
             <button onClick={loadData} className="rounded-xl border border-blue-200 px-4 py-2.5 text-sm text-slate-900">
-              Refresh
+              刷新
             </button>
           </div>
         </div>
 
         <div className="card-surface p-4 space-y-3">
-          <p className="text-sm font-semibold text-slate-900">{editingRuleId ? 'Edit Rule' : 'Create Rule'}</p>
+          <p className="text-sm font-semibold text-slate-900">{editingRuleId ? '编辑规则' : '新建规则'}</p>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-4">
             <select
               value={ruleForm.rule_type}
               onChange={(event) => setRuleForm((prev) => ({ ...prev, rule_type: event.target.value as RuleForm['rule_type'] }))}
               className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900"
             >
-              <option value="deny">Deny</option>
-              <option value="allow">Allow</option>
+              <option value="deny">拒绝</option>
+              <option value="allow">放行</option>
             </select>
             <select
               value={ruleForm.target_type}
@@ -246,24 +244,24 @@ const Security: React.FC = () => {
               className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900"
             >
               <option value="ip">IP</option>
-              <option value="cidr">CIDR</option>
+              <option value="cidr">CIDR网段</option>
             </select>
             <select
               value={ruleForm.scope}
               onChange={(event) => setRuleForm((prev) => ({ ...prev, scope: event.target.value as RuleForm['scope'] }))}
               className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900"
             >
-              <option value="admin_api">Admin API</option>
-              <option value="admin_login">Admin Login</option>
-              <option value="all">All</option>
+              <option value="admin_api">管理后台API</option>
+              <option value="admin_login">管理后台登录</option>
+              <option value="all">全部</option>
             </select>
             <select
               value={ruleForm.status}
               onChange={(event) => setRuleForm((prev) => ({ ...prev, status: event.target.value as RuleForm['status'] }))}
               className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900"
             >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="active">启用</option>
+              <option value="inactive">停用</option>
             </select>
           </div>
 
@@ -271,14 +269,14 @@ const Security: React.FC = () => {
             <input
               value={ruleForm.target_value}
               onChange={(event) => setRuleForm((prev) => ({ ...prev, target_value: event.target.value }))}
-              placeholder="Target value"
+              placeholder="目标值（IP/CIDR）"
               className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900"
             />
             <input
               type="number"
               value={ruleForm.priority}
               onChange={(event) => setRuleForm((prev) => ({ ...prev, priority: Number(event.target.value) || 100 }))}
-              placeholder="Priority"
+              placeholder="优先级"
               className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900"
             />
             <input
@@ -290,7 +288,7 @@ const Security: React.FC = () => {
             <input
               value={ruleForm.reason}
               onChange={(event) => setRuleForm((prev) => ({ ...prev, reason: event.target.value }))}
-              placeholder="Reason"
+              placeholder="备注原因"
               className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900"
             />
           </div>
@@ -301,7 +299,7 @@ const Security: React.FC = () => {
               disabled={savingRule}
               className="rounded-xl border border-gold-500/60 px-4 py-2 text-sm text-slate-900 disabled:opacity-50"
             >
-              {savingRule ? 'Saving...' : editingRuleId ? 'Update Rule' : 'Create Rule'}
+              {savingRule ? '保存中...' : editingRuleId ? '更新规则' : '创建规则'}
             </button>
             <button
               onClick={() => {
@@ -310,15 +308,15 @@ const Security: React.FC = () => {
               }}
               className="rounded-xl border border-blue-200 px-4 py-2 text-sm text-slate-900"
             >
-              Reset
+              重置
             </button>
           </div>
         </div>
 
         <div className="card-surface p-4 space-y-3">
-          <p className="text-sm font-semibold text-slate-900">IP Rules</p>
+          <p className="text-sm font-semibold text-slate-900">IP规则列表</p>
           {loading ? (
-            <div className="text-sm text-slate-600">Loading...</div>
+            <div className="text-sm text-slate-600">加载中...</div>
           ) : (
             <div className="space-y-2">
               {rules.map((rule) => (
@@ -328,38 +326,38 @@ const Security: React.FC = () => {
                       [{rule.rule_type.toUpperCase()}] {rule.target_value}
                     </p>
                     <p className="text-xs text-slate-600">
-                      scope={rule.scope} | status={rule.status} | priority={rule.priority} | expires={formatDateTime(rule.expires_at)}
+                      范围={rule.scope} | 状态={rule.status} | 优先级={rule.priority} | 过期时间={formatDateTime(rule.expires_at)}
                     </p>
                     <p className="text-xs text-slate-600">{rule.reason || '-'}</p>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => editRule(rule)} className="rounded border border-blue-200 px-2 py-1 text-xs text-slate-900">
-                      Edit
+                      编辑
                     </button>
                     <button onClick={() => toggleRule(rule)} className="rounded border border-blue-200 px-2 py-1 text-xs text-slate-900">
-                      {rule.status === 'active' ? 'Disable' : 'Enable'}
+                      {rule.status === 'active' ? '停用' : '启用'}
                     </button>
                   </div>
                 </div>
               ))}
-              {!rules.length && <div className="text-sm text-slate-500">No rules found.</div>}
+              {!rules.length && <div className="text-sm text-slate-500">暂无规则</div>}
             </div>
           )}
         </div>
 
         <div className="card-surface p-4 space-y-3">
-          <p className="text-sm font-semibold text-slate-900">Block Logs</p>
+          <p className="text-sm font-semibold text-slate-900">拦截日志</p>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-5">
             <input
               value={logFilters.ip_address}
               onChange={(event) => setLogFilters((prev) => ({ ...prev, ip_address: event.target.value }))}
-              placeholder="Filter by IP"
+              placeholder="按IP筛选"
               className="rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm !text-slate-900"
             />
             <input
               value={logFilters.path_keyword}
               onChange={(event) => setLogFilters((prev) => ({ ...prev, path_keyword: event.target.value }))}
-              placeholder="Filter by path"
+              placeholder="按路径关键词筛选"
               className="rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm !text-slate-900"
             />
             <select
@@ -367,7 +365,7 @@ const Security: React.FC = () => {
               onChange={(event) => setLogFilters((prev) => ({ ...prev, block_reason: event.target.value }))}
               className="rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm !text-slate-900"
             >
-              <option value="all">All Reasons</option>
+              <option value="all">全部原因</option>
               <option value="ip_deny">ip_deny</option>
               <option value="rate_limit">rate_limit</option>
               <option value="auth_fail_limit">auth_fail_limit</option>
@@ -377,7 +375,7 @@ const Security: React.FC = () => {
               onChange={(event) => setLogFilters((prev) => ({ ...prev, scope: event.target.value }))}
               className="rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm !text-slate-900"
             >
-              <option value="all">All Scopes</option>
+              <option value="all">全部范围</option>
               <option value="admin_api">admin_api</option>
               <option value="admin_login">admin_login</option>
             </select>
@@ -389,7 +387,7 @@ const Security: React.FC = () => {
                 }}
                 className="rounded-xl border border-blue-200 px-3 py-2 text-sm text-slate-900"
               >
-                Search
+                查询
               </button>
               <button
                 onClick={async () => {
@@ -401,14 +399,14 @@ const Security: React.FC = () => {
                 }}
                 className="rounded-xl border border-blue-200 px-3 py-2 text-sm text-slate-900"
               >
-                Reset
+                重置
               </button>
             </div>
           </div>
 
           <div className="space-y-2 max-h-[380px] overflow-auto pr-1">
             {logsLoading ? (
-              <div className="text-sm text-slate-600">Loading logs...</div>
+              <div className="text-sm text-slate-600">加载日志中...</div>
             ) : (
               <>
                 {(logs || []).map((log) => (
@@ -417,18 +415,18 @@ const Security: React.FC = () => {
                       {log.ip_address} · {log.method} {log.path}
                     </p>
                     <p className="text-xs text-slate-600">
-                      reason={log.block_reason} | scope={log.scope} | rule={log.matched_rule_id || '-'} | at={formatDateTime(log.created_at)}
+                      原因={log.block_reason} | 范围={log.scope} | 命中规则={log.matched_rule_id || '-'} | 时间={formatDateTime(log.created_at)}
                     </p>
                   </div>
                 ))}
-                {!logs.length && <div className="text-sm text-slate-500">No block logs.</div>}
+                {!logs.length && <div className="text-sm text-slate-500">暂无拦截日志</div>}
               </>
             )}
           </div>
 
           <div className="flex items-center justify-between gap-2">
             <div className="text-xs text-slate-600">
-              Total {logsTotal} · {logsTotal ? `${logSkip + 1}-${Math.min(logSkip + logLimit, logsTotal)}` : '0-0'}
+              共 {logsTotal} 条 · {logsTotal ? `${logSkip + 1}-${Math.min(logSkip + logLimit, logsTotal)}` : '0-0'}
             </div>
             <div className="flex items-center gap-2">
               <select
@@ -441,9 +439,9 @@ const Security: React.FC = () => {
                 }}
                 className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-xs text-slate-900"
               >
-                <option value={20}>20 / page</option>
-                <option value={50}>50 / page</option>
-                <option value={100}>100 / page</option>
+                <option value={20}>20 / 页</option>
+                <option value={50}>50 / 页</option>
+                <option value={100}>100 / 页</option>
               </select>
               <button
                 disabled={logSkip <= 0 || logsLoading}
@@ -454,7 +452,7 @@ const Security: React.FC = () => {
                 }}
                 className="rounded-lg border border-blue-200 px-2 py-1 text-xs text-slate-900 disabled:opacity-40"
               >
-                Prev
+                上一页
               </button>
               <button
                 disabled={logSkip + logLimit >= logsTotal || logsLoading}
@@ -465,10 +463,10 @@ const Security: React.FC = () => {
                 }}
                 className="rounded-lg border border-blue-200 px-2 py-1 text-xs text-slate-900 disabled:opacity-40"
               >
-                Next
+                下一页
               </button>
               <div className="flex items-center gap-1">
-                <span className="text-xs text-slate-600">Page</span>
+                <span className="text-xs text-slate-600">页码</span>
                 <input
                   value={logPageInput}
                   onChange={(event) => setLogPageInput(event.target.value)}
@@ -490,7 +488,7 @@ const Security: React.FC = () => {
                     const totalPages = Math.max(1, Math.ceil(logsTotal / logLimit));
                     const parsed = Number(logPageInput);
                     if (!Number.isFinite(parsed)) {
-                      toast.error('Invalid page number');
+                      toast.error('页码无效');
                       return;
                     }
                     const targetPage = Math.min(totalPages, Math.max(1, Math.floor(parsed)));
@@ -501,7 +499,7 @@ const Security: React.FC = () => {
                   disabled={logsLoading}
                   className="rounded-lg border border-blue-200 px-2 py-1 text-xs text-slate-900 disabled:opacity-40"
                 >
-                  Go
+                  跳转
                 </button>
               </div>
             </div>

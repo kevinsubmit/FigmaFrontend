@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_admin_user, get_db
 from app.models.security import SecurityBlockLog, SecurityIPRule
 from app.models.user import User
+from app.services import log_service
 
 router = APIRouter()
 
@@ -183,7 +184,26 @@ def create_ip_rule(
     current_user: User = Depends(get_current_admin_user),
 ):
     _guard_self_lockout(payload, request)
-    return _create_or_update_rule(db, payload, admin_id=current_user.id)
+    rule = _create_or_update_rule(db, payload, admin_id=current_user.id)
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="security",
+        action="security.rule.create",
+        message="创建IP访问规则",
+        target_type="security_ip_rule",
+        target_id=str(rule.id),
+        after={
+            "rule_type": rule.rule_type,
+            "target_type": rule.target_type,
+            "target_value": rule.target_value,
+            "scope": rule.scope,
+            "status": rule.status,
+            "priority": rule.priority,
+        },
+    )
+    return rule
 
 
 @router.patch("/ip-rules/{rule_id}", response_model=SecurityRuleOut)
@@ -197,8 +217,36 @@ def update_ip_rule(
     rule = db.query(SecurityIPRule).filter(SecurityIPRule.id == rule_id).first()
     if not rule:
         raise HTTPException(status_code=404, detail="Rule not found")
+    before = {
+        "rule_type": rule.rule_type,
+        "target_type": rule.target_type,
+        "target_value": rule.target_value,
+        "scope": rule.scope,
+        "status": rule.status,
+        "priority": rule.priority,
+    }
     _guard_self_lockout(payload, request)
-    return _create_or_update_rule(db, payload, admin_id=current_user.id, rule=rule)
+    updated_rule = _create_or_update_rule(db, payload, admin_id=current_user.id, rule=rule)
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="security",
+        action="security.rule.update",
+        message="更新IP访问规则",
+        target_type="security_ip_rule",
+        target_id=str(updated_rule.id),
+        before=before,
+        after={
+            "rule_type": updated_rule.rule_type,
+            "target_type": updated_rule.target_type,
+            "target_value": updated_rule.target_value,
+            "scope": updated_rule.scope,
+            "status": updated_rule.status,
+            "priority": updated_rule.priority,
+        },
+    )
+    return updated_rule
 
 
 @router.get("/block-logs", response_model=SecurityBlockLogListOut)
@@ -304,4 +352,21 @@ def quick_block(
         expires_at=expires_at,
     )
     _guard_self_lockout(rule_payload, request)
-    return _create_or_update_rule(db, rule_payload, admin_id=current_user.id)
+    rule = _create_or_update_rule(db, rule_payload, admin_id=current_user.id)
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="security",
+        action="security.quick_block",
+        message="快速封禁IP/CIDR",
+        target_type="security_ip_rule",
+        target_id=str(rule.id),
+        after={
+            "target_type": rule.target_type,
+            "target_value": rule.target_value,
+            "scope": rule.scope,
+            "expires_at": str(rule.expires_at) if rule.expires_at else None,
+        },
+    )
+    return rule
