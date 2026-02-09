@@ -57,12 +57,16 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
       }
       setError('');
 
-      const pins = await getPins({
+      const rawPins = await getPins({
         skip: nextOffset,
         limit: PAGE_SIZE,
         search: query || undefined,
         tag: tag === 'All' ? undefined : tag
       });
+      const pins =
+        tag === 'All'
+          ? rawPins
+          : rawPins.filter((pin) => Array.isArray(pin.tags) && pin.tags.includes(tag));
       setImages(prev => reset ? pins : [...prev, ...pins]);
       setOffset(prev => (reset ? pins.length : prev + pins.length));
       setHasMore(pins.length === PAGE_SIZE);
