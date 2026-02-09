@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, MapPin, User, DollarSign, ChevronRight, X, AlertCircle, Star } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { getMyAppointments, cancelAppointment, Appointment } from '../api/appointments';
-import { Store } from '../api/stores';
+import { Store, getStores } from '../api/stores';
 import { Service } from '../api/services';
 import { Technician } from '../api/technicians';
 import ReviewForm from './ReviewForm';
@@ -33,6 +33,7 @@ export function Appointments() {
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [reviewingAppointment, setReviewingAppointment] = useState<AppointmentWithDetails | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [storeAddressById, setStoreAddressById] = useState<Record<number, string>>({});
 
   useEffect(() => {
     loadAppointments();
@@ -43,6 +44,14 @@ export function Appointments() {
       setLoading(true);
       const data = await getMyAppointments();
       setAppointments(data);
+      const stores = await getStores({ limit: 200 });
+      const addressMap: Record<number, string> = {};
+      stores.forEach((store) => {
+        if (store.address) {
+          addressMap[store.id] = store.address;
+        }
+      });
+      setStoreAddressById(addressMap);
     } catch (error) {
       console.error('Failed to load appointments:', error);
       toast.error('Failed to load appointments');
@@ -226,6 +235,7 @@ export function Appointments() {
               const displayStatus = isPast && (apt.status === 'pending' || apt.status === 'confirmed')
                 ? 'expired'
                 : apt.status;
+              const displayAddress = apt.store_address || apt.store?.address || storeAddressById[apt.store_id];
 
               return (
               <div
@@ -283,10 +293,10 @@ export function Appointments() {
                 {apt.store || apt.store_name ? (
                   <div className="mb-3">
                     <h3 className="font-semibold text-lg text-white mb-1">{apt.store?.name || apt.store_name}</h3>
-                    {(apt.store_address || apt.store?.address) && (
+                    {displayAddress && (
                       <p className="text-sm text-gray-400 flex items-center gap-1">
                         <MapPin className="w-4 h-4" />
-                        {apt.store_address || apt.store?.address}
+                        {displayAddress}
                       </p>
                     )}
                   </div>
