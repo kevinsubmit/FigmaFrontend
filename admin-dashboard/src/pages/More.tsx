@@ -19,42 +19,42 @@ const More: React.FC = () => {
         </div>
         <button
           onClick={() => navigate('/admin/coupons')}
-          className="w-full text-left card-surface p-4 flex items-center justify-between hover:bg-blue-50/40"
+          className="w-full text-left card-surface p-4 flex items-center justify-between hover:bg-blue-50/40 text-slate-900"
         >
           <div className="flex items-center gap-3">
             <Ticket className="w-5 h-5 text-gold-500" />
-            <span>Coupons</span>
+            <span className="text-slate-900">Coupons</span>
           </div>
           <ChevronRight className="h-4 w-4 text-slate-500" />
         </button>
         <button
           onClick={() => navigate('/admin/gift-cards')}
-          className="w-full text-left card-surface p-4 flex items-center justify-between hover:bg-blue-50/40"
+          className="w-full text-left card-surface p-4 flex items-center justify-between hover:bg-blue-50/40 text-slate-900"
         >
           <div className="flex items-center gap-3">
             <Gift className="w-5 h-5 text-gold-500" />
-            <span>Gift Cards</span>
+            <span className="text-slate-900">Gift Cards</span>
           </div>
           <ChevronRight className="h-4 w-4 text-slate-500" />
         </button>
         <button
           onClick={() => navigate('/admin/reviews')}
-          className="w-full text-left card-surface p-4 flex items-center justify-between hover:bg-blue-50/40"
+          className="w-full text-left card-surface p-4 flex items-center justify-between hover:bg-blue-50/40 text-slate-900"
         >
           <div className="flex items-center gap-3">
             <MessageSquare className="w-5 h-5 text-gold-500" />
-            <span>Reviews</span>
+            <span className="text-slate-900">Reviews</span>
           </div>
           <ChevronRight className="h-4 w-4 text-slate-500" />
         </button>
         {user?.is_admin && (
           <button
             onClick={() => navigate('/admin/home-feed')}
-            className="w-full text-left card-surface p-4 flex items-center justify-between hover:bg-blue-50/40"
+            className="w-full text-left card-surface p-4 flex items-center justify-between hover:bg-blue-50/40 text-slate-900"
           >
             <div className="flex items-center gap-3">
               <Image className="w-5 h-5 text-gold-500" />
-              <span>Home Feed</span>
+              <span className="text-slate-900">Home Feed</span>
             </div>
             <ChevronRight className="h-4 w-4 text-slate-500" />
           </button>
@@ -62,11 +62,11 @@ const More: React.FC = () => {
         {user?.is_admin && (
           <button
             onClick={() => navigate('/admin/risk-control')}
-            className="w-full text-left card-surface p-4 flex items-center justify-between hover:bg-blue-50/40"
+            className="w-full text-left card-surface p-4 flex items-center justify-between hover:bg-blue-50/40 text-slate-900"
           >
             <div className="flex items-center gap-3">
               <ShieldAlert className="w-5 h-5 text-gold-500" />
-              <span>Risk Control</span>
+              <span className="text-slate-900">Risk Control</span>
             </div>
             <ChevronRight className="h-4 w-4 text-slate-500" />
           </button>
@@ -74,11 +74,11 @@ const More: React.FC = () => {
         {user?.is_admin && (
           <button
             onClick={() => navigate('/admin/service-catalog')}
-            className="w-full text-left card-surface p-4 flex items-center justify-between hover:bg-blue-50/40"
+            className="w-full text-left card-surface p-4 flex items-center justify-between hover:bg-blue-50/40 text-slate-900"
           >
             <div className="flex items-center gap-3">
               <Scissors className="w-5 h-5 text-gold-500" />
-              <span>Service Catalog</span>
+              <span className="text-slate-900">Service Catalog</span>
             </div>
             <ChevronRight className="h-4 w-4 text-slate-500" />
           </button>
@@ -86,11 +86,11 @@ const More: React.FC = () => {
         {user?.is_admin && (
           <button
             onClick={() => navigate('/admin/applications')}
-            className="w-full text-left card-surface p-4 flex items-center justify-between hover:bg-blue-50/40"
+            className="w-full text-left card-surface p-4 flex items-center justify-between hover:bg-blue-50/40 text-slate-900"
           >
             <div className="flex items-center gap-3">
               <MessageSquare className="w-5 h-5 text-gold-500" />
-              <span>Store Applications</span>
+              <span className="text-slate-900">Store Applications</span>
             </div>
             <ChevronRight className="h-4 w-4 text-slate-500" />
           </button>
