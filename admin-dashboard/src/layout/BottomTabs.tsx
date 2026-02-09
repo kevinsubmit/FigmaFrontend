@@ -1,14 +1,6 @@
-import { Home, CalendarCheck, Store, Sparkles, MoreHorizontal } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-
-const tabs = [
-  { label: 'Home', to: '/admin/dashboard', icon: Home },
-  { label: 'Appointments', to: '/admin/appointments', icon: CalendarCheck },
-  { label: 'Stores', to: '/admin/stores', icon: Store },
-  { label: 'Promos', to: '/admin/promotions', icon: Sparkles },
-  { label: 'More', to: '/admin/more', icon: MoreHorizontal },
-];
+import { primaryNavItems } from './navConfig';
 
 export const BottomTabs = () => {
   const { user } = useAuth();
@@ -18,9 +10,9 @@ export const BottomTabs = () => {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 border-t border-blue-100 backdrop-blur">
+    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 border-t border-blue-100 backdrop-blur lg:hidden">
       <div className="grid grid-cols-5 px-2 py-3">
-        {tabs.map((tab) => {
+        {primaryNavItems.map((tab) => {
           const Icon = tab.icon;
           return (
             <NavLink
