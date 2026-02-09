@@ -58,7 +58,7 @@ const Applications: React.FC = () => {
     return (
       <AdminLayout>
         <TopBar title="Applications" />
-        <div className="px-4 py-6 text-gray-500">Super admin only.</div>
+        <div className="px-4 py-6 text-slate-500">Super admin only.</div>
       </AdminLayout>
     );
   }
@@ -74,8 +74,8 @@ const Applications: React.FC = () => {
               onClick={() => setStatusFilter(status)}
               className={`px-4 py-2 rounded-full text-[10px] uppercase tracking-widest border ${
                 statusFilter === status
-                  ? 'bg-gold-500 text-black border-gold-500'
-                  : 'border-neutral-800 text-gray-500'
+                  ? 'bg-gold-500 text-white border-gold-500'
+                  : 'border-blue-100 text-slate-500'
               }`}
             >
               {status.replace('_', ' ')}
@@ -84,20 +84,20 @@ const Applications: React.FC = () => {
         </div>
 
         {loading ? (
-          <div className="text-gray-500">Loading applications...</div>
+          <div className="text-slate-500">Loading applications...</div>
         ) : (
           <div className="space-y-4">
             {applications.map((application) => (
               <div key={application.id} className="card-surface p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Store</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Store</p>
                     <h3 className="text-lg font-semibold">{application.store_name}</h3>
-                    <p className="text-xs text-gray-500">{application.phone}</p>
+                    <p className="text-xs text-slate-500">{application.phone}</p>
                   </div>
                   <span className="badge">{application.status}</span>
                 </div>
-                <div className="text-sm text-gray-400 space-y-1">
+                <div className="text-sm text-slate-600 space-y-1">
                   <p>{application.store_address || 'No address yet'}</p>
                   <p>{application.store_phone || 'No phone yet'}</p>
                   <p>{application.opening_hours || 'No hours yet'}</p>
@@ -113,13 +113,13 @@ const Applications: React.FC = () => {
                           [application.id]: event.target.value,
                         }))
                       }
-                      className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white"
+                      className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-900"
                       placeholder="Reject reason (optional)"
                     />
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         onClick={() => handleApprove(application.id)}
-                        className="rounded-xl bg-gold-500 py-2 text-sm font-semibold text-black"
+                        className="rounded-xl bg-gold-500 py-2 text-sm font-semibold text-white"
                       >
                         Approve
                       </button>
@@ -135,7 +135,7 @@ const Applications: React.FC = () => {
               </div>
             ))}
             {!applications.length && (
-              <div className="text-gray-500 text-sm">No applications found.</div>
+              <div className="text-slate-500 text-sm">No applications found.</div>
             )}
           </div>
         )}

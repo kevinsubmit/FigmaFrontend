@@ -8,7 +8,7 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-gray-400">
+      <div className="min-h-screen flex items-center justify-center text-slate-600">
         Loading...
       </div>
     );

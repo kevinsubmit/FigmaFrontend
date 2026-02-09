@@ -29,7 +29,7 @@ const PromotionsList: React.FC = () => {
         action={
           <button
             onClick={() => navigate('/admin/promotions/new')}
-            className="rounded-full bg-gold-500 px-3 py-1 text-xs font-semibold text-black"
+            className="rounded-full bg-gold-500 px-3 py-1 text-xs font-semibold text-white"
           >
             New
           </button>
@@ -37,7 +37,7 @@ const PromotionsList: React.FC = () => {
       />
       <div className="px-4 pt-6 space-y-4">
         {loading ? (
-          <div className="text-gray-500">Loading promotions...</div>
+          <div className="text-slate-500">Loading promotions...</div>
         ) : (
           promotions.map((promo) => (
             <button
@@ -47,9 +47,9 @@ const PromotionsList: React.FC = () => {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-gray-500">{promo.scope}</p>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{promo.scope}</p>
                   <h3 className="text-base font-semibold">{promo.title}</h3>
-                  <p className="text-xs text-gray-500">{promo.start_at} → {promo.end_at}</p>
+                  <p className="text-xs text-slate-500">{promo.start_at} → {promo.end_at}</p>
                 </div>
                 <span className="badge">{promo.discount_type}</span>
               </div>
@@ -57,7 +57,7 @@ const PromotionsList: React.FC = () => {
           ))
         )}
         {!loading && promotions.length === 0 && (
-          <div className="text-gray-500 text-sm">No promotions yet.</div>
+          <div className="text-slate-500 text-sm">No promotions yet.</div>
         )}
       </div>
     </AdminLayout>

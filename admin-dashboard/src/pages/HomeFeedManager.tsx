@@ -349,18 +349,18 @@ const HomeFeedManager: React.FC = () => {
               value={imageForm.title}
               onChange={(e) => setImageForm((prev) => ({ ...prev, title: e.target.value }))}
               placeholder="Title"
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             />
             <input
               value={imageForm.description}
               onChange={(e) => setImageForm((prev) => ({ ...prev, description: e.target.value }))}
               placeholder="Subtitle / Description"
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             />
             <select
               value={imageForm.status}
               onChange={(e) => setImageForm((prev) => ({ ...prev, status: e.target.value }))}
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             >
               <option value="draft">Draft</option>
               <option value="published">Published</option>
@@ -372,9 +372,9 @@ const HomeFeedManager: React.FC = () => {
                 value={imageForm.sort_order}
                 onChange={(e) => setImageForm((prev) => ({ ...prev, sort_order: Number(e.target.value) || 0 }))}
                 placeholder="排序值（越小越靠前）"
-                className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+                className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
               />
-              <p className="text-xs text-gray-500">中文提示：排序值越小，首页展示越靠前。</p>
+              <p className="text-xs text-slate-500">中文提示：排序值越小，首页展示越靠前。</p>
             </div>
           </div>
           <div className="space-y-2">
@@ -383,14 +383,14 @@ const HomeFeedManager: React.FC = () => {
               value={imageForm.image_url}
               onChange={(e) => setImageForm((prev) => ({ ...prev, image_url: e.target.value }))}
               placeholder="Image URL"
-              className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             />
             {imageForm.image_url && (
-              <img src={imageForm.image_url} alt="preview" className="h-24 w-24 rounded-lg object-cover border border-neutral-800" />
+              <img src={imageForm.image_url} alt="preview" className="h-24 w-24 rounded-lg object-cover border border-blue-100" />
             )}
           </div>
           <div className="space-y-2">
-            <p className="text-xs text-gray-400">Categories (multi-select)</p>
+            <p className="text-xs text-slate-600">Categories (multi-select)</p>
             <div className="flex flex-wrap gap-2">
               {categories
                 .filter((item) => item.is_active)
@@ -410,7 +410,7 @@ const HomeFeedManager: React.FC = () => {
                       className={`rounded-full px-3 py-1 text-xs border ${
                         active
                           ? 'border-gold-500/60 bg-gold-500/20 text-gold-200'
-                          : 'border-neutral-700 text-neutral-300'
+                          : 'border-blue-200 text-neutral-300'
                       }`}
                     >
                       {category.name}
@@ -427,7 +427,7 @@ const HomeFeedManager: React.FC = () => {
             >
               {savingImage ? 'Saving...' : editingImage ? 'Update Image' : 'Create Image'}
             </button>
-            <button onClick={resetImageForm} className="rounded-xl border border-neutral-700 px-4 py-2 text-sm text-neutral-300">
+            <button onClick={resetImageForm} className="rounded-xl border border-blue-200 px-4 py-2 text-sm text-neutral-300">
               Reset
             </button>
           </div>
@@ -443,16 +443,16 @@ const HomeFeedManager: React.FC = () => {
               value={categoryForm.name}
               onChange={(e) => setCategoryForm((prev) => ({ ...prev, name: e.target.value }))}
               placeholder="Category name"
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             />
             <input
               type="number"
               value={categoryForm.sort_order}
               onChange={(e) => setCategoryForm((prev) => ({ ...prev, sort_order: Number(e.target.value) || 0 }))}
               placeholder="Sort order"
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             />
-            <label className="inline-flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm">
+            <label className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm">
               <input
                 type="checkbox"
                 checked={categoryForm.is_active}
@@ -460,7 +460,7 @@ const HomeFeedManager: React.FC = () => {
               />
               Active
             </label>
-            <label className="inline-flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm">
+            <label className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm">
               <input
                 type="checkbox"
                 checked={categoryForm.show_on_home}
@@ -477,12 +477,12 @@ const HomeFeedManager: React.FC = () => {
             >
               {savingCategory ? 'Saving...' : editingCategory ? 'Update Category' : 'Create Category'}
             </button>
-            <button onClick={resetCategoryForm} className="rounded-xl border border-neutral-700 px-4 py-2 text-sm text-neutral-300">
+            <button onClick={resetCategoryForm} className="rounded-xl border border-blue-200 px-4 py-2 text-sm text-neutral-300">
               Reset
             </button>
           </div>
-          <div className="rounded-xl border border-neutral-800 bg-neutral-950/40 p-3">
-            <p className="text-xs text-gray-400">首页标签顺序预览（仅展示 active + 首页显示）</p>
+          <div className="rounded-xl border border-blue-100 bg-white/40 p-3">
+            <p className="text-xs text-slate-600">首页标签顺序预览（仅展示 active + 首页显示）</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {homeVisibleCategories.length ? (
                 homeVisibleCategories.map((category, index) => (
@@ -494,22 +494,22 @@ const HomeFeedManager: React.FC = () => {
                   </span>
                 ))
               ) : (
-                <span className="text-xs text-gray-500">暂无首页可见标签</span>
+                <span className="text-xs text-slate-500">暂无首页可见标签</span>
               )}
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-400">分类列表</p>
-            <div className="inline-flex rounded-lg border border-neutral-700 p-1">
+            <p className="text-xs text-slate-600">分类列表</p>
+            <div className="inline-flex rounded-lg border border-blue-200 p-1">
               <button
                 onClick={() => setCategoryListScope('all')}
-                className={`rounded px-2 py-1 text-xs ${categoryListScope === 'all' ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-400'}`}
+                className={`rounded px-2 py-1 text-xs ${categoryListScope === 'all' ? 'bg-blue-100 text-neutral-100' : 'text-neutral-400'}`}
               >
                 全部
               </button>
               <button
                 onClick={() => setCategoryListScope('home')}
-                className={`rounded px-2 py-1 text-xs ${categoryListScope === 'home' ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-400'}`}
+                className={`rounded px-2 py-1 text-xs ${categoryListScope === 'home' ? 'bg-blue-100 text-neutral-100' : 'text-neutral-400'}`}
               >
                 仅首页显示
               </button>
@@ -517,10 +517,10 @@ const HomeFeedManager: React.FC = () => {
           </div>
           <div className="space-y-2 pt-2">
             {visibleCategoryRows.map((category, index) => (
-              <div key={category.id} className="flex items-center justify-between rounded-lg border border-neutral-800 px-3 py-2">
+              <div key={category.id} className="flex items-center justify-between rounded-lg border border-blue-100 px-3 py-2">
                 <div className="text-sm">
                   <span className="font-medium">{category.name}</span>
-                  <span className="ml-2 text-xs text-gray-500">
+                  <span className="ml-2 text-xs text-slate-500">
                     sort={category.sort_order} {category.is_active ? 'active' : 'inactive'} {category.show_on_home ? '| home-visible' : '| home-hidden'}
                   </span>
                 </div>
@@ -528,20 +528,20 @@ const HomeFeedManager: React.FC = () => {
                   <button
                     disabled={index === 0 || categoryListScope === 'home'}
                     onClick={() => moveCategory(category.id, 'up')}
-                    className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 disabled:opacity-40"
+                    className="rounded border border-blue-200 px-2 py-1 text-xs text-neutral-300 disabled:opacity-40"
                   >
                     ↑
                   </button>
                   <button
                     disabled={index === visibleCategoryRows.length - 1 || categoryListScope === 'home'}
                     onClick={() => moveCategory(category.id, 'down')}
-                    className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 disabled:opacity-40"
+                    className="rounded border border-blue-200 px-2 py-1 text-xs text-neutral-300 disabled:opacity-40"
                   >
                     ↓
                   </button>
                   <button
                     onClick={() => onEditCategory(category)}
-                    className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300"
+                    className="rounded border border-blue-200 px-2 py-1 text-xs text-neutral-300"
                   >
                     Edit
                   </button>
@@ -563,7 +563,7 @@ const HomeFeedManager: React.FC = () => {
             <span>首页专题模式（按分类聚合）</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-            <label className="inline-flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm">
+            <label className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm">
               <input
                 type="checkbox"
                 checked={themeForm.enabled}
@@ -574,7 +574,7 @@ const HomeFeedManager: React.FC = () => {
             <select
               value={themeForm.tag_id}
               onChange={(e) => setThemeForm((prev) => ({ ...prev, tag_id: e.target.value }))}
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             >
               <option value="">选择专题分类</option>
               {categories
@@ -589,17 +589,17 @@ const HomeFeedManager: React.FC = () => {
               type="datetime-local"
               value={themeForm.start_at}
               onChange={(e) => setThemeForm((prev) => ({ ...prev, start_at: e.target.value }))}
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             />
             <input
               type="datetime-local"
               value={themeForm.end_at}
               onChange={(e) => setThemeForm((prev) => ({ ...prev, end_at: e.target.value }))}
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             />
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-500">
               中文提示：启用后，H5 首页默认只展示所选分类图片；可设置起止时间，到期自动恢复普通模式。
             </p>
             <button
@@ -621,12 +621,12 @@ const HomeFeedManager: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search title/description"
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             >
               <option value="all">All status</option>
               <option value="draft">Draft</option>
@@ -636,7 +636,7 @@ const HomeFeedManager: React.FC = () => {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             >
               <option value="all">All categories</option>
               {categories.map((category) => (
@@ -650,17 +650,17 @@ const HomeFeedManager: React.FC = () => {
             </button>
           </div>
           {loading ? (
-            <div className="text-sm text-gray-500">Loading...</div>
+            <div className="text-sm text-slate-500">Loading...</div>
           ) : (
             <div className="space-y-2">
               {filteredImages.map((item) => (
-                <div key={item.id} className="flex flex-col gap-2 rounded-xl border border-neutral-800 p-3 md:flex-row md:items-center md:justify-between">
+                <div key={item.id} className="flex flex-col gap-2 rounded-xl border border-blue-100 p-3 md:flex-row md:items-center md:justify-between">
                   <div className="flex items-center gap-3 min-w-0">
-                    <img src={item.image_url} alt={item.title} className="h-16 w-16 rounded-lg object-cover border border-neutral-800" />
+                    <img src={item.image_url} alt={item.title} className="h-16 w-16 rounded-lg object-cover border border-blue-100" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{item.title}</p>
-                      <p className="truncate text-xs text-gray-500">{item.description || '-'}</p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="truncate text-xs text-slate-500">{item.description || '-'}</p>
+                      <p className="text-xs text-slate-500 mt-1">
                         status={item.status} | sort={item.sort_order} | categories={item.tags.join(', ') || '-'}
                       </p>
                     </div>
@@ -668,7 +668,7 @@ const HomeFeedManager: React.FC = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => onEditImage(item)}
-                      className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300"
+                      className="rounded border border-blue-200 px-2 py-1 text-xs text-neutral-300"
                     >
                       Edit
                     </button>
@@ -686,7 +686,7 @@ const HomeFeedManager: React.FC = () => {
                     </button>
                     <button
                       onClick={() => quickSetImageStatus(item, 'draft')}
-                      className="rounded border border-neutral-600 px-2 py-1 text-xs text-neutral-300"
+                      className="rounded border border-blue-300 px-2 py-1 text-xs text-neutral-300"
                     >
                       Draft
                     </button>
@@ -699,7 +699,7 @@ const HomeFeedManager: React.FC = () => {
                   </div>
                 </div>
               ))}
-              {!filteredImages.length && <div className="text-sm text-gray-500">No images found.</div>}
+              {!filteredImages.length && <div className="text-sm text-slate-500">No images found.</div>}
             </div>
           )}
         </div>

@@ -118,11 +118,11 @@ const PromotionForm: React.FC = () => {
       <TopBar title={isEdit ? 'Edit Promotion' : 'New Promotion'} />
       <form onSubmit={handleSubmit} className="px-4 py-6 space-y-4">
         <div className="card-surface p-4 space-y-3">
-          <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Scope</label>
+          <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Scope</label>
           <select
             value={formData.scope}
             onChange={(event) => handleChange('scope', event.target.value)}
-            className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm"
             disabled={!canUsePlatform}
           >
             <option value="store">Store</option>
@@ -132,11 +132,11 @@ const PromotionForm: React.FC = () => {
 
         {formData.scope === 'store' && (
           <div className="card-surface p-4 space-y-3">
-            <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Store</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Store</label>
             <select
               value={formData.store_id}
               onChange={(event) => handleChange('store_id', event.target.value)}
-              className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm"
               disabled={role === 'store_admin'}
             >
               <option value="">Select store</option>
@@ -150,30 +150,30 @@ const PromotionForm: React.FC = () => {
         )}
 
         <div className="card-surface p-4 space-y-3">
-          <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Title</label>
+          <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Title</label>
           <input
             value={formData.title}
             onChange={(event) => handleChange('title', event.target.value)}
-            className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm"
             required
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="card-surface p-4 space-y-3">
-            <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Type</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Type</label>
             <input
               value={formData.type}
               onChange={(event) => handleChange('type', event.target.value)}
-              className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm"
             />
           </div>
           <div className="card-surface p-4 space-y-3">
-            <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Discount Type</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Discount Type</label>
             <select
               value={formData.discount_type}
               onChange={(event) => handleChange('discount_type', event.target.value)}
-              className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm"
             >
               <option value="fixed_amount">Fixed Amount</option>
               <option value="percentage">Percentage</option>
@@ -182,42 +182,42 @@ const PromotionForm: React.FC = () => {
         </div>
 
         <div className="card-surface p-4 space-y-3">
-          <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Discount Value</label>
+          <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Discount Value</label>
           <input
             type="number"
             value={formData.discount_value}
             onChange={(event) => handleChange('discount_value', event.target.value)}
-            className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm"
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="card-surface p-4 space-y-3">
-            <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Start</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Start</label>
             <input
               type="datetime-local"
               value={formData.start_at}
               onChange={(event) => handleChange('start_at', event.target.value)}
-              className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm"
             />
           </div>
           <div className="card-surface p-4 space-y-3">
-            <label className="text-xs uppercase tracking-[0.2em] text-gray-500">End</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">End</label>
             <input
               type="datetime-local"
               value={formData.end_at}
               onChange={(event) => handleChange('end_at', event.target.value)}
-              className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm"
             />
           </div>
         </div>
 
         <div className="card-surface p-4 space-y-3">
-          <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Service</label>
+          <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Service</label>
           <select
             value={formData.service_id}
             onChange={(event) => handleChange('service_id', event.target.value)}
-            className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm"
           >
             <option value="">Select service</option>
             {services.map((service) => (
@@ -232,14 +232,14 @@ const PromotionForm: React.FC = () => {
               placeholder="Min price"
               value={formData.min_price}
               onChange={(event) => handleChange('min_price', event.target.value)}
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm"
             />
             <input
               type="number"
               placeholder="Max price"
               value={formData.max_price}
               onChange={(event) => handleChange('max_price', event.target.value)}
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm"
             />
           </div>
         </div>
@@ -247,7 +247,7 @@ const PromotionForm: React.FC = () => {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-xl bg-gold-500 py-3 text-sm font-semibold text-black"
+          className="w-full rounded-xl bg-gold-500 py-3 text-sm font-semibold text-white"
         >
           {loading ? 'Saving...' : 'Save Promotion'}
         </button>

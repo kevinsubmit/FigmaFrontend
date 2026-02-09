@@ -5,7 +5,7 @@ import { TopBar } from '../layout/TopBar';
 const Reviews: React.FC = () => (
   <AdminLayout>
     <TopBar title="Reviews" />
-    <div className="px-4 py-6 text-gray-500">
+    <div className="px-4 py-6 text-slate-500">
       Reviews moderation will be added next.
     </div>
   </AdminLayout>

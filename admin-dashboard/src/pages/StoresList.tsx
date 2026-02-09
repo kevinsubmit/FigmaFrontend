@@ -38,7 +38,7 @@ const StoresList: React.FC = () => {
       <TopBar title="Stores" />
       <div className="px-4 pt-6 space-y-4">
         {loading ? (
-          <div className="text-gray-500">Loading stores...</div>
+          <div className="text-slate-500">Loading stores...</div>
         ) : (
           stores.map((store) => (
             <button
@@ -47,12 +47,12 @@ const StoresList: React.FC = () => {
               className="w-full text-left card-surface p-4"
             >
               <h3 className="text-base font-semibold">{store.name}</h3>
-              <p className="text-xs text-gray-500 mt-1">{store.address}</p>
+              <p className="text-xs text-slate-500 mt-1">{store.address}</p>
             </button>
           ))
         )}
         {!loading && stores.length === 0 && (
-          <div className="text-gray-500 text-sm">No stores found.</div>
+          <div className="text-slate-500 text-sm">No stores found.</div>
         )}
       </div>
     </AdminLayout>

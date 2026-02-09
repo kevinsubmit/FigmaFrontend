@@ -150,20 +150,20 @@ const ServiceCatalogPage: React.FC = () => {
       <TopBar title="Service Catalog" />
       <div className="px-4 py-6 space-y-4">
         <div className="card-surface p-4 space-y-3">
-          <p className="text-[10px] uppercase tracking-[0.22em] text-gray-500">Create Catalog Service</p>
+          <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Create Catalog Service</p>
           <div className="grid grid-cols-1 gap-3">
             <input
               value={newItem.name}
               onChange={(event) => setNewItem((prev) => ({ ...prev, name: event.target.value }))}
               placeholder="Service name (e.g. Gel Manicure)"
-              className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white outline-none focus:border-gold-500"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-gold-500"
             />
             <div className="grid grid-cols-2 gap-3">
               <input
                 value={newItem.category}
                 onChange={(event) => setNewItem((prev) => ({ ...prev, category: event.target.value }))}
                 placeholder="Category"
-                className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white outline-none focus:border-gold-500"
+                className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-gold-500"
               />
             </div>
             <textarea
@@ -171,13 +171,13 @@ const ServiceCatalogPage: React.FC = () => {
               onChange={(event) => setNewItem((prev) => ({ ...prev, description: event.target.value }))}
               placeholder="Description (optional)"
               rows={2}
-              className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white outline-none focus:border-gold-500"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-gold-500"
             />
             <button
               type="button"
               onClick={onCreate}
               disabled={!canCreate || creating}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gold-500 px-4 py-2 text-sm font-semibold text-black disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gold-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
             >
               <Plus className="h-4 w-4" />
               {creating ? 'Creating...' : 'Create Service Template'}
@@ -187,11 +187,11 @@ const ServiceCatalogPage: React.FC = () => {
 
         <div className="card-surface p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-gray-500">Catalog List</p>
+            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Catalog List</p>
             <span className="badge">{items.length} items</span>
           </div>
 
-          {loading && <p className="text-sm text-gray-500">Loading...</p>}
+          {loading && <p className="text-sm text-slate-500">Loading...</p>}
 
           {!loading &&
             items.map((item) => {
@@ -199,7 +199,7 @@ const ServiceCatalogPage: React.FC = () => {
               const draft = drafts[item.id];
               if (!draft) return null;
               return (
-                <div key={item.id} className="rounded-xl border border-neutral-800 bg-neutral-950 p-3 space-y-2">
+                <div key={item.id} className="rounded-xl border border-blue-100 bg-white p-3 space-y-2">
                   {isEditing ? (
                     <div className="space-y-2">
                       <input
@@ -207,7 +207,7 @@ const ServiceCatalogPage: React.FC = () => {
                         onChange={(event) =>
                           setDrafts((prev) => ({ ...prev, [item.id]: { ...prev[item.id], name: event.target.value } }))
                         }
-                        className="w-full rounded-lg border border-neutral-800 bg-black px-2 py-1.5 text-sm text-white outline-none focus:border-gold-500"
+                        className="w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
                       />
                       <div className="grid grid-cols-2 gap-2">
                         <input
@@ -215,7 +215,7 @@ const ServiceCatalogPage: React.FC = () => {
                           onChange={(event) =>
                             setDrafts((prev) => ({ ...prev, [item.id]: { ...prev[item.id], category: event.target.value } }))
                           }
-                          className="w-full rounded-lg border border-neutral-800 bg-black px-2 py-1.5 text-sm text-white outline-none focus:border-gold-500"
+                          className="w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
                           placeholder="Category"
                         />
                       </div>
@@ -225,16 +225,16 @@ const ServiceCatalogPage: React.FC = () => {
                           setDrafts((prev) => ({ ...prev, [item.id]: { ...prev[item.id], description: event.target.value } }))
                         }
                         rows={2}
-                        className="w-full rounded-lg border border-neutral-800 bg-black px-2 py-1.5 text-sm text-white outline-none focus:border-gold-500"
+                        className="w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
                       />
                     </div>
                   ) : (
                     <div>
-                      <p className="text-sm font-semibold text-white">{item.name}</p>
-                      <p className="mt-1 text-xs text-gray-400">
+                      <p className="text-sm font-semibold text-slate-900">{item.name}</p>
+                      <p className="mt-1 text-xs text-slate-600">
                         {item.category || 'General'} · {item.is_active ? 'Active' : 'Inactive'}
                       </p>
-                      {item.description && <p className="mt-1 text-xs text-gray-500">{item.description}</p>}
+                      {item.description && <p className="mt-1 text-xs text-slate-500">{item.description}</p>}
                     </div>
                   )}
                   <div className="flex items-center justify-between">
@@ -246,7 +246,7 @@ const ServiceCatalogPage: React.FC = () => {
                           [item.id]: { ...prev[item.id], is_active: prev[item.id].is_active === 1 ? 0 : 1 },
                         }))
                       }
-                      className="rounded-lg border border-neutral-700 px-2 py-1 text-xs text-gray-200"
+                      className="rounded-lg border border-blue-200 px-2 py-1 text-xs text-slate-800"
                     >
                       {draft.is_active === 1 ? 'Set Inactive' : 'Set Active'}
                     </button>
@@ -256,7 +256,7 @@ const ServiceCatalogPage: React.FC = () => {
                           type="button"
                           onClick={() => onSave(item.id)}
                           disabled={savingId === item.id}
-                          className="inline-flex items-center gap-1 rounded-lg bg-gold-500 px-2 py-1 text-xs font-semibold text-black disabled:opacity-60"
+                          className="inline-flex items-center gap-1 rounded-lg bg-gold-500 px-2 py-1 text-xs font-semibold text-white disabled:opacity-60"
                         >
                           <Save className="h-3 w-3" />
                           {savingId === item.id ? 'Saving...' : 'Save'}
@@ -265,7 +265,7 @@ const ServiceCatalogPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setEditingId(item.id)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-neutral-700 px-2 py-1 text-xs text-gray-200"
+                          className="inline-flex items-center gap-1 rounded-lg border border-blue-200 px-2 py-1 text-xs text-slate-800"
                         >
                           <Edit3 className="h-3 w-3" />
                           Edit

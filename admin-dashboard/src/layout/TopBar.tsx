@@ -11,7 +11,7 @@ export const TopBar: React.FC<TopBarProps> = ({ title, backTo, action }) => {
   const navigate = useNavigate();
 
   return (
-    <div className="sticky top-0 z-40 bg-neutral-950/80 backdrop-blur-md border-b border-neutral-800">
+    <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-blue-100">
       <div className="flex items-center justify-between px-4 py-3">
         <button
           onClick={() => (backTo ? navigate(backTo) : navigate(-1))}

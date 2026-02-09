@@ -60,7 +60,7 @@ const RiskControl: React.FC = () => {
             <ShieldAlert className="h-5 w-5 text-gold-500" />
             <div>
               <p className="text-sm font-semibold">Current restricted users</p>
-              <p className="text-xs text-gray-500">Users blocked from new bookings</p>
+              <p className="text-xs text-slate-500">Users blocked from new bookings</p>
             </div>
           </div>
           <span className="text-gold-300 font-semibold">{restrictedCount}</span>
@@ -72,19 +72,19 @@ const RiskControl: React.FC = () => {
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               placeholder="Search by username/phone"
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             />
             <select
               value={riskLevel}
               onChange={(e) => setRiskLevel(e.target.value)}
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             >
               <option value="all">All Levels</option>
               <option value="normal">Normal</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
             </select>
-            <label className="inline-flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm">
+            <label className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm">
               <input
                 type="checkbox"
                 checked={restrictedOnly}
@@ -102,7 +102,7 @@ const RiskControl: React.FC = () => {
         </div>
 
         {loading ? (
-          <div className="text-gray-500 text-sm">Loading risk users...</div>
+          <div className="text-slate-500 text-sm">Loading risk users...</div>
         ) : (
           <div className="space-y-3">
             {users.map((user) => {
@@ -112,9 +112,9 @@ const RiskControl: React.FC = () => {
                   <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
                       <p className="text-sm font-semibold">
-                        {user.full_name || user.username} <span className="text-gray-500">({user.phone})</span>
+                        {user.full_name || user.username} <span className="text-slate-500">({user.phone})</span>
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-slate-500 mt-1">
                         risk={user.risk_level} | cancel_7d={user.cancel_7d} | no_show_30d={user.no_show_30d}
                       </p>
                       {isRestricted && (
@@ -141,7 +141,7 @@ const RiskControl: React.FC = () => {
                 </div>
               );
             })}
-            {!users.length && <div className="text-sm text-gray-500">No risk users found.</div>}
+            {!users.length && <div className="text-sm text-slate-500">No risk users found.</div>}
           </div>
         )}
       </div>

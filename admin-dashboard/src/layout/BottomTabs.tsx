@@ -18,7 +18,7 @@ export const BottomTabs = () => {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-neutral-950/90 border-t border-neutral-800 backdrop-blur">
+    <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 border-t border-blue-100 backdrop-blur">
       <div className="grid grid-cols-5 px-2 py-3">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -28,7 +28,7 @@ export const BottomTabs = () => {
               to={tab.to}
               className={({ isActive }) =>
                 `flex flex-col items-center gap-1 text-[10px] uppercase tracking-widest ${
-                  isActive ? 'text-gold-500' : 'text-gray-500'
+                  isActive ? 'text-gold-500' : 'text-slate-500'
                 }`
               }
             >

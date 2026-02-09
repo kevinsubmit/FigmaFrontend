@@ -5,24 +5,24 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
-  @apply bg-neutral-950 text-white font-display;
+  @apply bg-white text-slate-900 font-display;
 }
 
 .app-shell {
   background:
-    radial-gradient(circle at top right, rgba(212, 175, 55, 0.15), transparent 40%),
-    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.08), transparent 35%),
-    #0b0b0b;
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.18), transparent 42%),
+    radial-gradient(circle at 18% 12%, rgba(147, 197, 253, 0.22), transparent 36%),
+    linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
 }
 
 .card-surface {
-  @apply bg-neutral-900/70 border border-neutral-800 rounded-2xl shadow-glow;
+  @apply bg-white/85 border border-blue-100 rounded-2xl shadow-glow;
 }
 
 .badge {
-  @apply inline-flex items-center gap-1 rounded-full border border-gold-500/30 bg-gold-500/10 px-2 py-0.5 text-[10px] uppercase tracking-widest text-gold-100;
+  @apply inline-flex items-center gap-1 rounded-full border border-gold-500/30 bg-gold-500/10 px-2 py-0.5 text-[10px] uppercase tracking-widest text-gold-700;
 }

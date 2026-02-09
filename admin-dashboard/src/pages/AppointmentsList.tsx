@@ -46,11 +46,11 @@ const statusText: Record<StatusOption, string> = {
 };
 
 const statusBadgeClass: Record<StatusOption, string> = {
-  all: 'border-neutral-700 text-gray-300 bg-neutral-800/50',
+  all: 'border-blue-200 text-slate-700 bg-blue-100/50',
   pending: 'border-amber-500/50 text-amber-200 bg-amber-500/10',
   confirmed: 'border-blue-500/50 text-blue-200 bg-blue-500/10',
   completed: 'border-emerald-500/50 text-emerald-200 bg-emerald-500/10',
-  cancelled: 'border-neutral-600 text-gray-300 bg-neutral-700/30',
+  cancelled: 'border-blue-300 text-slate-700 bg-neutral-700/30',
 };
 
 const timelineHours = Array.from({ length: 13 }, (_, idx) => 8 + idx);
@@ -442,25 +442,25 @@ const AppointmentsList: React.FC = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => moveDate(-1)}
-                className="rounded-lg border border-neutral-800 p-2 text-gray-300 hover:border-gold-500"
+                className="rounded-lg border border-blue-100 p-2 text-slate-700 hover:border-gold-500"
                 aria-label="Previous day"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setDateCursor(toDateInput(new Date()))}
-                className="rounded-lg border border-neutral-800 px-2.5 py-2 text-xs text-gray-300 hover:border-gold-500"
+                className="rounded-lg border border-blue-100 px-2.5 py-2 text-xs text-slate-700 hover:border-gold-500"
               >
                 Today
               </button>
               <button
                 onClick={() => moveDate(1)}
-                className="rounded-lg border border-neutral-800 p-2 text-gray-300 hover:border-gold-500"
+                className="rounded-lg border border-blue-100 p-2 text-slate-700 hover:border-gold-500"
                 aria-label="Next day"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
-              <div className="ml-1 flex items-center gap-2 text-sm text-gray-300">
+              <div className="ml-1 flex items-center gap-2 text-sm text-slate-700">
                 <CalendarDays className="h-4 w-4 text-gold-500" />
                 <span>{formatDateTitle(dateCursor)}</span>
               </div>
@@ -468,15 +468,15 @@ const AppointmentsList: React.FC = () => {
                 type="date"
                 value={dateCursor}
                 onChange={(e) => setDateCursor(e.target.value)}
-                className="ml-1 rounded-lg border border-neutral-800 bg-neutral-950 px-2.5 py-2 text-xs text-gray-300 outline-none focus:border-gold-500"
+                className="ml-1 rounded-lg border border-blue-100 bg-white px-2.5 py-2 text-xs text-slate-700 outline-none focus:border-gold-500"
               />
             </div>
 
-            <div className="inline-flex rounded-xl border border-neutral-800 bg-neutral-900/70 p-1">
+            <div className="inline-flex rounded-xl border border-blue-100 bg-blue-50/70 p-1">
               <button
                 onClick={() => setViewMode('day')}
                 className={`rounded-lg px-3 py-1.5 text-xs uppercase tracking-[0.15em] ${
-                  viewMode === 'day' ? 'bg-gold-500 text-black' : 'text-gray-400'
+                  viewMode === 'day' ? 'bg-gold-500 text-white' : 'text-slate-600'
                 }`}
               >
                 Day
@@ -484,7 +484,7 @@ const AppointmentsList: React.FC = () => {
               <button
                 onClick={() => setViewMode('week')}
                 className={`rounded-lg px-3 py-1.5 text-xs uppercase tracking-[0.15em] ${
-                  viewMode === 'week' ? 'bg-gold-500 text-black' : 'text-gray-400'
+                  viewMode === 'week' ? 'bg-gold-500 text-white' : 'text-slate-600'
                 }`}
               >
                 Week
@@ -494,12 +494,12 @@ const AppointmentsList: React.FC = () => {
 
           <div className={`grid grid-cols-1 gap-2 md:grid-cols-2 ${role === 'super_admin' ? 'xl:grid-cols-7' : 'xl:grid-cols-6'}`}>
             <label className="relative xl:col-span-2">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 placeholder="Search name / phone / service"
-                className="w-full rounded-xl border border-neutral-800 bg-neutral-950 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-gold-500"
+                className="w-full rounded-xl border border-blue-100 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-gold-500"
               />
             </label>
 
@@ -507,7 +507,7 @@ const AppointmentsList: React.FC = () => {
               value={orderKeyword}
               onChange={(e) => setOrderKeyword(e.target.value)}
               placeholder="Search by order number"
-              className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             />
 
             {role === 'super_admin' && (
@@ -515,14 +515,14 @@ const AppointmentsList: React.FC = () => {
                 value={storeKeyword}
                 onChange={(e) => setStoreKeyword(e.target.value)}
                 placeholder="Search by store name"
-                className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+                className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
               />
             )}
 
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as StatusOption)}
-              className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             >
               {statusOrder.map((option) => (
                 <option key={option} value={option}>
@@ -534,7 +534,7 @@ const AppointmentsList: React.FC = () => {
             <select
               value={serviceFilter}
               onChange={(e) => setServiceFilter(e.target.value)}
-              className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             >
               <option value="all">All Services</option>
               {serviceOptions.map((service) => (
@@ -547,7 +547,7 @@ const AppointmentsList: React.FC = () => {
             <select
               value={staffFilter}
               onChange={(e) => setStaffFilter(e.target.value)}
-              className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
             >
               <option value="all">All Staff</option>
               {staffOptions.map((staff) => (
@@ -558,20 +558,20 @@ const AppointmentsList: React.FC = () => {
             </select>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-gray-400">
+          <div className="flex items-center justify-between text-xs text-slate-600">
             <span>{filteredAppointments.length} appointments</span>
-            <button onClick={resetFilters} className="rounded-md border border-neutral-700 px-2 py-1 hover:border-gold-500">
+            <button onClick={resetFilters} className="rounded-md border border-blue-200 px-2 py-1 hover:border-gold-500">
               Reset Filters
             </button>
           </div>
         </div>
 
         {loading ? (
-          <div className="text-sm text-gray-400">Loading appointments...</div>
+          <div className="text-sm text-slate-600">Loading appointments...</div>
         ) : (
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
             <section className="card-surface p-3 xl:col-span-2">
-              <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-gray-500">
+              <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
                 <Clock3 className="h-4 w-4" />
                 Timeline
               </div>
@@ -586,8 +586,8 @@ const AppointmentsList: React.FC = () => {
                       const hourLabel = `${`${hour}`.padStart(2, '0')}:00`;
                       const bucket = timelineMap[date]?.[hour] || [];
                       return (
-                        <div key={`${date}-${hour}`} className="rounded-xl border border-neutral-800 bg-neutral-950/60 p-2.5">
-                          <p className="text-[11px] uppercase tracking-widest text-gray-500">{hourLabel}</p>
+                        <div key={`${date}-${hour}`} className="rounded-xl border border-blue-100 bg-white/60 p-2.5">
+                          <p className="text-[11px] uppercase tracking-widest text-slate-500">{hourLabel}</p>
                           {!bucket.length ? (
                             <p className="mt-1 text-xs text-gray-600">-</p>
                           ) : (
@@ -627,8 +627,8 @@ const AppointmentsList: React.FC = () => {
             <section className="card-surface p-3 overflow-hidden xl:col-span-1">
               <div className="overflow-auto max-h-[540px]">
                 <table className="min-w-full text-left text-sm">
-                  <thead className="sticky top-0 bg-neutral-900">
-                    <tr className="text-xs uppercase tracking-[0.15em] text-gray-500 border-b border-neutral-800">
+                  <thead className="sticky top-0 bg-blue-50">
+                    <tr className="text-xs uppercase tracking-[0.15em] text-slate-500 border-b border-blue-100">
                       <th className="px-3 py-2 font-medium">Time</th>
                       <th className="px-3 py-2 font-medium">Customer</th>
                       <th className="px-3 py-2 font-medium">Phone</th>
@@ -642,7 +642,7 @@ const AppointmentsList: React.FC = () => {
                       const isCollapsed = !!collapsedGroupKeys[group.key];
                       return (
                         <React.Fragment key={group.key}>
-                          <tr className="border-b border-neutral-800 bg-neutral-900/70">
+                          <tr className="border-b border-blue-100 bg-blue-50/70">
                             <td colSpan={6} className="px-3 py-2">
                               <button
                                 onClick={() => toggleGroup(group.key)}
@@ -651,7 +651,7 @@ const AppointmentsList: React.FC = () => {
                                 <span className="font-semibold text-gold-300">
                                   {group.date} {group.startTime}
                                 </span>
-                                <span className="text-gray-300">
+                                <span className="text-slate-700">
                                   {group.count} booking{group.count > 1 ? 's' : ''} {isCollapsed ? '(collapsed)' : '(expanded)'}
                                 </span>
                               </button>
@@ -665,19 +665,19 @@ const AppointmentsList: React.FC = () => {
                                 <tr
                                   key={apt.id}
                                   onClick={() => syncSelected(apt)}
-                                  className={`cursor-pointer border-b border-neutral-800/80 hover:bg-neutral-800/50 ${
+                                  className={`cursor-pointer border-b border-blue-100/80 hover:bg-blue-100/50 ${
                                     hasConflict ? 'bg-rose-500/5' : ''
                                   }`}
                                 >
                                   <td className="px-3 py-2.5 align-top whitespace-nowrap">
                                     <p>{formatTimeRange(apt)}</p>
-                                    <p className="text-xs text-gray-500">
+                                    <p className="text-xs text-slate-500">
                                       {apt.appointment_date} · concurrent {group.count}
                                     </p>
                                   </td>
                                   <td className="px-3 py-2.5 align-top">
                                     <p className="font-medium">{getCustomerName(apt)}</p>
-                                    <p className="text-xs text-gray-500">#{apt.order_number || apt.id}</p>
+                                    <p className="text-xs text-slate-500">#{apt.order_number || apt.id}</p>
                                     {hasConflict && (
                                       <p className="mt-1 text-[11px] text-rose-300 flex items-center gap-1">
                                         <AlertTriangle className="h-3 w-3" />
@@ -685,7 +685,7 @@ const AppointmentsList: React.FC = () => {
                                       </p>
                                     )}
                                   </td>
-                                  <td className="px-3 py-2.5 align-top text-gray-200">{maskPhone(getPhone(apt))}</td>
+                                  <td className="px-3 py-2.5 align-top text-slate-800">{maskPhone(getPhone(apt))}</td>
                                   <td className="px-3 py-2.5 align-top">{getServiceLabel(apt)}</td>
                                   <td className="px-3 py-2.5 align-top">{getStaffLabel(apt)}</td>
                                   <td className="px-3 py-2.5 align-top">
@@ -703,7 +703,7 @@ const AppointmentsList: React.FC = () => {
                 </table>
 
                 {!filteredAppointments.length && (
-                  <div className="p-6 text-center text-sm text-gray-500">No appointments in this range.</div>
+                  <div className="p-6 text-center text-sm text-slate-500">No appointments in this range.</div>
                 )}
               </div>
             </section>
@@ -712,14 +712,14 @@ const AppointmentsList: React.FC = () => {
       </div>
 
       {selected && (
-        <div className="fixed inset-0 z-50 bg-black/60">
-          <div className="absolute inset-y-0 right-0 w-full max-w-md border-l border-neutral-800 bg-neutral-950 shadow-2xl overflow-auto">
-            <div className="sticky top-0 z-10 border-b border-neutral-800 bg-neutral-950/95 backdrop-blur">
+        <div className="fixed inset-0 z-50 bg-white/60">
+          <div className="absolute inset-y-0 right-0 w-full max-w-md border-l border-blue-100 bg-white shadow-2xl overflow-auto">
+            <div className="sticky top-0 z-10 border-b border-blue-100 bg-white/95 backdrop-blur">
               <div className="flex items-center justify-between px-4 py-3">
                 <h2 className="text-base font-semibold">Appointment Detail</h2>
                 <button
                   onClick={() => setSelected(null)}
-                  className="rounded-full border border-neutral-700 p-1.5 text-gray-300 hover:border-gold-500"
+                  className="rounded-full border border-blue-200 p-1.5 text-slate-700 hover:border-gold-500"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -727,24 +727,24 @@ const AppointmentsList: React.FC = () => {
             </div>
 
             <div className="space-y-4 px-4 py-4">
-              <div className="rounded-xl border border-neutral-800 bg-neutral-900/70 p-3 space-y-2">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-gray-500">Customer</p>
+              <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Customer</p>
                 <div className="flex items-center gap-2 text-sm">
                   <UserRound className="h-4 w-4 text-gold-500" />
                   <span className="font-medium">{getCustomerName(selected)}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-300">
+                <div className="flex items-center gap-2 text-sm text-slate-700">
                   <Phone className="h-4 w-4 text-gold-500" />
                   <span>{getPhone(selected) || '-'}</span>
                 </div>
-                <p className="text-xs text-gray-400">Order: #{selected.order_number || selected.id}</p>
+                <p className="text-xs text-slate-600">Order: #{selected.order_number || selected.id}</p>
               </div>
 
-              <div className="rounded-xl border border-neutral-800 bg-neutral-900/70 p-3 space-y-2 text-sm">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-gray-500">Service</p>
+              <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2 text-sm">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Service</p>
                 <p>{getServiceLabel(selected)}</p>
-                <p className="text-gray-400">Current: {formatTimeRange(selected)}</p>
-                <p className="text-gray-400">Staff: {getStaffLabel(selected)}</p>
+                <p className="text-slate-600">Current: {formatTimeRange(selected)}</p>
+                <p className="text-slate-600">Staff: {getStaffLabel(selected)}</p>
                 {conflictInfo.ids.has(selected.id) && (
                   <p className="text-xs text-rose-300 flex items-center gap-1">
                     <AlertTriangle className="h-3.5 w-3.5" />
@@ -753,8 +753,8 @@ const AppointmentsList: React.FC = () => {
                 )}
               </div>
 
-              <div className="rounded-xl border border-neutral-800 bg-neutral-900/70 p-3 space-y-2 text-sm">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-gray-500">Status</p>
+              <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2 text-sm">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Status</p>
                 <span
                   className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-widest ${
                     statusBadgeClass[normalizeStatus(selected.status)]
@@ -762,23 +762,23 @@ const AppointmentsList: React.FC = () => {
                 >
                   {statusText[normalizeStatus(selected.status)]}
                 </span>
-                {selected.cancel_reason && <p className="text-xs text-gray-400">Cancel reason: {selected.cancel_reason}</p>}
+                {selected.cancel_reason && <p className="text-xs text-slate-600">Cancel reason: {selected.cancel_reason}</p>}
               </div>
 
-              <div className="rounded-xl border border-neutral-800 bg-neutral-900/70 p-3 space-y-2">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-gray-500">Reschedule</p>
+              <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Reschedule</p>
                 <div className="grid grid-cols-2 gap-2">
                   <input
                     type="date"
                     value={editDate}
                     onChange={(e) => setEditDate(e.target.value)}
-                    className="rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-2 text-sm outline-none focus:border-gold-500"
+                    className="rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-gold-500"
                   />
                   <input
                     type="time"
                     value={editTime}
                     onChange={(e) => setEditTime(e.target.value)}
-                    className="rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-2 text-sm outline-none focus:border-gold-500"
+                    className="rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-gold-500"
                   />
                 </div>
                 <button
@@ -791,31 +791,31 @@ const AppointmentsList: React.FC = () => {
                 </button>
               </div>
 
-              <div className="rounded-xl border border-neutral-800 bg-neutral-900/70 p-3 space-y-2">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-gray-500">Notes</p>
+              <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Notes</p>
                 <textarea
                   value={editNotes}
                   onChange={(event) => setEditNotes(event.target.value)}
                   rows={3}
-                  className="w-full rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-2 text-sm outline-none focus:border-gold-500"
+                  className="w-full rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-gold-500"
                   placeholder="Notes"
                 />
                 <button
                   onClick={saveNotes}
                   disabled={savingNotes}
-                  className="w-full rounded-lg border border-neutral-600 px-3 py-2 text-sm text-gray-200 disabled:opacity-50"
+                  className="w-full rounded-lg border border-blue-300 px-3 py-2 text-sm text-slate-800 disabled:opacity-50"
                 >
                   Save Notes
                 </button>
               </div>
 
-              <div className="rounded-xl border border-neutral-800 bg-neutral-900/70 p-3 space-y-2">
-                <label className="text-[11px] uppercase tracking-[0.2em] text-gray-500">Cancel reason</label>
+              <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2">
+                <label className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Cancel reason</label>
                 <textarea
                   value={cancelReason}
                   onChange={(event) => setCancelReason(event.target.value)}
                   rows={2}
-                  className="w-full rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-2 text-sm outline-none focus:border-gold-500"
+                  className="w-full rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-gold-500"
                   placeholder="Optional"
                 />
               </div>
@@ -838,7 +838,7 @@ const AppointmentsList: React.FC = () => {
                 <button
                   onClick={() => updateStatus('cancelled')}
                   disabled={!!updatingStatus}
-                  className="rounded-lg border border-neutral-600 px-3 py-2 text-sm text-gray-200 disabled:opacity-50"
+                  className="rounded-lg border border-blue-300 px-3 py-2 text-sm text-slate-800 disabled:opacity-50"
                 >
                   Cancel
                 </button>

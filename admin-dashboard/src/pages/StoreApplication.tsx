@@ -179,7 +179,7 @@ const StoreApplication: React.FC = () => {
     return (
       <AdminLayout>
         <TopBar title="Store Setup" />
-        <div className="px-4 py-6 text-gray-500">Loading...</div>
+        <div className="px-4 py-6 text-slate-500">Loading...</div>
       </AdminLayout>
     );
   }
@@ -189,49 +189,49 @@ const StoreApplication: React.FC = () => {
       <TopBar title="Store Setup" />
       <div className="px-4 py-6 space-y-6">
         <div className="card-surface p-4 space-y-3">
-          <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Account</p>
-          <p className="text-sm text-gray-300">{user?.phone}</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Account</p>
+          <p className="text-sm text-slate-700">{user?.phone}</p>
+          <p className="text-xs text-slate-500">
             Status: {applicationStatus === 'pending_review' ? 'Under Review' : 'Profile Setup'}
           </p>
         </div>
 
         <div className="card-surface p-4 space-y-4">
           <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Store Name</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Store Name</label>
             <input
               value={form.store_name}
               onChange={updateField('store_name')}
-              className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-white outline-none focus:border-gold-500"
+              className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-gold-500"
               required
             />
           </div>
           <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Street Address</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Street Address</label>
             <input
               value={form.address_line1}
               onChange={updateField('address_line1')}
-              className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-white outline-none focus:border-gold-500"
+              className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-gold-500"
               placeholder="123 Market St"
               required
             />
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] uppercase tracking-[0.2em] text-gray-500">City</label>
+                <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">City</label>
                 <input
                   value={form.city}
                   onChange={updateField('city')}
-                  className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white outline-none focus:border-gold-500"
+                  className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-gold-500"
                   placeholder="San Francisco"
                   required
                 />
               </div>
               <div>
-                <label className="text-[10px] uppercase tracking-[0.2em] text-gray-500">State</label>
+                <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">State</label>
                 <select
                   value={form.state}
                   onChange={(event) => setForm((prev) => ({ ...prev, state: event.target.value }))}
-                  className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white outline-none focus:border-gold-500"
+                  className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-gold-500"
                   required
                 >
                   <option value="">Select</option>
@@ -244,11 +244,11 @@ const StoreApplication: React.FC = () => {
               </div>
             </div>
             <div className="mt-3">
-              <label className="text-[10px] uppercase tracking-[0.2em] text-gray-500">ZIP</label>
+              <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">ZIP</label>
               <input
                 value={form.zip_code}
                 onChange={updateField('zip_code')}
-                className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white outline-none focus:border-gold-500"
+                className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-gold-500"
                 placeholder="94103"
                 inputMode="numeric"
                 required
@@ -256,18 +256,18 @@ const StoreApplication: React.FC = () => {
             </div>
           </div>
           <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Store Phone</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Store Phone</label>
             <input
               value={form.store_phone}
               onChange={updateField('store_phone')}
-              className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-white outline-none focus:border-gold-500"
+              className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-gold-500"
               inputMode="tel"
               placeholder="4159876543"
               required
             />
           </div>
           <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Opening Hours</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Opening Hours</label>
             <div className="mt-2 grid grid-cols-7 gap-2">
               {dayOptions.map((day) => {
                 const active = form.opening_days.includes(day);
@@ -285,8 +285,8 @@ const StoreApplication: React.FC = () => {
                     }
                     className={`rounded-lg border px-2 py-2 text-xs ${
                       active
-                        ? 'border-gold-500 bg-gold-500 text-black'
-                        : 'border-neutral-800 text-gray-400'
+                        ? 'border-gold-500 bg-gold-500 text-white'
+                        : 'border-blue-100 text-slate-600'
                     }`}
                   >
                     {day}
@@ -296,13 +296,13 @@ const StoreApplication: React.FC = () => {
             </div>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] uppercase tracking-[0.2em] text-gray-500">Open</label>
+                <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Open</label>
                 <select
                   value={form.open_time}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, open_time: event.target.value }))
                   }
-                  className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white outline-none focus:border-gold-500"
+                  className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-gold-500"
                 >
                   {timeOptions.map((option) => (
                     <option key={`open-${option}`} value={option}>
@@ -312,13 +312,13 @@ const StoreApplication: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="text-[10px] uppercase tracking-[0.2em] text-gray-500">Close</label>
+                <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Close</label>
                 <select
                   value={form.close_time}
                   onChange={(event) =>
                     setForm((prev) => ({ ...prev, close_time: event.target.value }))
                   }
-                  className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white outline-none focus:border-gold-500"
+                  className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-gold-500"
                 >
                   {timeOptions.map((option) => (
                     <option key={`close-${option}`} value={option}>
@@ -328,28 +328,28 @@ const StoreApplication: React.FC = () => {
                 </select>
               </div>
             </div>
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-2 text-xs text-slate-500">
               Preview: {buildOpeningHours() || 'Select days and hours'}
             </p>
           </div>
           <button
             onClick={saveChanges}
             disabled={saving || applicationStatus === 'pending_review'}
-            className="w-full rounded-xl border border-neutral-800 py-3 text-sm font-semibold text-gray-200"
+            className="w-full rounded-xl border border-blue-100 py-3 text-sm font-semibold text-slate-800"
           >
             {saving ? 'Saving...' : 'Save Store Info'}
           </button>
         </div>
 
         <div className="card-surface p-4 space-y-3">
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-slate-600">
             Please submit for review after completing store details. Approval is required to access
             the rest of the admin system.
           </p>
           <button
             onClick={submitReview}
             disabled={submitting || applicationStatus === 'pending_review'}
-            className="w-full rounded-xl bg-gold-500 py-3 text-sm font-semibold text-black"
+            className="w-full rounded-xl bg-gold-500 py-3 text-sm font-semibold text-white"
           >
             {applicationStatus === 'pending_review'
               ? 'Under Review'

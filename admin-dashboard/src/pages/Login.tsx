@@ -33,7 +33,7 @@ const Login: React.FC = () => {
             <ShieldCheck className="w-6 h-6 text-gold-500" />
           </div>
           <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Admin Access</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Admin Access</p>
             <h1 className="text-xl font-semibold">NailsDash Admin</h1>
           </div>
         </div>
@@ -46,22 +46,22 @@ const Login: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Phone</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Phone</label>
             <input
               value={phone}
               onChange={(event) => setPhone(event.target.value)}
-              className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-white outline-none focus:border-gold-500"
+              className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-gold-500"
               placeholder="4151234567"
               inputMode="tel"
               required
             />
           </div>
           <div>
-            <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Password</label>
+            <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Password</label>
             <input
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-white outline-none focus:border-gold-500"
+              className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-gold-500"
               type="password"
               required
             />
@@ -69,12 +69,12 @@ const Login: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-gold-500 py-3 text-sm font-semibold text-black shadow-glow transition hover:bg-gold-300 disabled:opacity-60"
+            className="w-full rounded-xl bg-gold-500 py-3 text-sm font-semibold text-white shadow-glow transition hover:bg-gold-300 disabled:opacity-60"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-        <div className="text-center text-xs text-gray-500">
+        <div className="text-center text-xs text-slate-500">
           Need a store admin account?{' '}
           <button
             onClick={() => navigate('/admin/register')}

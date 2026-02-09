@@ -488,28 +488,28 @@ const StoreDetail: React.FC = () => {
     <AdminLayout>
       <TopBar title="Store Detail" />
       <div className="mx-auto w-full max-w-5xl px-4 py-6 space-y-4">
-        {loading && <div className="text-gray-500">Loading...</div>}
+        {loading && <div className="text-slate-500">Loading...</div>}
         {!loading && store && (
           <div className="space-y-4">
             <div className="card-surface border border-gold-500/20 p-5 md:p-6">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-gray-500">Store Overview</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-white">{store.name}</h2>
-                  <p className="mt-2 text-sm text-gray-400">Manage storefront details and customer-facing content.</p>
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Store Overview</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-slate-900">{store.name}</h2>
+                  <p className="mt-2 text-sm text-slate-600">Manage storefront details and customer-facing content.</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="badge inline-flex items-center gap-1">
                     <Star className="h-3 w-3" />
                     {store.rating ?? 'N/A'}
                   </span>
-                  <span className="rounded-full border border-neutral-700 bg-neutral-900 px-3 py-1 text-xs text-gray-300">
+                  <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs text-slate-700">
                     Reviews
                   </span>
                 </div>
               </div>
 
-              <div className="mt-5 grid grid-cols-1 gap-3 text-sm text-gray-300">
+              <div className="mt-5 grid grid-cols-1 gap-3 text-sm text-slate-700">
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 text-gold-500" />
                   <span>{store.address}, {store.city}, {store.state} {store.zip_code}</span>
@@ -532,8 +532,8 @@ const StoreDetail: React.FC = () => {
                   onClick={() => setActiveTab('services')}
                   className={`rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                     activeTab === 'services'
-                      ? 'bg-gold-500 text-black shadow-glow'
-                      : 'bg-neutral-900 text-gray-300 hover:bg-neutral-800'
+                      ? 'bg-gold-500 text-white shadow-glow'
+                      : 'bg-blue-50 text-slate-700 hover:bg-blue-100'
                   }`}
                 >
                   <span className="inline-flex items-center gap-2">
@@ -546,8 +546,8 @@ const StoreDetail: React.FC = () => {
                   onClick={() => setActiveTab('portfolio')}
                   className={`rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                     activeTab === 'portfolio'
-                      ? 'bg-gold-500 text-black shadow-glow'
-                      : 'bg-neutral-900 text-gray-300 hover:bg-neutral-800'
+                      ? 'bg-gold-500 text-white shadow-glow'
+                      : 'bg-blue-50 text-slate-700 hover:bg-blue-100'
                   }`}
                 >
                   <span className="inline-flex items-center gap-2">
@@ -560,8 +560,8 @@ const StoreDetail: React.FC = () => {
                   onClick={() => setActiveTab('information')}
                   className={`rounded-xl px-3 py-2.5 text-sm font-medium transition ${
                     activeTab === 'information'
-                      ? 'bg-gold-500 text-black shadow-glow'
-                      : 'bg-neutral-900 text-gray-300 hover:bg-neutral-800'
+                      ? 'bg-gold-500 text-white shadow-glow'
+                      : 'bg-blue-50 text-slate-700 hover:bg-blue-100'
                   }`}
                 >
                   <span className="inline-flex items-center gap-2">
@@ -576,61 +576,61 @@ const StoreDetail: React.FC = () => {
               <div className="card-surface p-5 md:p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-gray-500">Services</p>
-                    <p className="text-xs text-gray-500">Pick from super-admin catalog, then set store-specific price and duration.</p>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Services</p>
+                    <p className="text-xs text-slate-500">Pick from super-admin catalog, then set store-specific price and duration.</p>
                   </div>
                   <span className="badge">{services.length} items</span>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  <div className="rounded-xl border border-neutral-800 p-4 space-y-3">
+                  <div className="rounded-xl border border-blue-100 p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-white">Available Catalog</p>
-                      <span className="text-xs text-gray-500">{catalog.length} templates</span>
+                      <p className="text-xs font-semibold text-slate-900">Available Catalog</p>
+                      <span className="text-xs text-slate-500">{catalog.length} templates</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-gray-500">Price ($)</label>
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Price ($)</label>
                         <input
                           type="number"
                           min="1"
                           step="0.01"
                           value={newServicePrice}
                           onChange={(event) => setNewServicePrice(event.target.value)}
-                          className="mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-sm text-white outline-none focus:border-gold-500"
+                          className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-gray-500">Duration (min)</label>
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Duration (min)</label>
                         <input
                           type="number"
                           min="1"
                           step="5"
                           value={newServiceDuration}
                           onChange={(event) => setNewServiceDuration(event.target.value)}
-                          className="mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-sm text-white outline-none focus:border-gold-500"
+                          className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
                         />
                       </div>
                     </div>
 
-                    {catalogLoading && <p className="text-sm text-gray-500">Loading catalog...</p>}
+                    {catalogLoading && <p className="text-sm text-slate-500">Loading catalog...</p>}
                     {!catalogLoading && (
                       <div className="space-y-2 max-h-80 overflow-auto pr-1">
                         {catalog.map((item) => {
                           const existingService = services.find((service) => service.catalog_id === item.id);
                           const existsActive = !!existingService && existingService.is_active === 1;
                           return (
-                            <div key={item.id} className="rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2">
+                            <div key={item.id} className="rounded-lg border border-blue-100 bg-white px-3 py-2">
                               <div className="flex items-start justify-between gap-2">
                                 <div>
-                                  <p className="text-sm font-medium text-white">{item.name}</p>
-                                  <p className="text-xs text-gray-500">{item.category || 'General'}</p>
+                                  <p className="text-sm font-medium text-slate-900">{item.name}</p>
+                                  <p className="text-xs text-slate-500">{item.category || 'General'}</p>
                                 </div>
                                 <button
                                   type="button"
                                   onClick={() => handleAddCatalogService(item)}
                                   disabled={existsActive || addingCatalogId === item.id}
-                                  className="rounded-lg border border-neutral-700 px-2 py-1 text-xs text-gray-200 disabled:opacity-50"
+                                  className="rounded-lg border border-blue-200 px-2 py-1 text-xs text-slate-800 disabled:opacity-50"
                                 >
                                   {existsActive ? 'Added' : addingCatalogId === item.id ? 'Adding...' : existingService ? 'Re-Add' : 'Add'}
                                 </button>
@@ -642,27 +642,27 @@ const StoreDetail: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="rounded-xl border border-neutral-800 p-4 space-y-3">
+                  <div className="rounded-xl border border-blue-100 p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-white">My Store Services</p>
-                      <span className="text-xs text-gray-500">{services.length} configured</span>
+                      <p className="text-xs font-semibold text-slate-900">My Store Services</p>
+                      <span className="text-xs text-slate-500">{services.length} configured</span>
                     </div>
-                    {servicesLoading && <p className="text-sm text-gray-500">Loading store services...</p>}
+                    {servicesLoading && <p className="text-sm text-slate-500">Loading store services...</p>}
                     {!servicesLoading && services.length === 0 && (
-                      <div className="rounded-xl border border-dashed border-neutral-700 p-8 text-center text-sm text-gray-500">
+                      <div className="rounded-xl border border-dashed border-blue-200 p-8 text-center text-sm text-slate-500">
                         No services configured yet.
                       </div>
                     )}
                     {!servicesLoading &&
                       services.map((service) => (
-                        <div key={service.id} className="rounded-xl border border-neutral-800 bg-neutral-950 p-3 space-y-2">
+                        <div key={service.id} className="rounded-xl border border-blue-100 bg-white p-3 space-y-2">
                           <div>
-                            <h3 className="text-sm font-semibold text-white">{service.name}</h3>
-                            <p className="mt-1 text-xs text-gray-500">{service.category || 'General'}</p>
+                            <h3 className="text-sm font-semibold text-slate-900">{service.name}</h3>
+                            <p className="mt-1 text-xs text-slate-500">{service.category || 'General'}</p>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="text-[10px] uppercase tracking-[0.2em] text-gray-500">Price</label>
+                              <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Price</label>
                               <input
                                 type="number"
                                 min="1"
@@ -673,11 +673,11 @@ const StoreDetail: React.FC = () => {
                                   if (!Number.isFinite(nextPrice) || nextPrice <= 0 || nextPrice === service.price) return;
                                   handleQuickUpdateService(service, { price: nextPrice });
                                 }}
-                                className="mt-1 w-full rounded-lg border border-neutral-800 bg-black px-2 py-1.5 text-sm text-white outline-none focus:border-gold-500"
+                                className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
                               />
                             </div>
                             <div>
-                              <label className="text-[10px] uppercase tracking-[0.2em] text-gray-500">Duration</label>
+                              <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Duration</label>
                               <input
                                 type="number"
                                 min="1"
@@ -693,7 +693,7 @@ const StoreDetail: React.FC = () => {
                                     return;
                                   handleQuickUpdateService(service, { duration_minutes: nextDuration });
                                 }}
-                                className="mt-1 w-full rounded-lg border border-neutral-800 bg-black px-2 py-1.5 text-sm text-white outline-none focus:border-gold-500"
+                                className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
                               />
                             </div>
                           </div>
@@ -702,7 +702,7 @@ const StoreDetail: React.FC = () => {
                               type="button"
                               onClick={() => handleQuickUpdateService(service, { is_active: service.is_active === 1 ? 0 : 1 })}
                               disabled={serviceSavingId === service.id}
-                              className="rounded-lg border border-neutral-700 px-2 py-1 text-xs text-gray-200 disabled:opacity-50"
+                              className="rounded-lg border border-blue-200 px-2 py-1 text-xs text-slate-800 disabled:opacity-50"
                             >
                               {service.is_active === 1 ? 'Disable' : 'Enable'}
                             </button>
@@ -726,17 +726,17 @@ const StoreDetail: React.FC = () => {
               <div className="card-surface p-5 md:p-6 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-gray-500">Portfolio</p>
-                    <p className="text-xs text-gray-500">Store work showcase. Upload one image at a time.</p>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Portfolio</p>
+                    <p className="text-xs text-slate-500">Store work showcase. Upload one image at a time.</p>
                   </div>
                   <span className="badge">{portfolioItems.length} images</span>
                 </div>
 
-                {portfolioLoading && portfolioItems.length === 0 && <p className="text-sm text-gray-500">Loading portfolio images...</p>}
+                {portfolioLoading && portfolioItems.length === 0 && <p className="text-sm text-slate-500">Loading portfolio images...</p>}
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {portfolioItems.map((item) => (
-                    <div key={item.id} className="group relative overflow-hidden rounded-xl border border-neutral-800">
+                    <div key={item.id} className="group relative overflow-hidden rounded-xl border border-blue-100">
                       <img
                         src={resolveImageUrl(item.image_url)}
                         alt="Portfolio"
@@ -745,7 +745,7 @@ const StoreDetail: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => removePortfolioImage(item.id)}
-                        className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/80 px-2 py-1 text-[10px] text-white"
+                        className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-1 text-[10px] text-slate-900"
                       >
                         <Trash2 className="h-3 w-3" />
                         Remove
@@ -753,7 +753,7 @@ const StoreDetail: React.FC = () => {
                     </div>
                   ))}
                   {portfolioItems.length === 0 && !portfolioLoading && (
-                    <div className="col-span-full rounded-xl border border-dashed border-neutral-700 p-8 text-center text-sm text-gray-500">
+                    <div className="col-span-full rounded-xl border border-dashed border-blue-200 p-8 text-center text-sm text-slate-500">
                       No portfolio images yet.
                     </div>
                   )}
@@ -764,14 +764,14 @@ const StoreDetail: React.FC = () => {
                     type="button"
                     onClick={loadMorePortfolio}
                     disabled={portfolioLoading}
-                    className="w-full rounded-xl border border-neutral-800 px-4 py-2 text-sm text-gray-200 disabled:opacity-60"
+                    className="w-full rounded-xl border border-blue-100 px-4 py-2 text-sm text-slate-800 disabled:opacity-60"
                   >
                     {portfolioLoading ? 'Loading...' : 'Load More Portfolio Images'}
                   </button>
                 )}
 
                 <div>
-                  <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Upload portfolio image</label>
+                  <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Upload portfolio image</label>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <input
                       ref={portfolioFileInputRef}
@@ -784,12 +784,12 @@ const StoreDetail: React.FC = () => {
                       type="button"
                       onClick={() => portfolioFileInputRef.current?.click()}
                       disabled={portfolioUploading}
-                      className="inline-flex items-center gap-2 rounded-xl border border-neutral-800 px-4 py-2 text-sm text-gray-200 disabled:opacity-60"
+                      className="inline-flex items-center gap-2 rounded-xl border border-blue-100 px-4 py-2 text-sm text-slate-800 disabled:opacity-60"
                     >
                       <ImagePlus className="h-4 w-4 text-gold-500" />
                       {portfolioUploading ? 'Uploading...' : 'Upload One Photo'}
                     </button>
-                    <span className="text-xs text-gray-500">Only JPG/JPEG/PNG</span>
+                    <span className="text-xs text-slate-500">Only JPG/JPEG/PNG</span>
                   </div>
                 </div>
               </div>
@@ -800,49 +800,49 @@ const StoreDetail: React.FC = () => {
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-gold-500" />
-                    <p className="text-[10px] uppercase tracking-[0.22em] text-gray-500">Store Information</p>
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Store Information</p>
                   </div>
-                  <span className="text-xs text-gray-500">Visible on customer app</span>
+                  <span className="text-xs text-slate-500">Visible on customer app</span>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div className="md:col-span-2">
-                    <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Store Name</label>
+                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Store Name</label>
                     <input
                       value={form.name}
                       onChange={updateField('name')}
-                      className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-white outline-none focus:border-gold-500"
+                      className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-gold-500"
                       required
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Street Address</label>
+                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Street Address</label>
                     <input
                       value={form.address}
                       onChange={updateField('address')}
-                      className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-white outline-none focus:border-gold-500"
+                      className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-gold-500"
                       placeholder="123 Market St"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-gray-500">City</label>
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">City</label>
                     <input
                       value={form.city}
                       onChange={updateField('city')}
-                      className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500"
+                      className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-gold-500"
                       placeholder="San Francisco"
                       required
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-gray-500">State</label>
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">State</label>
                     <select
                       value={form.state}
                       onChange={(event) => setForm((prev) => ({ ...prev, state: event.target.value }))}
-                      className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500"
+                      className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-gold-500"
                       required
                     >
                       <option value="">Select</option>
@@ -855,31 +855,31 @@ const StoreDetail: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="text-[10px] uppercase tracking-[0.2em] text-gray-500">ZIP Code</label>
+                    <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">ZIP Code</label>
                     <input
                       value={form.zip_code}
                       onChange={updateField('zip_code')}
-                      className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500"
+                      className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-gold-500"
                       placeholder="94103"
                       required
                     />
                   </div>
                   <div>
-                    <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Phone</label>
+                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Phone</label>
                     <input
                       value={form.phone}
                       onChange={updateField('phone')}
-                      className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500"
+                      className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-gold-500"
                       placeholder="4151234567"
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Email</label>
+                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Email</label>
                     <input
                       value={form.email}
                       onChange={updateField('email')}
-                      className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm text-white outline-none focus:border-gold-500"
+                      className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-gold-500"
                       placeholder="owner@shop.com"
                     />
                   </div>
@@ -888,14 +888,14 @@ const StoreDetail: React.FC = () => {
                 <div>
                   <div className="mb-2 flex items-center gap-2">
                     <Clock3 className="h-4 w-4 text-gold-500" />
-                    <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Opening Hours</label>
+                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Opening Hours</label>
                   </div>
-                  <div className="rounded-xl border border-neutral-800 p-3 space-y-2">
+                  <div className="rounded-xl border border-blue-100 p-3 space-y-2">
                     {DAY_ROWS.map(({ key, label }) => {
                       const row = weeklySchedule[key];
                       return (
                         <div key={key} className="grid grid-cols-[52px_88px_1fr_1fr] items-center gap-2">
-                          <span className="text-xs text-gray-400">{label}</span>
+                          <span className="text-xs text-slate-600">{label}</span>
                           <button
                             type="button"
                             onClick={() =>
@@ -906,7 +906,7 @@ const StoreDetail: React.FC = () => {
                             }
                             className={`rounded-lg border px-2 py-1 text-xs ${
                               row.isClosed
-                                ? 'border-neutral-700 bg-neutral-900 text-gray-300'
+                                ? 'border-blue-200 bg-blue-50 text-slate-700'
                                 : 'border-gold-500/40 bg-gold-500/10 text-gold-300'
                             }`}
                           >
@@ -921,7 +921,7 @@ const StoreDetail: React.FC = () => {
                               }))
                             }
                             disabled={row.isClosed}
-                            className="rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-xs text-white outline-none focus:border-gold-500 disabled:opacity-40"
+                            className="rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-gold-500 disabled:opacity-40"
                           >
                             {TIME_OPTIONS.map((option) => (
                               <option key={`${key}-open-${option}`} value={option}>
@@ -938,7 +938,7 @@ const StoreDetail: React.FC = () => {
                               }))
                             }
                             disabled={row.isClosed}
-                            className="rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-xs text-white outline-none focus:border-gold-500 disabled:opacity-40"
+                            className="rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-gold-500 disabled:opacity-40"
                           >
                             {TIME_OPTIONS.map((option) => (
                               <option key={`${key}-close-${option}`} value={option}>
@@ -950,31 +950,31 @@ const StoreDetail: React.FC = () => {
                       );
                     })}
                   </div>
-                  <p className="mt-2 text-xs text-gray-500">Saved as structured weekly hours.</p>
+                  <p className="mt-2 text-xs text-slate-500">Saved as structured weekly hours.</p>
                 </div>
 
                 <div>
-                  <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Description</label>
+                  <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Description</label>
                   <textarea
                     value={form.description}
                     onChange={updateField('description')}
-                    className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-sm text-white outline-none focus:border-gold-500"
+                    className="mt-2 w-full rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-gold-500"
                     rows={3}
                     placeholder="Short description"
                   />
                 </div>
 
-                <div className="space-y-3 rounded-xl border border-neutral-800 p-4">
+                <div className="space-y-3 rounded-xl border border-blue-100 p-4">
                   <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                      <p className="text-[10px] uppercase tracking-[0.22em] text-gray-500">Storefront Images</p>
-                      <p className="text-xs text-gray-500">Shown in H5 store list/detail cards (max 5 images).</p>
+                      <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Storefront Images</p>
+                      <p className="text-xs text-slate-500">Shown in H5 store list/detail cards (max 5 images).</p>
                     </div>
                     <span className="badge">{images.length}/5</span>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {images.map((image) => (
-                      <div key={image.id} className="group relative overflow-hidden rounded-xl border border-neutral-800">
+                      <div key={image.id} className="group relative overflow-hidden rounded-xl border border-blue-100">
                         <img
                           src={resolveImageUrl(image.image_url)}
                           alt="Storefront"
@@ -983,24 +983,24 @@ const StoreDetail: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => removeImage(image.id)}
-                          className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/80 px-2 py-1 text-[10px] text-white"
+                          className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-1 text-[10px] text-slate-900"
                         >
                           <Trash2 className="h-3 w-3" />
                           Remove
                         </button>
-                        <span className="absolute bottom-2 left-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] text-gray-200">
+                        <span className="absolute bottom-2 left-2 rounded-full bg-white/70 px-2 py-0.5 text-[10px] text-slate-800">
                           Photo {(image.display_order ?? 0) + 1}
                         </span>
                       </div>
                     ))}
                     {images.length === 0 && (
-                      <div className="col-span-full rounded-xl border border-dashed border-neutral-700 p-8 text-center text-sm text-gray-500">
+                      <div className="col-span-full rounded-xl border border-dashed border-blue-200 p-8 text-center text-sm text-slate-500">
                         No storefront images uploaded yet.
                       </div>
                     )}
                   </div>
                   <div>
-                    <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Upload storefront image</label>
+                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Upload storefront image</label>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <input
                         ref={fileInputRef}
@@ -1014,21 +1014,21 @@ const StoreDetail: React.FC = () => {
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={uploading || images.length >= 5}
-                        className="inline-flex items-center gap-2 rounded-xl border border-neutral-800 px-4 py-2 text-sm text-gray-200 disabled:opacity-60"
+                        className="inline-flex items-center gap-2 rounded-xl border border-blue-100 px-4 py-2 text-sm text-slate-800 disabled:opacity-60"
                       >
                         <ImagePlus className="h-4 w-4 text-gold-500" />
                         {uploading ? 'Uploading...' : 'Choose Photos'}
                       </button>
-                      <span className="text-xs text-gray-500">Only JPG/JPEG/PNG, max 5 images</span>
+                      <span className="text-xs text-slate-500">Only JPG/JPEG/PNG, max 5 images</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="border-t border-neutral-800 pt-4">
+                <div className="border-t border-blue-100 pt-4">
                   <button
                     onClick={saveChanges}
                     disabled={saving}
-                    className="w-full rounded-xl bg-gold-500 py-3 text-sm font-semibold text-black shadow-glow disabled:opacity-60 sm:w-auto sm:px-6"
+                    className="w-full rounded-xl bg-gold-500 py-3 text-sm font-semibold text-white shadow-glow disabled:opacity-60 sm:w-auto sm:px-6"
                   >
                     {saving ? 'Saving...' : 'Save Changes'}
                   </button>

@@ -45,17 +45,17 @@ const Coupons: React.FC = () => {
       <TopBar title="Coupons" />
       <div className="px-4 py-6 space-y-5">
         <div className="card-surface p-4 space-y-3">
-          <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Grant Coupon</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Grant Coupon</p>
           <input
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
             placeholder="Recipient phone"
-            className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm"
           />
           <select
             value={selectedCoupon}
             onChange={(event) => setSelectedCoupon(event.target.value)}
-            className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm"
           >
             <option value="">Select coupon</option>
             {coupons.map((coupon) => (
@@ -66,21 +66,21 @@ const Coupons: React.FC = () => {
           </select>
           <button
             onClick={handleGrant}
-            className="w-full rounded-xl bg-gold-500 py-3 text-sm font-semibold text-black"
+            className="w-full rounded-xl bg-gold-500 py-3 text-sm font-semibold text-white"
           >
             Grant Coupon
           </button>
         </div>
 
         <div className="space-y-3">
-          <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Templates</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Templates</p>
           {loading ? (
-            <div className="text-gray-500">Loading coupons...</div>
+            <div className="text-slate-500">Loading coupons...</div>
           ) : (
             coupons.map((coupon) => (
               <div key={coupon.id} className="card-surface p-4">
                 <h3 className="text-base font-semibold">{coupon.name}</h3>
-                <p className="text-xs text-gray-500">{coupon.type} · {coupon.discount_value}</p>
+                <p className="text-xs text-slate-500">{coupon.type} · {coupon.discount_value}</p>
               </div>
             ))
           )}

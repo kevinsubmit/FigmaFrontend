@@ -39,7 +39,7 @@ const GiftCards: React.FC = () => {
       <TopBar title="Gift Cards" />
       <div className="px-4 py-6 space-y-4">
         {loading ? (
-          <div className="text-gray-500">Loading gift cards...</div>
+          <div className="text-slate-500">Loading gift cards...</div>
         ) : (
           cards.map((card) => (
             <div key={card.id} className="card-surface p-4 space-y-2">
@@ -47,8 +47,8 @@ const GiftCards: React.FC = () => {
                 <h3 className="text-base font-semibold">{card.card_number}</h3>
                 <span className="badge">{card.status}</span>
               </div>
-              <p className="text-sm text-gray-500">Balance: ${card.balance}</p>
-              <p className="text-xs text-gray-500">Recipient: {card.recipient_phone || 'N/A'}</p>
+              <p className="text-sm text-slate-500">Balance: ${card.balance}</p>
+              <p className="text-xs text-slate-500">Recipient: {card.recipient_phone || 'N/A'}</p>
               {card.status === 'pending_transfer' && (
                 <button
                   onClick={() => handleRevoke(card.id)}
@@ -61,7 +61,7 @@ const GiftCards: React.FC = () => {
           ))
         )}
         {!loading && cards.length === 0 && (
-          <div className="text-gray-500 text-sm">No gift cards found.</div>
+          <div className="text-slate-500 text-sm">No gift cards found.</div>
         )}
       </div>
     </AdminLayout>

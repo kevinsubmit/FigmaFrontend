@@ -43,7 +43,7 @@ const AppointmentDetail: React.FC = () => {
     return (
       <AdminLayout>
         <TopBar title="Appointment" />
-        <div className="px-4 py-6 text-gray-500">Loading...</div>
+        <div className="px-4 py-6 text-slate-500">Loading...</div>
       </AdminLayout>
     );
   }
@@ -52,7 +52,7 @@ const AppointmentDetail: React.FC = () => {
     return (
       <AdminLayout>
         <TopBar title="Appointment" />
-        <div className="px-4 py-6 text-gray-500">Appointment not found.</div>
+        <div className="px-4 py-6 text-slate-500">Appointment not found.</div>
       </AdminLayout>
     );
   }
@@ -62,34 +62,34 @@ const AppointmentDetail: React.FC = () => {
       <TopBar title="Appointment Detail" />
       <div className="px-4 py-6 space-y-4">
         <div className="card-surface p-4 space-y-2">
-          <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Order</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Order</p>
           <h2 className="text-xl font-semibold">{appointment.order_number || `#${appointment.id}`}</h2>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-slate-500">
             {appointment.appointment_date} · {appointment.appointment_time}
           </p>
         </div>
         <div className="card-surface p-4 space-y-2">
-          <p className="text-xs uppercase tracking-[0.2em] text-gray-500">Store & Service</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Store & Service</p>
           <p className="text-sm">{appointment.store_name || `Store ${appointment.store_id}`}</p>
           <p className="text-sm">{appointment.service_name || `Service ${appointment.service_id}`}</p>
-          <p className="text-sm text-gray-500">${appointment.service_price ?? '-'}</p>
+          <p className="text-sm text-slate-500">${appointment.service_price ?? '-'}</p>
         </div>
         <div className="card-surface p-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-gray-500 mb-2">Status</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Status</p>
           <span className="badge">{appointment.status}</span>
           {appointment.cancel_reason && (
-            <p className="mt-3 text-sm text-gray-300">
-              Cancel reason: <span className="text-gray-400">{appointment.cancel_reason}</span>
+            <p className="mt-3 text-sm text-slate-700">
+              Cancel reason: <span className="text-slate-600">{appointment.cancel_reason}</span>
             </p>
           )}
         </div>
         <div className="card-surface p-4 space-y-3">
-          <label className="text-xs uppercase tracking-[0.2em] text-gray-500">Cancel Reason</label>
+          <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Cancel Reason</label>
           <textarea
             value={cancelReason}
             onChange={(event) => setCancelReason(event.target.value)}
             rows={3}
-            className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm"
             placeholder="Optional"
           />
         </div>
@@ -104,7 +104,7 @@ const AppointmentDetail: React.FC = () => {
         <div className="grid grid-cols-2 gap-3">
           <button
             onClick={() => updateStatus('completed')}
-            className="rounded-xl bg-gold-500 py-3 text-sm font-semibold text-black"
+            className="rounded-xl bg-gold-500 py-3 text-sm font-semibold text-white"
           >
             Mark Completed
           </button>
