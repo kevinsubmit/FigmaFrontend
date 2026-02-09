@@ -350,7 +350,7 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
             </button>
             <input
               type="text"
-              placeholder="搜索标签或标题（例如：french）"
+              placeholder="Search tags or titles (e.g. french)"
               value={searchDraft}
               onChange={(e) => setSearchDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -455,7 +455,7 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
 
         {searchQuery && !isLoading && (
           <div className="px-4 pt-2 text-xs text-gray-400">
-            搜索“{searchQuery}”结果：{images.length} 张
+            Results for "{searchQuery}": {images.length} images
           </div>
         )}
         
