@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, or_
 from app.models.pin import Pin, Tag
+from app.models.home_feed_theme import HomeFeedThemeSetting
 
 
 def get_pins(
@@ -254,3 +255,69 @@ def soft_delete_pin(db: Session, *, pin_id: int) -> bool:
     pin.is_deleted = True
     db.commit()
     return True
+
+
+def _is_theme_active(setting: HomeFeedThemeSetting, tag: Optional[Tag]) -> bool:
+    if not setting.enabled:
+        return False
+    if not tag or not tag.is_active:
+        return False
+    now = datetime.utcnow()
+    if setting.start_at and now < setting.start_at:
+        return False
+    if setting.end_at and now > setting.end_at:
+        return False
+    return True
+
+
+def get_or_create_home_feed_theme_setting(db: Session) -> HomeFeedThemeSetting:
+    setting = db.query(HomeFeedThemeSetting).first()
+    if setting:
+        return setting
+    setting = HomeFeedThemeSetting(enabled=False)
+    db.add(setting)
+    db.commit()
+    db.refresh(setting)
+    return setting
+
+
+def get_home_feed_theme(db: Session) -> dict:
+    setting = get_or_create_home_feed_theme_setting(db)
+    tag = get_tag(db, setting.tag_id) if setting.tag_id else None
+    active = _is_theme_active(setting, tag)
+    return {
+        "enabled": bool(setting.enabled),
+        "active": active,
+        "tag_id": tag.id if tag else None,
+        "tag_name": tag.name if tag else None,
+        "start_at": setting.start_at,
+        "end_at": setting.end_at,
+        "updated_at": setting.updated_at,
+    }
+
+
+def get_active_theme_tag_name(db: Session) -> Optional[str]:
+    theme = get_home_feed_theme(db)
+    if theme["active"] and theme["tag_name"]:
+        return str(theme["tag_name"])
+    return None
+
+
+def update_home_feed_theme(
+    db: Session,
+    *,
+    enabled: bool,
+    tag_id: Optional[int],
+    start_at: Optional[datetime],
+    end_at: Optional[datetime],
+    updated_by: int,
+) -> dict:
+    setting = get_or_create_home_feed_theme_setting(db)
+    setting.enabled = enabled
+    setting.tag_id = tag_id
+    setting.start_at = start_at
+    setting.end_at = end_at
+    setting.updated_by = updated_by
+    setting.updated_at = datetime.utcnow()
+    db.commit()
+    return get_home_feed_theme(db)

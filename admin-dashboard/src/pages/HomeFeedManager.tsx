@@ -14,9 +14,12 @@ import {
   getHomeFeedImages,
   HomeFeedCategory,
   HomeFeedImage,
+  HomeFeedThemeSetting,
   updateHomeFeedCategory,
   updateHomeFeedImage,
+  updateHomeFeedThemeSetting,
   uploadHomeFeedImage,
+  getHomeFeedThemeSetting,
 } from '../api/homeFeed';
 
 const HomeFeedManager: React.FC = () => {
@@ -26,6 +29,7 @@ const HomeFeedManager: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [savingImage, setSavingImage] = useState(false);
   const [savingCategory, setSavingCategory] = useState(false);
+  const [savingTheme, setSavingTheme] = useState(false);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -47,6 +51,13 @@ const HomeFeedManager: React.FC = () => {
     sort_order: 0,
     is_active: true,
   });
+  const [themeSetting, setThemeSetting] = useState<HomeFeedThemeSetting | null>(null);
+  const [themeForm, setThemeForm] = useState({
+    enabled: false,
+    tag_id: '',
+    start_at: '',
+    end_at: '',
+  });
 
   const ensureSuperAdmin = useMemo(() => !!user?.is_admin, [user]);
 
@@ -57,8 +68,16 @@ const HomeFeedManager: React.FC = () => {
         getHomeFeedImages(),
         getHomeFeedCategories(),
       ]);
+      const theme = await getHomeFeedThemeSetting();
       setImages(imageRows);
       setCategories(categoryRows);
+      setThemeSetting(theme);
+      setThemeForm({
+        enabled: theme.enabled,
+        tag_id: theme.tag_id ? String(theme.tag_id) : '',
+        start_at: theme.start_at ? String(theme.start_at).slice(0, 16) : '',
+        end_at: theme.end_at ? String(theme.end_at).slice(0, 16) : '',
+      });
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || 'Failed to load home feed data');
     } finally {
@@ -198,6 +217,25 @@ const HomeFeedManager: React.FC = () => {
     }
   };
 
+  const saveThemeSetting = async () => {
+    setSavingTheme(true);
+    try {
+      const payload = {
+        enabled: themeForm.enabled,
+        tag_id: themeForm.tag_id ? Number(themeForm.tag_id) : null,
+        start_at: themeForm.start_at ? new Date(themeForm.start_at).toISOString() : null,
+        end_at: themeForm.end_at ? new Date(themeForm.end_at).toISOString() : null,
+      };
+      const updated = await updateHomeFeedThemeSetting(payload);
+      setThemeSetting(updated);
+      toast.success('专题模式已保存');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Failed to save theme setting');
+    } finally {
+      setSavingTheme(false);
+    }
+  };
+
   const filteredImages = useMemo(() => {
     return images.filter((item) => {
       if (statusFilter !== 'all' && item.status !== statusFilter) return false;
@@ -247,13 +285,16 @@ const HomeFeedManager: React.FC = () => {
               <option value="published">Published</option>
               <option value="offline">Offline</option>
             </select>
-            <input
-              type="number"
-              value={imageForm.sort_order}
-              onChange={(e) => setImageForm((prev) => ({ ...prev, sort_order: Number(e.target.value) || 0 }))}
-              placeholder="Sort order"
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
-            />
+            <div className="space-y-1">
+              <input
+                type="number"
+                value={imageForm.sort_order}
+                onChange={(e) => setImageForm((prev) => ({ ...prev, sort_order: Number(e.target.value) || 0 }))}
+                placeholder="排序值（越小越靠前）"
+                className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              />
+              <p className="text-xs text-gray-500">中文提示：排序值越小，首页展示越靠前。</p>
+            </div>
           </div>
           <div className="space-y-2">
             <input type="file" accept="image/png,image/jpeg" onChange={uploadImage} />
@@ -377,6 +418,64 @@ const HomeFeedManager: React.FC = () => {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="card-surface p-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Layers className="h-4 w-4 text-gold-500" />
+            <span>首页专题模式（按分类聚合）</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+            <label className="inline-flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm">
+              <input
+                type="checkbox"
+                checked={themeForm.enabled}
+                onChange={(e) => setThemeForm((prev) => ({ ...prev, enabled: e.target.checked }))}
+              />
+              启用专题模式
+            </label>
+            <select
+              value={themeForm.tag_id}
+              onChange={(e) => setThemeForm((prev) => ({ ...prev, tag_id: e.target.value }))}
+              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+            >
+              <option value="">选择专题分类</option>
+              {categories
+                .filter((item) => item.is_active)
+                .map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+            </select>
+            <input
+              type="datetime-local"
+              value={themeForm.start_at}
+              onChange={(e) => setThemeForm((prev) => ({ ...prev, start_at: e.target.value }))}
+              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+            />
+            <input
+              type="datetime-local"
+              value={themeForm.end_at}
+              onChange={(e) => setThemeForm((prev) => ({ ...prev, end_at: e.target.value }))}
+              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-500">
+              中文提示：启用后，H5 首页默认只展示所选分类图片；可设置起止时间，到期自动恢复普通模式。
+            </p>
+            <button
+              onClick={saveThemeSetting}
+              disabled={savingTheme}
+              className="rounded-xl border border-gold-500/60 px-4 py-2 text-sm text-gold-200 disabled:opacity-50"
+            >
+              {savingTheme ? 'Saving...' : '保存专题设置'}
+            </button>
+          </div>
+          <p className="text-xs text-emerald-300">
+            当前状态：{themeSetting?.active ? `生效中（${themeSetting.tag_name || '-'}）` : '未生效'}
+          </p>
         </div>
 
         <div className="card-surface p-4 space-y-3">

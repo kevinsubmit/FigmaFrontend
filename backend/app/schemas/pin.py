@@ -73,3 +73,20 @@ class PinAdminResponse(PinBase):
 
     class Config:
         from_attributes = True
+
+
+class HomeFeedThemeUpdate(BaseModel):
+    enabled: bool
+    tag_id: Optional[int] = None
+    start_at: Optional[datetime] = None
+    end_at: Optional[datetime] = None
+
+
+class HomeFeedThemeResponse(BaseModel):
+    enabled: bool
+    active: bool
+    tag_id: Optional[int] = None
+    tag_name: Optional[str] = None
+    start_at: Optional[datetime] = None
+    end_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None

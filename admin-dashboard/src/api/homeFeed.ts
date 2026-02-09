@@ -23,6 +23,16 @@ export interface HomeFeedCategory {
   updated_at: string;
 }
 
+export interface HomeFeedThemeSetting {
+  enabled: boolean;
+  active: boolean;
+  tag_id?: number | null;
+  tag_name?: string | null;
+  start_at?: string | null;
+  end_at?: string | null;
+  updated_at?: string | null;
+}
+
 export const getHomeFeedImages = async (params?: Record<string, any>) => {
   const response = await api.get('/pins/admin', { params });
   return response.data as HomeFeedImage[];
@@ -83,6 +93,21 @@ export const updateHomeFeedCategory = async (
 
 export const deleteHomeFeedCategory = async (id: number) => {
   await api.delete(`/pins/admin/tags/${id}`);
+};
+
+export const getHomeFeedThemeSetting = async () => {
+  const response = await api.get('/pins/admin/theme');
+  return response.data as HomeFeedThemeSetting;
+};
+
+export const updateHomeFeedThemeSetting = async (payload: {
+  enabled: boolean;
+  tag_id?: number | null;
+  start_at?: string | null;
+  end_at?: string | null;
+}) => {
+  const response = await api.put('/pins/admin/theme', payload);
+  return response.data as HomeFeedThemeSetting;
 };
 
 export const uploadHomeFeedImage = async (file: File) => {

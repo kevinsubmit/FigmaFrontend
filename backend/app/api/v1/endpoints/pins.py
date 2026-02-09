@@ -11,6 +11,8 @@ from app.crud import pin as crud_pin
 from app.crud import pin_favorite as crud_pin_favorite
 from app.models.user import User
 from app.schemas.pin import (
+    HomeFeedThemeResponse,
+    HomeFeedThemeUpdate,
     PinAdminCreate,
     PinAdminResponse,
     PinAdminUpdate,
@@ -67,6 +69,10 @@ def list_pins(
     search: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
+    if not tag:
+        theme_tag = crud_pin.get_active_theme_tag_name(db)
+        if theme_tag:
+            tag = theme_tag
     pins = crud_pin.get_pins(db, skip=skip, limit=limit, tag=tag, search=search)
     return [_to_pin_response(pin) for pin in pins]
 
@@ -227,6 +233,43 @@ def delete_pin_admin(
     if not success:
         raise HTTPException(status_code=404, detail="Pin not found")
     return None
+
+
+@router.get("/theme/public", response_model=HomeFeedThemeResponse)
+def get_home_feed_theme_public(db: Session = Depends(get_db)):
+    return crud_pin.get_home_feed_theme(db)
+
+
+@router.get("/admin/theme", response_model=HomeFeedThemeResponse)
+def get_home_feed_theme_admin(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin_user),
+):
+    return crud_pin.get_home_feed_theme(db)
+
+
+@router.put("/admin/theme", response_model=HomeFeedThemeResponse)
+def update_home_feed_theme_admin(
+    payload: HomeFeedThemeUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    if payload.enabled and not payload.tag_id:
+        raise HTTPException(status_code=400, detail="tag_id is required when enabling theme mode")
+    if payload.start_at and payload.end_at and payload.start_at >= payload.end_at:
+        raise HTTPException(status_code=400, detail="start_at must be earlier than end_at")
+    if payload.tag_id:
+        tag = crud_pin.get_tag(db, payload.tag_id)
+        if not tag:
+            raise HTTPException(status_code=400, detail="Invalid tag_id")
+    return crud_pin.update_home_feed_theme(
+        db,
+        enabled=payload.enabled,
+        tag_id=payload.tag_id,
+        start_at=payload.start_at,
+        end_at=payload.end_at,
+        updated_by=current_user.id,
+    )
 
 
 @router.get("/{pin_id}", response_model=PinResponse)
