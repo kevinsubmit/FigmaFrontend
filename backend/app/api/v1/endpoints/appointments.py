@@ -143,10 +143,11 @@ def get_my_appointments(
     
     # Format response
     result = []
-    for appt, store_name, service_name, service_price, service_duration, review_id in appointments_data:
+    for appt, store_name, store_address, service_name, service_price, service_duration, review_id in appointments_data:
         result.append({
             **appt.__dict__,
             "store_name": store_name,
+            "store_address": store_address,
             "service_name": service_name,
             "service_price": service_price,
             "service_duration": service_duration,
@@ -207,10 +208,11 @@ def get_admin_appointments(
     )
 
     result = []
-    for appt, store_name, service_name, service_price, service_duration, review_id in appointments_data:
+    for appt, store_name, store_address, service_name, service_price, service_duration, review_id in appointments_data:
         result.append({
             **appt.__dict__,
             "store_name": store_name,
+            "store_address": store_address,
             "service_name": service_name,
             "service_price": service_price,
             "service_duration": service_duration,

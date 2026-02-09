@@ -37,6 +37,7 @@ def get_user_appointments_with_details(db: Session, user_id: int, skip: int = 0,
     appointments = db.query(
         Appointment,
         Store.name.label('store_name'),
+        Store.address.label('store_address'),
         Service.name.label('service_name'),
         Service.price.label('service_price'),
         Service.duration_minutes.label('service_duration'),
@@ -68,6 +69,7 @@ def get_appointments_with_details(
     appointments = db.query(
         Appointment,
         Store.name.label('store_name'),
+        Store.address.label('store_address'),
         Service.name.label('service_name'),
         Service.price.label('service_price'),
         Service.duration_minutes.label('service_duration'),

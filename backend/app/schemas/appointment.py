@@ -61,6 +61,7 @@ class Appointment(AppointmentBase):
 class AppointmentWithDetails(Appointment):
     """Appointment with store and service details"""
     store_name: Optional[str] = None
+    store_address: Optional[str] = None
     service_name: Optional[str] = None
     service_price: Optional[float] = None
     service_duration: Optional[int] = None

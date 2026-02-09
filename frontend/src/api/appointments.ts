@@ -17,6 +17,7 @@ export interface Appointment {
   created_at: string;
   updated_at: string | null;
   store_name?: string | null;
+  store_address?: string | null;
   service_name?: string | null;
   service_price?: number | null;
   service_duration?: number | null;
