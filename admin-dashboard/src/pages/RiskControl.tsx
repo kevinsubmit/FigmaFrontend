@@ -53,20 +53,20 @@ const RiskControl: React.FC = () => {
 
   return (
     <AdminLayout>
-      <TopBar title="Risk Control" />
-      <div className="px-4 py-6 space-y-4">
+      <TopBar title="风控管理" subtitle="识别高风险用户并执行限制策略" />
+      <div className="px-4 py-5 space-y-4 lg:px-6">
         <div className="card-surface p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <ShieldAlert className="h-5 w-5 text-gold-500" />
+            <ShieldAlert className="h-5 w-5 text-blue-600" />
             <div>
               <p className="text-sm font-semibold">Current restricted users</p>
               <p className="text-xs text-slate-500">Users blocked from new bookings</p>
             </div>
           </div>
-          <span className="text-gold-300 font-semibold">{restrictedCount}</span>
+          <span className="text-blue-700 font-semibold text-lg">{restrictedCount}</span>
         </div>
 
-        <div className="card-surface p-4 space-y-3">
+        <div className="card-surface p-5 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <input
               value={keyword}
@@ -94,7 +94,7 @@ const RiskControl: React.FC = () => {
             </label>
             <button
               onClick={load}
-              className="rounded-xl border border-gold-500/50 px-3 py-2.5 text-sm text-gold-200 hover:bg-gold-500/10"
+              className="rounded-xl border border-gold-500/50 px-3 py-2.5 text-sm text-blue-700 hover:bg-blue-50"
             >
               Search
             </button>
@@ -118,21 +118,21 @@ const RiskControl: React.FC = () => {
                         risk={user.risk_level} | cancel_7d={user.cancel_7d} | no_show_30d={user.no_show_30d}
                       </p>
                       {isRestricted && (
-                        <p className="text-xs text-rose-300 mt-1">Restricted until: {user.restricted_until}</p>
+                        <p className="text-xs text-rose-600 mt-1">Restricted until: {user.restricted_until}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       <button
                         disabled={actionLoadingUserId === user.user_id || isRestricted}
                         onClick={() => runAction(user.user_id, 'restrict_24h', 'manual restriction by admin')}
-                        className="rounded-lg border border-rose-500/50 px-3 py-1.5 text-xs text-rose-200 disabled:opacity-50"
+                        className="rounded-lg border border-rose-500/50 px-3 py-1.5 text-xs text-rose-700 disabled:opacity-50"
                       >
                         Restrict 24h
                       </button>
                       <button
                         disabled={actionLoadingUserId === user.user_id || !isRestricted}
                         onClick={() => runAction(user.user_id, 'unrestrict', 'manual unrestrict by admin')}
-                        className="rounded-lg border border-emerald-500/50 px-3 py-1.5 text-xs text-emerald-200 disabled:opacity-50"
+                        className="rounded-lg border border-emerald-500/50 px-3 py-1.5 text-xs text-emerald-700 disabled:opacity-50"
                       >
                         Unrestrict
                       </button>

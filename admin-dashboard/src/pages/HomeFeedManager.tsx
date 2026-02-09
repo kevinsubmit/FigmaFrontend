@@ -329,16 +329,16 @@ const HomeFeedManager: React.FC = () => {
   if (!ensureSuperAdmin) {
     return (
       <AdminLayout>
-        <TopBar title="Home Feed" />
-        <div className="px-4 py-6 text-sm text-rose-300">Only super admin can manage homepage feed.</div>
+        <TopBar title="首页图片流管理" subtitle="仅超管可访问" />
+        <div className="px-4 py-6 text-sm text-rose-700">Only super admin can manage homepage feed.</div>
       </AdminLayout>
     );
   }
 
   return (
     <AdminLayout>
-      <TopBar title="Home Feed" />
-      <div className="px-4 py-6 space-y-4">
+      <TopBar title="首页图片流管理" subtitle="统一配置首页图片、分类和专题模式" />
+      <div className="px-4 py-5 space-y-4 lg:px-6">
         <div className="card-surface p-4 space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold">
             <ImagePlus className="h-4 w-4 text-gold-500" />
@@ -409,8 +409,8 @@ const HomeFeedManager: React.FC = () => {
                       }
                       className={`rounded-full px-3 py-1 text-xs border ${
                         active
-                          ? 'border-gold-500/60 bg-gold-500/20 text-gold-200'
-                          : 'border-blue-200 text-neutral-300'
+                          ? 'border-gold-500/60 bg-gold-500/20 text-blue-700'
+                          : 'border-blue-200 text-slate-700'
                       }`}
                     >
                       {category.name}
@@ -423,11 +423,11 @@ const HomeFeedManager: React.FC = () => {
             <button
               onClick={saveImage}
               disabled={savingImage}
-              className="rounded-xl border border-gold-500/60 px-4 py-2 text-sm text-gold-200 disabled:opacity-50"
+              className="rounded-xl border border-gold-500/60 px-4 py-2 text-sm text-blue-700 disabled:opacity-50"
             >
               {savingImage ? 'Saving...' : editingImage ? 'Update Image' : 'Create Image'}
             </button>
-            <button onClick={resetImageForm} className="rounded-xl border border-blue-200 px-4 py-2 text-sm text-neutral-300">
+            <button onClick={resetImageForm} className="rounded-xl border border-blue-200 px-4 py-2 text-sm text-slate-700">
               Reset
             </button>
           </div>
@@ -473,11 +473,11 @@ const HomeFeedManager: React.FC = () => {
             <button
               onClick={saveCategory}
               disabled={savingCategory}
-              className="rounded-xl border border-gold-500/60 px-4 py-2 text-sm text-gold-200 disabled:opacity-50"
+              className="rounded-xl border border-gold-500/60 px-4 py-2 text-sm text-blue-700 disabled:opacity-50"
             >
               {savingCategory ? 'Saving...' : editingCategory ? 'Update Category' : 'Create Category'}
             </button>
-            <button onClick={resetCategoryForm} className="rounded-xl border border-blue-200 px-4 py-2 text-sm text-neutral-300">
+            <button onClick={resetCategoryForm} className="rounded-xl border border-blue-200 px-4 py-2 text-sm text-slate-700">
               Reset
             </button>
           </div>
@@ -488,7 +488,7 @@ const HomeFeedManager: React.FC = () => {
                 homeVisibleCategories.map((category, index) => (
                   <span
                     key={category.id}
-                    className="rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-xs text-gold-200"
+                    className="rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-xs text-blue-700"
                   >
                     {index + 1}. {category.name}
                   </span>
@@ -503,13 +503,13 @@ const HomeFeedManager: React.FC = () => {
             <div className="inline-flex rounded-lg border border-blue-200 p-1">
               <button
                 onClick={() => setCategoryListScope('all')}
-                className={`rounded px-2 py-1 text-xs ${categoryListScope === 'all' ? 'bg-blue-100 text-neutral-100' : 'text-neutral-400'}`}
+                className={`rounded px-2 py-1 text-xs ${categoryListScope === 'all' ? 'bg-blue-100 text-slate-900' : 'text-slate-500'}`}
               >
                 全部
               </button>
               <button
                 onClick={() => setCategoryListScope('home')}
-                className={`rounded px-2 py-1 text-xs ${categoryListScope === 'home' ? 'bg-blue-100 text-neutral-100' : 'text-neutral-400'}`}
+                className={`rounded px-2 py-1 text-xs ${categoryListScope === 'home' ? 'bg-blue-100 text-slate-900' : 'text-slate-500'}`}
               >
                 仅首页显示
               </button>
@@ -528,26 +528,26 @@ const HomeFeedManager: React.FC = () => {
                   <button
                     disabled={index === 0 || categoryListScope === 'home'}
                     onClick={() => moveCategory(category.id, 'up')}
-                    className="rounded border border-blue-200 px-2 py-1 text-xs text-neutral-300 disabled:opacity-40"
+                    className="rounded border border-blue-200 px-2 py-1 text-xs text-slate-700 disabled:opacity-40"
                   >
                     ↑
                   </button>
                   <button
                     disabled={index === visibleCategoryRows.length - 1 || categoryListScope === 'home'}
                     onClick={() => moveCategory(category.id, 'down')}
-                    className="rounded border border-blue-200 px-2 py-1 text-xs text-neutral-300 disabled:opacity-40"
+                    className="rounded border border-blue-200 px-2 py-1 text-xs text-slate-700 disabled:opacity-40"
                   >
                     ↓
                   </button>
                   <button
                     onClick={() => onEditCategory(category)}
-                    className="rounded border border-blue-200 px-2 py-1 text-xs text-neutral-300"
+                    className="rounded border border-blue-200 px-2 py-1 text-xs text-slate-700"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => onDeleteCategory(category.id)}
-                    className="rounded border border-rose-500/50 px-2 py-1 text-xs text-rose-200"
+                    className="rounded border border-rose-500/50 px-2 py-1 text-xs text-rose-700"
                   >
                     Disable
                   </button>
@@ -605,12 +605,12 @@ const HomeFeedManager: React.FC = () => {
             <button
               onClick={saveThemeSetting}
               disabled={savingTheme}
-              className="rounded-xl border border-gold-500/60 px-4 py-2 text-sm text-gold-200 disabled:opacity-50"
+              className="rounded-xl border border-gold-500/60 px-4 py-2 text-sm text-blue-700 disabled:opacity-50"
             >
               {savingTheme ? 'Saving...' : '保存专题设置'}
             </button>
           </div>
-          <p className="text-xs text-emerald-300">
+          <p className="text-xs text-emerald-700">
             当前状态：{themeSetting?.active ? `生效中（${themeSetting.tag_name || '-'}）` : '未生效'}
           </p>
         </div>
@@ -645,7 +645,7 @@ const HomeFeedManager: React.FC = () => {
                 </option>
               ))}
             </select>
-            <button onClick={loadData} className="rounded-xl border border-gold-500/50 px-3 py-2.5 text-sm text-gold-200">
+            <button onClick={loadData} className="rounded-xl border border-gold-500/50 px-3 py-2.5 text-sm text-blue-700">
               Refresh
             </button>
           </div>
@@ -668,13 +668,13 @@ const HomeFeedManager: React.FC = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => onEditImage(item)}
-                      className="rounded border border-blue-200 px-2 py-1 text-xs text-neutral-300"
+                      className="rounded border border-blue-200 px-2 py-1 text-xs text-slate-700"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => quickSetImageStatus(item, 'published')}
-                      className="rounded border border-emerald-500/40 px-2 py-1 text-xs text-emerald-200"
+                      className="rounded border border-emerald-500/40 px-2 py-1 text-xs text-emerald-700"
                     >
                       Publish
                     </button>
@@ -686,13 +686,13 @@ const HomeFeedManager: React.FC = () => {
                     </button>
                     <button
                       onClick={() => quickSetImageStatus(item, 'draft')}
-                      className="rounded border border-blue-300 px-2 py-1 text-xs text-neutral-300"
+                      className="rounded border border-blue-300 px-2 py-1 text-xs text-slate-700"
                     >
                       Draft
                     </button>
                     <button
                       onClick={() => onDeleteImage(item.id)}
-                      className="rounded border border-rose-500/50 px-2 py-1 text-xs text-rose-200"
+                      className="rounded border border-rose-500/50 px-2 py-1 text-xs text-rose-700"
                     >
                       Delete
                     </button>
