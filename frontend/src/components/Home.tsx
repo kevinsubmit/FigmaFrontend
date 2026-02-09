@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Loader } from './ui/Loader';
 import { motion } from 'framer-motion';
-import { getPins, Pin } from '../api/pins';
+import { getPinTags, getPins, Pin } from '../api/pins';
 
 interface HomeProps {
   onNavigate: (page: 'home' | 'services' | 'appointments' | 'profile' | 'deals') => void;
@@ -106,12 +106,8 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
             console.error('Failed to parse home cache for tags:', error);
           }
         }
-        const pins = await getPins({ skip: 0, limit: 100 });
-        const tagSet = new Set<string>();
-        pins.forEach((pin) => {
-          pin.tags?.forEach((tag) => tagSet.add(tag));
-        });
-        setTags(['All', ...Array.from(tagSet)]);
+        const tagNames = await getPinTags();
+        setTags(['All', ...tagNames]);
       } catch (err) {
         console.error('Failed to load tags:', err);
       }

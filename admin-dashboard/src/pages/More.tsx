@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '../layout/AdminLayout';
 import { TopBar } from '../layout/TopBar';
-import { Ticket, Gift, MessageSquare, LogOut, Scissors, ShieldAlert } from 'lucide-react';
+import { Ticket, Gift, MessageSquare, LogOut, Scissors, ShieldAlert, Image } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const More: React.FC = () => {
@@ -40,6 +40,17 @@ const More: React.FC = () => {
             <span>Reviews</span>
           </div>
         </button>
+        {user?.is_admin && (
+          <button
+            onClick={() => navigate('/admin/home-feed')}
+            className="w-full text-left card-surface p-4 flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <Image className="w-5 h-5 text-gold-500" />
+              <span>Home Feed</span>
+            </div>
+          </button>
+        )}
         {user?.is_admin && (
           <button
             onClick={() => navigate('/admin/risk-control')}

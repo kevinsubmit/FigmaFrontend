@@ -18,6 +18,10 @@ export const getPins = async (params?: {
   return apiClient.get('/api/v1/pins', { params });
 };
 
+export const getPinTags = async (): Promise<string[]> => {
+  return apiClient.get('/api/v1/pins/tags');
+};
+
 export const getPinById = async (pinId: number): Promise<Pin> => {
   return apiClient.get(`/api/v1/pins/${pinId}`);
 };

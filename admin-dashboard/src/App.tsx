@@ -19,6 +19,7 @@ import Reviews from './pages/Reviews';
 import More from './pages/More';
 import ServiceCatalogPage from './pages/ServiceCatalog';
 import RiskControl from './pages/RiskControl';
+import HomeFeedManager from './pages/HomeFeedManager';
 
 const App = () => (
   <AuthProvider>
@@ -144,6 +145,14 @@ const App = () => (
         element={
           <ProtectedRoute>
             <RiskControl />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/home-feed"
+        element={
+          <ProtectedRoute>
+            <HomeFeedManager />
           </ProtectedRoute>
         }
       />
