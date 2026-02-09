@@ -42,16 +42,17 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
   const touchStart = useRef(0);
   const isPulling = useRef(false);
 
-  const loadPins = async (options?: { reset?: boolean; tag?: string; query?: string }) => {
+  const loadPins = async (options?: { reset?: boolean; tag?: string; query?: string; background?: boolean }) => {
     const reset = options?.reset ?? false;
     const tag = options?.tag ?? activeTag;
     const query = options?.query ?? searchQuery;
+    const background = options?.background ?? false;
     const nextOffset = reset ? 0 : offset;
 
     try {
-      if (reset) {
+      if (reset && !background) {
         setIsLoading(true);
-      } else {
+      } else if (!background) {
         setIsLoadingMore(true);
       }
       setError('');
@@ -67,11 +68,15 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
       setHasMore(pins.length === PAGE_SIZE);
     } catch (err) {
       console.error('Failed to load home feed:', err);
-      setError('Unable to load feed. Please try again.');
+      if (!background) {
+        setError('Unable to load feed. Please try again.');
+      }
       setHasMore(false);
     } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
+      if (!background) {
+        setIsLoading(false);
+        setIsLoadingMore(false);
+      }
     }
   };
 
@@ -232,6 +237,15 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
           setIsLoading(false);
           setIsLoadingMore(false);
           hasInitialized.current = true;
+          // Sync against latest server data to prevent stale/deleted cards.
+          setTimeout(() => {
+            loadPins({
+              reset: true,
+              tag: parsed.activeTag || 'All',
+              query: parsed.searchQuery || '',
+              background: true,
+            });
+          }, 0);
           return;
         }
       } catch (error) {
@@ -371,6 +385,12 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
               <div className="relative overflow-hidden rounded-2xl bg-[#1a1a1a] shadow-xl">
                 <img
                   src={image.image_url || FALLBACK_IMAGE}
+                  onError={(event) => {
+                    const target = event.currentTarget;
+                    if (target.src !== FALLBACK_IMAGE) {
+                      target.src = FALLBACK_IMAGE;
+                    }
+                  }}
                   alt={image.title}
                   className={`w-full object-cover transition-transform duration-700 group-hover:scale-110 ${
                     idx % 3 === 0 ? 'aspect-[4/5]' : idx % 2 === 0 ? 'aspect-[2/3]' : 'aspect-[3/4]'
