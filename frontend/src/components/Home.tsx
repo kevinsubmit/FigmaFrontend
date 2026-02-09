@@ -94,32 +94,38 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
   }, [location.search, activeTag]);
 
   useEffect(() => {
+    let disposed = false;
+
     const loadTags = async () => {
-      try {
-        if (tags.length > 1) {
-          return;
-        }
-        const cached = sessionStorage.getItem(HOME_CACHE_KEY);
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached);
-            if (parsed?.tags?.length > 1) {
-              setTags(parsed.tags);
-              return;
-            }
-          } catch (error) {
-            console.error('Failed to parse home cache for tags:', error);
+      // Use cached tags for first paint, then always sync from backend config.
+      const cached = sessionStorage.getItem(HOME_CACHE_KEY);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed?.tags?.length > 1 && !disposed) {
+            setTags(parsed.tags);
           }
+        } catch (error) {
+          console.error('Failed to parse home cache for tags:', error);
         }
+      }
+
+      try {
         const tagNames = await getPinTags();
-        setTags(['All', ...tagNames]);
+        if (disposed) return;
+        const nextTags = ['All', ...tagNames];
+        setTags(nextTags);
+        setActiveTag((prev) => (nextTags.includes(prev) ? prev : 'All'));
       } catch (err) {
         console.error('Failed to load tags:', err);
       }
     };
 
     loadTags();
-  }, [tags.length]);
+    return () => {
+      disposed = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (hasSetSeasonal.current) return;
