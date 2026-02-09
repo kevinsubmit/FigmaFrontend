@@ -22,6 +22,7 @@ import ServiceCatalogPage from './pages/ServiceCatalog';
 import RiskControl from './pages/RiskControl';
 import HomeFeedManager from './pages/HomeFeedManager';
 import Customers from './pages/Customers';
+import Security from './pages/Security';
 
 const App = () => (
   <AuthProvider>
@@ -172,6 +173,14 @@ const App = () => (
           element={
             <ProtectedRoute>
               <Applications />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/security"
+          element={
+            <ProtectedRoute>
+              <Security />
             </ProtectedRoute>
           }
         />

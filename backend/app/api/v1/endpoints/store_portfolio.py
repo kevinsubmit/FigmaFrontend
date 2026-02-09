@@ -14,12 +14,16 @@ from app.models.user import User
 from app.crud import store as crud_store, store_portfolio as crud_portfolio
 from app.schemas.store_portfolio import StorePortfolio, StorePortfolioCreate, StorePortfolioUpdate
 from app.core.config import settings
+from app.utils.clamav_scanner import scan_bytes_for_malware
+from app.utils.image_compression import compress_image
+from app.utils.security_validation import sanitize_plain_text, validate_image_bytes
 
 router = APIRouter()
 
 # Upload directory
 UPLOAD_DIR = Path(settings.UPLOAD_DIR) / "portfolio"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+MAX_FILE_SIZE = 8 * 1024 * 1024  # 8MB
 
 
 @router.get("/{store_id}", response_model=List[StorePortfolio])
@@ -92,17 +96,36 @@ async def upload_portfolio_image(
             detail="Invalid file type. Allowed formats: jpg, jpeg, png"
         )
     
-    # Generate unique filename
-    unique_filename = f"{uuid.uuid4()}{file_ext}"
-    file_path = UPLOAD_DIR / unique_filename
-    
-    # Save file
     try:
         contents = await file.read()
+        if len(contents) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail="File size exceeds 8MB limit")
+        validate_image_bytes(contents, allowed_formats={"JPEG", "PNG"})
+        scan_bytes_for_malware(contents)
+        compressed_content, _ = compress_image(
+            contents,
+            max_width=1920,
+            max_height=1920,
+            quality=85,
+            target_size_kb=700,
+        )
+        title = sanitize_plain_text(title, field_name="title", max_length=120)
+        description = sanitize_plain_text(description, field_name="description", max_length=1000)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid image file") from exc
+
+    # Save as JPEG to avoid executable/polygot payload retention.
+    unique_filename = f"{uuid.uuid4()}.jpg"
+    file_path = UPLOAD_DIR / unique_filename
+    try:
         with open(file_path, 'wb') as f:
-            f.write(contents)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
+            f.write(compressed_content)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to save file: {str(exc)}")
     
     # Create portfolio item
     image_url = f"/uploads/portfolio/{unique_filename}"
@@ -139,6 +162,18 @@ def update_portfolio_item(
     if not current_user.is_admin and current_user.store_id != existing.store_id:
         raise HTTPException(status_code=403, detail="You can only update portfolio images for your own store")
     
+    try:
+        if portfolio_data.title is not None:
+            portfolio_data.title = sanitize_plain_text(portfolio_data.title, field_name="title", max_length=120)
+        if portfolio_data.description is not None:
+            portfolio_data.description = sanitize_plain_text(
+                portfolio_data.description,
+                field_name="description",
+                max_length=1000,
+            )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     portfolio_item = crud_portfolio.update_portfolio_item(
         db,
         portfolio_id=portfolio_id,

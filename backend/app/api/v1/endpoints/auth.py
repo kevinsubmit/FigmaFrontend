@@ -14,6 +14,8 @@ from app.api.deps import get_current_user
 from app.models.user import User
 import os
 from datetime import datetime
+from app.utils.clamav_scanner import scan_bytes_for_malware
+from app.utils.security_validation import validate_image_bytes
 
 
 router = APIRouter()
@@ -385,7 +387,7 @@ async def upload_avatar(
     import os
     from pathlib import Path
     
-    # Validate file type
+    # Validate content type header first (quick reject), then verify bytes via PIL.
     allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
     if file.content_type not in allowed_types:
         raise HTTPException(
@@ -401,13 +403,18 @@ async def upload_avatar(
             detail="File size exceeds 5MB limit"
         )
     
-    # Reset file pointer
-    await file.seek(0)
+    try:
+        validate_image_bytes(file_content, allowed_formats={"JPEG", "PNG", "GIF", "WEBP"})
+        scan_bytes_for_malware(file_content)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc)
+        ) from exc
     
     # Generate unique filename
     import uuid
-    file_extension = Path(file.filename).suffix
-    filename = f"avatar_{current_user.id}_{uuid.uuid4().hex}{file_extension}"
+    filename = f"avatar_{current_user.id}_{uuid.uuid4().hex}.jpg"
     
     # Save file
     from app.core.config import settings
@@ -419,8 +426,11 @@ async def upload_avatar(
     from app.utils.image_compression import compress_image
     try:
         compressed_content, _ = compress_image(file_content, max_width=500, target_size_kb=200)
-    except Exception:
-        compressed_content = file_content
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid image file or compression failed"
+        ) from exc
     
     with open(file_path, "wb") as f:
         f.write(compressed_content)

@@ -22,10 +22,36 @@ from app.schemas.pin import (
     TagAdminUpdate,
 )
 from app.schemas.user import UserResponse
+from app.utils.security_validation import sanitize_plain_text
 
 router = APIRouter()
 
 PIN_STATUS_VALUES = {"draft", "published", "offline"}
+
+
+def _sanitize_pin_image_url(image_url: Optional[str]) -> Optional[str]:
+    if image_url is None:
+        return None
+    normalized = image_url.strip()
+    if not normalized:
+        raise HTTPException(status_code=400, detail="image_url is required")
+    lowered = normalized.lower()
+    if lowered.startswith(("javascript:", "data:", "vbscript:")):
+        raise HTTPException(status_code=400, detail="Invalid image_url scheme")
+    if not (
+        normalized.startswith("/uploads/")
+        or lowered.startswith("http://")
+        or lowered.startswith("https://")
+    ):
+        raise HTTPException(status_code=400, detail="image_url must be /uploads/* or http(s) URL")
+    return normalized
+
+
+def _sanitize_pin_text(value: Optional[str], field_name: str, max_length: int) -> Optional[str]:
+    try:
+        return sanitize_plain_text(value, field_name=field_name, max_length=max_length)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 def _to_pin_response(pin) -> PinResponse:
@@ -98,10 +124,13 @@ def create_tag_admin(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_admin_user),
 ):
+    sanitized_name = _sanitize_pin_text(payload.name, "name", 80)
+    if not sanitized_name:
+        raise HTTPException(status_code=400, detail="name is required")
     try:
         tag = crud_pin.create_tag(
             db,
-            name=payload.name,
+            name=sanitized_name,
             sort_order=payload.sort_order,
             is_active=payload.is_active,
             show_on_home=payload.show_on_home,
@@ -118,11 +147,12 @@ def update_tag_admin(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_admin_user),
 ):
+    sanitized_name = _sanitize_pin_text(payload.name, "name", 80) if payload.name is not None else None
     try:
         tag = crud_pin.update_tag(
             db,
             tag_id=tag_id,
-            name=payload.name,
+            name=sanitized_name,
             sort_order=payload.sort_order,
             is_active=payload.is_active,
             show_on_home=payload.show_on_home,
@@ -184,11 +214,17 @@ def create_pin_admin(
         if len(tags) != len(set(payload.tag_ids)):
             raise HTTPException(status_code=400, detail="Some categories are invalid")
 
+    title = _sanitize_pin_text(payload.title, "title", 160)
+    if not title:
+        raise HTTPException(status_code=400, detail="title is required")
+    description = _sanitize_pin_text(payload.description, "description", 2000)
+    image_url = _sanitize_pin_image_url(payload.image_url)
+
     pin = crud_pin.create_pin(
         db,
-        title=payload.title,
-        image_url=payload.image_url,
-        description=payload.description,
+        title=title,
+        image_url=image_url,
+        description=description,
         status=payload.status,
         sort_order=payload.sort_order,
         tag_ids=payload.tag_ids,
@@ -210,12 +246,20 @@ def update_pin_admin(
         if len(tags) != len(set(payload.tag_ids)):
             raise HTTPException(status_code=400, detail="Some categories are invalid")
 
+    title = _sanitize_pin_text(payload.title, "title", 160) if payload.title is not None else None
+    description = (
+        _sanitize_pin_text(payload.description, "description", 2000)
+        if payload.description is not None
+        else None
+    )
+    image_url = _sanitize_pin_image_url(payload.image_url) if payload.image_url is not None else None
+
     pin = crud_pin.update_pin(
         db,
         pin_id=pin_id,
-        title=payload.title,
-        image_url=payload.image_url,
-        description=payload.description,
+        title=title,
+        image_url=image_url,
+        description=description,
         status=payload.status,
         sort_order=payload.sort_order,
         tag_ids=payload.tag_ids,

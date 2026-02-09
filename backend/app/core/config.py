@@ -55,6 +55,13 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 10485760  # 10MB
     ALLOWED_IMAGE_EXTENSIONS: str = "jpg,jpeg,png,gif,webp"
     UPLOAD_DIR: str = "./uploads"
+
+    # Upload security (optional ClamAV)
+    SECURITY_ENABLE_CLAMAV: bool = False
+    CLAMAV_HOST: str = "127.0.0.1"
+    CLAMAV_PORT: int = 3310
+    CLAMAV_TIMEOUT_SECONDS: int = 5
+    SECURITY_SCAN_FAIL_CLOSED: bool = True
     
     @property
     def allowed_extensions_list(self) -> List[str]:

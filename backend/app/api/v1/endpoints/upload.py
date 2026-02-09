@@ -10,6 +10,8 @@ from app.api.deps import get_current_user
 from app.models.user import User
 from app.utils.image_compression import compress_image
 from app.core.config import settings
+from app.utils.clamav_scanner import scan_bytes_for_malware
+from app.utils.security_validation import validate_image_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +70,13 @@ async def upload_images(
                 detail=f"File size exceeds maximum allowed size of 5MB"
             )
         
+        # Validate by actual image decode instead of trusting extension/MIME.
+        try:
+            validate_image_bytes(content, allowed_formats={"JPEG", "PNG"})
+            scan_bytes_for_malware(content)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
         # 压缩图片
         try:
             compressed_content, compression_info = compress_image(
@@ -83,8 +92,10 @@ async def upload_images(
             
         except Exception as e:
             logger.error(f"Failed to compress image: {e}")
-            # 如果压缩失败，使用原图
-            compressed_content = content
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid image file or compression failed"
+            )
         
         # 生成唯一文件名（使用.jpg扩展名，因为压缩后都是JPEG）
         unique_filename = f"{uuid.uuid4()}.jpg"
