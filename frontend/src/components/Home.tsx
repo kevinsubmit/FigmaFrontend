@@ -173,23 +173,6 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
   };
 
   useEffect(() => {
-    const keyword = searchDraft.trim();
-    const timer = window.setTimeout(() => {
-      if (!keyword) {
-        if (searchQuery) {
-          setSearchQuery('');
-        }
-        return;
-      }
-      if (keyword !== searchQuery) {
-        setSearchQuery(keyword);
-        setActiveTag('All');
-      }
-    }, 350);
-    return () => window.clearTimeout(timer);
-  }, [searchDraft, searchQuery]);
-
-  useEffect(() => {
     const observer = new IntersectionObserver(
       entries => {
         if (entries[0].isIntersecting) {
@@ -361,9 +344,6 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
               }}
               className="w-full bg-[#1a1a1a] border-none rounded-full py-2.5 pl-12 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 transition-all shadow-lg"
             />
-            {searchDraft.trim() && searchDraft.trim() !== searchQuery && (
-              <Loader2 className="absolute right-10 top-1/2 -translate-y-1/2 w-4 h-4 text-[#D4AF37] animate-spin" />
-            )}
             {searchDraft && (
               <button
                 onClick={clearSearch}
