@@ -19,6 +19,7 @@ export interface HomeFeedCategory {
   name: string;
   sort_order: number;
   is_active: boolean;
+  show_on_home: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -78,6 +79,7 @@ export const createHomeFeedCategory = async (payload: {
   name: string;
   sort_order?: number;
   is_active?: boolean;
+  show_on_home?: boolean;
 }) => {
   const response = await api.post('/pins/admin/tags', payload);
   return response.data as HomeFeedCategory;
@@ -85,7 +87,7 @@ export const createHomeFeedCategory = async (payload: {
 
 export const updateHomeFeedCategory = async (
   id: number,
-  payload: Partial<{ name: string; sort_order: number; is_active: boolean }>,
+  payload: Partial<{ name: string; sort_order: number; is_active: boolean; show_on_home: boolean }>,
 ) => {
   const response = await api.patch(`/pins/admin/tags/${id}`, payload);
   return response.data as HomeFeedCategory;

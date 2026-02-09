@@ -49,7 +49,7 @@ def get_pin(db: Session, pin_id: int) -> Optional[Pin]:
 def list_public_tags(db: Session) -> List[Tag]:
     return (
         db.query(Tag)
-        .filter(Tag.is_active.is_(True))
+        .filter(Tag.is_active.is_(True), Tag.show_on_home.is_(True))
         .order_by(Tag.sort_order.asc(), Tag.name.asc())
         .all()
     )
@@ -85,6 +85,7 @@ def create_tag(
     name: str,
     sort_order: int = 0,
     is_active: bool = True,
+    show_on_home: bool = True,
 ) -> Tag:
     normalized_name = name.strip()
     exists = (
@@ -99,6 +100,7 @@ def create_tag(
         name=normalized_name,
         sort_order=sort_order,
         is_active=is_active,
+        show_on_home=show_on_home,
         updated_at=now,
     )
     db.add(tag)
@@ -114,6 +116,7 @@ def update_tag(
     name: Optional[str] = None,
     sort_order: Optional[int] = None,
     is_active: Optional[bool] = None,
+    show_on_home: Optional[bool] = None,
 ) -> Optional[Tag]:
     tag = get_tag(db, tag_id)
     if not tag:
@@ -132,6 +135,8 @@ def update_tag(
         tag.sort_order = sort_order
     if is_active is not None:
         tag.is_active = is_active
+    if show_on_home is not None:
+        tag.show_on_home = show_on_home
     tag.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(tag)

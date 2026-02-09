@@ -22,6 +22,7 @@ class TagAdminBase(BaseModel):
     name: str
     sort_order: int = 0
     is_active: bool = True
+    show_on_home: bool = True
 
 
 class TagAdminCreate(TagAdminBase):
@@ -32,6 +33,7 @@ class TagAdminUpdate(BaseModel):
     name: Optional[str] = None
     sort_order: Optional[int] = None
     is_active: Optional[bool] = None
+    show_on_home: Optional[bool] = None
 
 
 class TagAdminResponse(TagAdminBase):

@@ -50,6 +50,7 @@ const HomeFeedManager: React.FC = () => {
     name: '',
     sort_order: 0,
     is_active: true,
+    show_on_home: true,
   });
   const [themeSetting, setThemeSetting] = useState<HomeFeedThemeSetting | null>(null);
   const [themeForm, setThemeForm] = useState({
@@ -105,7 +106,7 @@ const HomeFeedManager: React.FC = () => {
 
   const resetCategoryForm = () => {
     setEditingCategory(null);
-    setCategoryForm({ name: '', sort_order: 0, is_active: true });
+    setCategoryForm({ name: '', sort_order: 0, is_active: true, show_on_home: true });
   };
 
   const uploadImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,6 +193,7 @@ const HomeFeedManager: React.FC = () => {
       name: category.name,
       sort_order: category.sort_order,
       is_active: category.is_active,
+      show_on_home: category.show_on_home,
     });
   };
 
@@ -357,7 +359,7 @@ const HomeFeedManager: React.FC = () => {
             <Layers className="h-4 w-4 text-gold-500" />
             <span>{editingCategory ? 'Edit Category' : 'Create Category'}</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <input
               value={categoryForm.name}
               onChange={(e) => setCategoryForm((prev) => ({ ...prev, name: e.target.value }))}
@@ -379,6 +381,14 @@ const HomeFeedManager: React.FC = () => {
               />
               Active
             </label>
+            <label className="inline-flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm">
+              <input
+                type="checkbox"
+                checked={categoryForm.show_on_home}
+                onChange={(e) => setCategoryForm((prev) => ({ ...prev, show_on_home: e.target.checked }))}
+              />
+              首页标签显示
+            </label>
           </div>
           <div className="flex gap-2">
             <button
@@ -398,7 +408,7 @@ const HomeFeedManager: React.FC = () => {
                 <div className="text-sm">
                   <span className="font-medium">{category.name}</span>
                   <span className="ml-2 text-xs text-gray-500">
-                    sort={category.sort_order} {category.is_active ? 'active' : 'inactive'}
+                    sort={category.sort_order} {category.is_active ? 'active' : 'inactive'} {category.show_on_home ? '| home-visible' : '| home-hidden'}
                   </span>
                 </div>
                 <div className="flex gap-2">

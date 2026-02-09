@@ -33,6 +33,7 @@ class Tag(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, nullable=False, index=True)
     is_active = Column(Boolean, nullable=False, default=True, index=True)
+    show_on_home = Column(Boolean, nullable=False, default=True, index=True)
     sort_order = Column(Integer, nullable=False, default=0, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

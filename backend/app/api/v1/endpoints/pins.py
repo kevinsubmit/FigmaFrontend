@@ -104,6 +104,7 @@ def create_tag_admin(
             name=payload.name,
             sort_order=payload.sort_order,
             is_active=payload.is_active,
+            show_on_home=payload.show_on_home,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -124,6 +125,7 @@ def update_tag_admin(
             name=payload.name,
             sort_order=payload.sort_order,
             is_active=payload.is_active,
+            show_on_home=payload.show_on_home,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
