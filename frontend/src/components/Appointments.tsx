@@ -44,14 +44,18 @@ export function Appointments() {
       setLoading(true);
       const data = await getMyAppointments();
       setAppointments(data);
-      const stores = await getStores({ limit: 200 });
-      const addressMap: Record<number, string> = {};
-      stores.forEach((store) => {
-        if (store.address) {
-          addressMap[store.id] = store.address;
-        }
-      });
-      setStoreAddressById(addressMap);
+      try {
+        const stores = await getStores({ limit: 100 });
+        const addressMap: Record<number, string> = {};
+        stores.forEach((store) => {
+          if (store.address) {
+            addressMap[store.id] = store.address;
+          }
+        });
+        setStoreAddressById(addressMap);
+      } catch (storeError) {
+        console.warn('Failed to load store addresses fallback:', storeError);
+      }
     } catch (error) {
       console.error('Failed to load appointments:', error);
       toast.error('Failed to load appointments');
