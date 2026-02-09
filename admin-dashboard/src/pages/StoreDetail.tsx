@@ -486,8 +486,8 @@ const StoreDetail: React.FC = () => {
 
   return (
     <AdminLayout>
-      <TopBar title="Store Detail" />
-      <div className="mx-auto w-full max-w-5xl px-4 py-6 space-y-4">
+      <TopBar title="店铺详情" subtitle="统一管理店铺信息、服务和图片内容" />
+      <div className="mx-auto w-full max-w-6xl px-4 py-5 space-y-4">
         {loading && <div className="text-slate-500">Loading...</div>}
         {!loading && store && (
           <div className="space-y-4">
@@ -511,15 +511,15 @@ const StoreDetail: React.FC = () => {
 
               <div className="mt-5 grid grid-cols-1 gap-3 text-sm text-slate-700">
                 <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-gold-500" />
+                  <MapPin className="h-4 w-4 text-blue-600" />
                   <span>{store.address}, {store.city}, {store.state} {store.zip_code}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-gold-500" />
+                  <Phone className="h-4 w-4 text-blue-600" />
                   <span>{store.phone || 'No phone listed'}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-gold-500" />
+                  <Mail className="h-4 w-4 text-blue-600" />
                   <span>{store.email || 'No email listed'}</span>
                 </div>
               </div>
@@ -585,7 +585,7 @@ const StoreDetail: React.FC = () => {
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   <div className="rounded-xl border border-blue-100 p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-slate-900">Available Catalog</p>
+                      <p className="text-xs font-semibold text-slate-900">可选服务目录</p>
                       <span className="text-xs text-slate-500">{catalog.length} templates</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -644,7 +644,7 @@ const StoreDetail: React.FC = () => {
 
                   <div className="rounded-xl border border-blue-100 p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-slate-900">My Store Services</p>
+                      <p className="text-xs font-semibold text-slate-900">本店服务</p>
                       <span className="text-xs text-slate-500">{services.length} configured</span>
                     </div>
                     {servicesLoading && <p className="text-sm text-slate-500">Loading store services...</p>}
@@ -710,7 +710,7 @@ const StoreDetail: React.FC = () => {
                               type="button"
                               onClick={() => handleDeleteStoreService(service.id)}
                               disabled={serviceDeletingId === service.id}
-                              className="rounded-lg border border-red-500/40 px-2 py-1 text-xs text-red-300 disabled:opacity-50"
+                              className="rounded-lg border border-red-500/40 px-2 py-1 text-xs text-red-600 disabled:opacity-50"
                             >
                               {serviceDeletingId === service.id ? 'Deactivating...' : 'Deactivate'}
                             </button>
@@ -745,7 +745,7 @@ const StoreDetail: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => removePortfolioImage(item.id)}
-                        className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-1 text-[10px] text-slate-900"
+                        className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[10px] text-slate-900 border border-blue-100"
                       >
                         <Trash2 className="h-3 w-3" />
                         Remove
@@ -786,7 +786,7 @@ const StoreDetail: React.FC = () => {
                       disabled={portfolioUploading}
                       className="inline-flex items-center gap-2 rounded-xl border border-blue-100 px-4 py-2 text-sm text-slate-800 disabled:opacity-60"
                     >
-                      <ImagePlus className="h-4 w-4 text-gold-500" />
+                      <ImagePlus className="h-4 w-4 text-blue-600" />
                       {portfolioUploading ? 'Uploading...' : 'Upload One Photo'}
                     </button>
                     <span className="text-xs text-slate-500">Only JPG/JPEG/PNG</span>
@@ -799,7 +799,7 @@ const StoreDetail: React.FC = () => {
               <div className="card-surface p-5 md:p-6 space-y-5">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-gold-500" />
+                    <Building2 className="h-4 w-4 text-blue-600" />
                     <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Store Information</p>
                   </div>
                   <span className="text-xs text-slate-500">Visible on customer app</span>
@@ -887,7 +887,7 @@ const StoreDetail: React.FC = () => {
 
                 <div>
                   <div className="mb-2 flex items-center gap-2">
-                    <Clock3 className="h-4 w-4 text-gold-500" />
+                    <Clock3 className="h-4 w-4 text-blue-600" />
                     <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Opening Hours</label>
                   </div>
                   <div className="rounded-xl border border-blue-100 p-3 space-y-2">
@@ -983,7 +983,7 @@ const StoreDetail: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => removeImage(image.id)}
-                          className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/80 px-2 py-1 text-[10px] text-slate-900"
+                          className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/90 px-2 py-1 text-[10px] text-slate-900 border border-blue-100"
                         >
                           <Trash2 className="h-3 w-3" />
                           Remove
@@ -1016,7 +1016,7 @@ const StoreDetail: React.FC = () => {
                         disabled={uploading || images.length >= 5}
                         className="inline-flex items-center gap-2 rounded-xl border border-blue-100 px-4 py-2 text-sm text-slate-800 disabled:opacity-60"
                       >
-                        <ImagePlus className="h-4 w-4 text-gold-500" />
+                        <ImagePlus className="h-4 w-4 text-blue-600" />
                         {uploading ? 'Uploading...' : 'Choose Photos'}
                       </button>
                       <span className="text-xs text-slate-500">Only JPG/JPEG/PNG, max 5 images</span>
