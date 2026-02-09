@@ -330,7 +330,7 @@ const HomeFeedManager: React.FC = () => {
     return (
       <AdminLayout>
         <TopBar title="首页图片流管理" subtitle="仅超管可访问" />
-        <div className="px-4 py-6 text-sm text-rose-700">Only super admin can manage homepage feed.</div>
+        <div className="px-4 py-6 text-sm text-slate-900">Only super admin can manage homepage feed.</div>
       </AdminLayout>
     );
   }
@@ -374,7 +374,7 @@ const HomeFeedManager: React.FC = () => {
                 placeholder="排序值（越小越靠前）"
                 className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
               />
-              <p className="text-xs text-slate-500">中文提示：排序值越小，首页展示越靠前。</p>
+              <p className="text-xs text-slate-900">中文提示：排序值越小，首页展示越靠前。</p>
             </div>
           </div>
           <div className="space-y-2">
@@ -390,7 +390,7 @@ const HomeFeedManager: React.FC = () => {
             )}
           </div>
           <div className="space-y-2">
-            <p className="text-xs text-slate-600">Categories (multi-select)</p>
+            <p className="text-xs text-slate-900">Categories (multi-select)</p>
             <div className="flex flex-wrap gap-2">
               {categories
                 .filter((item) => item.is_active)
@@ -409,8 +409,8 @@ const HomeFeedManager: React.FC = () => {
                       }
                       className={`rounded-full px-3 py-1 text-xs border ${
                         active
-                          ? 'border-gold-500/60 bg-gold-500/20 text-blue-700'
-                          : 'border-blue-200 text-slate-700'
+                          ? 'border-gold-500/60 bg-gold-500/20 text-slate-900'
+                          : 'border-blue-200 text-slate-900'
                       }`}
                     >
                       {category.name}
@@ -423,11 +423,11 @@ const HomeFeedManager: React.FC = () => {
             <button
               onClick={saveImage}
               disabled={savingImage}
-              className="rounded-xl border border-gold-500/60 px-4 py-2 text-sm text-blue-700 disabled:opacity-50"
+              className="rounded-xl border border-gold-500/60 px-4 py-2 text-sm text-slate-900 disabled:opacity-50"
             >
               {savingImage ? 'Saving...' : editingImage ? 'Update Image' : 'Create Image'}
             </button>
-            <button onClick={resetImageForm} className="rounded-xl border border-blue-200 px-4 py-2 text-sm text-slate-700">
+            <button onClick={resetImageForm} className="rounded-xl border border-blue-200 px-4 py-2 text-sm text-slate-900">
               Reset
             </button>
           </div>
@@ -473,43 +473,43 @@ const HomeFeedManager: React.FC = () => {
             <button
               onClick={saveCategory}
               disabled={savingCategory}
-              className="rounded-xl border border-gold-500/60 px-4 py-2 text-sm text-blue-700 disabled:opacity-50"
+              className="rounded-xl border border-gold-500/60 px-4 py-2 text-sm text-slate-900 disabled:opacity-50"
             >
               {savingCategory ? 'Saving...' : editingCategory ? 'Update Category' : 'Create Category'}
             </button>
-            <button onClick={resetCategoryForm} className="rounded-xl border border-blue-200 px-4 py-2 text-sm text-slate-700">
+            <button onClick={resetCategoryForm} className="rounded-xl border border-blue-200 px-4 py-2 text-sm text-slate-900">
               Reset
             </button>
           </div>
           <div className="rounded-xl border border-blue-100 bg-white/40 p-3">
-            <p className="text-xs text-slate-600">首页标签顺序预览（仅展示 active + 首页显示）</p>
+            <p className="text-xs text-slate-900">首页标签顺序预览（仅展示 active + 首页显示）</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {homeVisibleCategories.length ? (
                 homeVisibleCategories.map((category, index) => (
                   <span
                     key={category.id}
-                    className="rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-xs text-blue-700"
+                    className="rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-xs text-slate-900"
                   >
                     {index + 1}. {category.name}
                   </span>
                 ))
               ) : (
-                <span className="text-xs text-slate-500">暂无首页可见标签</span>
+                <span className="text-xs text-slate-900">暂无首页可见标签</span>
               )}
             </div>
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-600">分类列表</p>
+            <p className="text-xs text-slate-900">分类列表</p>
             <div className="inline-flex rounded-lg border border-blue-200 p-1">
               <button
                 onClick={() => setCategoryListScope('all')}
-                className={`rounded px-2 py-1 text-xs ${categoryListScope === 'all' ? 'bg-blue-100 text-slate-900' : 'text-slate-500'}`}
+                className={`rounded px-2 py-1 text-xs ${categoryListScope === 'all' ? 'bg-blue-100 text-slate-900' : 'text-slate-900'}`}
               >
                 全部
               </button>
               <button
                 onClick={() => setCategoryListScope('home')}
-                className={`rounded px-2 py-1 text-xs ${categoryListScope === 'home' ? 'bg-blue-100 text-slate-900' : 'text-slate-500'}`}
+                className={`rounded px-2 py-1 text-xs ${categoryListScope === 'home' ? 'bg-blue-100 text-slate-900' : 'text-slate-900'}`}
               >
                 仅首页显示
               </button>
@@ -520,7 +520,7 @@ const HomeFeedManager: React.FC = () => {
               <div key={category.id} className="flex items-center justify-between rounded-lg border border-blue-100 px-3 py-2">
                 <div className="text-sm">
                   <span className="font-medium">{category.name}</span>
-                  <span className="ml-2 text-xs text-slate-500">
+                  <span className="ml-2 text-xs text-slate-900">
                     sort={category.sort_order} {category.is_active ? 'active' : 'inactive'} {category.show_on_home ? '| home-visible' : '| home-hidden'}
                   </span>
                 </div>
@@ -528,26 +528,26 @@ const HomeFeedManager: React.FC = () => {
                   <button
                     disabled={index === 0 || categoryListScope === 'home'}
                     onClick={() => moveCategory(category.id, 'up')}
-                    className="rounded border border-blue-200 px-2 py-1 text-xs text-slate-700 disabled:opacity-40"
+                    className="rounded border border-blue-200 px-2 py-1 text-xs text-slate-900 disabled:opacity-40"
                   >
                     ↑
                   </button>
                   <button
                     disabled={index === visibleCategoryRows.length - 1 || categoryListScope === 'home'}
                     onClick={() => moveCategory(category.id, 'down')}
-                    className="rounded border border-blue-200 px-2 py-1 text-xs text-slate-700 disabled:opacity-40"
+                    className="rounded border border-blue-200 px-2 py-1 text-xs text-slate-900 disabled:opacity-40"
                   >
                     ↓
                   </button>
                   <button
                     onClick={() => onEditCategory(category)}
-                    className="rounded border border-blue-200 px-2 py-1 text-xs text-slate-700"
+                    className="rounded border border-blue-200 px-2 py-1 text-xs text-slate-900"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => onDeleteCategory(category.id)}
-                    className="rounded border border-rose-500/50 px-2 py-1 text-xs text-rose-700"
+                    className="rounded border border-rose-500/50 px-2 py-1 text-xs text-slate-900"
                   >
                     Disable
                   </button>
@@ -599,18 +599,18 @@ const HomeFeedManager: React.FC = () => {
             />
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-900">
               中文提示：启用后，H5 首页默认只展示所选分类图片；可设置起止时间，到期自动恢复普通模式。
             </p>
             <button
               onClick={saveThemeSetting}
               disabled={savingTheme}
-              className="rounded-xl border border-gold-500/60 px-4 py-2 text-sm text-blue-700 disabled:opacity-50"
+              className="rounded-xl border border-gold-500/60 px-4 py-2 text-sm text-slate-900 disabled:opacity-50"
             >
               {savingTheme ? 'Saving...' : '保存专题设置'}
             </button>
           </div>
-          <p className="text-xs text-emerald-700">
+          <p className="text-xs text-slate-900">
             当前状态：{themeSetting?.active ? `生效中（${themeSetting.tag_name || '-'}）` : '未生效'}
           </p>
         </div>
@@ -645,12 +645,12 @@ const HomeFeedManager: React.FC = () => {
                 </option>
               ))}
             </select>
-            <button onClick={loadData} className="rounded-xl border border-gold-500/50 px-3 py-2.5 text-sm text-blue-700">
+            <button onClick={loadData} className="rounded-xl border border-gold-500/50 px-3 py-2.5 text-sm text-slate-900">
               Refresh
             </button>
           </div>
           {loading ? (
-            <div className="text-sm text-slate-500">Loading...</div>
+            <div className="text-sm text-slate-900">Loading...</div>
           ) : (
             <div className="space-y-2">
               {filteredImages.map((item) => (
@@ -659,8 +659,8 @@ const HomeFeedManager: React.FC = () => {
                     <img src={item.image_url} alt={item.title} className="h-16 w-16 rounded-lg object-cover border border-blue-100" />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{item.title}</p>
-                      <p className="truncate text-xs text-slate-500">{item.description || '-'}</p>
-                      <p className="text-xs text-slate-500 mt-1">
+                      <p className="truncate text-xs text-slate-900">{item.description || '-'}</p>
+                      <p className="text-xs text-slate-900 mt-1">
                         status={item.status} | sort={item.sort_order} | categories={item.tags.join(', ') || '-'}
                       </p>
                     </div>
@@ -668,38 +668,38 @@ const HomeFeedManager: React.FC = () => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => onEditImage(item)}
-                      className="rounded border border-blue-200 px-2 py-1 text-xs text-slate-700"
+                      className="rounded border border-blue-200 px-2 py-1 text-xs text-slate-900"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => quickSetImageStatus(item, 'published')}
-                      className="rounded border border-emerald-500/40 px-2 py-1 text-xs text-emerald-700"
+                      className="rounded border border-emerald-500/40 px-2 py-1 text-xs text-slate-900"
                     >
                       Publish
                     </button>
                     <button
                       onClick={() => quickSetImageStatus(item, 'offline')}
-                      className="rounded border border-amber-500/40 px-2 py-1 text-xs text-amber-200"
+                      className="rounded border border-amber-500/40 px-2 py-1 text-xs text-slate-900"
                     >
                       Offline
                     </button>
                     <button
                       onClick={() => quickSetImageStatus(item, 'draft')}
-                      className="rounded border border-blue-300 px-2 py-1 text-xs text-slate-700"
+                      className="rounded border border-blue-300 px-2 py-1 text-xs text-slate-900"
                     >
                       Draft
                     </button>
                     <button
                       onClick={() => onDeleteImage(item.id)}
-                      className="rounded border border-rose-500/50 px-2 py-1 text-xs text-rose-700"
+                      className="rounded border border-rose-500/50 px-2 py-1 text-xs text-slate-900"
                     >
                       Delete
                     </button>
                   </div>
                 </div>
               ))}
-              {!filteredImages.length && <div className="text-sm text-slate-500">No images found.</div>}
+              {!filteredImages.length && <div className="text-sm text-slate-900">No images found.</div>}
             </div>
           )}
         </div>
