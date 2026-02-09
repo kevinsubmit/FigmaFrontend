@@ -19,12 +19,8 @@ def get_pins(
     )
 
     if search:
-        query = query.filter(
-            or_(
-                Pin.title.contains(search),
-                Pin.description.contains(search),
-            )
-        )
+        keyword = search.strip()
+        query = query.filter(Pin.title.ilike(f"%{keyword}%"))
 
     if tag:
         query = query.join(Pin.tags).filter(Tag.name == tag, Tag.is_active.is_(True))

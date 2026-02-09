@@ -333,7 +333,7 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
             </button>
             <input
               type="text"
-              placeholder="Search tags or titles (e.g. french)"
+              placeholder="Search by title (e.g. Classic French Set)"
               value={searchDraft}
               onChange={(e) => setSearchDraft(e.target.value)}
               onKeyDown={(e) => {

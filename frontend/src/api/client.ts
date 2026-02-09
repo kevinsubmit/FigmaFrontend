@@ -8,7 +8,10 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;
+  params?: Record<string, any>;
 }
+
+type RequestConfig = boolean | RequestOptions;
 
 class APIClient {
   private baseURL: string;
@@ -47,7 +50,15 @@ class APIClient {
     options: RequestOptions = {},
     allowRetry: boolean = true
   ): Promise<T> {
-    const { requiresAuth = false, headers = {}, ...restOptions } = options;
+    const { requiresAuth = false, headers = {}, params, ...restOptions } = options;
+
+    const queryString = params
+      ? `?${new URLSearchParams(
+          Object.entries(params)
+            .filter(([, value]) => value !== undefined && value !== null && value !== '')
+            .map(([key, value]) => [key, String(value)]),
+        ).toString()}`
+      : '';
 
     const config: RequestInit = {
       ...restOptions,
@@ -66,7 +77,7 @@ class APIClient {
     }
 
     try {
-      const response = await fetch(`${this.baseURL}${endpoint}`, config);
+      const response = await fetch(`${this.baseURL}${endpoint}${queryString}`, config);
 
       if (response.status === 401 && requiresAuth && allowRetry) {
         const refreshed = await this.refreshToken();
@@ -131,10 +142,11 @@ class APIClient {
   /**
    * GET request
    */
-  async get<T>(endpoint: string, requiresAuth = false): Promise<T> {
+  async get<T>(endpoint: string, config: RequestConfig = false): Promise<T> {
+    const normalized: RequestOptions = typeof config === 'boolean' ? { requiresAuth: config } : config;
     return this.request<T>(endpoint, {
       method: 'GET',
-      requiresAuth,
+      ...normalized,
     });
   }
 
@@ -144,12 +156,13 @@ class APIClient {
   async post<T>(
     endpoint: string,
     data?: any,
-    requiresAuth = false
+    config: RequestConfig = false
   ): Promise<T> {
+    const normalized: RequestOptions = typeof config === 'boolean' ? { requiresAuth: config } : config;
     return this.request<T>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
-      requiresAuth,
+      ...normalized,
     });
   }
 
@@ -159,12 +172,13 @@ class APIClient {
   async put<T>(
     endpoint: string,
     data?: any,
-    requiresAuth = false
+    config: RequestConfig = false
   ): Promise<T> {
+    const normalized: RequestOptions = typeof config === 'boolean' ? { requiresAuth: config } : config;
     return this.request<T>(endpoint, {
       method: 'PUT',
       body: JSON.stringify(data),
-      requiresAuth,
+      ...normalized,
     });
   }
 
@@ -174,22 +188,24 @@ class APIClient {
   async patch<T>(
     endpoint: string,
     data?: any,
-    requiresAuth = false
+    config: RequestConfig = false
   ): Promise<T> {
+    const normalized: RequestOptions = typeof config === 'boolean' ? { requiresAuth: config } : config;
     return this.request<T>(endpoint, {
       method: 'PATCH',
       body: JSON.stringify(data),
-      requiresAuth,
+      ...normalized,
     });
   }
 
   /**
    * DELETE request
    */
-  async delete<T>(endpoint: string, requiresAuth = false): Promise<T> {
+  async delete<T>(endpoint: string, config: RequestConfig = false): Promise<T> {
+    const normalized: RequestOptions = typeof config === 'boolean' ? { requiresAuth: config } : config;
     return this.request<T>(endpoint, {
       method: 'DELETE',
-      requiresAuth,
+      ...normalized,
     });
   }
 }
