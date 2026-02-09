@@ -160,6 +160,7 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
 
   const applySearch = () => {
     setSearchQuery(searchDraft.trim());
+    setActiveTag('All');
   };
 
   const clearSearch = () => {
@@ -170,6 +171,23 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
       navigate('/', { replace: true });
     }
   };
+
+  useEffect(() => {
+    const keyword = searchDraft.trim();
+    const timer = window.setTimeout(() => {
+      if (!keyword) {
+        if (searchQuery) {
+          setSearchQuery('');
+        }
+        return;
+      }
+      if (keyword !== searchQuery) {
+        setSearchQuery(keyword);
+        setActiveTag('All');
+      }
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [searchDraft, searchQuery]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -323,10 +341,16 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
       <div className="sticky top-0 z-20 bg-black/95 backdrop-blur-md pb-2 transition-all pt-[env(safe-area-inset-top)]">
         <div className="px-4 py-3">
           <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-[#D4AF37] transition-colors" />
+            <button
+              onClick={applySearch}
+              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full p-1.5 text-gray-400 transition-colors hover:text-[#D4AF37] group-focus-within:text-[#D4AF37]"
+              aria-label="Apply search"
+            >
+              <Search className="w-5 h-5" />
+            </button>
             <input
               type="text"
-              placeholder="Search tags (e.g. snowflake)"
+              placeholder="搜索标签或标题（例如：french）"
               value={searchDraft}
               onChange={(e) => setSearchDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -337,6 +361,9 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
               }}
               className="w-full bg-[#1a1a1a] border-none rounded-full py-2.5 pl-12 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 transition-all shadow-lg"
             />
+            {searchDraft.trim() && searchDraft.trim() !== searchQuery && (
+              <Loader2 className="absolute right-10 top-1/2 -translate-y-1/2 w-4 h-4 text-[#D4AF37] animate-spin" />
+            )}
             {searchDraft && (
               <button
                 onClick={clearSearch}
@@ -425,6 +452,12 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
             </motion.div>
           ))}
         </Masonry>
+
+        {searchQuery && !isLoading && (
+          <div className="px-4 pt-2 text-xs text-gray-400">
+            搜索“{searchQuery}”结果：{images.length} 张
+          </div>
+        )}
         
         {/* Load More Indicator */}
         <div ref={observerTarget} className="flex justify-center py-6 h-20 w-full">
