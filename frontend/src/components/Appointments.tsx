@@ -34,6 +34,8 @@ export function Appointments() {
   const [reviewingAppointment, setReviewingAppointment] = useState<AppointmentWithDetails | null>(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [storeAddressById, setStoreAddressById] = useState<Record<number, string>>({});
+  const [showMapOptions, setShowMapOptions] = useState(false);
+  const [mapTarget, setMapTarget] = useState<{ name: string; address: string } | null>(null);
 
   useEffect(() => {
     loadAppointments();
@@ -169,6 +171,28 @@ export function Appointments() {
 
   const displayedAppointments = activeTab === 'upcoming' ? upcomingAppointments : pastAppointments;
 
+  const openMapOptions = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    storeName: string,
+    storeAddress: string
+  ) => {
+    event.stopPropagation();
+    setMapTarget({ name: storeName, address: storeAddress });
+    setShowMapOptions(true);
+  };
+
+  const openMaps = (provider: 'apple' | 'google') => {
+    if (!mapTarget?.address) return;
+    const query = `${mapTarget.name ? `${mapTarget.name} ` : ''}${mapTarget.address}`.trim();
+    const encoded = encodeURIComponent(query);
+    const url =
+      provider === 'apple'
+        ? `http://maps.apple.com/?q=${encoded}`
+        : `https://www.google.com/maps/search/?api=1&query=${encoded}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setShowMapOptions(false);
+  };
+
   return (
     <div className="min-h-screen bg-black text-white pb-20">
       {/* Header */}
@@ -298,10 +322,15 @@ export function Appointments() {
                   <div className="mb-3">
                     <h3 className="font-semibold text-lg text-white mb-1">{apt.store?.name || apt.store_name}</h3>
                     {displayAddress && (
-                      <p className="text-sm text-gray-400 flex items-center gap-1">
-                        <MapPin className="w-4 h-4" />
-                        {displayAddress}
-                      </p>
+                      <button
+                        onClick={(event) =>
+                          openMapOptions(event, apt.store?.name || apt.store_name || 'Selected location', displayAddress)
+                        }
+                        className="text-sm text-gray-300 hover:text-white transition-colors inline-flex items-center gap-1"
+                      >
+                        <MapPin className="w-4 h-4 text-[#D4AF37]" />
+                        <span className="underline decoration-white/30 underline-offset-4">{displayAddress}</span>
+                      </button>
                     )}
                   </div>
                 ) : null}
@@ -420,6 +449,37 @@ export function Appointments() {
             loadAppointments();
           }}
         />
+      )}
+
+      {showMapOptions && mapTarget && (
+        <div className="fixed inset-0 bg-black/60 flex items-end justify-center z-[60] p-4">
+          <div className="w-full max-w-md rounded-2xl bg-[#0f0f0f] border border-white/10 shadow-2xl">
+            <div className="px-6 py-4 border-b border-white/10">
+              <p className="text-sm text-gray-400 uppercase tracking-widest">Open in Maps</p>
+              <p className="text-base text-white font-semibold mt-1">{mapTarget.name}</p>
+            </div>
+            <div className="p-4 space-y-3">
+              <button
+                onClick={() => openMaps('apple')}
+                className="w-full px-4 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium transition-colors"
+              >
+                Open in Apple Maps
+              </button>
+              <button
+                onClick={() => openMaps('google')}
+                className="w-full px-4 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium transition-colors"
+              >
+                Open in Google Maps
+              </button>
+              <button
+                onClick={() => setShowMapOptions(false)}
+                className="w-full px-4 py-3 rounded-xl bg-[#1a1a1a] hover:bg-[#222] text-gray-300 font-medium transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Review Form */}
