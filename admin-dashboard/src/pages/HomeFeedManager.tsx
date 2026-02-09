@@ -517,10 +517,13 @@ const HomeFeedManager: React.FC = () => {
           </div>
           <div className="space-y-2 pt-2">
             {visibleCategoryRows.map((category, index) => (
-              <div key={category.id} className="flex items-center justify-between rounded-lg border border-blue-100 px-3 py-2">
-                <div className="text-sm">
-                  <span className="font-medium">{category.name}</span>
-                  <span className="ml-2 text-xs text-slate-900">
+              <div
+                key={category.id}
+                className="flex items-center justify-between rounded-lg border border-blue-100 px-3 py-2 text-slate-900"
+              >
+                <div className="text-sm text-slate-900">
+                  <span className="font-medium text-slate-900">{category.name}</span>
+                  <span className="ml-2 text-xs text-slate-700">
                     sort={category.sort_order} {category.is_active ? 'active' : 'inactive'} {category.show_on_home ? '| home-visible' : '| home-hidden'}
                   </span>
                 </div>
