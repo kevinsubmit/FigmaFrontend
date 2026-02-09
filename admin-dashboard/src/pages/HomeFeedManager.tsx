@@ -253,6 +253,47 @@ const HomeFeedManager: React.FC = () => {
     });
   }, [images, statusFilter, categoryFilter, search]);
 
+  const sortedCategories = useMemo(() => {
+    return [...categories].sort((a, b) => {
+      if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+      return a.id - b.id;
+    });
+  }, [categories]);
+
+  const moveCategory = async (categoryId: number, direction: 'up' | 'down') => {
+    const index = sortedCategories.findIndex((item) => item.id === categoryId);
+    if (index === -1) return;
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= sortedCategories.length) return;
+
+    const reordered = [...sortedCategories];
+    const current = reordered[index];
+    reordered[index] = reordered[targetIndex];
+    reordered[targetIndex] = current;
+
+    const payloadList = reordered.map((item, idx) => ({
+      id: item.id,
+      name: item.name,
+      is_active: item.is_active,
+      show_on_home: item.show_on_home,
+      sort_order: (idx + 1) * 10,
+    }));
+
+    try {
+      await Promise.all(payloadList.map((item) => updateHomeFeedCategory(item.id, item)));
+      setCategories((prev) =>
+        prev.map((item) => {
+          const next = payloadList.find((row) => row.id === item.id);
+          if (!next) return item;
+          return { ...item, sort_order: next.sort_order };
+        }),
+      );
+      toast.success('标签顺序已更新');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Failed to update category order');
+    }
+  };
+
   if (!ensureSuperAdmin) {
     return (
       <AdminLayout>
@@ -409,7 +450,7 @@ const HomeFeedManager: React.FC = () => {
             </button>
           </div>
           <div className="space-y-2 pt-2">
-            {categories.map((category) => (
+            {sortedCategories.map((category, index) => (
               <div key={category.id} className="flex items-center justify-between rounded-lg border border-neutral-800 px-3 py-2">
                 <div className="text-sm">
                   <span className="font-medium">{category.name}</span>
@@ -418,6 +459,20 @@ const HomeFeedManager: React.FC = () => {
                   </span>
                 </div>
                 <div className="flex gap-2">
+                  <button
+                    disabled={index === 0}
+                    onClick={() => moveCategory(category.id, 'up')}
+                    className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 disabled:opacity-40"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    disabled={index === sortedCategories.length - 1}
+                    onClick={() => moveCategory(category.id, 'down')}
+                    className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 disabled:opacity-40"
+                  >
+                    ↓
+                  </button>
                   <button
                     onClick={() => onEditCategory(category)}
                     className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300"
