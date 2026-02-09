@@ -34,6 +34,7 @@ const HomeFeedManager: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [categoryListScope, setCategoryListScope] = useState<'all' | 'home'>('all');
 
   const [editingImage, setEditingImage] = useState<HomeFeedImage | null>(null);
   const [imageForm, setImageForm] = useState({
@@ -214,6 +215,26 @@ const HomeFeedManager: React.FC = () => {
     }
   };
 
+  const quickSetImageStatus = async (image: HomeFeedImage, nextStatus: 'draft' | 'published' | 'offline') => {
+    if (image.status === nextStatus) return;
+    try {
+      await updateHomeFeedImage(image.id, {
+        title: image.title,
+        description: image.description || '',
+        image_url: image.image_url,
+        sort_order: image.sort_order,
+        status: nextStatus,
+        tag_ids: image.tag_ids || [],
+      });
+      setImages((prev) =>
+        prev.map((item) => (item.id === image.id ? { ...item, status: nextStatus } : item)),
+      );
+      toast.success(`状态已更新为 ${nextStatus}`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Failed to update image status');
+    }
+  };
+
   const onDeleteCategory = async (id: number) => {
     if (!window.confirm('Disable this category?')) return;
     try {
@@ -259,6 +280,17 @@ const HomeFeedManager: React.FC = () => {
       return a.id - b.id;
     });
   }, [categories]);
+
+  const homeVisibleCategories = useMemo(() => {
+    return sortedCategories.filter((item) => item.is_active && item.show_on_home);
+  }, [sortedCategories]);
+
+  const visibleCategoryRows = useMemo(() => {
+    if (categoryListScope === 'home') {
+      return sortedCategories.filter((item) => item.show_on_home);
+    }
+    return sortedCategories;
+  }, [categoryListScope, sortedCategories]);
 
   const moveCategory = async (categoryId: number, direction: 'up' | 'down') => {
     const index = sortedCategories.findIndex((item) => item.id === categoryId);
@@ -449,8 +481,42 @@ const HomeFeedManager: React.FC = () => {
               Reset
             </button>
           </div>
+          <div className="rounded-xl border border-neutral-800 bg-neutral-950/40 p-3">
+            <p className="text-xs text-gray-400">首页标签顺序预览（仅展示 active + 首页显示）</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {homeVisibleCategories.length ? (
+                homeVisibleCategories.map((category, index) => (
+                  <span
+                    key={category.id}
+                    className="rounded-full border border-gold-500/40 bg-gold-500/10 px-3 py-1 text-xs text-gold-200"
+                  >
+                    {index + 1}. {category.name}
+                  </span>
+                ))
+              ) : (
+                <span className="text-xs text-gray-500">暂无首页可见标签</span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-400">分类列表</p>
+            <div className="inline-flex rounded-lg border border-neutral-700 p-1">
+              <button
+                onClick={() => setCategoryListScope('all')}
+                className={`rounded px-2 py-1 text-xs ${categoryListScope === 'all' ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-400'}`}
+              >
+                全部
+              </button>
+              <button
+                onClick={() => setCategoryListScope('home')}
+                className={`rounded px-2 py-1 text-xs ${categoryListScope === 'home' ? 'bg-neutral-800 text-neutral-100' : 'text-neutral-400'}`}
+              >
+                仅首页显示
+              </button>
+            </div>
+          </div>
           <div className="space-y-2 pt-2">
-            {sortedCategories.map((category, index) => (
+            {visibleCategoryRows.map((category, index) => (
               <div key={category.id} className="flex items-center justify-between rounded-lg border border-neutral-800 px-3 py-2">
                 <div className="text-sm">
                   <span className="font-medium">{category.name}</span>
@@ -460,14 +526,14 @@ const HomeFeedManager: React.FC = () => {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    disabled={index === 0}
+                    disabled={index === 0 || categoryListScope === 'home'}
                     onClick={() => moveCategory(category.id, 'up')}
                     className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 disabled:opacity-40"
                   >
                     ↑
                   </button>
                   <button
-                    disabled={index === sortedCategories.length - 1}
+                    disabled={index === visibleCategoryRows.length - 1 || categoryListScope === 'home'}
                     onClick={() => moveCategory(category.id, 'down')}
                     className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 disabled:opacity-40"
                   >
@@ -605,6 +671,24 @@ const HomeFeedManager: React.FC = () => {
                       className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300"
                     >
                       Edit
+                    </button>
+                    <button
+                      onClick={() => quickSetImageStatus(item, 'published')}
+                      className="rounded border border-emerald-500/40 px-2 py-1 text-xs text-emerald-200"
+                    >
+                      Publish
+                    </button>
+                    <button
+                      onClick={() => quickSetImageStatus(item, 'offline')}
+                      className="rounded border border-amber-500/40 px-2 py-1 text-xs text-amber-200"
+                    >
+                      Offline
+                    </button>
+                    <button
+                      onClick={() => quickSetImageStatus(item, 'draft')}
+                      className="rounded border border-neutral-600 px-2 py-1 text-xs text-neutral-300"
+                    >
+                      Draft
                     </button>
                     <button
                       onClick={() => onDeleteImage(item.id)}
