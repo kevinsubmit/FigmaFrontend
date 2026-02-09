@@ -12,7 +12,8 @@ interface HomeProps {
 }
 
 const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=1200&auto=format&fit=crop&q=80';
-const PAGE_SIZE = 8;
+const INITIAL_PAGE_SIZE = 12;
+const LOAD_MORE_PAGE_SIZE = 8;
 const HOME_CACHE_KEY = 'home_cache_v1';
 
 export function Home({ onNavigate, onPinClick }: HomeProps) {
@@ -48,6 +49,7 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
     const query = options?.query ?? searchQuery;
     const background = options?.background ?? false;
     const nextOffset = reset ? 0 : offset;
+    const pageSize = reset ? INITIAL_PAGE_SIZE : LOAD_MORE_PAGE_SIZE;
 
     try {
       if (reset && !background) {
@@ -59,7 +61,7 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
 
       const rawPins = await getPins({
         skip: nextOffset,
-        limit: PAGE_SIZE,
+        limit: pageSize,
         search: query || undefined,
         tag: tag === 'All' ? undefined : tag
       });
@@ -69,7 +71,7 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
           : rawPins.filter((pin) => Array.isArray(pin.tags) && pin.tags.includes(tag));
       setImages(prev => reset ? pins : [...prev, ...pins]);
       setOffset(prev => (reset ? pins.length : prev + pins.length));
-      setHasMore(pins.length === PAGE_SIZE);
+      setHasMore(pins.length === pageSize);
     } catch (err) {
       console.error('Failed to load home feed:', err);
       if (!background) {
