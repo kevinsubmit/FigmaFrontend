@@ -62,6 +62,11 @@ const HomeFeedManager: React.FC = () => {
 
   const ensureSuperAdmin = useMemo(() => !!user?.is_admin, [user]);
 
+  const normalizeCategory = (category: HomeFeedCategory): HomeFeedCategory => ({
+    ...category,
+    show_on_home: category.show_on_home ?? true,
+  });
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -71,7 +76,7 @@ const HomeFeedManager: React.FC = () => {
       ]);
       const theme = await getHomeFeedThemeSetting();
       setImages(imageRows);
-      setCategories(categoryRows);
+      setCategories(categoryRows.map(normalizeCategory));
       setThemeSetting(theme);
       setThemeForm({
         enabled: theme.enabled,
@@ -188,12 +193,13 @@ const HomeFeedManager: React.FC = () => {
   };
 
   const onEditCategory = (category: HomeFeedCategory) => {
+    const normalized = normalizeCategory(category);
     setEditingCategory(category);
     setCategoryForm({
-      name: category.name,
-      sort_order: category.sort_order,
-      is_active: category.is_active,
-      show_on_home: category.show_on_home,
+      name: normalized.name,
+      sort_order: normalized.sort_order,
+      is_active: normalized.is_active,
+      show_on_home: normalized.show_on_home,
     });
   };
 
