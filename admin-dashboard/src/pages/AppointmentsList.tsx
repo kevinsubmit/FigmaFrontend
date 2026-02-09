@@ -94,6 +94,13 @@ const formatDateTitle = (value: string) => {
   });
 };
 
+const formatCreatedAt = (value?: string | null) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+};
+
 const normalizeStatus = (status?: string | null): StatusOption => {
   const value = String(status || '').toLowerCase();
   if (value === 'confirmed') return 'confirmed';
@@ -357,7 +364,9 @@ const AppointmentsList: React.FC = () => {
       syncSelected({ ...selected, ...updated });
       toast.success(`Status updated to ${statusText[nextStatus]}`);
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Failed to update status');
+      if (!error?.__api_toast_shown) {
+        toast.error(error?.response?.data?.detail || 'Failed to update status');
+      }
     } finally {
       setUpdatingStatus(null);
     }
@@ -377,7 +386,9 @@ const AppointmentsList: React.FC = () => {
       syncSelected({ ...selected, ...updated });
       toast.success('Appointment time updated');
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Failed to reschedule appointment');
+      if (!error?.__api_toast_shown) {
+        toast.error(error?.response?.data?.detail || 'Failed to reschedule appointment');
+      }
     } finally {
       setSavingSchedule(false);
     }
@@ -392,7 +403,9 @@ const AppointmentsList: React.FC = () => {
       syncSelected({ ...selected, ...updated });
       toast.success('Notes updated');
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Failed to update notes');
+      if (!error?.__api_toast_shown) {
+        toast.error(error?.response?.data?.detail || 'Failed to update notes');
+      }
     } finally {
       setSavingNotes(false);
     }
@@ -407,7 +420,9 @@ const AppointmentsList: React.FC = () => {
       syncSelected({ ...selected, ...updated });
       toast.success('Appointment marked as no-show');
     } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Failed to mark no-show');
+      if (!error?.__api_toast_shown) {
+        toast.error(error?.response?.data?.detail || 'Failed to mark no-show');
+      }
     } finally {
       setUpdatingStatus(null);
     }
@@ -468,7 +483,7 @@ const AppointmentsList: React.FC = () => {
                 type="date"
                 value={dateCursor}
                 onChange={(e) => setDateCursor(e.target.value)}
-                className="ml-1 rounded-lg border border-blue-100 bg-white px-2.5 py-2 text-xs text-slate-700 outline-none focus:border-gold-500"
+                className="ml-1 rounded-lg border border-blue-100 bg-white px-2.5 py-2 text-xs !text-slate-900 outline-none focus:border-gold-500"
               />
             </div>
 
@@ -499,7 +514,7 @@ const AppointmentsList: React.FC = () => {
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 placeholder="Search name / phone / service"
-                className="w-full rounded-xl border border-blue-100 bg-white py-2.5 pl-9 pr-3 text-sm outline-none focus:border-gold-500"
+                className="w-full rounded-xl border border-blue-100 bg-white py-2.5 pl-9 pr-3 text-sm !text-slate-900 placeholder:text-slate-500 outline-none focus:border-gold-500"
               />
             </label>
 
@@ -507,7 +522,7 @@ const AppointmentsList: React.FC = () => {
               value={orderKeyword}
               onChange={(e) => setOrderKeyword(e.target.value)}
               placeholder="Search by order number"
-              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900 placeholder:text-slate-500 outline-none focus:border-gold-500"
             />
 
             {role === 'super_admin' && (
@@ -515,14 +530,14 @@ const AppointmentsList: React.FC = () => {
                 value={storeKeyword}
                 onChange={(e) => setStoreKeyword(e.target.value)}
                 placeholder="Search by store name"
-                className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+                className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900 placeholder:text-slate-500 outline-none focus:border-gold-500"
               />
             )}
 
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as StatusOption)}
-              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900 [&>option]:text-slate-900 outline-none focus:border-gold-500"
             >
               {statusOrder.map((option) => (
                 <option key={option} value={option}>
@@ -534,7 +549,7 @@ const AppointmentsList: React.FC = () => {
             <select
               value={serviceFilter}
               onChange={(e) => setServiceFilter(e.target.value)}
-              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900 [&>option]:text-slate-900 outline-none focus:border-gold-500"
             >
               <option value="all">All Services</option>
               {serviceOptions.map((service) => (
@@ -547,7 +562,7 @@ const AppointmentsList: React.FC = () => {
             <select
               value={staffFilter}
               onChange={(e) => setStaffFilter(e.target.value)}
-              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900 [&>option]:text-slate-900 outline-none focus:border-gold-500"
             >
               <option value="all">All Staff</option>
               {staffOptions.map((staff) => (
@@ -637,6 +652,7 @@ const AppointmentsList: React.FC = () => {
                       <th className="px-3 py-2 font-medium">Phone</th>
                       <th className="px-3 py-2 font-medium">Service</th>
                       <th className="px-3 py-2 font-medium">Staff</th>
+                      <th className="px-3 py-2 font-medium">Created At</th>
                       <th className="px-3 py-2 font-medium">Status</th>
                     </tr>
                   </thead>
@@ -646,7 +662,7 @@ const AppointmentsList: React.FC = () => {
                       return (
                         <React.Fragment key={group.key}>
                           <tr className="border-b border-blue-100 bg-blue-50/70">
-                            <td colSpan={6} className="px-3 py-2">
+                            <td colSpan={7} className="px-3 py-2">
                               <button
                                 onClick={() => toggleGroup(group.key)}
                                 className="w-full text-left flex items-center justify-between text-xs"
@@ -673,14 +689,14 @@ const AppointmentsList: React.FC = () => {
                                   }`}
                                 >
                                   <td className="px-3 py-2.5 align-top whitespace-nowrap">
-                                    <p>{formatTimeRange(apt)}</p>
-                                    <p className="text-xs text-slate-500">
+                                    <p className="text-slate-900">{formatTimeRange(apt)}</p>
+                                    <p className="text-xs text-slate-700">
                                       {apt.appointment_date} · concurrent {group.count}
                                     </p>
                                   </td>
                                   <td className="px-3 py-2.5 align-top">
-                                    <p className="font-medium">{getCustomerName(apt)}</p>
-                                    <p className="text-xs text-slate-500">#{apt.order_number || apt.id}</p>
+                                    <p className="font-medium text-slate-900">{getCustomerName(apt)}</p>
+                                    <p className="text-xs text-slate-700">#{apt.order_number || apt.id}</p>
                                     {hasConflict && (
                                       <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
                                         <AlertTriangle className="h-3 w-3" />
@@ -691,6 +707,9 @@ const AppointmentsList: React.FC = () => {
                                   <td className="px-3 py-2.5 align-top text-slate-800">{maskPhone(getPhone(apt))}</td>
                                   <td className="px-3 py-2.5 align-top">{getServiceLabel(apt)}</td>
                                   <td className="px-3 py-2.5 align-top">{getStaffLabel(apt)}</td>
+                                  <td className="px-3 py-2.5 align-top whitespace-nowrap text-slate-700 text-xs">
+                                    {formatCreatedAt(apt.created_at)}
+                                  </td>
                                   <td className="px-3 py-2.5 align-top">
                                     <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-widest ${statusBadgeClass[aptStatus]}`}>
                                       {statusText[aptStatus]}
@@ -734,18 +753,19 @@ const AppointmentsList: React.FC = () => {
                 <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Customer</p>
                 <div className="flex items-center gap-2 text-sm">
                   <UserRound className="h-4 w-4 text-gold-500" />
-                  <span className="font-medium">{getCustomerName(selected)}</span>
+                  <span className="font-medium text-slate-900">{getCustomerName(selected)}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-700">
                   <Phone className="h-4 w-4 text-gold-500" />
                   <span>{getPhone(selected) || '-'}</span>
                 </div>
                 <p className="text-xs text-slate-600">Order: #{selected.order_number || selected.id}</p>
+                <p className="text-xs text-slate-600">Created At: {formatCreatedAt(selected.created_at)}</p>
               </div>
 
               <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2 text-sm">
                 <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Service</p>
-                <p>{getServiceLabel(selected)}</p>
+                <p className="text-slate-900">{getServiceLabel(selected)}</p>
                 <p className="text-slate-600">Current: {formatTimeRange(selected)}</p>
                 <p className="text-slate-600">Staff: {getStaffLabel(selected)}</p>
                 {conflictInfo.ids.has(selected.id) && (

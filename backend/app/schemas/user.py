@@ -56,6 +56,7 @@ class UserInDB(UserBase):
     is_admin: bool
     store_id: Optional[int] = None
     store_admin_status: Optional[str] = None
+    last_login_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
     

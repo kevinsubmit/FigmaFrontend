@@ -90,14 +90,14 @@ const Applications: React.FC = () => {
             {applications.map((application) => (
               <div key={application.id} className="card-surface p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="text-slate-900">
                     <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Store</p>
-                    <h3 className="text-lg font-semibold">{application.store_name}</h3>
+                    <h3 className="text-lg font-semibold text-slate-900">{application.store_name}</h3>
                     <p className="text-xs text-slate-500">{application.phone}</p>
                   </div>
                   <span className="badge">{application.status}</span>
                 </div>
-                <div className="text-sm text-slate-600 space-y-1">
+                <div className="text-sm text-slate-800 space-y-1">
                   <p>{application.store_address || 'No address yet'}</p>
                   <p>{application.store_phone || 'No phone yet'}</p>
                   <p>{application.opening_hours || 'No hours yet'}</p>

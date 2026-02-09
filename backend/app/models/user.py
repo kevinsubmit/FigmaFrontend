@@ -24,6 +24,7 @@ class User(Base):
     is_admin = Column(Boolean, default=False, nullable=False)  # 超级管理员
     store_id = Column(Integer, nullable=True, index=True)  # 店铺管理员关联的店铺ID
     store_admin_status = Column(String(20), default="approved", nullable=False, index=True)
+    last_login_at = Column(DateTime(timezone=True), nullable=True, index=True)
     
     # 推荐系统
     referral_code = Column(String(10), unique=True, nullable=True, index=True)  # 我的推荐码

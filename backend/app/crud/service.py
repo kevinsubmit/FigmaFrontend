@@ -3,6 +3,7 @@ Service and service catalog CRUD operations
 """
 from typing import List, Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.service import Service
@@ -105,6 +106,13 @@ def get_catalog_item(db: Session, catalog_id: int) -> Optional[ServiceCatalog]:
     return db.query(ServiceCatalog).filter(ServiceCatalog.id == catalog_id).first()
 
 
+def _normalize_text(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized.lower() if normalized else None
+
+
 def get_catalog_items(
     db: Session,
     skip: int = 0,
@@ -124,6 +132,29 @@ def get_catalog_items(
 
 def create_catalog_item(db: Session, payload: ServiceCatalogCreate) -> ServiceCatalog:
     """Create service catalog item"""
+    normalized_name = _normalize_text(payload.name)
+    normalized_category = _normalize_text(payload.category)
+
+    duplicate_name = (
+        db.query(ServiceCatalog.id)
+        .filter(func.lower(func.trim(ServiceCatalog.name)) == normalized_name)
+        .first()
+    )
+    if duplicate_name:
+        raise ValueError("Service name already exists")
+
+    if normalized_category:
+        duplicate_category = (
+            db.query(ServiceCatalog.id)
+            .filter(
+                ServiceCatalog.category.isnot(None),
+                func.lower(func.trim(ServiceCatalog.category)) == normalized_category,
+            )
+            .first()
+        )
+        if duplicate_category:
+            raise ValueError("Category already exists")
+
     item = ServiceCatalog(**payload.model_dump())
     db.add(item)
     db.commit()
@@ -141,7 +172,37 @@ def update_catalog_item(
     if not item:
         return None
 
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    update_data = payload.model_dump(exclude_unset=True)
+    next_name = update_data.get("name", item.name)
+    next_category = update_data.get("category", item.category)
+    normalized_name = _normalize_text(next_name)
+    normalized_category = _normalize_text(next_category)
+
+    duplicate_name = (
+        db.query(ServiceCatalog.id)
+        .filter(
+            ServiceCatalog.id != catalog_id,
+            func.lower(func.trim(ServiceCatalog.name)) == normalized_name,
+        )
+        .first()
+    )
+    if duplicate_name:
+        raise ValueError("Service name already exists")
+
+    if normalized_category:
+        duplicate_category = (
+            db.query(ServiceCatalog.id)
+            .filter(
+                ServiceCatalog.id != catalog_id,
+                ServiceCatalog.category.isnot(None),
+                func.lower(func.trim(ServiceCatalog.category)) == normalized_category,
+            )
+            .first()
+        )
+        if duplicate_category:
+            raise ValueError("Category already exists")
+
+    for field, value in update_data.items():
         setattr(item, field, value)
     db.commit()
     db.refresh(item)

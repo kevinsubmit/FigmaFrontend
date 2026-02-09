@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.api.deps import get_current_user
 from app.models.user import User
 import os
+from datetime import datetime
 
 
 router = APIRouter()
@@ -250,6 +251,9 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
         )
+
+    user.last_login_at = datetime.utcnow()
+    db.commit()
     
     # Create tokens
     access_token = create_access_token(data={"sub": str(user.id), "phone": user.phone})

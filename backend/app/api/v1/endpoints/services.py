@@ -71,7 +71,10 @@ def create_service_catalog_item(
     _: User = Depends(get_current_admin_user),
 ):
     """Create catalog item (super admin only)"""
-    return crud_service.create_catalog_item(db, payload)
+    try:
+        return crud_service.create_catalog_item(db, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.patch("/admin/catalog/{catalog_id}", response_model=ServiceCatalog)
@@ -82,7 +85,10 @@ def update_service_catalog_item(
     _: User = Depends(get_current_admin_user),
 ):
     """Update catalog item (super admin only)"""
-    item = crud_service.update_catalog_item(db, catalog_id, payload)
+    try:
+        item = crud_service.update_catalog_item(db, catalog_id, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not item:
         raise HTTPException(status_code=404, detail="Service catalog item not found")
     return item

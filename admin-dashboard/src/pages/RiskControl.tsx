@@ -59,8 +59,8 @@ const RiskControl: React.FC = () => {
           <div className="flex items-center gap-3">
             <ShieldAlert className="h-5 w-5 text-blue-600" />
             <div>
-              <p className="text-sm font-semibold">Current restricted users</p>
-              <p className="text-xs text-slate-500">Users blocked from new bookings</p>
+              <p className="text-sm font-semibold text-slate-900">Current restricted users</p>
+              <p className="text-xs text-slate-700">Users blocked from new bookings</p>
             </div>
           </div>
           <span className="text-blue-700 font-semibold text-lg">{restrictedCount}</span>
@@ -72,19 +72,19 @@ const RiskControl: React.FC = () => {
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               placeholder="Search by username/phone"
-              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900 placeholder:text-slate-500 outline-none focus:border-gold-500"
             />
             <select
               value={riskLevel}
               onChange={(e) => setRiskLevel(e.target.value)}
-              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900 [&>option]:text-slate-900 outline-none focus:border-gold-500"
             >
               <option value="all">All Levels</option>
               <option value="normal">Normal</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
             </select>
-            <label className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm">
+            <label className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900">
               <input
                 type="checkbox"
                 checked={restrictedOnly}
@@ -94,7 +94,7 @@ const RiskControl: React.FC = () => {
             </label>
             <button
               onClick={load}
-              className="rounded-xl border border-gold-500/50 px-3 py-2.5 text-sm text-blue-700 hover:bg-blue-50"
+              className="rounded-xl border border-gold-500/50 px-3 py-2.5 text-sm text-slate-900 hover:bg-blue-50"
             >
               Search
             </button>
@@ -111,8 +111,8 @@ const RiskControl: React.FC = () => {
                 <div key={user.user_id} className="card-surface p-4">
                   <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <p className="text-sm font-semibold">
-                        {user.full_name || user.username} <span className="text-slate-500">({user.phone})</span>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {user.full_name || user.username} <span className="text-slate-700">({user.phone})</span>
                       </p>
                       <p className="text-xs text-slate-500 mt-1">
                         risk={user.risk_level} | cancel_7d={user.cancel_7d} | no_show_30d={user.no_show_30d}

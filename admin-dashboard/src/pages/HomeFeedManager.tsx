@@ -434,9 +434,9 @@ const HomeFeedManager: React.FC = () => {
         </div>
 
         <div className="card-surface p-4 space-y-3">
-          <div className="flex items-center gap-2 text-sm font-semibold">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
             <Layers className="h-4 w-4 text-gold-500" />
-            <span>{editingCategory ? 'Edit Category' : 'Create Category'}</span>
+            <span className="text-slate-950">{editingCategory ? 'Edit Category' : 'Create Category'}</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <input
@@ -560,13 +560,13 @@ const HomeFeedManager: React.FC = () => {
           </div>
         </div>
 
-        <div className="card-surface p-4 space-y-3">
-          <div className="flex items-center gap-2 text-sm font-semibold">
+        <div className="card-surface p-4 space-y-3 text-slate-950">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
             <Layers className="h-4 w-4 text-gold-500" />
             <span>首页专题模式（按分类聚合）</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-            <label className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm">
+            <label className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-950">
               <input
                 type="checkbox"
                 checked={themeForm.enabled}
@@ -577,7 +577,7 @@ const HomeFeedManager: React.FC = () => {
             <select
               value={themeForm.tag_id}
               onChange={(e) => setThemeForm((prev) => ({ ...prev, tag_id: e.target.value }))}
-              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900 [&>option]:text-slate-900 outline-none focus:border-gold-500"
             >
               <option value="">选择专题分类</option>
               {categories
@@ -592,17 +592,17 @@ const HomeFeedManager: React.FC = () => {
               type="datetime-local"
               value={themeForm.start_at}
               onChange={(e) => setThemeForm((prev) => ({ ...prev, start_at: e.target.value }))}
-              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900 placeholder:text-slate-500 outline-none focus:border-gold-500"
             />
             <input
               type="datetime-local"
               value={themeForm.end_at}
               onChange={(e) => setThemeForm((prev) => ({ ...prev, end_at: e.target.value }))}
-              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900 placeholder:text-slate-500 outline-none focus:border-gold-500"
             />
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-900">
+            <p className="text-xs text-slate-950">
               中文提示：启用后，H5 首页默认只展示所选分类图片；可设置起止时间，到期自动恢复普通模式。
             </p>
             <button
@@ -613,7 +613,7 @@ const HomeFeedManager: React.FC = () => {
               {savingTheme ? 'Saving...' : '保存专题设置'}
             </button>
           </div>
-          <p className="text-xs text-slate-900">
+          <p className="text-xs text-slate-950">
             当前状态：{themeSetting?.active ? `生效中（${themeSetting.tag_name || '-'}）` : '未生效'}
           </p>
         </div>
@@ -624,12 +624,12 @@ const HomeFeedManager: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search title/description"
-              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900 placeholder:text-slate-500 outline-none focus:border-gold-500"
             />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900 [&>option]:text-slate-900 outline-none focus:border-gold-500"
             >
               <option value="all">All status</option>
               <option value="draft">Draft</option>
@@ -639,7 +639,7 @@ const HomeFeedManager: React.FC = () => {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm outline-none focus:border-gold-500"
+              className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm !text-slate-900 [&>option]:text-slate-900 outline-none focus:border-gold-500"
             >
               <option value="all">All categories</option>
               {categories.map((category) => (

@@ -26,3 +26,20 @@ body {
 .badge {
   @apply inline-flex items-center gap-1 rounded-full border border-gold-500/30 bg-gold-500/10 px-2 py-0.5 text-[10px] uppercase tracking-widest text-gold-700;
 }
+
+/* Global form readability baseline for admin pages. */
+input:not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+  color: #0f172a !important;
+}
+
+input:not([type='checkbox']):not([type='radio'])::placeholder,
+textarea::placeholder {
+  color: #64748b !important;
+  opacity: 1;
+}
+
+select option {
+  color: #0f172a;
+}

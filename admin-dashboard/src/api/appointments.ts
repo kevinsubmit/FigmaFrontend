@@ -25,6 +25,8 @@ export interface Appointment {
   status: string;
   notes?: string | null;
   cancel_reason?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export const getAppointments = async (params?: Record<string, any>) => {

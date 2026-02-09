@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const API_BASE_URL =
   import.meta.env.VITE_ADMIN_API_BASE_URL ||
@@ -9,6 +10,38 @@ export const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
 });
 
+const MUTATION_METHODS = new Set(['post', 'put', 'patch', 'delete']);
+
+const extractBackendMessage = (payload: any): string | null => {
+  if (!payload) return null;
+  if (typeof payload === 'string') return payload;
+  if (Array.isArray(payload)) {
+    const parts = payload
+      .map((item) => extractBackendMessage(item))
+      .filter((item): item is string => Boolean(item && item.trim()));
+    return parts.length ? parts.join('; ') : null;
+  }
+  if (typeof payload === 'object') {
+    if (typeof payload.detail === 'string' && payload.detail.trim()) return payload.detail;
+    if (Array.isArray(payload.detail)) {
+      const parts = payload.detail
+        .map((item: any) =>
+          typeof item === 'string'
+            ? item
+            : item?.msg || item?.message || JSON.stringify(item),
+        )
+        .filter(Boolean);
+      if (parts.length) return parts.join('; ');
+    }
+    if (payload.detail && typeof payload.detail === 'object') {
+      return extractBackendMessage(payload.detail);
+    }
+    if (typeof payload.message === 'string' && payload.message.trim()) return payload.message;
+    return null;
+  }
+  return null;
+};
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
   if (token) {
@@ -17,6 +50,35 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => {
+    const method = (response.config.method || 'get').toLowerCase();
+    if (MUTATION_METHODS.has(method)) {
+      const message = extractBackendMessage(response.data);
+      if (message) {
+        toast.success(message);
+      }
+    }
+    return response;
+  },
+  (error) => {
+    const method = (error?.config?.method || 'get').toLowerCase();
+    const backendMessage =
+      extractBackendMessage(error?.response?.data) || error?.message || 'Request failed';
+
+    if (error?.response?.data && typeof error.response.data === 'object') {
+      error.response.data.detail = backendMessage;
+    }
+
+    if (MUTATION_METHODS.has(method)) {
+      toast.error(backendMessage);
+      (error as any).__api_toast_shown = true;
+    }
+
+    return Promise.reject(error);
+  },
+);
 
 export const setToken = (token: string, refreshToken?: string) => {
   localStorage.setItem('access_token', token);

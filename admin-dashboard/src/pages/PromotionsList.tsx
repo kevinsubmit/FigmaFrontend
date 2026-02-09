@@ -43,12 +43,12 @@ const PromotionsList: React.FC = () => {
             <button
               key={promo.id}
               onClick={() => navigate(`/admin/promotions/${promo.id}/edit`)}
-              className="w-full text-left card-surface p-4"
+              className="w-full text-left card-surface p-4 text-slate-900"
             >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{promo.scope}</p>
-                  <h3 className="text-base font-semibold">{promo.title}</h3>
+                  <h3 className="text-base font-semibold text-slate-900">{promo.title}</h3>
                   <p className="text-xs text-slate-500">{promo.start_at} → {promo.end_at}</p>
                 </div>
                 <span className="badge">{promo.discount_type}</span>
