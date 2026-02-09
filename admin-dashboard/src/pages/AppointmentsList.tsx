@@ -47,10 +47,10 @@ const statusText: Record<StatusOption, string> = {
 
 const statusBadgeClass: Record<StatusOption, string> = {
   all: 'border-blue-200 text-slate-700 bg-blue-100/50',
-  pending: 'border-amber-500/50 text-amber-200 bg-amber-500/10',
-  confirmed: 'border-blue-500/50 text-blue-200 bg-blue-500/10',
-  completed: 'border-emerald-500/50 text-emerald-200 bg-emerald-500/10',
-  cancelled: 'border-blue-300 text-slate-700 bg-neutral-700/30',
+  pending: 'border-amber-300 text-amber-700 bg-amber-50',
+  confirmed: 'border-blue-300 text-blue-700 bg-blue-50',
+  completed: 'border-emerald-300 text-emerald-700 bg-emerald-50',
+  cancelled: 'border-slate-300 text-slate-600 bg-slate-100',
 };
 
 const timelineHours = Array.from({ length: 13 }, (_, idx) => 8 + idx);
@@ -435,9 +435,9 @@ const AppointmentsList: React.FC = () => {
 
   return (
     <AdminLayout>
-      <TopBar title="Appointments" />
-      <div className="px-4 pt-4 pb-4 space-y-4">
-        <div className="card-surface p-3 space-y-3">
+      <TopBar title="预约管理" subtitle="按日期、服务、店铺快速检索和排班" />
+      <div className="px-4 pt-4 pb-4 space-y-4 lg:px-6">
+        <div className="card-surface p-4 space-y-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <button
@@ -472,7 +472,7 @@ const AppointmentsList: React.FC = () => {
               />
             </div>
 
-            <div className="inline-flex rounded-xl border border-blue-100 bg-blue-50/70 p-1">
+            <div className="inline-flex rounded-xl border border-blue-100 bg-blue-50 p-1">
               <button
                 onClick={() => setViewMode('day')}
                 className={`rounded-lg px-3 py-1.5 text-xs uppercase tracking-[0.15em] ${
@@ -558,7 +558,7 @@ const AppointmentsList: React.FC = () => {
             </select>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-slate-600">
+          <div className="flex items-center justify-between text-xs text-slate-600 border-t border-blue-100 pt-2">
             <span>{filteredAppointments.length} appointments</span>
             <button onClick={resetFilters} className="rounded-md border border-blue-200 px-2 py-1 hover:border-gold-500">
               Reset Filters
@@ -570,17 +570,20 @@ const AppointmentsList: React.FC = () => {
           <div className="text-sm text-slate-600">Loading appointments...</div>
         ) : (
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-            <section className="card-surface p-3 xl:col-span-2">
-              <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
-                <Clock3 className="h-4 w-4" />
-                Timeline
+            <section className="card-surface p-4 xl:col-span-2">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-500">
+                  <Clock3 className="h-4 w-4" />
+                  Timeline
+                </div>
+                <span className="text-xs text-slate-500">支持同一时段多预约并列展示</span>
               </div>
 
               <div className="space-y-3 max-h-[540px] overflow-auto pr-1">
                 {visibleDates.map((date) => (
                   <div key={date} className="space-y-2">
                     {viewMode === 'week' && (
-                      <p className="text-xs font-semibold tracking-wide text-gold-300">{formatDayHeader(date)}</p>
+                      <p className="text-xs font-semibold tracking-wide text-blue-600">{formatDayHeader(date)}</p>
                     )}
                     {timelineHours.map((hour) => {
                       const hourLabel = `${`${hour}`.padStart(2, '0')}:00`;
@@ -601,13 +604,13 @@ const AppointmentsList: React.FC = () => {
                                     onClick={() => syncSelected(apt)}
                                     className={`w-full rounded-lg border px-2 py-2 text-left ${
                                       hasConflict
-                                        ? 'border-rose-400/80 bg-rose-500/10 text-rose-100'
+                                        ? 'border-rose-300 bg-rose-50 text-rose-700'
                                         : statusBadgeClass[aptStatus]
                                     }`}
                                   >
                                     <div className="flex items-start justify-between gap-2">
                                       <p className="text-xs font-medium">{getCustomerName(apt)}</p>
-                                      {hasConflict && <AlertTriangle className="h-3.5 w-3.5" />}
+                                      {hasConflict && <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />}
                                     </div>
                                     <p className="text-[11px] opacity-90">{getServiceLabel(apt)}</p>
                                     <p className="text-[10px] opacity-80">{formatTimeRange(apt)}</p>
@@ -624,7 +627,7 @@ const AppointmentsList: React.FC = () => {
               </div>
             </section>
 
-            <section className="card-surface p-3 overflow-hidden xl:col-span-1">
+            <section className="card-surface p-4 overflow-hidden xl:col-span-1">
               <div className="overflow-auto max-h-[540px]">
                 <table className="min-w-full text-left text-sm">
                   <thead className="sticky top-0 bg-blue-50">
@@ -648,7 +651,7 @@ const AppointmentsList: React.FC = () => {
                                 onClick={() => toggleGroup(group.key)}
                                 className="w-full text-left flex items-center justify-between text-xs"
                               >
-                                <span className="font-semibold text-gold-300">
+                                <span className="font-semibold text-blue-600">
                                   {group.date} {group.startTime}
                                 </span>
                                 <span className="text-slate-700">
@@ -679,7 +682,7 @@ const AppointmentsList: React.FC = () => {
                                     <p className="font-medium">{getCustomerName(apt)}</p>
                                     <p className="text-xs text-slate-500">#{apt.order_number || apt.id}</p>
                                     {hasConflict && (
-                                      <p className="mt-1 text-[11px] text-rose-300 flex items-center gap-1">
+                                      <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
                                         <AlertTriangle className="h-3 w-3" />
                                         Conflict
                                       </p>
@@ -712,7 +715,7 @@ const AppointmentsList: React.FC = () => {
       </div>
 
       {selected && (
-        <div className="fixed inset-0 z-50 bg-white/60">
+        <div className="fixed inset-0 z-50 bg-slate-900/30">
           <div className="absolute inset-y-0 right-0 w-full max-w-md border-l border-blue-100 bg-white shadow-2xl overflow-auto">
             <div className="sticky top-0 z-10 border-b border-blue-100 bg-white/95 backdrop-blur">
               <div className="flex items-center justify-between px-4 py-3">
@@ -784,7 +787,7 @@ const AppointmentsList: React.FC = () => {
                 <button
                   onClick={saveSchedule}
                   disabled={savingSchedule}
-                  className="w-full rounded-lg border border-gold-500/50 px-3 py-2 text-sm text-gold-200 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  className="w-full rounded-lg border border-gold-500/50 px-3 py-2 text-sm text-blue-700 disabled:opacity-50 flex items-center justify-center gap-1.5"
                 >
                   <Save className="h-3.5 w-3.5" />
                   Save Time
@@ -824,14 +827,14 @@ const AppointmentsList: React.FC = () => {
                 <button
                   onClick={() => updateStatus('confirmed')}
                   disabled={!!updatingStatus}
-                  className="rounded-lg border border-blue-500/50 px-3 py-2 text-sm text-blue-200 disabled:opacity-50"
+                  className="rounded-lg border border-blue-500/50 px-3 py-2 text-sm text-blue-700 disabled:opacity-50"
                 >
                   Confirm
                 </button>
                 <button
                   onClick={() => updateStatus('completed')}
                   disabled={!!updatingStatus}
-                  className="rounded-lg border border-emerald-500/50 px-3 py-2 text-sm text-emerald-200 disabled:opacity-50"
+                  className="rounded-lg border border-emerald-500/50 px-3 py-2 text-sm text-emerald-700 disabled:opacity-50"
                 >
                   Complete
                 </button>
@@ -845,7 +848,7 @@ const AppointmentsList: React.FC = () => {
                 <button
                   onClick={markNoShow}
                   disabled={!!updatingStatus}
-                  className="rounded-lg border border-rose-500/50 px-3 py-2 text-sm text-rose-200 disabled:opacity-50"
+                  className="rounded-lg border border-rose-500/50 px-3 py-2 text-sm text-rose-700 disabled:opacity-50"
                 >
                   No Show
                 </button>

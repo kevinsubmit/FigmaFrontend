@@ -147,59 +147,90 @@ const ServiceCatalogPage: React.FC = () => {
 
   return (
     <AdminLayout>
-      <TopBar title="Service Catalog" />
-      <div className="px-4 py-6 space-y-4">
-        <div className="card-surface p-4 space-y-3">
-          <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Create Catalog Service</p>
-          <div className="grid grid-cols-1 gap-3">
+      <TopBar title="服务管理" subtitle="管理服务项目和分类" />
+      <div className="px-4 py-5 space-y-4 lg:px-6">
+        <div className="card-surface p-5 space-y-4">
+          <div className="flex items-center gap-6 border-b border-blue-100 pb-3">
+            <button className="text-sm font-semibold text-blue-600 border-b-2 border-blue-500 pb-2">服务</button>
+            <button className="text-sm font-medium text-slate-400 pb-2">套餐</button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-[1.4fr_1fr_1fr_auto]">
             <input
               value={newItem.name}
               onChange={(event) => setNewItem((prev) => ({ ...prev, name: event.target.value }))}
-              placeholder="Service name (e.g. Gel Manicure)"
+              placeholder="搜索服务名称或分类..."
               className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-gold-500"
             />
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                value={newItem.category}
-                onChange={(event) => setNewItem((prev) => ({ ...prev, category: event.target.value }))}
-                placeholder="Category"
-                className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-gold-500"
-              />
-            </div>
+            <input
+              value={newItem.category}
+              onChange={(event) => setNewItem((prev) => ({ ...prev, category: event.target.value }))}
+              placeholder="分类"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-gold-500"
+            />
             <textarea
               value={newItem.description}
               onChange={(event) => setNewItem((prev) => ({ ...prev, description: event.target.value }))}
-              placeholder="Description (optional)"
-              rows={2}
+              placeholder="描述（可选）"
+              rows={1}
               className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-gold-500"
             />
             <button
               type="button"
               onClick={onCreate}
               disabled={!canCreate || creating}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gold-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gold-500 px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"
             >
               <Plus className="h-4 w-4" />
-              {creating ? 'Creating...' : 'Create Service Template'}
+              {creating ? '创建中...' : '新增服务'}
             </button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <input
+              value={newItem.sort_order}
+              onChange={(event) => setNewItem((prev) => ({ ...prev, sort_order: event.target.value }))}
+              placeholder="排序值（默认 0）"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-gold-500"
+            />
+            <select
+              value={newItem.is_active}
+              onChange={(event) => setNewItem((prev) => ({ ...prev, is_active: Number(event.target.value) }))}
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-gold-500"
+            >
+              <option value={1}>状态：启用</option>
+              <option value={0}>状态：停用</option>
+            </select>
           </div>
         </div>
 
-        <div className="card-surface p-4 space-y-3">
+        <div className="card-surface p-5 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Catalog List</p>
+            <p className="text-sm font-semibold text-slate-800">服务列表</p>
             <span className="badge">{items.length} items</span>
           </div>
 
           {loading && <p className="text-sm text-slate-500">Loading...</p>}
 
-          {!loading &&
-            items.map((item) => {
+          {!loading && (
+            <div className="overflow-auto rounded-xl border border-blue-100 bg-white">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-blue-50">
+                  <tr className="text-xs uppercase tracking-[0.15em] text-slate-500">
+                    <th className="px-4 py-3 font-medium">服务</th>
+                    <th className="px-4 py-3 font-medium">分类</th>
+                    <th className="px-4 py-3 font-medium">状态</th>
+                    <th className="px-4 py-3 font-medium text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item) => {
               const isEditing = editingId === item.id;
               const draft = drafts[item.id];
               if (!draft) return null;
               return (
-                <div key={item.id} className="rounded-xl border border-blue-100 bg-white p-3 space-y-2">
+                    <tr key={item.id} className="border-t border-blue-100 align-top">
+                      <td className="px-4 py-3">
                   {isEditing ? (
                     <div className="space-y-2">
                       <input
@@ -231,51 +262,72 @@ const ServiceCatalogPage: React.FC = () => {
                   ) : (
                     <div>
                       <p className="text-sm font-semibold text-slate-900">{item.name}</p>
-                      <p className="mt-1 text-xs text-slate-600">
-                        {item.category || 'General'} · {item.is_active ? 'Active' : 'Inactive'}
-                      </p>
                       {item.description && <p className="mt-1 text-xs text-slate-500">{item.description}</p>}
                     </div>
                   )}
-                  <div className="flex items-center justify-between">
+                      </td>
+                      <td className="px-4 py-3">
+                        {isEditing ? (
+                          <input
+                            value={draft.category}
+                            onChange={(event) =>
+                              setDrafts((prev) => ({ ...prev, [item.id]: { ...prev[item.id], category: event.target.value } }))
+                            }
+                            className="w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
+                            placeholder="Category"
+                          />
+                        ) : (
+                          <span className="text-slate-700">{item.category || 'General'}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setDrafts((prev) => ({
+                              ...prev,
+                              [item.id]: { ...prev[item.id], is_active: prev[item.id].is_active === 1 ? 0 : 1 },
+                            }))
+                          }
+                          className={`rounded-full border px-2.5 py-1 text-xs ${
+                            draft.is_active === 1
+                              ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                              : 'border-slate-300 bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {draft.is_active === 1 ? 'Active' : 'Inactive'}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-2">
                     <button
                       type="button"
-                      onClick={() =>
-                        setDrafts((prev) => ({
-                          ...prev,
-                          [item.id]: { ...prev[item.id], is_active: prev[item.id].is_active === 1 ? 0 : 1 },
-                        }))
-                      }
-                      className="rounded-lg border border-blue-200 px-2 py-1 text-xs text-slate-800"
+                      onClick={() => setEditingId(item.id)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-blue-200 px-2 py-1 text-xs text-slate-800"
                     >
-                      {draft.is_active === 1 ? 'Set Inactive' : 'Set Active'}
+                      <Edit3 className="h-3 w-3" />
+                      Edit
                     </button>
-                    <div className="flex items-center gap-2">
-                      {isEditing ? (
-                        <button
-                          type="button"
-                          onClick={() => onSave(item.id)}
-                          disabled={savingId === item.id}
-                          className="inline-flex items-center gap-1 rounded-lg bg-gold-500 px-2 py-1 text-xs font-semibold text-white disabled:opacity-60"
-                        >
-                          <Save className="h-3 w-3" />
-                          {savingId === item.id ? 'Saving...' : 'Save'}
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setEditingId(item.id)}
-                          className="inline-flex items-center gap-1 rounded-lg border border-blue-200 px-2 py-1 text-xs text-slate-800"
-                        >
-                          <Edit3 className="h-3 w-3" />
-                          Edit
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                    {isEditing && (
+                      <button
+                        type="button"
+                        onClick={() => onSave(item.id)}
+                        disabled={savingId === item.id}
+                        className="inline-flex items-center gap-1 rounded-lg bg-gold-500 px-2 py-1 text-xs font-semibold text-white disabled:opacity-60"
+                      >
+                        <Save className="h-3 w-3" />
+                        {savingId === item.id ? 'Saving...' : 'Save'}
+                      </button>
+                    )}
+                        </div>
+                      </td>
+                    </tr>
               );
-            })}
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </AdminLayout>
