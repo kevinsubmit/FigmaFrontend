@@ -34,6 +34,7 @@ export interface User {
   phone_verified: boolean;
   is_active: boolean;
   is_admin: boolean;
+  store_id?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -49,7 +50,10 @@ export async function register(data: RegisterData): Promise<User> {
  * Login user
  */
 export async function login(data: LoginData): Promise<TokenResponse> {
-  const response = await apiClient.post<TokenResponse>('/api/v1/auth/login', data);
+  const response = await apiClient.post<TokenResponse>('/api/v1/auth/login', {
+    ...data,
+    login_portal: 'frontend',
+  });
   
   // Store tokens
   apiClient.setToken(response.access_token);

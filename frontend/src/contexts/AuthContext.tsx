@@ -16,6 +16,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const isAdminPortalUser = (currentUser: User | null) =>
+    Boolean(currentUser && (currentUser.is_admin || currentUser.store_id));
 
   // 初始化时检查本地存储的用户信息
   useEffect(() => {
@@ -25,6 +27,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           // 验证Token是否有效，并获取最新用户信息
           const currentUser = await authService.getCurrentUser();
+          if (isAdminPortalUser(currentUser)) {
+            authService.logout();
+            setUser(null);
+            return;
+          }
           setUser(currentUser);
         } catch (error) {
           // Token无效，清除本地存储
@@ -45,6 +52,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       // 获取用户信息
       const user = await authService.getCurrentUser();
+      if (isAdminPortalUser(user)) {
+        authService.logout();
+        setUser(null);
+        throw new Error('Admin or store manager account must sign in from admin portal');
+      }
       setUser(user);
     } catch (error) {
       throw error;
@@ -74,6 +86,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshUser = async () => {
     try {
       const currentUser = await authService.getCurrentUser();
+      if (isAdminPortalUser(currentUser)) {
+        authService.logout();
+        setUser(null);
+        return;
+      }
       setUser(currentUser);
     } catch (error) {
       console.error('Failed to refresh user:', error);

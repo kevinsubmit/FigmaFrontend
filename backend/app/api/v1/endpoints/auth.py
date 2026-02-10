@@ -254,6 +254,18 @@ async def login(
             detail="User account is inactive"
         )
 
+    is_admin_portal_user = bool(user.is_admin or user.store_id is not None)
+    if user_credentials.login_portal == "frontend" and is_admin_portal_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin or store manager account must sign in from admin portal",
+        )
+    if user_credentials.login_portal == "admin" and not is_admin_portal_user:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account is not allowed to sign in to admin portal",
+        )
+
     user.last_login_at = datetime.utcnow()
     db.commit()
     

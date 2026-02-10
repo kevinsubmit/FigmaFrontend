@@ -51,6 +51,7 @@ export interface User {
   phone_verified: boolean;
   is_active: boolean;
   is_admin: boolean;
+  store_id?: number | null;
   created_at: string;
   updated_at?: string;
 }
@@ -84,7 +85,10 @@ class AuthService {
    * 用户登录
    */
   async login(data: LoginRequest): Promise<TokenResponse> {
-    const response = await apiClient.post('/auth/login', data);
+    const response = await apiClient.post('/auth/login', {
+      ...data,
+      login_portal: 'frontend',
+    });
     const { access_token, refresh_token, token_type } = response.data;
     
     // 保存Token到localStorage

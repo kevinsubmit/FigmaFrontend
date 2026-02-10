@@ -2,7 +2,7 @@
 User Pydantic schemas for request/response validation
 """
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
-from typing import Optional
+from typing import Literal, Optional
 from datetime import datetime, date
 import re
 
@@ -72,6 +72,10 @@ class UserLogin(BaseModel):
     """Schema for user login"""
     phone: str = Field(..., description="手机号")
     password: str
+    login_portal: Literal["frontend", "admin"] = Field(
+        "frontend",
+        description="登录入口：frontend(H5前台) / admin(后台管理)",
+    )
     
     @field_validator('phone')
     @classmethod

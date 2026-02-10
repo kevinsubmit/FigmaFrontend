@@ -11,6 +11,7 @@ export const api = axios.create({
 });
 
 const MUTATION_METHODS = new Set(['post', 'put', 'patch', 'delete']);
+let isRedirectingToLogin = false;
 
 const extractBackendMessage = (payload: any): string | null => {
   if (!payload) return null;
@@ -63,6 +64,23 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    const status = error?.response?.status;
+    const requestUrl = String(error?.config?.url || '');
+    const isAuthEndpoint =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/refresh') ||
+      requestUrl.includes('/auth/register');
+
+    if (status === 401 && !isAuthEndpoint) {
+      clearToken();
+      if (!isRedirectingToLogin && window.location.pathname !== '/admin/login') {
+        isRedirectingToLogin = true;
+        toast.error('登录已过期，请重新登录');
+        window.location.replace('/admin/login');
+      }
+      return Promise.reject(error);
+    }
+
     const method = (error?.config?.method || 'get').toLowerCase();
     const backendMessage =
       extractBackendMessage(error?.response?.data) || error?.message || 'Request failed';

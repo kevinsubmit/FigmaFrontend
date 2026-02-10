@@ -58,7 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (phone: string, password: string) => {
-    const response = await api.post('/auth/login', { phone, password });
+    const response = await api.post('/auth/login', { phone, password, login_portal: 'admin' });
     setToken(response.data.access_token, response.data.refresh_token);
     await refreshUser();
   };
