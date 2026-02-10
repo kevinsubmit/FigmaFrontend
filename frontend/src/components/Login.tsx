@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import authService from '../services/auth.service';
+import { getAuthErrorMessage } from '../utils/authMessages';
 
 interface LoginProps {
   onNavigate: (page: string) => void;
@@ -62,7 +63,7 @@ export function Login({ onNavigate, onBack }: LoginProps) {
 
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to send verification code');
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -77,7 +78,7 @@ export function Login({ onNavigate, onBack }: LoginProps) {
     const resolvedPhone = phone || formPhone;
 
     if (!resolvedPhone || !password) {
-      setError('Enter phone number and password');
+      setError('Please enter both phone number and password.');
       return;
     }
 
@@ -91,7 +92,7 @@ export function Login({ onNavigate, onBack }: LoginProps) {
       // 登录成功后统一跳转到首页，避免回到注册页
       onNavigate('home');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed');
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -106,7 +107,7 @@ export function Login({ onNavigate, onBack }: LoginProps) {
     const resolvedPhone = phone || formPhone;
 
     if (!resolvedPhone || !verificationCode) {
-      setError('Enter phone number and code');
+      setError('Please enter both phone number and verification code.');
       return;
     }
 
@@ -122,7 +123,7 @@ export function Login({ onNavigate, onBack }: LoginProps) {
       });
 
       if (!result.valid) {
-        setError('Invalid or expired code');
+        setError('The verification code is invalid or expired. Please request a new code.');
         return;
       }
 
@@ -131,7 +132,7 @@ export function Login({ onNavigate, onBack }: LoginProps) {
       setError('SMS login is not available yet. Please use password login.');
       
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed');
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }

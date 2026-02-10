@@ -3,6 +3,7 @@ import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSearchParams } from 'react-router-dom';
 import authService from '../services/auth.service';
+import { getAuthErrorMessage } from '../utils/authMessages';
 
 interface RegisterProps {
   onNavigate: (page: string) => void;
@@ -76,7 +77,7 @@ export function Register({ onNavigate, onBack }: RegisterProps) {
 
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to send verification code');
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -87,7 +88,7 @@ export function Register({ onNavigate, onBack }: RegisterProps) {
     e.preventDefault();
     
     if (!phone || !verificationCode) {
-      setError('Enter phone number and code');
+      setError('Please enter both phone number and verification code.');
       return;
     }
 
@@ -105,10 +106,10 @@ export function Register({ onNavigate, onBack }: RegisterProps) {
         setStep(2);
         setError('');
       } else {
-        setError('Invalid or expired code');
+        setError('The verification code is invalid or expired. Please request a new code.');
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Verification failed');
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -120,7 +121,7 @@ export function Register({ onNavigate, onBack }: RegisterProps) {
     
     // 验证表单
     if (!username || !password || !confirmPassword) {
-      setError('Please fill out all required fields');
+      setError('Please fill in all required fields.');
       return;
     }
 
@@ -130,12 +131,12 @@ export function Register({ onNavigate, onBack }: RegisterProps) {
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+      setError('Password must be at least 6 characters.');
       return;
     }
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match');
+      setError('Passwords do not match.');
       return;
     }
 
@@ -159,7 +160,7 @@ export function Register({ onNavigate, onBack }: RegisterProps) {
         onNavigate('home');
       }
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed');
+      setError(getAuthErrorMessage(err));
     } finally {
       setLoading(false);
     }
