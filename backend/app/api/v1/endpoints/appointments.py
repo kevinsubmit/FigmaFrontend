@@ -12,6 +12,7 @@ from app.crud import appointment as crud_appointment
 from app.crud import points as crud_points
 from app.schemas.appointment import (
     Appointment,
+    AppointmentAmountUpdate,
     AppointmentCreate,
     AppointmentUpdate,
     AppointmentWithDetails,
@@ -103,6 +104,10 @@ def create_appointment(
         appointment=appointment,
         user_id=user_id
     )
+    if service.price is not None and db_appointment.order_amount is None:
+        db_appointment.order_amount = float(service.price)
+        db.commit()
+        db.refresh(db_appointment)
     risk_service.log_risk_event(
         db,
         user_id=user_id,
@@ -147,12 +152,14 @@ def get_my_appointments(
     # Format response
     result = []
     for appt, store_name, store_address, service_name, service_price, service_duration, review_id in appointments_data:
+        resolved_amount = appt.order_amount if appt.order_amount is not None else service_price
         result.append({
             **appt.__dict__,
             "store_name": store_name,
             "store_address": store_address,
             "service_name": service_name,
             "service_price": service_price,
+            "order_amount": resolved_amount,
             "service_duration": service_duration,
             "review_id": review_id
         })
@@ -212,12 +219,14 @@ def get_admin_appointments(
 
     result = []
     for appt, store_name, store_address, service_name, service_price, service_duration, review_id in appointments_data:
+        resolved_amount = appt.order_amount if appt.order_amount is not None else service_price
         result.append({
             **appt.__dict__,
             "store_name": store_name,
             "store_address": store_address,
             "service_name": service_name,
             "service_price": service_price,
+            "order_amount": resolved_amount,
             "service_duration": service_duration,
             "review_id": review_id
         })
@@ -504,6 +513,63 @@ def update_appointment_notes(
     return updated_appointment
 
 
+@router.patch("/{appointment_id}/amount", response_model=Appointment)
+def update_appointment_amount(
+    request: Request,
+    appointment_id: int,
+    amount_data: AppointmentAmountUpdate,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update appointment order amount (Store admin only).
+
+    - Super admin can update any store appointment.
+    - Store manager can only update their own store appointments.
+    """
+    from app.models.service import Service
+
+    if amount_data.order_amount < 0:
+        raise HTTPException(status_code=400, detail="Order amount cannot be negative")
+
+    if not current_user.is_admin and not current_user.store_id:
+        raise HTTPException(status_code=403, detail="Only store administrators can update order amount")
+    if not current_user.is_admin and current_user.store_admin_status != "approved":
+        raise HTTPException(status_code=403, detail="Store admin approval required")
+
+    appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    service = db.query(Service).filter(Service.id == appointment.service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    if not current_user.is_admin and service.store_id != current_user.store_id:
+        raise HTTPException(status_code=403, detail="You can only update appointments from your own store")
+
+    before_amount = appointment.order_amount if appointment.order_amount is not None else service.price
+    appointment.order_amount = float(amount_data.order_amount)
+    db.commit()
+    db.refresh(appointment)
+
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="appointments",
+        action="appointment.amount.update",
+        message="更新预约订单金额",
+        target_type="appointment",
+        target_id=str(appointment.id),
+        store_id=service.store_id if service else None,
+        before={"order_amount": before_amount},
+        after={"order_amount": appointment.order_amount},
+    )
+
+    return appointment
+
+
 @router.put("/{appointment_id}/status", response_model=Appointment)
 def update_appointment_status(
     request: Request,
@@ -597,6 +663,12 @@ def update_appointment_status(
             appointment=AppointmentUpdate(status=AppointmentStatus.COMPLETED)
         )
 
+        effective_amount = float(
+            updated_appointment.order_amount
+            if updated_appointment.order_amount is not None
+            else (service.price or 0)
+        )
+
         if status_update.user_coupon_id:
             user_coupon = crud_coupons.get_user_coupon(
                 db, status_update.user_coupon_id, updated_appointment.user_id
@@ -616,7 +688,7 @@ def update_appointment_status(
 
             discount = crud_coupons.calculate_discount(
                 coupon=coupon,
-                original_amount=service.price or 0
+                original_amount=effective_amount
             )
 
             if discount <= 0:
@@ -638,12 +710,12 @@ def update_appointment_status(
                     detail=str(e)
                 )
 
-        if service.price is not None:
+        if effective_amount > 0:
             points_txn = crud_points.award_points_for_appointment(
                 db=db,
                 user_id=updated_appointment.user_id,
                 appointment_id=updated_appointment.id,
-                amount_spent=service.price
+                amount_spent=effective_amount
             )
             if points_txn:
                 notification_service.notify_points_earned(
@@ -665,7 +737,7 @@ def update_appointment_status(
             store_id=service.store_id if service else None,
             before={"status": str(appointment.status.value if hasattr(appointment.status, "value") else appointment.status)},
             after={"status": str(updated_appointment.status.value if hasattr(updated_appointment.status, "value") else updated_appointment.status)},
-            meta={"used_coupon": bool(status_update.user_coupon_id)},
+            meta={"used_coupon": bool(status_update.user_coupon_id), "order_amount": effective_amount},
         )
         return updated_appointment
 
@@ -949,6 +1021,12 @@ def complete_appointment(
     )
 
     # Apply coupon if provided (admin selected)
+    effective_amount = float(
+        updated_appointment.order_amount
+        if updated_appointment.order_amount is not None
+        else (service.price or 0)
+    )
+
     if payload and payload.user_coupon_id:
         user_coupon = crud_coupons.get_user_coupon(
             db, payload.user_coupon_id, updated_appointment.user_id
@@ -968,7 +1046,7 @@ def complete_appointment(
 
         discount = crud_coupons.calculate_discount(
             coupon=coupon,
-            original_amount=service.price or 0
+            original_amount=effective_amount
         )
 
         if discount <= 0:
@@ -991,12 +1069,12 @@ def complete_appointment(
             )
 
     # Award points based on service price (1 point per $1)
-    if service.price is not None:
+    if effective_amount > 0:
         points_txn = crud_points.award_points_for_appointment(
             db=db,
             user_id=updated_appointment.user_id,
             appointment_id=updated_appointment.id,
-            amount_spent=service.price
+            amount_spent=effective_amount
         )
         if points_txn:
             notification_service.notify_points_earned(
@@ -1019,7 +1097,7 @@ def complete_appointment(
         store_id=service.store_id if service else None,
         before={"status": str(appointment.status.value if hasattr(appointment.status, "value") else appointment.status)},
         after={"status": str(updated_appointment.status.value if hasattr(updated_appointment.status, "value") else updated_appointment.status)},
-        meta={"used_coupon": bool(payload and payload.user_coupon_id)},
+        meta={"used_coupon": bool(payload and payload.user_coupon_id), "order_amount": effective_amount},
     )
     
     return updated_appointment

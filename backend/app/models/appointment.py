@@ -1,7 +1,7 @@
 """
 Appointment Model
 """
-from sqlalchemy import Column, Integer, String, Date, Time, Text, DateTime, func, Enum
+from sqlalchemy import Column, Integer, String, Date, Time, Text, DateTime, Float, func, Enum
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 import enum
@@ -27,6 +27,7 @@ class Appointment(Base):
     technician_id = Column(Integer, nullable=True, index=True)  # Optional: specific technician
     appointment_date = Column(Date, nullable=False, index=True)
     appointment_time = Column(Time, nullable=False)
+    order_amount = Column(Float, nullable=True)
     status = Column(
         Enum('pending', 'confirmed', 'completed', 'cancelled', name='appointment_status'),
         default='pending',

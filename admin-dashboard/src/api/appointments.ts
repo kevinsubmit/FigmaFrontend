@@ -8,6 +8,7 @@ export interface Appointment {
   service_id: number;
   service_name?: string | null;
   service_price?: number | null;
+  order_amount?: number | null;
   service_duration?: number | null;
   user_id: number;
   user_name?: string | null;
@@ -54,5 +55,10 @@ export const rescheduleAppointment = async (
 
 export const updateAppointmentNotes = async (id: number, payload: { notes: string }) => {
   const response = await api.patch(`/appointments/${id}/notes`, payload);
+  return response.data as Appointment;
+};
+
+export const updateAppointmentAmount = async (id: number, payload: { order_amount: number }) => {
+  const response = await api.patch(`/appointments/${id}/amount`, payload);
   return response.data as Appointment;
 };

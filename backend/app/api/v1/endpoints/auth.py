@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.api.deps import get_current_user
 from app.models.user import User
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.utils.clamav_scanner import scan_bytes_for_malware
 from app.utils.security_validation import validate_image_bytes
 
@@ -270,8 +270,14 @@ async def login(
     db.commit()
     
     # Create tokens
-    access_token = create_access_token(data={"sub": str(user.id), "phone": user.phone})
-    refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    access_expires = None
+    if user_credentials.login_portal == "admin":
+        access_expires = timedelta(minutes=settings.ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": str(user.id), "phone": user.phone, "login_portal": user_credentials.login_portal},
+        expires_delta=access_expires,
+    )
+    refresh_token = create_refresh_token(data={"sub": str(user.id), "login_portal": user_credentials.login_portal})
     
     return {
         "access_token": access_token,
@@ -332,9 +338,17 @@ async def refresh_token(
             detail="User not found"
         )
     
+    login_portal = payload.get("login_portal") or "frontend"
+    access_expires = None
+    if login_portal == "admin":
+        access_expires = timedelta(minutes=settings.ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES)
+
     # Create new tokens
-    access_token = create_access_token(data={"sub": str(user.id), "phone": user.phone})
-    new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    access_token = create_access_token(
+        data={"sub": str(user.id), "phone": user.phone, "login_portal": login_portal},
+        expires_delta=access_expires,
+    )
+    new_refresh_token = create_refresh_token(data={"sub": str(user.id), "login_portal": login_portal})
     
     return {
         "access_token": access_token,

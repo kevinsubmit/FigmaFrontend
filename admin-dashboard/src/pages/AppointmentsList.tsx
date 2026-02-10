@@ -19,6 +19,7 @@ import {
   getAppointments,
   markAppointmentNoShow,
   rescheduleAppointment,
+  updateAppointmentAmount,
   updateAppointmentNotes,
   updateAppointmentStatus,
 } from '../api/appointments';
@@ -139,6 +140,12 @@ const getServiceLabel = (apt: Appointment) => apt.service_name || `Service #${ap
 const getStaffLabel = (apt: Appointment) => apt.staff_name || apt.stylist_name || apt.technician_name || '-';
 const getStoreLabel = (apt: Appointment) => apt.store_name || `Store #${apt.store_id}`;
 const getStartTimeLabel = (time: string) => (time || '--:--').slice(0, 5);
+const getOrderAmount = (apt: Appointment) => {
+  if (typeof apt.order_amount === 'number') return apt.order_amount;
+  if (typeof apt.service_price === 'number') return apt.service_price;
+  return null;
+};
+const formatCurrency = (value?: number | null) => (typeof value === 'number' ? `$${value.toFixed(2)}` : '-');
 
 const AppointmentsList: React.FC = () => {
   const { role, user } = useAuth();
@@ -161,6 +168,8 @@ const AppointmentsList: React.FC = () => {
   const [updatingStatus, setUpdatingStatus] = useState<StatusOption | null>(null);
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
+  const [savingAmount, setSavingAmount] = useState(false);
+  const [editAmount, setEditAmount] = useState('');
   const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -342,6 +351,8 @@ const AppointmentsList: React.FC = () => {
     setEditDate(next.appointment_date || '');
     setEditTime(next.appointment_time || '');
     setEditNotes(next.notes || '');
+    const amount = getOrderAmount(next);
+    setEditAmount(typeof amount === 'number' ? String(amount) : '');
   };
 
   const updateStatus = async (nextStatus: StatusOption) => {
@@ -402,6 +413,33 @@ const AppointmentsList: React.FC = () => {
       }
     } finally {
       setSavingNotes(false);
+    }
+  };
+
+  const saveAmount = async () => {
+    if (!selected) return;
+    if (!editAmount.trim()) {
+      toast.error('Amount is required');
+      return;
+    }
+    const parsed = Number(editAmount);
+    if (Number.isNaN(parsed) || parsed < 0) {
+      toast.error('Amount must be a non-negative number');
+      return;
+    }
+
+    setSavingAmount(true);
+    try {
+      const updated = await updateAppointmentAmount(selected.id, { order_amount: parsed });
+      setAppointments((prev) => prev.map((apt) => (apt.id === updated.id ? { ...apt, ...updated } : apt)));
+      syncSelected({ ...selected, ...updated });
+      toast.success('Order amount updated');
+    } catch (error: any) {
+      if (!error?.__api_toast_shown) {
+        toast.error(error?.response?.data?.detail || 'Failed to update order amount');
+      }
+    } finally {
+      setSavingAmount(false);
     }
   };
 
@@ -646,6 +684,7 @@ const AppointmentsList: React.FC = () => {
                       <th className="px-3 py-2 font-medium">Phone</th>
                       <th className="px-3 py-2 font-medium">Service</th>
                       <th className="px-3 py-2 font-medium">Staff</th>
+                      <th className="px-3 py-2 font-medium">Amount</th>
                       <th className="px-3 py-2 font-medium">Created At</th>
                       <th className="px-3 py-2 font-medium">Status</th>
                     </tr>
@@ -656,7 +695,7 @@ const AppointmentsList: React.FC = () => {
                       return (
                         <React.Fragment key={group.key}>
                           <tr className="border-b border-blue-100 bg-blue-50/70">
-                            <td colSpan={7} className="px-3 py-2">
+                            <td colSpan={8} className="px-3 py-2">
                               <button
                                 onClick={() => toggleGroup(group.key)}
                                 className="w-full text-left flex items-center justify-between text-xs"
@@ -698,9 +737,12 @@ const AppointmentsList: React.FC = () => {
                                       </p>
                                     )}
                                   </td>
-                                  <td className="px-3 py-2.5 align-top text-slate-800">{maskPhone(getPhone(apt))}</td>
-                                  <td className="px-3 py-2.5 align-top">{getServiceLabel(apt)}</td>
-                                  <td className="px-3 py-2.5 align-top">{getStaffLabel(apt)}</td>
+                                  <td className="px-3 py-2.5 align-top text-slate-900">{maskPhone(getPhone(apt))}</td>
+                                  <td className="px-3 py-2.5 align-top text-slate-900">{getServiceLabel(apt)}</td>
+                                  <td className="px-3 py-2.5 align-top text-slate-900">{getStaffLabel(apt)}</td>
+                                  <td className="px-3 py-2.5 align-top whitespace-nowrap text-slate-900">
+                                    {formatCurrency(getOrderAmount(apt))}
+                                  </td>
                                   <td className="px-3 py-2.5 align-top whitespace-nowrap text-slate-700 text-xs">
                                     {formatCreatedAt(apt.created_at)}
                                   </td>
@@ -760,6 +802,7 @@ const AppointmentsList: React.FC = () => {
               <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2 text-sm">
                 <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Service</p>
                 <p className="text-slate-900">{getServiceLabel(selected)}</p>
+                <p className="text-slate-600">Amount: {formatCurrency(getOrderAmount(selected))}</p>
                 <p className="text-slate-600">Current: {formatTimeRange(selected)}</p>
                 <p className="text-slate-600">Staff: {getStaffLabel(selected)}</p>
                 {conflictInfo.ids.has(selected.id) && (
@@ -780,6 +823,28 @@ const AppointmentsList: React.FC = () => {
                   {statusText[normalizeStatus(selected.status)]}
                 </span>
                 {selected.cancel_reason && <p className="text-xs text-slate-600">Cancel reason: {selected.cancel_reason}</p>}
+              </div>
+
+              <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Order Amount</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={editAmount}
+                    onChange={(event) => setEditAmount(event.target.value)}
+                    className="w-full rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-gold-500"
+                    placeholder="0.00"
+                  />
+                  <button
+                    onClick={saveAmount}
+                    disabled={savingAmount}
+                    className="rounded-lg border border-gold-500/50 px-3 py-2 text-sm text-blue-700 disabled:opacity-50 whitespace-nowrap"
+                  >
+                    Save Amount
+                  </button>
+                </div>
               </div>
 
               <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2">

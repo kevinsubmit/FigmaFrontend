@@ -72,7 +72,9 @@ const AppointmentDetail: React.FC = () => {
           <p className="text-xs uppercase tracking-[0.2em] text-slate-700">Store & Service</p>
           <p className="text-sm text-slate-900">{appointment.store_name || `Store ${appointment.store_id}`}</p>
           <p className="text-sm text-slate-900">{appointment.service_name || `Service ${appointment.service_id}`}</p>
-          <p className="text-sm text-slate-700">${appointment.service_price ?? '-'}</p>
+          <p className="text-sm text-slate-700">
+            ${typeof appointment.order_amount === 'number' ? appointment.order_amount : appointment.service_price ?? '-'}
+          </p>
         </div>
         <div className="card-surface p-4 text-slate-900">
           <p className="text-xs uppercase tracking-[0.2em] text-slate-700 mb-2">Status</p>
