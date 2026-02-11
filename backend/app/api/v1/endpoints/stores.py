@@ -1,22 +1,59 @@
 """
 Stores API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from app.api.deps import get_db, get_current_admin_user, get_current_store_admin, get_current_user
+from app.core.security import decode_token
 from app.models.user import User
 from app.crud import store as crud_store, service as crud_service, store_favorite as crud_favorite
-from app.schemas.store import Store, StoreWithImages, StoreImage, StoreCreate, StoreUpdate, StoreImageCreate
+from app.schemas.store import (
+    Store,
+    StoreWithImages,
+    StoreImage,
+    StoreCreate,
+    StoreUpdate,
+    StoreImageCreate,
+    StoreVisibilityUpdate,
+    StoreRankingUpdate,
+)
 from app.schemas.service import Service
 from app.schemas.user import UserResponse
+from app.services import log_service
 
 router = APIRouter()
 
 
+def _resolve_optional_user(db: Session, request: Request) -> Optional[User]:
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.lower().startswith("bearer "):
+        return None
+    token = auth_header.split(" ", 1)[1]
+    try:
+        payload = decode_token(token)
+        user_id = payload.get("sub")
+        if user_id is None:
+            return None
+        return db.query(User).filter(User.id == int(user_id)).first()
+    except Exception:
+        return None
+
+
+def _can_access_hidden_store(user: Optional[User], store_id: Optional[int] = None) -> bool:
+    if not user:
+        return False
+    if user.is_admin:
+        return True
+    if store_id is not None and user.store_id == store_id:
+        return True
+    return False
+
+
 @router.get("/", response_model=List[Store])
 def get_stores(
+    request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     city: Optional[str] = None,
@@ -39,6 +76,9 @@ def get_stores(
     - **user_lat**: User latitude (required for distance sorting)
     - **user_lng**: User longitude (required for distance sorting)
     """
+    current_user = _resolve_optional_user(db, request)
+    include_hidden = _can_access_hidden_store(current_user)
+
     stores = crud_store.get_stores(
         db,
         skip=skip,
@@ -48,13 +88,15 @@ def get_stores(
         min_rating=min_rating,
         sort_by=sort_by,
         user_lat=user_lat,
-        user_lng=user_lng
+        user_lng=user_lng,
+        include_hidden=include_hidden,
     )
     return stores
 
 
 @router.get("/{store_id}", response_model=StoreWithImages)
 def get_store(
+    request: Request,
     store_id: int,
     db: Session = Depends(get_db)
 ):
@@ -63,6 +105,9 @@ def get_store(
     """
     store = crud_store.get_store(db, store_id=store_id)
     if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+    current_user = _resolve_optional_user(db, request)
+    if store.is_visible is False and not _can_access_hidden_store(current_user, store_id=store.id):
         raise HTTPException(status_code=404, detail="Store not found")
     
     # Get store images
@@ -79,6 +124,7 @@ def get_store(
 
 @router.get("/{store_id}/images", response_model=List[StoreImage])
 def get_store_images(
+    request: Request,
     store_id: int,
     db: Session = Depends(get_db)
 ):
@@ -88,6 +134,9 @@ def get_store_images(
     store = crud_store.get_store(db, store_id=store_id)
     if not store:
         raise HTTPException(status_code=404, detail="Store not found")
+    current_user = _resolve_optional_user(db, request)
+    if store.is_visible is False and not _can_access_hidden_store(current_user, store_id=store.id):
+        raise HTTPException(status_code=404, detail="Store not found")
     
     images = crud_store.get_store_images(db, store_id=store_id)
     return images
@@ -95,6 +144,7 @@ def get_store_images(
 
 @router.get("/{store_id}/services", response_model=List[Service])
 def get_store_services(
+    request: Request,
     store_id: int,
     db: Session = Depends(get_db)
 ):
@@ -104,9 +154,98 @@ def get_store_services(
     store = crud_store.get_store(db, store_id=store_id)
     if not store:
         raise HTTPException(status_code=404, detail="Store not found")
+    current_user = _resolve_optional_user(db, request)
+    if store.is_visible is False and not _can_access_hidden_store(current_user, store_id=store.id):
+        raise HTTPException(status_code=404, detail="Store not found")
     
     services = crud_service.get_store_services(db, store_id=store_id)
     return services
+
+
+@router.patch("/{store_id}/visibility", response_model=Store)
+def update_store_visibility(
+    request: Request,
+    store_id: int,
+    payload: StoreVisibilityUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Update store visibility (super admin only)."""
+    store = crud_store.get_store(db, store_id=store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    before_value = bool(store.is_visible)
+    store.is_visible = bool(payload.is_visible)
+    db.commit()
+    db.refresh(store)
+
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="stores",
+        action="store.visibility.update",
+        message="更新店铺展示状态",
+        target_type="store",
+        target_id=str(store.id),
+        store_id=store.id,
+        before={"is_visible": before_value},
+        after={"is_visible": bool(store.is_visible)},
+    )
+    return store
+
+
+@router.patch("/{store_id}/ranking", response_model=Store)
+def update_store_ranking(
+    request: Request,
+    store_id: int,
+    payload: StoreRankingUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """Update store ranking params (super admin only)."""
+    store = crud_store.get_store(db, store_id=store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+
+    before = {
+        "manual_rank": store.manual_rank,
+        "boost_score": store.boost_score,
+        "featured_until": str(store.featured_until) if store.featured_until else None,
+    }
+
+    if payload.manual_rank is not None and payload.manual_rank < 0:
+        raise HTTPException(status_code=400, detail="manual_rank must be >= 0")
+
+    if payload.manual_rank is not None:
+        store.manual_rank = payload.manual_rank
+    if payload.boost_score is not None:
+        store.boost_score = float(payload.boost_score)
+    if "featured_until" in payload.model_fields_set:
+        store.featured_until = payload.featured_until
+
+    db.commit()
+    db.refresh(store)
+
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="stores",
+        action="store.ranking.update",
+        message="更新店铺排序参数",
+        target_type="store",
+        target_id=str(store.id),
+        store_id=store.id,
+        before=before,
+        after={
+            "manual_rank": store.manual_rank,
+            "boost_score": store.boost_score,
+            "featured_until": str(store.featured_until) if store.featured_until else None,
+        },
+    )
+    return store
 
 
 @router.post("/", response_model=Store, status_code=201)

@@ -68,6 +68,10 @@ class Store(StoreBase):
     id: int
     rating: float
     review_count: int
+    is_visible: bool = True
+    manual_rank: Optional[int] = None
+    boost_score: float = 0.0
+    featured_until: Optional[datetime] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     distance: Optional[float] = None  # Distance in miles (calculated when user location is provided)
@@ -82,3 +86,15 @@ class StoreWithImages(Store):
 
     class Config:
         from_attributes = True
+
+
+class StoreVisibilityUpdate(BaseModel):
+    """Store visibility update (super admin only)"""
+    is_visible: bool
+
+
+class StoreRankingUpdate(BaseModel):
+    """Store ranking parameters update (super admin only)"""
+    manual_rank: Optional[int] = None
+    boost_score: Optional[float] = None
+    featured_until: Optional[datetime] = None

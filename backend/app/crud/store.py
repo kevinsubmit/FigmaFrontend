@@ -1,8 +1,10 @@
 """
 Store CRUD operations
 """
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from datetime import datetime, timezone
 from app.models.store import Store, StoreImage
 from app.schemas.store import StoreCreate, StoreUpdate
 
@@ -21,13 +23,16 @@ def get_stores(
     min_rating: Optional[float] = None,
     sort_by: Optional[str] = "recommended",
     user_lat: Optional[float] = None,
-    user_lng: Optional[float] = None
+    user_lng: Optional[float] = None,
+    include_hidden: bool = False,
 ) -> List[Store]:
     """Get list of stores with optional filters and sorting"""
-    from sqlalchemy import func, case
+    from sqlalchemy import case
     from math import radians, cos, sin, asin, sqrt
     
     query = db.query(Store)
+    if not include_hidden:
+        query = query.filter(or_(Store.is_visible.is_(True), Store.is_visible.is_(None)))
     
     # Filter by city
     if city:
@@ -75,37 +80,81 @@ def get_stores(
                 store.distance = None
                 stores_with_distance.append((store, float('inf')))
     
+    def rank_value(store: Store) -> int:
+        return store.manual_rank if store.manual_rank is not None else 10**9
+
+    def quality_score(store: Store) -> float:
+        rating = float(store.rating or 0.0)
+        review_count = float(store.review_count or 0.0)
+        confidence = min(review_count / 100.0, 1.0)
+        return (rating / 5.0) * (0.6 + 0.4 * confidence)
+
+    def distance_score(distance: Optional[float]) -> float:
+        if distance is None or distance == float("inf"):
+            return 0.0
+        return max(0.0, 1.0 - min(distance, 20.0) / 20.0)
+
+    def manual_rank_score(store: Store) -> float:
+        if store.manual_rank is None:
+            return 0.0
+        return max(0.0, 1.0 - min(float(store.manual_rank), 200.0) / 200.0)
+
+    def featured_bonus(store: Store) -> float:
+        if not store.featured_until:
+            return 0.0
+        try:
+            feature_time = store.featured_until
+            now = datetime.now(timezone.utc)
+            if feature_time.tzinfo is None:
+                feature_time = feature_time.replace(tzinfo=timezone.utc)
+            return 0.2 if feature_time > now else 0.0
+        except Exception:
+            return 0.0
+
     # Sort results
     if sort_by == "top_rated":
         if stores_with_distance:
-            # Sort by rating, then by review count
-            stores_with_distance.sort(key=lambda x: (-x[0].rating, -x[0].review_count))
+            # Keep top-rated as primary; manual rank as tie-breaker.
+            stores_with_distance.sort(key=lambda x: (-x[0].rating, -x[0].review_count, rank_value(x[0])))
             sorted_stores = [s[0] for s in stores_with_distance]
             return sorted_stores[skip:skip+limit]
         else:
-            query = query.order_by(Store.rating.desc(), Store.review_count.desc())
+            query = query.order_by(Store.rating.desc(), Store.review_count.desc(), Store.manual_rank.asc().nullslast())
             return query.offset(skip).limit(limit).all()
     elif sort_by == "distance" and stores_with_distance:
         # Sort by distance
-        stores_with_distance.sort(key=lambda x: x[1])
+        stores_with_distance.sort(key=lambda x: (x[1], rank_value(x[0])))
         sorted_stores = [s[0] for s in stores_with_distance]
         return sorted_stores[skip:skip+limit]
     else:
-        # Default: "recommended" - Sort by a combination of rating and review count
+        # Default: "recommended" - weighted hybrid score.
         if stores_with_distance:
-            # Sort by recommendation score
-            stores_with_distance.sort(
-                key=lambda x: -(x[0].rating * 0.7 + min(x[0].review_count / 100.0, 1.0) * 0.3)
-            )
-            sorted_stores = [s[0] for s in stores_with_distance]
+            scored = []
+            for store, distance in stores_with_distance:
+                score = (
+                    0.55 * quality_score(store)
+                    + 0.30 * distance_score(distance)
+                    + 0.15 * manual_rank_score(store)
+                    + float(store.boost_score or 0.0)
+                    + featured_bonus(store)
+                )
+                store.recommended_score = round(score, 4)
+                scored.append((store, score))
+            scored.sort(key=lambda x: (-x[1], rank_value(x[0]), -x[0].rating))
+            sorted_stores = [s[0] for s in scored]
             return sorted_stores[skip:skip+limit]
         else:
             review_score = case(
                 (Store.review_count / 100.0 > 1.0, 1.0),
                 else_=Store.review_count / 100.0
             )
+            manual_rank_score_expr = case(
+                (Store.manual_rank.is_(None), 0.0),
+                else_=1.0 - (Store.manual_rank / 200.0)
+            )
             query = query.order_by(
-                (Store.rating * 0.7 + review_score * 0.3).desc()
+                (Store.rating * 0.55 + review_score * 0.30 + manual_rank_score_expr * 0.15 + Store.boost_score).desc(),
+                Store.manual_rank.asc().nullslast()
             )
             return query.offset(skip).limit(limit).all()
 

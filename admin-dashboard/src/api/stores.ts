@@ -4,6 +4,10 @@ export interface Store {
   id: number;
   name: string;
   address: string;
+  is_visible?: boolean;
+  manual_rank?: number | null;
+  boost_score?: number | null;
+  featured_until?: string | null;
   city?: string | null;
   state?: string | null;
   zip_code?: string | null;
@@ -51,6 +55,19 @@ export const getStoreById = async (id: number) => {
 
 export const updateStore = async (id: number, payload: Partial<Store>) => {
   const response = await api.patch(`/stores/${id}`, payload);
+  return response.data as Store;
+};
+
+export const updateStoreVisibility = async (id: number, isVisible: boolean) => {
+  const response = await api.patch(`/stores/${id}/visibility`, { is_visible: isVisible });
+  return response.data as Store;
+};
+
+export const updateStoreRanking = async (
+  id: number,
+  payload: { manual_rank?: number | null; boost_score?: number | null; featured_until?: string | null },
+) => {
+  const response = await api.patch(`/stores/${id}/ranking`, payload);
   return response.data as Store;
 };
 

@@ -25,6 +25,7 @@ from app.schemas.appointment import (
 from app.schemas.user import UserResponse
 from app.models.appointment import AppointmentStatus
 from app.models.service import Service
+from app.models.store import Store
 from app.services import notification_service
 from app.services import reminder_service
 from app.services import risk_service
@@ -82,6 +83,9 @@ def create_appointment(
         raise HTTPException(status_code=400, detail="Service does not belong to this store")
     if service.is_active != 1:
         raise HTTPException(status_code=400, detail="Service is not available")
+    store = db.query(Store).filter(Store.id == appointment.store_id).first()
+    if not store or store.is_visible is False:
+        raise HTTPException(status_code=400, detail="Store is not available")
     
     # Check for conflicts using improved conflict checker
     conflict_result = crud_appointment.check_time_conflict(

@@ -1,7 +1,7 @@
 """
 Store Model
 """
-from sqlalchemy import Column, Integer, String, Float, Text, DateTime, func
+from sqlalchemy import Boolean, Column, Integer, String, Float, Text, DateTime, func
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 
@@ -20,6 +20,10 @@ class Store(Base):
     longitude = Column(Float)
     phone = Column(String(20))
     email = Column(String(255))
+    is_visible = Column(Boolean, nullable=False, default=True, index=True)
+    manual_rank = Column(Integer, nullable=True, index=True)
+    boost_score = Column(Float, nullable=False, default=0.0)
+    featured_until = Column(DateTime(timezone=True), nullable=True, index=True)
     rating = Column(Float, default=0.0)
     review_count = Column(Integer, default=0)
     description = Column(Text)
