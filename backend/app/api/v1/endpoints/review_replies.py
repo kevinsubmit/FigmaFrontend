@@ -35,7 +35,7 @@ def create_review_reply(
         )
     
     # 2. 检查当前用户是否是该店铺的管理员
-    if current_user.store_id != review.store_id:
+    if not current_user.is_admin and current_user.store_id != review.store_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only reply to reviews of your store"
@@ -88,7 +88,7 @@ def update_review_reply(
         )
     
     # 2. 检查回复是否属于当前用户
-    if reply.admin_id != current_user.id:
+    if not current_user.is_admin and reply.admin_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only update your own replies"
@@ -102,7 +102,8 @@ def update_review_reply(
     
     # 4. 构建响应
     response = ReviewReplyResponse.from_orm(reply)
-    response.admin_name = current_user.username
+    admin = db.query(User).filter(User.id == reply.admin_id).first()
+    response.admin_name = admin.username if admin else current_user.username
     
     return response
 
@@ -127,7 +128,7 @@ def delete_review_reply(
         )
     
     # 2. 检查回复是否属于当前用户
-    if reply.admin_id != current_user.id:
+    if not current_user.is_admin and reply.admin_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You can only delete your own replies"

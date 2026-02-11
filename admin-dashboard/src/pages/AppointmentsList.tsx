@@ -134,8 +134,16 @@ const maskPhone = (phone?: string | null) => {
   return `${cleaned.slice(0, Math.min(3, cleaned.length - 4))}****${cleaned.slice(-4)}`;
 };
 
+const toTelHref = (phone?: string | null) => {
+  if (!phone) return '';
+  const sanitized = phone.replace(/[^\d+]/g, '');
+  return sanitized ? `tel:${sanitized}` : '';
+};
+
 const getCustomerName = (apt: Appointment) => apt.customer_name || apt.user_name || `User #${apt.user_id}`;
-const getPhone = (apt: Appointment) => apt.customer_phone || apt.user_phone || apt.phone || '';
+const resolvePhone = (apt: Appointment) => {
+  return `${apt.customer_phone || ''}`.trim() || '-';
+};
 const getServiceLabel = (apt: Appointment) => apt.service_name || `Service #${apt.service_id}`;
 const getStaffLabel = (apt: Appointment) => apt.staff_name || apt.stylist_name || apt.technician_name || '-';
 const getStoreLabel = (apt: Appointment) => apt.store_name || `Store #${apt.store_id}`;
@@ -145,7 +153,15 @@ const getOrderAmount = (apt: Appointment) => {
   if (typeof apt.service_price === 'number') return apt.service_price;
   return null;
 };
-const formatCurrency = (value?: number | null) => (typeof value === 'number' ? `$${value.toFixed(2)}` : '-');
+const formatCurrency = (value?: number | null) => (typeof value === 'number' ? `$${Math.floor(value)}` : '-');
+const normalizeAmountInput = (raw: string) => {
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  const cleaned = trimmed.replace(/[^\d.]/g, '');
+  if (!cleaned) return '';
+  const integerPart = cleaned.split('.')[0];
+  return integerPart.replace(/^0+(?=\d)/, '');
+};
 
 const AppointmentsList: React.FC = () => {
   const { role, user } = useAuth();
@@ -247,7 +263,7 @@ const AppointmentsList: React.FC = () => {
         if (!lowerKeyword) return true;
         const text = [
           getCustomerName(apt),
-          getPhone(apt),
+          resolvePhone(apt),
           getServiceLabel(apt),
           getStaffLabel(apt),
           apt.order_number || String(apt.id),
@@ -352,7 +368,7 @@ const AppointmentsList: React.FC = () => {
     setEditTime(next.appointment_time || '');
     setEditNotes(next.notes || '');
     const amount = getOrderAmount(next);
-    setEditAmount(typeof amount === 'number' ? String(amount) : '');
+    setEditAmount(typeof amount === 'number' ? String(Math.floor(amount)) : '');
   };
 
   const updateStatus = async (nextStatus: StatusOption) => {
@@ -422,9 +438,9 @@ const AppointmentsList: React.FC = () => {
       toast.error('Amount is required');
       return;
     }
-    const parsed = Number(editAmount);
-    if (Number.isNaN(parsed) || parsed < 0) {
-      toast.error('Amount must be a non-negative number');
+    const parsed = Number.parseInt(editAmount, 10);
+    if (Number.isNaN(parsed) || parsed < 1) {
+      toast.error('Amount must be greater than or equal to 1');
       return;
     }
 
@@ -737,7 +753,19 @@ const AppointmentsList: React.FC = () => {
                                       </p>
                                     )}
                                   </td>
-                                  <td className="px-3 py-2.5 align-top text-slate-900">{maskPhone(getPhone(apt))}</td>
+                                  <td className="px-3 py-2.5 align-top text-slate-900">
+                                    {resolvePhone(apt) !== '-' ? (
+                                      <a
+                                        href={toTelHref(resolvePhone(apt))}
+                                        onClick={(event) => event.stopPropagation()}
+                                        className="hover:text-blue-600 underline-offset-2 hover:underline"
+                                      >
+                                        {maskPhone(resolvePhone(apt))}
+                                      </a>
+                                    ) : (
+                                      '-'
+                                    )}
+                                  </td>
                                   <td className="px-3 py-2.5 align-top text-slate-900">{getServiceLabel(apt)}</td>
                                   <td className="px-3 py-2.5 align-top text-slate-900">{getStaffLabel(apt)}</td>
                                   <td className="px-3 py-2.5 align-top whitespace-nowrap text-slate-900">
@@ -793,7 +821,13 @@ const AppointmentsList: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-700">
                   <Phone className="h-4 w-4 text-gold-500" />
-                  <span>{getPhone(selected) || '-'}</span>
+                  {resolvePhone(selected) !== '-' ? (
+                    <a href={toTelHref(resolvePhone(selected))} className="text-slate-900 hover:text-blue-600 underline-offset-2 hover:underline">
+                      {resolvePhone(selected)}
+                    </a>
+                  ) : (
+                    <span>-</span>
+                  )}
                 </div>
                 <p className="text-xs text-slate-600">Order: #{selected.order_number || selected.id}</p>
                 <p className="text-xs text-slate-600">Created At: {formatCreatedAt(selected.created_at)}</p>
@@ -830,12 +864,12 @@ const AppointmentsList: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
-                    min={0}
-                    step="0.01"
+                    min={1}
+                    step="1"
                     value={editAmount}
-                    onChange={(event) => setEditAmount(event.target.value)}
+                    onChange={(event) => setEditAmount(normalizeAmountInput(event.target.value))}
                     className="w-full rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-gold-500"
-                    placeholder="0.00"
+                    placeholder="1"
                   />
                   <button
                     onClick={saveAmount}

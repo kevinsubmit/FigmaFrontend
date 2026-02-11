@@ -12,6 +12,14 @@ const AppointmentDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [cancelReason, setCancelReason] = useState('');
 
+  const getCustomerName = (apt: Appointment) => apt.customer_name || apt.user_name || `User #${apt.user_id}`;
+  const getCustomerPhone = (apt: Appointment) => `${apt.customer_phone || ''}`.trim() || '-';
+  const getTelHref = (phone: string) => {
+    if (!phone || phone === '-') return '';
+    const sanitized = phone.replace(/[^\d+]/g, '');
+    return sanitized ? `tel:${sanitized}` : '';
+  };
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -75,6 +83,17 @@ const AppointmentDetail: React.FC = () => {
           <p className="text-sm text-slate-700">
             ${typeof appointment.order_amount === 'number' ? appointment.order_amount : appointment.service_price ?? '-'}
           </p>
+        </div>
+        <div className="card-surface p-4 space-y-2 text-slate-900">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-700">Customer</p>
+          <p className="text-sm text-slate-900">{getCustomerName(appointment)}</p>
+          {getCustomerPhone(appointment) !== '-' ? (
+            <a href={getTelHref(getCustomerPhone(appointment))} className="text-sm text-slate-900 hover:text-blue-600 underline-offset-2 hover:underline">
+              {getCustomerPhone(appointment)}
+            </a>
+          ) : (
+            <p className="text-sm text-slate-900">-</p>
+          )}
         </div>
         <div className="card-surface p-4 text-slate-900">
           <p className="text-xs uppercase tracking-[0.2em] text-slate-700 mb-2">Status</p>

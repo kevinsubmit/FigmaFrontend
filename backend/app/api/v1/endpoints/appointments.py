@@ -155,7 +155,7 @@ def get_my_appointments(
     
     # Format response
     result = []
-    for appt, store_name, store_address, service_name, service_price, service_duration, review_id in appointments_data:
+    for appt, store_name, store_address, service_name, service_price, service_duration, review_id, user_name, customer_name, customer_phone in appointments_data:
         resolved_amount = appt.order_amount if appt.order_amount is not None else service_price
         result.append({
             **appt.__dict__,
@@ -165,7 +165,10 @@ def get_my_appointments(
             "service_price": service_price,
             "order_amount": resolved_amount,
             "service_duration": service_duration,
-            "review_id": review_id
+            "review_id": review_id,
+            "user_name": user_name,
+            "customer_name": customer_name or user_name,
+            "customer_phone": customer_phone,
         })
     
     return result
@@ -222,7 +225,7 @@ def get_admin_appointments(
     )
 
     result = []
-    for appt, store_name, store_address, service_name, service_price, service_duration, review_id in appointments_data:
+    for appt, store_name, store_address, service_name, service_price, service_duration, review_id, user_name, customer_name, customer_phone in appointments_data:
         resolved_amount = appt.order_amount if appt.order_amount is not None else service_price
         result.append({
             **appt.__dict__,
@@ -232,7 +235,10 @@ def get_admin_appointments(
             "service_price": service_price,
             "order_amount": resolved_amount,
             "service_duration": service_duration,
-            "review_id": review_id
+            "review_id": review_id,
+            "user_name": user_name,
+            "customer_name": customer_name or user_name,
+            "customer_phone": customer_phone,
         })
 
     return result
@@ -533,8 +539,8 @@ def update_appointment_amount(
     """
     from app.models.service import Service
 
-    if amount_data.order_amount < 0:
-        raise HTTPException(status_code=400, detail="Order amount cannot be negative")
+    if amount_data.order_amount < 1:
+        raise HTTPException(status_code=400, detail="Order amount must be greater than or equal to 1")
 
     if not current_user.is_admin and not current_user.store_id:
         raise HTTPException(status_code=403, detail="Only store administrators can update order amount")

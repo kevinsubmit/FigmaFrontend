@@ -180,14 +180,24 @@ def claim_gift_card(
 
     now = datetime.utcnow()
     if gift_card.claim_expires_at and gift_card.claim_expires_at < now:
-        crud_gift_cards.claim_gift_card(db, gift_card, current_user.id, current_user.phone)
+        crud_gift_cards.claim_gift_card(
+            db,
+            gift_card,
+            current_user.id,
+            customer_phone=current_user.phone,
+        )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Gift card claim expired")
 
     if gift_card.recipient_phone and gift_card.recipient_phone != current_user.phone:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Recipient phone mismatch")
 
     try:
-        claimed = crud_gift_cards.claim_gift_card(db, gift_card, current_user.id, current_user.phone)
+        claimed = crud_gift_cards.claim_gift_card(
+            db,
+            gift_card,
+            current_user.id,
+            customer_phone=current_user.phone,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -223,7 +233,12 @@ def revoke_gift_card(
 
     now = datetime.utcnow()
     if gift_card.claim_expires_at and gift_card.claim_expires_at < now:
-        crud_gift_cards.claim_gift_card(db, gift_card, current_user.id, current_user.phone)
+        crud_gift_cards.claim_gift_card(
+            db,
+            gift_card,
+            current_user.id,
+            customer_phone=current_user.phone,
+        )
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Gift card already expired")
 
     try:

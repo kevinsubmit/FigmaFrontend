@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Star, Upload, X, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { createReview, updateReview, Review, uploadImages } from '../api/reviews';
+import { isPersistedAssetPath, resolveAssetUrl } from '../utils/assetUrl';
 
 interface ReviewFormProps {
   appointmentId: number;
@@ -112,7 +113,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
 
       // 合并现有图片和新上传的图片
       const existingImageUrls = isEditMode 
-        ? imagePreviewUrls.filter(url => url.startsWith('http') || url.startsWith('/uploads'))
+        ? imagePreviewUrls.filter((url) => isPersistedAssetPath(url))
         : [];
       const allImageUrls = [...existingImageUrls, ...uploadedImageUrls];
 
@@ -151,6 +152,10 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const resolvePreviewUrl = (url: string) => {
+    return resolveAssetUrl(url);
   };
 
   return (
@@ -230,7 +235,7 @@ const ReviewForm: React.FC<ReviewFormProps> = ({ appointmentId, onSuccess, onCan
                 {imagePreviewUrls.map((url, index) => (
                   <div key={index} className="relative aspect-square">
                     <img
-                      src={url.startsWith('http') || url.startsWith('/') ? `http://localhost:8000${url}` : url}
+                      src={resolvePreviewUrl(url)}
                       alt={`Preview ${index + 1}`}
                       className="w-full h-full object-cover rounded-lg border border-white/10"
                     />

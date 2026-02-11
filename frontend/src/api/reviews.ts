@@ -12,6 +12,7 @@ export interface Review {
   updated_at: string;
   user_name?: string;
   user_avatar?: string | null;
+  user_avatar_updated_at?: string | null;
   reply?: ReviewReply | null;  // 管理员回复
 }
 

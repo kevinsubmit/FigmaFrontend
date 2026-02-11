@@ -1612,8 +1612,14 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                                       onClick={() => setSelectedStaff(staff)}
                                       className="flex-shrink-0 flex flex-col items-center gap-2"
                                     >
-                                      <div className={`relative w-16 h-16 rounded-full overflow-hidden border-2 transition-all ${selectedStaff?.id === staff.id ? 'border-[#D4AF37] scale-105' : 'border-transparent'}`}>
-                                        <img src={staff.avatar_url || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=100'} alt={staff.name} className="w-full h-full object-cover" />
+                                      <div
+                                        className={`w-16 h-16 rounded-full flex items-center justify-center border-2 transition-all ${
+                                          selectedStaff?.id === staff.id
+                                            ? 'border-[#D4AF37] bg-[#D4AF37]/10 scale-105'
+                                            : 'border-[#333] bg-[#1a1a1a]'
+                                        }`}
+                                      >
+                                        <User className={`w-8 h-8 ${selectedStaff?.id === staff.id ? 'text-[#D4AF37]' : 'text-gray-500'}`} />
                                       </div>
                                       <div className="text-center">
                                         <span className={`text-[10px] font-bold block ${selectedStaff?.id === staff.id ? 'text-[#D4AF37]' : 'text-gray-300'}`}>{staff.name}</span>
@@ -1629,10 +1635,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                                 <span className="text-gray-400 text-xs">Professional</span>
                                 <div className="flex items-center gap-2">
                                     {selectedStaff ? (
-                                        <>
-                                            <span className="text-white text-sm font-medium">{selectedStaff.name}</span>
-                                            <img src={selectedStaff.avatar} alt="" className="w-5 h-5 rounded-full object-cover border border-[#D4AF37]/30" />
-                                        </>
+                                        <span className="text-white text-sm font-medium">{selectedStaff.name}</span>
                                     ) : (
                                         <span className="text-white text-sm font-medium">Any Professional</span>
                                     )}

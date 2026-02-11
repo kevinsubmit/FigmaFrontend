@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Star, User as UserIcon, MessageCircle } from 'lucide-react';
+import { Star, MessageCircle } from 'lucide-react';
 import { getStoreReviews, getStoreRating, Review, StoreRating } from '../api/reviews';
+import { appendVersionParam, resolveAssetUrl } from '../utils/assetUrl';
 
 interface StoreReviewsProps {
   storeId: number;
@@ -54,6 +55,17 @@ const StoreReviews: React.FC<StoreReviewsProps> = ({ storeId }) => {
         ))}
       </div>
     );
+  };
+
+  const getDefaultAvatarUrl = (review: Review) => {
+    const seed = encodeURIComponent(`${review.user_id}-${review.user_name || 'guest'}`);
+    return `https://api.dicebear.com/7.x/initials/svg?seed=${seed}&backgroundType=gradientLinear`;
+  };
+
+  const resolveAvatarUrl = (review: Review) => {
+    const base = resolveAssetUrl(review.user_avatar);
+    if (!base) return getDefaultAvatarUrl(review);
+    return appendVersionParam(base, review.user_avatar_updated_at || null);
   };
 
   if (loading) {
@@ -132,12 +144,23 @@ const StoreReviews: React.FC<StoreReviewsProps> = ({ storeId }) => {
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-400 to-pink-400 flex items-center justify-center text-white font-semibold">
                   {review.user_avatar ? (
                     <img
-                      src={review.user_avatar}
+                      src={resolveAvatarUrl(review)}
                       alt={review.user_name || 'User'}
                       className="w-full h-full rounded-full object-cover"
+                      loading="lazy"
+                      onError={(event) => {
+                        const target = event.currentTarget;
+                        target.onerror = null;
+                        target.src = getDefaultAvatarUrl(review);
+                      }}
                     />
                   ) : (
-                    <UserIcon size={20} />
+                    <img
+                      src={getDefaultAvatarUrl(review)}
+                      alt={review.user_name || 'User'}
+                      className="w-full h-full rounded-full object-cover"
+                      loading="lazy"
+                    />
                   )}
                 </div>
                 <div className="flex-1">
@@ -164,10 +187,10 @@ const StoreReviews: React.FC<StoreReviewsProps> = ({ storeId }) => {
                   {review.images.map((imageUrl, imgIndex) => (
                     <img
                       key={imgIndex}
-                      src={`http://localhost:8000${imageUrl}`}
+                      src={resolveAssetUrl(imageUrl)}
                       alt={`Review image ${imgIndex + 1}`}
                       className="w-full aspect-square object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => window.open(`http://localhost:8000${imageUrl}`, '_blank')}
+                      onClick={() => window.open(resolveAssetUrl(imageUrl), '_blank')}
                     />
                   ))}
                 </div>

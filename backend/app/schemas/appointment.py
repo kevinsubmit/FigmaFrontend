@@ -1,7 +1,7 @@
 """
 Appointment Schemas
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime, date, time
 from app.models.appointment import AppointmentStatus
@@ -44,7 +44,7 @@ class AppointmentStatusUpdate(BaseModel):
 
 class AppointmentAmountUpdate(BaseModel):
     """Appointment amount update (admin)"""
-    order_amount: float
+    order_amount: float = Field(..., ge=1)
 
 
 class Appointment(AppointmentBase):
@@ -72,6 +72,9 @@ class AppointmentWithDetails(Appointment):
     service_price: Optional[float] = None
     service_duration: Optional[int] = None
     technician_name: Optional[str] = None
+    user_name: Optional[str] = None
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -207,7 +207,7 @@ def claim_gift_card(
     db: Session,
     gift_card: GiftCard,
     user_id: int,
-    user_phone: Optional[str]
+    customer_phone: Optional[str]
 ) -> GiftCard:
     now = datetime.utcnow()
     if gift_card.claim_expires_at and gift_card.claim_expires_at < now:
@@ -224,7 +224,7 @@ def claim_gift_card(
         db.refresh(gift_card)
         return gift_card
 
-    if gift_card.recipient_phone and user_phone and gift_card.recipient_phone != user_phone:
+    if gift_card.recipient_phone and customer_phone and gift_card.recipient_phone != customer_phone:
         raise ValueError("Recipient phone mismatch")
 
     gift_card.user_id = user_id

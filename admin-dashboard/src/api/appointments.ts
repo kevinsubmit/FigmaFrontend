@@ -12,10 +12,8 @@ export interface Appointment {
   service_duration?: number | null;
   user_id: number;
   user_name?: string | null;
-  user_phone?: string | null;
   customer_name?: string | null;
   customer_phone?: string | null;
-  phone?: string | null;
   staff_name?: string | null;
   stylist_name?: string | null;
   technician_name?: string | null;

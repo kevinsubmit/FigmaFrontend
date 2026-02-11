@@ -8,6 +8,7 @@ from app.models.appointment import Appointment, AppointmentStatus
 from app.models.store import Store
 from app.models.service import Service
 from app.models.review import Review
+from app.models.user import User
 from app.schemas.appointment import AppointmentCreate, AppointmentUpdate
 
 
@@ -41,11 +42,16 @@ def get_user_appointments_with_details(db: Session, user_id: int, skip: int = 0,
         Service.name.label('service_name'),
         Service.price.label('service_price'),
         Service.duration_minutes.label('service_duration'),
-        Review.id.label('review_id')
+        Review.id.label('review_id'),
+        User.username.label('user_name'),
+        User.full_name.label('customer_name'),
+        User.phone.label('customer_phone'),
     ).join(
         Store, Appointment.store_id == Store.id
     ).join(
         Service, Appointment.service_id == Service.id
+    ).outerjoin(
+        User, Appointment.user_id == User.id
     ).outerjoin(
         Review, Review.appointment_id == Appointment.id
     ).filter(
@@ -73,11 +79,16 @@ def get_appointments_with_details(
         Service.name.label('service_name'),
         Service.price.label('service_price'),
         Service.duration_minutes.label('service_duration'),
-        Review.id.label('review_id')
+        Review.id.label('review_id'),
+        User.username.label('user_name'),
+        User.full_name.label('customer_name'),
+        User.phone.label('customer_phone'),
     ).join(
         Store, Appointment.store_id == Store.id
     ).join(
         Service, Appointment.service_id == Service.id
+    ).outerjoin(
+        User, Appointment.user_id == User.id
     ).outerjoin(
         Review, Review.appointment_id == Appointment.id
     )

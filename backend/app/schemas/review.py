@@ -26,6 +26,7 @@ class ReviewResponse(BaseModel):
     # 关联信息
     user_name: Optional[str] = None
     user_avatar: Optional[str] = None
+    user_avatar_updated_at: Optional[datetime] = None
     reply: Optional[dict] = None  # 管理员回复
 
     class Config:
@@ -38,3 +39,18 @@ class StoreRatingResponse(BaseModel):
     average_rating: float
     total_reviews: int
     rating_distribution: dict  # {1: count, 2: count, 3: count, 4: count, 5: count}
+
+
+class ReviewAdminItem(ReviewResponse):
+    """后台评价列表项"""
+    store_name: Optional[str] = None
+    order_number: Optional[str] = None
+    has_reply: bool = False
+
+
+class ReviewAdminListResponse(BaseModel):
+    """后台评价分页响应"""
+    total: int
+    skip: int
+    limit: int
+    items: List[ReviewAdminItem]
