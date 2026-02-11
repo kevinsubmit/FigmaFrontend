@@ -127,7 +127,7 @@ def create_review(
     
     # 7. 构建响应（包含用户信息）
     response = ReviewResponse.from_orm(new_review)
-    response.user_name = current_user.username
+    response.user_name = current_user.full_name or current_user.username
     response.user_avatar = current_user.avatar_url
     response.user_avatar_updated_at = current_user.updated_at
     response.images = new_review.images or []
@@ -186,7 +186,7 @@ def get_admin_reviews(
     for row in rows:
         user = user_map.get(row.user_id)
         payload = ReviewAdminItem.from_orm(row)
-        payload.user_name = user.username if user else None
+        payload.user_name = (user.full_name or user.username) if user else None
         payload.user_avatar = user.avatar_url if user else None
         payload.user_avatar_updated_at = user.updated_at if user else None
         payload.images = row.images or []
@@ -223,7 +223,7 @@ def get_store_reviews(
         user = db.query(User).filter(User.id == review.user_id).first()
         review_response = ReviewResponse.from_orm(review)
         if user:
-            review_response.user_name = user.username
+            review_response.user_name = user.full_name or user.username
             review_response.user_avatar = user.avatar_url
             review_response.user_avatar_updated_at = user.updated_at
         review_response.images = review.images or []
@@ -305,7 +305,7 @@ def get_my_reviews(
     response_list = []
     for review in reviews:
         review_response = ReviewResponse.from_orm(review)
-        review_response.user_name = current_user.username
+        review_response.user_name = current_user.full_name or current_user.username
         review_response.user_avatar = current_user.avatar_url
         review_response.user_avatar_updated_at = current_user.updated_at
         review_response.images = review.images or []
@@ -366,7 +366,7 @@ def update_review(
     
     # 5. 构建响应
     response = ReviewResponse.from_orm(review)
-    response.user_name = current_user.username
+    response.user_name = current_user.full_name or current_user.username
     response.user_avatar = current_user.avatar_url
     response.user_avatar_updated_at = current_user.updated_at
     response.images = review.images or []

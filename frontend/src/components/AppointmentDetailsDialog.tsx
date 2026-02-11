@@ -296,7 +296,7 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
                 <Calendar className="w-5 h-5 text-[#D4AF37]" />
                 <div>
                   <div className="text-xs uppercase tracking-widest text-gray-400">Date</div>
-                  <div className="font-semibold text-white">
+                  <div className="font-semibold text-white whitespace-nowrap">
                     {parseLocalDate(appointment.appointment_date).toLocaleDateString('en-US', {
                       weekday: 'short',
                       month: 'short',

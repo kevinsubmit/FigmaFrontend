@@ -23,19 +23,17 @@ import { addPinToFavorites, checkIfPinFavorited, getPinById, getPins, Pin, remov
 interface PinDetailProps {
   onBack: () => void;
   onBookNow: (pinId?: number) => void;
-  onTagClick?: (tag: string) => void;
   onPinClick?: (pinData: Pin) => void;
   pinData?: {
     id: number;
     image_url: string;
     title: string;
     description?: string;
-    tags?: string[];
     authorAvatar?: string;
   };
 }
 
-export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }: PinDetailProps) {
+export function PinDetail({ onBack, onBookNow, onPinClick, pinData }: PinDetailProps) {
   const location = useLocation();
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   const [isLoading, setIsLoading] = useState(false);
@@ -301,19 +299,6 @@ export function PinDetail({ onBack, onBookNow, onTagClick, onPinClick, pinData }
             <h1 className="text-2xl font-bold text-white">{data.title}</h1>
           </div>
 
-          {data.tags && data.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {data.tags.map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => onTagClick?.(tag)}
-                  className="px-3 py-1 bg-white/10 rounded-full text-xs text-gray-300 hover:text-white hover:bg-white/15 transition-colors"
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         {relatedPins.length > 0 && (

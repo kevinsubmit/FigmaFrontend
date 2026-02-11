@@ -89,10 +89,14 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tag = params.get('tag');
-    if (tag && tag !== activeTag) {
-      setActiveTag(tag);
-      setSearchDraft(tag);
-      setSearchQuery(tag);
+    if (tag) {
+      if (tag !== activeTag) {
+        setActiveTag(tag);
+      }
+      // Tag deep-link from pin detail should filter by tag only,
+      // not by title search query.
+      setSearchDraft('');
+      setSearchQuery('');
     }
     if (!hasSetTagFromUrl.current) {
       hasSetTagFromUrl.current = true;

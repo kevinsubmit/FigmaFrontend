@@ -3,6 +3,7 @@ Technicians API endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 
 from app.api.deps import get_db, get_current_admin_user, get_current_store_admin
@@ -195,7 +196,7 @@ def get_technician_appointments(
         Appointment,
         Service.name.label('service_name'),
         Service.duration_minutes.label('duration'),
-        User.username.label('customer_name')
+        func.coalesce(User.full_name, User.username).label('customer_name')
     ).join(
         Service, Appointment.service_id == Service.id
     ).join(

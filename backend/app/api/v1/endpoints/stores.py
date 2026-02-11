@@ -3,6 +3,7 @@ Stores API endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 
 from app.api.deps import get_db, get_current_admin_user, get_current_store_admin, get_current_user
@@ -419,7 +420,7 @@ def get_store_appointments(
         Service.name.label('service_name'),
         Service.duration_minutes.label('duration'),
         Technician.name.label('technician_name'),
-        UserModel.username.label('customer_name'),
+        func.coalesce(UserModel.full_name, UserModel.username).label('customer_name'),
         UserModel.phone.label('customer_phone')
     ).join(
         Service, Appointment.service_id == Service.id

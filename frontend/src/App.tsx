@@ -278,12 +278,6 @@ function AppRouter() {
                     style: { background: '#1a1a1a', border: '1px solid #D4AF3733', color: '#fff' }
                   });
                 }}
-                onTagClick={(tag) => {
-                  const params = new URLSearchParams();
-                  params.set('tag', tag);
-                  params.set('fromPin', '1');
-                  navigate(`/?${params.toString()}`);
-                }}
                 onPinClick={(pin) => {
                   setSelectedPin(pin);
                   sessionStorage.setItem('lastPin', JSON.stringify(pin));
