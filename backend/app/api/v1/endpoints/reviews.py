@@ -179,7 +179,10 @@ def get_admin_reviews(
     rows = query.order_by(Review.created_at.desc()).offset(skip).limit(limit).all()
 
     store_map = {row.id: row.name for row in db.query(Store.id, Store.name).all()}
-    user_map = {row.id: row for row in db.query(User.id, User.username, User.avatar_url, User.updated_at).all()}
+    user_map = {
+        row.id: row
+        for row in db.query(User.id, User.username, User.full_name, User.avatar_url, User.updated_at).all()
+    }
     appt_map = {row.id: row.order_number for row in db.query(Appointment.id, Appointment.order_number).all()}
 
     items: List[ReviewAdminItem] = []

@@ -30,7 +30,14 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
     
     # CORS
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:5173,https://github.com"
+    CORS_ORIGINS: str = (
+        "http://localhost:3000,"
+        "http://localhost:3100,"
+        "http://localhost:5173,"
+        "http://127.0.0.1:3100,"
+        "http://127.0.0.1:5173,"
+        "https://github.com"
+    )
     
     @property
     def cors_origins_list(self) -> List[str]:

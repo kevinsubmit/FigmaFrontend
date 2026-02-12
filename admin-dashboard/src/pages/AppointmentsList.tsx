@@ -109,6 +109,11 @@ const normalizeStatus = (status?: string | null): StatusOption => {
   return 'pending';
 };
 
+const canEditSplitByStatus = (status?: string | null) => {
+  const normalized = normalizeStatus(status);
+  return normalized === 'pending' || normalized === 'confirmed' || normalized === 'completed';
+};
+
 const getEndDateTime = (apt: Appointment) => {
   const startDate = parseDateTime(apt.appointment_date, apt.appointment_time);
   if (!startDate) return null;
@@ -592,12 +597,8 @@ const AppointmentsList: React.FC = () => {
 
   const saveSplits = async () => {
     if (!selected) return;
-    if (normalizeStatus(selected.status) !== 'completed') {
-      toast.error('Only completed appointments can set staff amount split');
-      return;
-    }
-    if (!splitRows.length) {
-      toast.error('Please add at least one split line');
+    if (!canEditSplitByStatus(selected.status)) {
+      toast.error('Only pending, confirmed, or completed appointments can set staff amount split');
       return;
     }
 
@@ -605,7 +606,7 @@ const AppointmentsList: React.FC = () => {
     for (const row of splitRows) {
       const technicianId = Number(row.technician_id);
       const serviceId = Number(row.service_id);
-      const amount = Number(row.amount);
+      const amount = Number.parseInt(row.amount, 10);
       if (!technicianId || Number.isNaN(technicianId)) {
         toast.error('请选择技师 / Please select technician for each split line');
         return;
@@ -614,8 +615,8 @@ const AppointmentsList: React.FC = () => {
         toast.error('请选择服务 / Please select service for each split line');
         return;
       }
-      if (!amount || Number.isNaN(amount) || amount <= 0) {
-        toast.error('拆分金额需大于 0 / Split amount must be greater than 0');
+      if (!amount || Number.isNaN(amount) || amount < 1) {
+        toast.error('拆分金额最小为 1 / Split amount must be greater than or equal to 1');
         return;
       }
       payloadRows.push({
@@ -629,14 +630,17 @@ const AppointmentsList: React.FC = () => {
     try {
       const summary = await updateAppointmentStaffSplits(selected.id, { splits: payloadRows });
       setSplitSummary(summary);
-      setSplitRows(
-        summary.splits.map((item) => ({
-          technician_id: String(item.technician_id),
-          service_id: String(item.service_id || selected.service_id),
-          amount: String(item.amount),
-        })),
-      );
-      toast.success('技师金额拆分已更新 / Staff amount split updated');
+      const nextRows = summary.splits.map((item) => ({
+        technician_id: String(item.technician_id),
+        service_id: String(item.service_id || selected.service_id),
+        amount: String(item.amount),
+      }));
+      setSplitRows(nextRows);
+      if (nextRows.length === 0) {
+        toast.success('已清空拆分，当前订单为非拆分单 / Split cleared');
+      } else {
+        toast.success('技师金额拆分已更新 / Staff amount split updated');
+      }
     } catch (error: any) {
       if (!error?.__api_toast_shown) {
         toast.error(error?.response?.data?.detail || 'Failed to update staff amount split');
@@ -813,6 +817,27 @@ const AppointmentsList: React.FC = () => {
             <button onClick={resetFilters} className="rounded-md border border-blue-200 px-2 py-1 hover:border-gold-500">
               Reset Filters
             </button>
+          </div>
+        </div>
+
+        <div className="card-surface p-3">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-700">
+            <span className="text-slate-500">订单颜色说明 / Color Legend:</span>
+            <span className={`inline-flex rounded-full border px-2 py-0.5 ${statusBadgeClass.pending}`}>
+              待处理 Pending
+            </span>
+            <span className={`inline-flex rounded-full border px-2 py-0.5 ${statusBadgeClass.confirmed}`}>
+              已确认 Confirmed
+            </span>
+            <span className={`inline-flex rounded-full border px-2 py-0.5 ${statusBadgeClass.completed}`}>
+              已完成 Completed
+            </span>
+            <span className={`inline-flex rounded-full border px-2 py-0.5 ${statusBadgeClass.cancelled}`}>
+              已取消 Cancelled
+            </span>
+            <span className="inline-flex rounded-full border border-rose-300 bg-rose-50 px-2 py-0.5 text-rose-700">
+              冲突 Conflict
+            </span>
           </div>
         </div>
 
@@ -1036,28 +1061,36 @@ const AppointmentsList: React.FC = () => {
 
               <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2">
                 <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Bind Staff (Completed only)</p>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={selectedTechnicianId}
-                    onChange={(event) => setSelectedTechnicianId(event.target.value)}
-                    className="w-full rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm !text-slate-900 [&>option]:text-slate-900 outline-none focus:border-gold-500"
-                    disabled={normalizeStatus(selected.status) !== 'completed'}
-                  >
-                    <option value="">Unassigned</option>
-                    {staffOptionsForSelected.map((row) => (
-                      <option key={row.id} value={row.id}>
-                        {row.name}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={saveStaffBinding}
-                    disabled={savingStaff || normalizeStatus(selected.status) !== 'completed'}
-                    className="rounded-lg border border-gold-500/50 px-3 py-2 text-sm text-blue-700 disabled:opacity-50 whitespace-nowrap"
-                  >
-                    Save Staff
-                  </button>
-                </div>
+                {splitSummary && splitSummary.splits.length > 0 ? (
+                  <div className="rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm text-slate-900">
+                    拆分绑定技师 / Split-bound staff:
+                    {' '}
+                    {Array.from(new Set(splitSummary.splits.map((item) => item.technician_name || `#${item.technician_id}`))).join(', ')}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={selectedTechnicianId}
+                      onChange={(event) => setSelectedTechnicianId(event.target.value)}
+                      className="w-full rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm !text-slate-900 [&>option]:text-slate-900 outline-none focus:border-gold-500"
+                      disabled={normalizeStatus(selected.status) !== 'completed'}
+                    >
+                      <option value="">Unassigned</option>
+                      {staffOptionsForSelected.map((row) => (
+                        <option key={row.id} value={row.id}>
+                          {row.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={saveStaffBinding}
+                      disabled={savingStaff || normalizeStatus(selected.status) !== 'completed'}
+                      className="rounded-lg border border-gold-500/50 px-3 py-2 text-sm text-blue-700 disabled:opacity-50 whitespace-nowrap"
+                    >
+                      Save Staff
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2 text-sm">
@@ -1110,7 +1143,7 @@ const AppointmentsList: React.FC = () => {
                           value={row.technician_id}
                           onChange={(event) => updateSplitRow(idx, 'technician_id', event.target.value)}
                           className="col-span-4 rounded-lg border border-blue-200 bg-white px-2 py-2 text-xs !text-slate-900 [&>option]:text-slate-900"
-                          disabled={normalizeStatus(selected.status) !== 'completed'}
+                          disabled={!canEditSplitByStatus(selected.status)}
                         >
                           <option value="">技师 Staff</option>
                           {staffOptionsForSelected.map((staff) => (
@@ -1123,7 +1156,7 @@ const AppointmentsList: React.FC = () => {
                           value={row.service_id}
                           onChange={(event) => updateSplitRow(idx, 'service_id', event.target.value)}
                           className="col-span-4 rounded-lg border border-blue-200 bg-white px-2 py-2 text-xs !text-slate-900 [&>option]:text-slate-900"
-                          disabled={normalizeStatus(selected.status) !== 'completed'}
+                          disabled={!canEditSplitByStatus(selected.status)}
                         >
                           <option value="">服务 Service</option>
                           {splitServiceOptions.map((service) => (
@@ -1134,18 +1167,18 @@ const AppointmentsList: React.FC = () => {
                         </select>
                         <input
                           type="number"
-                          min={0.01}
-                          step="0.01"
+                          min={1}
+                          step="1"
                           value={row.amount}
-                          onChange={(event) => updateSplitRow(idx, 'amount', event.target.value)}
+                          onChange={(event) => updateSplitRow(idx, 'amount', normalizeAmountInput(event.target.value))}
                           className="col-span-3 rounded-lg border border-blue-200 bg-white px-2 py-2 text-xs !text-slate-900 placeholder:text-slate-500"
                           placeholder="金额 Amount"
-                          disabled={normalizeStatus(selected.status) !== 'completed'}
+                          disabled={!canEditSplitByStatus(selected.status)}
                         />
                         <button
                           onClick={() => removeSplitRow(idx)}
                           className="col-span-1 rounded-lg border border-rose-300 text-rose-600 text-xs"
-                          disabled={normalizeStatus(selected.status) !== 'completed' || splitRows.length === 1}
+                          disabled={!canEditSplitByStatus(selected.status)}
                         >
                           -
                         </button>
@@ -1154,14 +1187,14 @@ const AppointmentsList: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={addSplitRow}
-                        disabled={normalizeStatus(selected.status) !== 'completed'}
+                        disabled={!canEditSplitByStatus(selected.status)}
                         className="rounded-lg border border-blue-200 px-2 py-1 text-xs text-slate-700 disabled:opacity-50"
                       >
                         添加一行 Add Line
                       </button>
                       <button
                         onClick={saveSplits}
-                        disabled={splitSaving || normalizeStatus(selected.status) !== 'completed'}
+                        disabled={splitSaving || !canEditSplitByStatus(selected.status)}
                         className="rounded-lg border border-gold-500/50 px-3 py-1.5 text-xs text-blue-700 disabled:opacity-50"
                       >
                         保存拆分 Save Split

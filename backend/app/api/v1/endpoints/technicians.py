@@ -14,8 +14,9 @@ from app.models.user import User
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.appointment_staff_split import AppointmentStaffSplit
 from app.models.service import Service
+from app.models.technician import Technician as TechnicianModel
 from app.crud import technician as crud_technician
-from app.schemas.technician import Technician, TechnicianCreate, TechnicianUpdate
+from app.schemas.technician import Technician as TechnicianSchema, TechnicianCreate, TechnicianUpdate
 
 router = APIRouter()
 ET_TZ = ZoneInfo("America/New_York")
@@ -28,7 +29,7 @@ def _ensure_store_scope(current_user: User, target_store_id: int) -> None:
         raise HTTPException(status_code=403, detail="You can only access data from your own store")
 
 
-@router.get("/", response_model=List[Technician])
+@router.get("/", response_model=List[TechnicianSchema])
 def get_technicians(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
@@ -125,9 +126,9 @@ def get_technician_performance_summary(
     }
 
     technicians = (
-        db.query(Technician)
-        .filter(Technician.store_id == target_store_id, Technician.is_active == 1)
-        .order_by(Technician.name.asc())
+        db.query(TechnicianModel)
+        .filter(TechnicianModel.store_id == target_store_id, TechnicianModel.is_active == 1)
+        .order_by(TechnicianModel.name.asc())
         .all()
     )
 
@@ -316,7 +317,7 @@ def get_technician_performance_detail(
     }
 
 
-@router.get("/{technician_id}", response_model=Technician)
+@router.get("/{technician_id}", response_model=TechnicianSchema)
 def get_technician(
     technician_id: int,
     db: Session = Depends(get_db)
@@ -331,7 +332,7 @@ def get_technician(
     return technician
 
 
-@router.post("/", response_model=Technician, status_code=201)
+@router.post("/", response_model=TechnicianSchema, status_code=201)
 def create_technician(
     technician: TechnicianCreate,
     db: Session = Depends(get_db),
@@ -374,7 +375,7 @@ def create_technician(
     return new_technician
 
 
-@router.patch("/{technician_id}", response_model=Technician)
+@router.patch("/{technician_id}", response_model=TechnicianSchema)
 def update_technician(
     technician_id: int,
     technician: TechnicianUpdate,
@@ -461,7 +462,7 @@ def delete_technician(
     return None
 
 
-@router.patch("/{technician_id}/availability", response_model=Technician)
+@router.patch("/{technician_id}/availability", response_model=TechnicianSchema)
 def toggle_technician_availability(
     technician_id: int,
     is_active: int = Query(..., ge=0, le=1, description="0 for inactive, 1 for active"),

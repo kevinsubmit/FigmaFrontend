@@ -426,9 +426,9 @@ const StoreDetail: React.FC = () => {
 
   const handleAddCatalogService = async (catalogItem: ServiceCatalogItem) => {
     if (!store) return;
-    const price = Number(newServicePrice);
+    const price = Number.parseInt(newServicePrice, 10);
     const duration = Number(newServiceDuration);
-    const commission = Number(newServiceCommission);
+    const commission = Number.parseInt(newServiceCommission, 10);
     if (!Number.isFinite(price) || price <= 0) {
       toast.error('Price must be greater than 0');
       return;
@@ -601,7 +601,7 @@ const StoreDetail: React.FC = () => {
                         <input
                           type="number"
                           min="1"
-                          step="0.01"
+                          step="1"
                           value={newServicePrice}
                           onChange={(event) => setNewServicePrice(event.target.value)}
                           className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
@@ -612,7 +612,7 @@ const StoreDetail: React.FC = () => {
                         <input
                           type="number"
                           min="0"
-                          step="0.01"
+                          step="1"
                           value={newServiceCommission}
                           onChange={(event) => setNewServiceCommission(event.target.value)}
                           className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
@@ -687,11 +687,12 @@ const StoreDetail: React.FC = () => {
                               <input
                                 type="number"
                                 min="1"
-                                step="0.01"
+                                step="1"
                                 defaultValue={service.price}
                                 onBlur={(event) => {
-                                  const nextPrice = Number(event.target.value);
+                                  const nextPrice = Number.parseInt(event.target.value, 10);
                                   if (!Number.isFinite(nextPrice) || nextPrice <= 0 || nextPrice === service.price) return;
+                                  event.target.value = String(nextPrice);
                                   handleQuickUpdateService(service, { price: nextPrice });
                                 }}
                                 className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
@@ -702,16 +703,17 @@ const StoreDetail: React.FC = () => {
                               <input
                                 type="number"
                                 min="0"
-                                step="0.01"
+                                step="1"
                                 defaultValue={service.commission_amount ?? 0}
                                 onBlur={(event) => {
-                                  const nextCommission = Number(event.target.value);
+                                  const nextCommission = Number.parseInt(event.target.value, 10);
                                   if (
                                     !Number.isFinite(nextCommission) ||
                                     nextCommission < 0 ||
                                     nextCommission === (service.commission_amount ?? 0)
                                   )
                                     return;
+                                  event.target.value = String(nextCommission);
                                   handleQuickUpdateService(service, { commission_amount: nextCommission });
                                 }}
                                 className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"

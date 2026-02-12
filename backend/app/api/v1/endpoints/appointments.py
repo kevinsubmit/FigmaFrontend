@@ -735,8 +735,15 @@ def update_appointment_staff_splits(
     if not current_user.is_admin and appointment.store_id != current_user.store_id:
         raise HTTPException(status_code=403, detail="You can only update appointments from your own store")
 
-    if appointment.status != AppointmentStatus.COMPLETED:
-        raise HTTPException(status_code=400, detail="Only completed appointments can set staff splits")
+    if appointment.status not in {
+        AppointmentStatus.PENDING,
+        AppointmentStatus.CONFIRMED,
+        AppointmentStatus.COMPLETED,
+    }:
+        raise HTTPException(
+            status_code=400,
+            detail="Only pending, confirmed, or completed appointments can set staff splits",
+        )
 
     service = db.query(Service).filter(Service.id == appointment.service_id).first()
     order_amount = _resolve_appointment_order_amount(appointment, service)
@@ -766,7 +773,7 @@ def update_appointment_staff_splits(
         )
 
     split_total = round(sum(item["amount"] for item in normalized_splits), 2)
-    if abs(split_total - order_amount) >= 0.01:
+    if normalized_splits and abs(split_total - order_amount) >= 0.01:
         raise HTTPException(
             status_code=400,
             detail=f"Split total ({split_total:.2f}) must equal order amount ({order_amount:.2f})",
@@ -798,6 +805,10 @@ def update_appointment_staff_splits(
                 amount=item["amount"],
             )
         )
+    if len(normalized_splits) == 1:
+        appointment.technician_id = normalized_splits[0]["technician_id"]
+    else:
+        appointment.technician_id = None
     db.commit()
 
     log_service.create_audit_log(
