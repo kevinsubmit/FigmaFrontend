@@ -16,14 +16,19 @@ import { AdminLayout } from '../layout/AdminLayout';
 import { TopBar } from '../layout/TopBar';
 import {
   Appointment,
+  AppointmentStaffSplitSummary,
   getAppointments,
+  getAppointmentStaffSplits,
   markAppointmentNoShow,
   rescheduleAppointment,
   updateAppointmentAmount,
   updateAppointmentNotes,
+  updateAppointmentStaffSplits,
   updateAppointmentStatus,
+  updateAppointmentTechnician,
 } from '../api/appointments';
-import { getServiceCatalog } from '../api/services';
+import { getServiceCatalog, getStoreServices, Service } from '../api/services';
+import { getTechnicians, Technician } from '../api/technicians';
 import { useAuth } from '../context/AuthContext';
 import { formatApiDateTimeET, formatYmdAsETDate, getTodayYmdET } from '../utils/time';
 
@@ -185,7 +190,15 @@ const AppointmentsList: React.FC = () => {
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
   const [savingAmount, setSavingAmount] = useState(false);
+  const [savingStaff, setSavingStaff] = useState(false);
   const [editAmount, setEditAmount] = useState('');
+  const [selectedTechnicianId, setSelectedTechnicianId] = useState<string>('');
+  const [staffOptionsForSelected, setStaffOptionsForSelected] = useState<Technician[]>([]);
+  const [splitRows, setSplitRows] = useState<Array<{ technician_id: string; service_id: string; amount: string }>>([]);
+  const [splitServiceOptions, setSplitServiceOptions] = useState<Service[]>([]);
+  const [splitSaving, setSplitSaving] = useState(false);
+  const [splitLoading, setSplitLoading] = useState(false);
+  const [splitSummary, setSplitSummary] = useState<AppointmentStaffSplitSummary | null>(null);
   const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -369,7 +382,78 @@ const AppointmentsList: React.FC = () => {
     setEditNotes(next.notes || '');
     const amount = getOrderAmount(next);
     setEditAmount(typeof amount === 'number' ? String(Math.floor(amount)) : '');
+    setSelectedTechnicianId(next.technician_id ? String(next.technician_id) : '');
   };
+
+  useEffect(() => {
+    const loadStaffForSelected = async () => {
+      if (!selected?.store_id) {
+        setStaffOptionsForSelected([]);
+        return;
+      }
+      try {
+        const rows = await getTechnicians({ store_id: selected.store_id, skip: 0, limit: 100 });
+        setStaffOptionsForSelected(rows.filter((row) => row.is_active === 1));
+      } catch {
+        setStaffOptionsForSelected([]);
+      }
+    };
+    loadStaffForSelected();
+  }, [selected?.id, selected?.store_id]);
+
+  useEffect(() => {
+    const loadSplitServices = async () => {
+      if (!selected?.store_id) {
+        setSplitServiceOptions([]);
+        return;
+      }
+      try {
+        const rows = await getStoreServices(selected.store_id);
+        setSplitServiceOptions(rows.filter((item) => item.is_active !== 0));
+      } catch {
+        setSplitServiceOptions([]);
+      }
+    };
+    loadSplitServices();
+  }, [selected?.id, selected?.store_id]);
+
+  useEffect(() => {
+    const loadSplits = async () => {
+      if (!selected?.id) {
+        setSplitSummary(null);
+        setSplitRows([]);
+        return;
+      }
+      setSplitLoading(true);
+      try {
+        const summary = await getAppointmentStaffSplits(selected.id);
+        setSplitSummary(summary);
+        if (summary.splits.length > 0) {
+          setSplitRows(
+            summary.splits.map((item) => ({
+              technician_id: String(item.technician_id),
+              service_id: String(item.service_id || selected.service_id),
+              amount: String(item.amount),
+            })),
+          );
+        } else {
+          setSplitRows([
+            {
+              technician_id: selected.technician_id ? String(selected.technician_id) : '',
+              service_id: selected.service_id ? String(selected.service_id) : '',
+              amount: '',
+            },
+          ]);
+        }
+      } catch {
+        setSplitSummary(null);
+        setSplitRows([]);
+      } finally {
+        setSplitLoading(false);
+      }
+    };
+    loadSplits();
+  }, [selected?.id, selected?.technician_id]);
 
   const updateStatus = async (nextStatus: StatusOption) => {
     if (!selected || nextStatus === 'all') return;
@@ -456,6 +540,109 @@ const AppointmentsList: React.FC = () => {
       }
     } finally {
       setSavingAmount(false);
+    }
+  };
+
+  const saveStaffBinding = async () => {
+    if (!selected) return;
+    if (normalizeStatus(selected.status) !== 'completed') {
+      toast.error('Only completed appointments can bind staff');
+      return;
+    }
+
+    setSavingStaff(true);
+    try {
+      const technicianId = selectedTechnicianId ? Number(selectedTechnicianId) : null;
+      const updated = await updateAppointmentTechnician(selected.id, { technician_id: technicianId });
+      const selectedStaffName =
+        technicianId == null
+          ? null
+          : staffOptionsForSelected.find((row) => row.id === technicianId)?.name || selected.technician_name || null;
+      const merged = { ...selected, ...updated, technician_name: selectedStaffName };
+      setAppointments((prev) => prev.map((apt) => (apt.id === updated.id ? { ...apt, ...merged } : apt)));
+      syncSelected(merged);
+      toast.success('Staff binding updated');
+    } catch (error: any) {
+      if (!error?.__api_toast_shown) {
+        toast.error(error?.response?.data?.detail || 'Failed to update staff binding');
+      }
+    } finally {
+      setSavingStaff(false);
+    }
+  };
+
+  const updateSplitRow = (index: number, key: 'technician_id' | 'service_id' | 'amount', value: string) => {
+    setSplitRows((prev) => prev.map((row, idx) => (idx === index ? { ...row, [key]: value } : row)));
+  };
+
+  const addSplitRow = () => {
+    setSplitRows((prev) => [
+      ...prev,
+      { technician_id: '', service_id: selected?.service_id ? String(selected.service_id) : '', amount: '' },
+    ]);
+  };
+
+  const removeSplitRow = (index: number) => {
+    setSplitRows((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const splitTotalLocal = useMemo(() => {
+    return splitRows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+  }, [splitRows]);
+
+  const saveSplits = async () => {
+    if (!selected) return;
+    if (normalizeStatus(selected.status) !== 'completed') {
+      toast.error('Only completed appointments can set staff amount split');
+      return;
+    }
+    if (!splitRows.length) {
+      toast.error('Please add at least one split line');
+      return;
+    }
+
+    const payloadRows: Array<{ technician_id: number; service_id: number; amount: number }> = [];
+    for (const row of splitRows) {
+      const technicianId = Number(row.technician_id);
+      const serviceId = Number(row.service_id);
+      const amount = Number(row.amount);
+      if (!technicianId || Number.isNaN(technicianId)) {
+        toast.error('请选择技师 / Please select technician for each split line');
+        return;
+      }
+      if (!serviceId || Number.isNaN(serviceId)) {
+        toast.error('请选择服务 / Please select service for each split line');
+        return;
+      }
+      if (!amount || Number.isNaN(amount) || amount <= 0) {
+        toast.error('拆分金额需大于 0 / Split amount must be greater than 0');
+        return;
+      }
+      payloadRows.push({
+        technician_id: technicianId,
+        service_id: serviceId,
+        amount,
+      });
+    }
+
+    setSplitSaving(true);
+    try {
+      const summary = await updateAppointmentStaffSplits(selected.id, { splits: payloadRows });
+      setSplitSummary(summary);
+      setSplitRows(
+        summary.splits.map((item) => ({
+          technician_id: String(item.technician_id),
+          service_id: String(item.service_id || selected.service_id),
+          amount: String(item.amount),
+        })),
+      );
+      toast.success('技师金额拆分已更新 / Staff amount split updated');
+    } catch (error: any) {
+      if (!error?.__api_toast_shown) {
+        toast.error(error?.response?.data?.detail || 'Failed to update staff amount split');
+      }
+    } finally {
+      setSplitSaving(false);
     }
   };
 
@@ -847,6 +1034,32 @@ const AppointmentsList: React.FC = () => {
                 )}
               </div>
 
+              <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Bind Staff (Completed only)</p>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={selectedTechnicianId}
+                    onChange={(event) => setSelectedTechnicianId(event.target.value)}
+                    className="w-full rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm !text-slate-900 [&>option]:text-slate-900 outline-none focus:border-gold-500"
+                    disabled={normalizeStatus(selected.status) !== 'completed'}
+                  >
+                    <option value="">Unassigned</option>
+                    {staffOptionsForSelected.map((row) => (
+                      <option key={row.id} value={row.id}>
+                        {row.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={saveStaffBinding}
+                    disabled={savingStaff || normalizeStatus(selected.status) !== 'completed'}
+                    className="rounded-lg border border-gold-500/50 px-3 py-2 text-sm text-blue-700 disabled:opacity-50 whitespace-nowrap"
+                  >
+                    Save Staff
+                  </button>
+                </div>
+              </div>
+
               <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2 text-sm">
                 <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Status</p>
                 <span
@@ -879,6 +1092,88 @@ const AppointmentsList: React.FC = () => {
                     Save Amount
                   </button>
                 </div>
+              </div>
+
+              <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">技师金额拆分 Staff Amount Split</p>
+                <p className="text-xs text-slate-600">
+                  订单总金额：${(splitSummary?.order_amount ?? getOrderAmount(selected) ?? 0).toFixed(2)} | 当前拆分：$
+                  {splitTotalLocal.toFixed(2)}
+                </p>
+                {splitLoading ? (
+                  <p className="text-xs text-slate-500">Loading split...</p>
+                ) : (
+                  <div className="space-y-2">
+                    {splitRows.map((row, idx) => (
+                      <div key={`split-${idx}`} className="grid grid-cols-12 gap-2">
+                        <select
+                          value={row.technician_id}
+                          onChange={(event) => updateSplitRow(idx, 'technician_id', event.target.value)}
+                          className="col-span-4 rounded-lg border border-blue-200 bg-white px-2 py-2 text-xs !text-slate-900 [&>option]:text-slate-900"
+                          disabled={normalizeStatus(selected.status) !== 'completed'}
+                        >
+                          <option value="">技师 Staff</option>
+                          {staffOptionsForSelected.map((staff) => (
+                            <option key={staff.id} value={staff.id}>
+                              {staff.name}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={row.service_id}
+                          onChange={(event) => updateSplitRow(idx, 'service_id', event.target.value)}
+                          className="col-span-4 rounded-lg border border-blue-200 bg-white px-2 py-2 text-xs !text-slate-900 [&>option]:text-slate-900"
+                          disabled={normalizeStatus(selected.status) !== 'completed'}
+                        >
+                          <option value="">服务 Service</option>
+                          {splitServiceOptions.map((service) => (
+                            <option key={service.id} value={service.id}>
+                              {service.name}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          min={0.01}
+                          step="0.01"
+                          value={row.amount}
+                          onChange={(event) => updateSplitRow(idx, 'amount', event.target.value)}
+                          className="col-span-3 rounded-lg border border-blue-200 bg-white px-2 py-2 text-xs !text-slate-900 placeholder:text-slate-500"
+                          placeholder="金额 Amount"
+                          disabled={normalizeStatus(selected.status) !== 'completed'}
+                        />
+                        <button
+                          onClick={() => removeSplitRow(idx)}
+                          className="col-span-1 rounded-lg border border-rose-300 text-rose-600 text-xs"
+                          disabled={normalizeStatus(selected.status) !== 'completed' || splitRows.length === 1}
+                        >
+                          -
+                        </button>
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={addSplitRow}
+                        disabled={normalizeStatus(selected.status) !== 'completed'}
+                        className="rounded-lg border border-blue-200 px-2 py-1 text-xs text-slate-700 disabled:opacity-50"
+                      >
+                        添加一行 Add Line
+                      </button>
+                      <button
+                        onClick={saveSplits}
+                        disabled={splitSaving || normalizeStatus(selected.status) !== 'completed'}
+                        className="rounded-lg border border-gold-500/50 px-3 py-1.5 text-xs text-blue-700 disabled:opacity-50"
+                      >
+                        保存拆分 Save Split
+                      </button>
+                      {splitSummary && (
+                        <span className={`text-xs ${splitSummary.is_balanced ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {splitSummary.is_balanced ? 'Balanced' : 'Not Balanced'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2">

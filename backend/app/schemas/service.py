@@ -11,6 +11,7 @@ class ServiceBase(BaseModel):
     name: str
     description: Optional[str] = None
     price: float = Field(gt=0)
+    commission_amount: float = Field(default=0, ge=0)
     duration_minutes: int = Field(gt=0)
     category: Optional[str] = None
 
@@ -26,6 +27,7 @@ class ServiceUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     price: Optional[float] = None
+    commission_amount: Optional[float] = Field(default=None, ge=0)
     duration_minutes: Optional[int] = None
     category: Optional[str] = None
     catalog_id: Optional[int] = None
@@ -85,6 +87,7 @@ class StoreServiceAssign(BaseModel):
     """Assign a catalog service to a store with store-specific pricing"""
     catalog_id: int
     price: float = Field(gt=0)
+    commission_amount: float = Field(default=0, ge=0)
     duration_minutes: int = Field(gt=0)
     description: Optional[str] = None
 
@@ -92,6 +95,7 @@ class StoreServiceAssign(BaseModel):
 class StoreServiceUpdate(BaseModel):
     """Update store-specific service config"""
     price: Optional[float] = Field(default=None, gt=0)
+    commission_amount: Optional[float] = Field(default=None, ge=0)
     duration_minutes: Optional[int] = Field(default=None, gt=0)
     description: Optional[str] = None
     is_active: Optional[int] = None

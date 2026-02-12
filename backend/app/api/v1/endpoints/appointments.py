@@ -14,6 +14,10 @@ from app.schemas.appointment import (
     Appointment,
     AppointmentAmountUpdate,
     AppointmentCreate,
+    AppointmentStaffSplitSummary,
+    AppointmentStaffSplitUpdate,
+    AppointmentStaffSplitResponse,
+    AppointmentTechnicianUpdate,
     AppointmentUpdate,
     AppointmentWithDetails,
     AppointmentCancel,
@@ -26,6 +30,8 @@ from app.schemas.user import UserResponse
 from app.models.appointment import AppointmentStatus
 from app.models.service import Service
 from app.models.store import Store
+from app.models.technician import Technician
+from app.models.appointment_staff_split import AppointmentStaffSplit
 from app.services import notification_service
 from app.services import reminder_service
 from app.services import risk_service
@@ -43,6 +49,14 @@ def _ensure_not_past_appointment(appointment_date, appointment_time):
             status_code=400,
             detail="Past time cannot be booked. Please select a future time."
         )
+
+
+def _resolve_appointment_order_amount(appointment, service: Optional[Service]) -> float:
+    if appointment.order_amount is not None:
+        return float(appointment.order_amount)
+    if service and service.price is not None:
+        return float(service.price)
+    return 0.0
 
 
 @router.post("/", response_model=Appointment)
@@ -155,7 +169,7 @@ def get_my_appointments(
     
     # Format response
     result = []
-    for appt, store_name, store_address, service_name, service_price, service_duration, review_id, user_name, customer_name, customer_phone in appointments_data:
+    for appt, store_name, store_address, service_name, service_price, service_duration, review_id, user_name, customer_name, customer_phone, technician_name in appointments_data:
         resolved_amount = appt.order_amount if appt.order_amount is not None else service_price
         result.append({
             **appt.__dict__,
@@ -169,6 +183,7 @@ def get_my_appointments(
             "user_name": user_name,
             "customer_name": customer_name or user_name,
             "customer_phone": customer_phone,
+            "technician_name": technician_name,
         })
     
     return result
@@ -225,7 +240,7 @@ def get_admin_appointments(
     )
 
     result = []
-    for appt, store_name, store_address, service_name, service_price, service_duration, review_id, user_name, customer_name, customer_phone in appointments_data:
+    for appt, store_name, store_address, service_name, service_price, service_duration, review_id, user_name, customer_name, customer_phone, technician_name in appointments_data:
         resolved_amount = appt.order_amount if appt.order_amount is not None else service_price
         result.append({
             **appt.__dict__,
@@ -239,6 +254,7 @@ def get_admin_appointments(
             "user_name": user_name,
             "customer_name": customer_name or user_name,
             "customer_phone": customer_phone,
+            "technician_name": technician_name,
         })
 
     return result
@@ -578,6 +594,231 @@ def update_appointment_amount(
     )
 
     return appointment
+
+
+@router.patch("/{appointment_id}/technician", response_model=Appointment)
+def update_appointment_technician(
+    request: Request,
+    appointment_id: int,
+    payload: AppointmentTechnicianUpdate,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Bind completed appointment to technician (Store admin only).
+    """
+    if not current_user.is_admin and not current_user.store_id:
+        raise HTTPException(status_code=403, detail="Only store administrators can bind technician")
+    if not current_user.is_admin and current_user.store_admin_status != "approved":
+        raise HTTPException(status_code=403, detail="Store admin approval required")
+
+    appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    service = db.query(Service).filter(Service.id == appointment.service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    if not current_user.is_admin and service.store_id != current_user.store_id:
+        raise HTTPException(status_code=403, detail="You can only update appointments from your own store")
+
+    if appointment.status != AppointmentStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="Only completed appointments can bind technician")
+
+    technician = None
+    if payload.technician_id is not None:
+        technician = db.query(Technician).filter(Technician.id == payload.technician_id).first()
+        if not technician:
+            raise HTTPException(status_code=404, detail="Technician not found")
+        if technician.store_id != appointment.store_id:
+            raise HTTPException(status_code=400, detail="Technician does not belong to this store")
+        if technician.is_active != 1:
+            raise HTTPException(status_code=400, detail="Technician is inactive")
+
+    before_technician_id = appointment.technician_id
+    appointment.technician_id = payload.technician_id
+    db.commit()
+    db.refresh(appointment)
+
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="appointments",
+        action="appointment.technician.update",
+        message="绑定预约技师",
+        target_type="appointment",
+        target_id=str(appointment.id),
+        store_id=appointment.store_id,
+        before={"technician_id": before_technician_id},
+        after={"technician_id": appointment.technician_id},
+    )
+
+    return appointment
+
+
+@router.get("/{appointment_id}/splits", response_model=AppointmentStaffSplitSummary)
+def get_appointment_staff_splits(
+    appointment_id: int,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not current_user.is_admin and not current_user.store_id:
+        raise HTTPException(status_code=403, detail="Only store administrators can view staff splits")
+    if not current_user.is_admin and current_user.store_admin_status != "approved":
+        raise HTTPException(status_code=403, detail="Store admin approval required")
+
+    appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    if not current_user.is_admin and appointment.store_id != current_user.store_id:
+        raise HTTPException(status_code=403, detail="You can only access appointments from your own store")
+
+    service = db.query(Service).filter(Service.id == appointment.service_id).first()
+    order_amount = _resolve_appointment_order_amount(appointment, service)
+
+    rows = (
+        db.query(
+            AppointmentStaffSplit,
+            Technician.name.label("technician_name"),
+            Service.name.label("split_service_name"),
+        )
+        .join(Technician, Technician.id == AppointmentStaffSplit.technician_id)
+        .outerjoin(Service, Service.id == AppointmentStaffSplit.service_id)
+        .filter(AppointmentStaffSplit.appointment_id == appointment.id)
+        .order_by(AppointmentStaffSplit.id.asc())
+        .all()
+    )
+
+    split_items = [
+        AppointmentStaffSplitResponse(
+            id=row.id,
+            appointment_id=row.appointment_id,
+            technician_id=row.technician_id,
+            technician_name=technician_name,
+            service_id=row.service_id or appointment.service_id,
+            service_name=split_service_name or (service.name if service else None),
+            amount=float(row.amount or 0),
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+        for row, technician_name, split_service_name in rows
+    ]
+    split_total = round(sum(item.amount for item in split_items), 2)
+    return AppointmentStaffSplitSummary(
+        order_amount=order_amount,
+        split_total=split_total,
+        is_balanced=abs(split_total - order_amount) < 0.01,
+        splits=split_items,
+    )
+
+
+@router.put("/{appointment_id}/splits", response_model=AppointmentStaffSplitSummary)
+def update_appointment_staff_splits(
+    request: Request,
+    appointment_id: int,
+    payload: AppointmentStaffSplitUpdate,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not current_user.is_admin and not current_user.store_id:
+        raise HTTPException(status_code=403, detail="Only store administrators can update staff splits")
+    if not current_user.is_admin and current_user.store_admin_status != "approved":
+        raise HTTPException(status_code=403, detail="Store admin approval required")
+
+    appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    if not current_user.is_admin and appointment.store_id != current_user.store_id:
+        raise HTTPException(status_code=403, detail="You can only update appointments from your own store")
+
+    if appointment.status != AppointmentStatus.COMPLETED:
+        raise HTTPException(status_code=400, detail="Only completed appointments can set staff splits")
+
+    service = db.query(Service).filter(Service.id == appointment.service_id).first()
+    order_amount = _resolve_appointment_order_amount(appointment, service)
+    if order_amount <= 0:
+        raise HTTPException(status_code=400, detail="Order amount must be set before splitting")
+
+    normalized_splits = []
+    for item in payload.splits:
+        tech = db.query(Technician).filter(Technician.id == item.technician_id).first()
+        if not tech:
+            raise HTTPException(status_code=404, detail=f"Technician {item.technician_id} not found")
+        if tech.store_id != appointment.store_id:
+            raise HTTPException(status_code=400, detail=f"Technician {tech.name} does not belong to this store")
+        split_service = db.query(Service).filter(Service.id == item.service_id).first()
+        if not split_service:
+            raise HTTPException(status_code=404, detail=f"Service {item.service_id} not found")
+        if split_service.store_id != appointment.store_id:
+            raise HTTPException(status_code=400, detail=f"Service {split_service.name} does not belong to this store")
+        normalized_splits.append(
+            {
+                "technician_id": item.technician_id,
+                "service_id": item.service_id,
+                "amount": round(float(item.amount), 2),
+                "technician_name": tech.name,
+                "service_name": split_service.name,
+            }
+        )
+
+    split_total = round(sum(item["amount"] for item in normalized_splits), 2)
+    if abs(split_total - order_amount) >= 0.01:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Split total ({split_total:.2f}) must equal order amount ({order_amount:.2f})",
+        )
+
+    before_rows = (
+        db.query(AppointmentStaffSplit)
+        .filter(AppointmentStaffSplit.appointment_id == appointment.id)
+        .order_by(AppointmentStaffSplit.id.asc())
+        .all()
+    )
+    before_payload = [
+        {
+            "technician_id": row.technician_id,
+            "service_id": row.service_id or appointment.service_id,
+            "amount": float(row.amount or 0),
+        }
+        for row in before_rows
+    ]
+
+    db.query(AppointmentStaffSplit).filter(AppointmentStaffSplit.appointment_id == appointment.id).delete()
+    db.flush()
+    for item in normalized_splits:
+        db.add(
+            AppointmentStaffSplit(
+                appointment_id=appointment.id,
+                technician_id=item["technician_id"],
+                service_id=item["service_id"],
+                amount=item["amount"],
+            )
+        )
+    db.commit()
+
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="appointments",
+        action="appointment.staff_splits.update",
+        message="更新订单技师金额拆分",
+        target_type="appointment",
+        target_id=str(appointment.id),
+        store_id=appointment.store_id,
+        before={"splits": before_payload},
+        after={"splits": normalized_splits, "split_total": split_total, "order_amount": order_amount},
+    )
+
+    return get_appointment_staff_splits(
+        appointment_id=appointment_id,
+        current_user=current_user,
+        db=db,
+    )
 
 
 @router.put("/{appointment_id}/status", response_model=Appointment)

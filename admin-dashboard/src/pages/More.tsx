@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '../layout/AdminLayout';
 import { TopBar } from '../layout/TopBar';
-import { Ticket, Gift, MessageSquare, LogOut, Scissors, ShieldAlert, Image, ChevronRight, Users, Lock, ScrollText } from 'lucide-react';
+import { Ticket, Gift, MessageSquare, LogOut, Scissors, ShieldAlert, Image, ChevronRight, Users, Lock, ScrollText, UserRoundCog } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const More: React.FC = () => {
@@ -54,6 +54,16 @@ const More: React.FC = () => {
           <div className="flex items-center gap-3">
             <Users className="w-5 h-5 text-gold-500" />
             <span className="text-slate-900">Customers</span>
+          </div>
+          <ChevronRight className="h-4 w-4 text-slate-500" />
+        </button>
+        <button
+          onClick={() => navigate('/admin/staff')}
+          className="w-full text-left card-surface p-4 flex items-center justify-between hover:bg-blue-50/40 text-slate-900"
+        >
+          <div className="flex items-center gap-3">
+            <UserRoundCog className="w-5 h-5 text-gold-500" />
+            <span className="text-slate-900">Staff / Technicians</span>
           </div>
           <ChevronRight className="h-4 w-4 text-slate-500" />
         </button>

@@ -226,6 +226,7 @@ def assign_catalog_service_to_store(
     )
     if existing:
         existing.price = payload.price
+        existing.commission_amount = payload.commission_amount
         existing.duration_minutes = payload.duration_minutes
         existing.description = payload.description if payload.description is not None else catalog_item.description
         existing.name = catalog_item.name
@@ -242,6 +243,7 @@ def assign_catalog_service_to_store(
         category=catalog_item.category,
         description=payload.description if payload.description is not None else catalog_item.description,
         price=payload.price,
+        commission_amount=payload.commission_amount,
         duration_minutes=payload.duration_minutes,
         is_active=1,
     )

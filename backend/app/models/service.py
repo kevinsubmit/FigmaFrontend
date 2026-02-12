@@ -15,6 +15,7 @@ class Service(Base):
     name = Column(String(255), nullable=False, index=True)
     description = Column(Text)
     price = Column(Float, nullable=False)
+    commission_amount = Column(Float, nullable=False, default=0)
     duration_minutes = Column(Integer, nullable=False)
     category = Column(String(100), index=True)
     is_active = Column(Integer, default=1)

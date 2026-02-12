@@ -3,7 +3,7 @@ Technician Schemas
 """
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import date, datetime
 
 
 class TechnicianBase(BaseModel):
@@ -14,6 +14,7 @@ class TechnicianBase(BaseModel):
     bio: Optional[str] = None
     specialties: Optional[str] = None
     years_of_experience: Optional[int] = None
+    hire_date: Optional[date] = None
     avatar_url: Optional[str] = None
 
 
@@ -30,6 +31,7 @@ class TechnicianUpdate(BaseModel):
     bio: Optional[str] = None
     specialties: Optional[str] = None
     years_of_experience: Optional[int] = None
+    hire_date: Optional[date] = None
     avatar_url: Optional[str] = None
     is_active: Optional[int] = None
 

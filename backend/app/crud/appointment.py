@@ -9,6 +9,7 @@ from app.models.store import Store
 from app.models.service import Service
 from app.models.review import Review
 from app.models.user import User
+from app.models.technician import Technician
 from app.schemas.appointment import AppointmentCreate, AppointmentUpdate
 
 
@@ -46,12 +47,15 @@ def get_user_appointments_with_details(db: Session, user_id: int, skip: int = 0,
         User.username.label('user_name'),
         User.full_name.label('customer_name'),
         User.phone.label('customer_phone'),
+        Technician.name.label('technician_name'),
     ).join(
         Store, Appointment.store_id == Store.id
     ).join(
         Service, Appointment.service_id == Service.id
     ).outerjoin(
         User, Appointment.user_id == User.id
+    ).outerjoin(
+        Technician, Appointment.technician_id == Technician.id
     ).outerjoin(
         Review, Review.appointment_id == Appointment.id
     ).filter(
@@ -83,12 +87,15 @@ def get_appointments_with_details(
         User.username.label('user_name'),
         User.full_name.label('customer_name'),
         User.phone.label('customer_phone'),
+        Technician.name.label('technician_name'),
     ).join(
         Store, Appointment.store_id == Store.id
     ).join(
         Service, Appointment.service_id == Service.id
     ).outerjoin(
         User, Appointment.user_id == User.id
+    ).outerjoin(
+        Technician, Appointment.technician_id == Technician.id
     ).outerjoin(
         Review, Review.appointment_id == Appointment.id
     )

@@ -2,7 +2,7 @@
 Appointment Schemas
 """
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, date, time
 from app.models.appointment import AppointmentStatus
 
@@ -45,6 +45,44 @@ class AppointmentStatusUpdate(BaseModel):
 class AppointmentAmountUpdate(BaseModel):
     """Appointment amount update (admin)"""
     order_amount: float = Field(..., ge=1)
+
+
+class AppointmentTechnicianUpdate(BaseModel):
+    """Appointment technician binding update (admin)"""
+    technician_id: Optional[int] = None
+
+
+class AppointmentStaffSplitItem(BaseModel):
+    """Single staff split line"""
+    technician_id: int
+    service_id: int
+    amount: float = Field(..., gt=0)
+
+
+class AppointmentStaffSplitUpdate(BaseModel):
+    """Staff split batch update"""
+    splits: List[AppointmentStaffSplitItem]
+
+
+class AppointmentStaffSplitResponse(AppointmentStaffSplitItem):
+    """Staff split response line"""
+    id: int
+    appointment_id: int
+    technician_name: Optional[str] = None
+    service_name: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AppointmentStaffSplitSummary(BaseModel):
+    """Staff split summary"""
+    order_amount: float
+    split_total: float
+    is_balanced: bool
+    splits: List[AppointmentStaffSplitResponse]
 
 
 class Appointment(AppointmentBase):

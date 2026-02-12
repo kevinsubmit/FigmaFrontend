@@ -2,6 +2,7 @@
 Technician CRUD operations
 """
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List, Optional
 from app.models.technician import Technician
 from app.schemas.technician import TechnicianCreate, TechnicianUpdate
@@ -24,7 +25,7 @@ def get_technicians(
     if store_id:
         query = query.filter(Technician.store_id == store_id)
     
-    return query.offset(skip).limit(limit).all()
+    return query.order_by(Technician.store_id.asc(), Technician.name.asc()).offset(skip).limit(limit).all()
 
 
 def get_store_technicians(db: Session, store_id: int) -> List[Technician]:
@@ -33,6 +34,20 @@ def get_store_technicians(db: Session, store_id: int) -> List[Technician]:
         Technician.store_id == store_id,
         Technician.is_active == 1
     ).all()
+
+
+def get_technician_by_store_and_name(db: Session, store_id: int, name: str) -> Optional[Technician]:
+    normalized_name = (name or "").strip()
+    if not normalized_name:
+        return None
+    return (
+        db.query(Technician)
+        .filter(
+            Technician.store_id == store_id,
+            func.lower(func.trim(Technician.name)) == normalized_name.lower(),
+        )
+        .first()
+    )
 
 
 def create_technician(db: Session, technician: TechnicianCreate) -> Technician:

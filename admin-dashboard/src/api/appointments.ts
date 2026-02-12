@@ -6,6 +6,7 @@ export interface Appointment {
   store_id: number;
   store_name?: string | null;
   service_id: number;
+  technician_id?: number | null;
   service_name?: string | null;
   service_price?: number | null;
   order_amount?: number | null;
@@ -26,6 +27,25 @@ export interface Appointment {
   cancel_reason?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+}
+
+export interface AppointmentStaffSplit {
+  id: number;
+  appointment_id: number;
+  technician_id: number;
+  technician_name?: string | null;
+  service_id: number;
+  service_name?: string | null;
+  amount: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AppointmentStaffSplitSummary {
+  order_amount: number;
+  split_total: number;
+  is_balanced: boolean;
+  splits: AppointmentStaffSplit[];
 }
 
 export const getAppointments = async (params?: Record<string, any>) => {
@@ -59,4 +79,25 @@ export const updateAppointmentNotes = async (id: number, payload: { notes: strin
 export const updateAppointmentAmount = async (id: number, payload: { order_amount: number }) => {
   const response = await api.patch(`/appointments/${id}/amount`, payload);
   return response.data as Appointment;
+};
+
+export const updateAppointmentTechnician = async (
+  id: number,
+  payload: { technician_id: number | null },
+) => {
+  const response = await api.patch(`/appointments/${id}/technician`, payload);
+  return response.data as Appointment;
+};
+
+export const getAppointmentStaffSplits = async (id: number) => {
+  const response = await api.get(`/appointments/${id}/splits`);
+  return response.data as AppointmentStaffSplitSummary;
+};
+
+export const updateAppointmentStaffSplits = async (
+  id: number,
+  payload: { splits: Array<{ technician_id: number; service_id: number; amount: number }> },
+) => {
+  const response = await api.put(`/appointments/${id}/splits`, payload);
+  return response.data as AppointmentStaffSplitSummary;
 };

@@ -153,6 +153,7 @@ const StoreDetail: React.FC = () => {
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [addingCatalogId, setAddingCatalogId] = useState<number | null>(null);
   const [newServicePrice, setNewServicePrice] = useState<string>('50');
+  const [newServiceCommission, setNewServiceCommission] = useState<string>('0');
   const [newServiceDuration, setNewServiceDuration] = useState<string>('60');
   const [serviceSavingId, setServiceSavingId] = useState<number | null>(null);
   const [serviceDeletingId, setServiceDeletingId] = useState<number | null>(null);
@@ -427,6 +428,7 @@ const StoreDetail: React.FC = () => {
     if (!store) return;
     const price = Number(newServicePrice);
     const duration = Number(newServiceDuration);
+    const commission = Number(newServiceCommission);
     if (!Number.isFinite(price) || price <= 0) {
       toast.error('Price must be greater than 0');
       return;
@@ -435,11 +437,16 @@ const StoreDetail: React.FC = () => {
       toast.error('Duration must be greater than 0');
       return;
     }
+    if (!Number.isFinite(commission) || commission < 0) {
+      toast.error('Commission must be greater than or equal to 0');
+      return;
+    }
     setAddingCatalogId(catalogItem.id);
     try {
       const created = await addServiceToStore(store.id, {
         catalog_id: catalogItem.id,
         price,
+        commission_amount: commission,
         duration_minutes: duration,
       });
       setServices((prev) => [created, ...prev]);
@@ -453,7 +460,7 @@ const StoreDetail: React.FC = () => {
 
   const handleQuickUpdateService = async (
     service: Service,
-    patch: { price?: number; duration_minutes?: number; is_active?: number }
+    patch: { price?: number; commission_amount?: number; duration_minutes?: number; is_active?: number }
   ) => {
     if (!store) return;
     setServiceSavingId(service.id);
@@ -601,6 +608,20 @@ const StoreDetail: React.FC = () => {
                         />
                       </div>
                       <div>
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Commission ($)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={newServiceCommission}
+                          onChange={(event) => setNewServiceCommission(event.target.value)}
+                          className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
                         <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Duration (min)</label>
                         <input
                           type="number"
@@ -660,7 +681,7 @@ const StoreDetail: React.FC = () => {
                             <h3 className="text-sm font-semibold text-slate-900">{service.name}</h3>
                             <p className="mt-1 text-xs text-slate-500">{service.category || 'General'}</p>
                           </div>
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-3 gap-2">
                             <div>
                               <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Price</label>
                               <input
@@ -672,6 +693,26 @@ const StoreDetail: React.FC = () => {
                                   const nextPrice = Number(event.target.value);
                                   if (!Number.isFinite(nextPrice) || nextPrice <= 0 || nextPrice === service.price) return;
                                   handleQuickUpdateService(service, { price: nextPrice });
+                                }}
+                                className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Commission</label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                defaultValue={service.commission_amount ?? 0}
+                                onBlur={(event) => {
+                                  const nextCommission = Number(event.target.value);
+                                  if (
+                                    !Number.isFinite(nextCommission) ||
+                                    nextCommission < 0 ||
+                                    nextCommission === (service.commission_amount ?? 0)
+                                  )
+                                    return;
+                                  handleQuickUpdateService(service, { commission_amount: nextCommission });
                                 }}
                                 className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
                               />
