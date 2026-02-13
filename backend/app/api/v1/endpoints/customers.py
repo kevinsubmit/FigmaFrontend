@@ -11,9 +11,14 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_store_admin, get_db
 from app.models.appointment import Appointment
+from app.models.coupon import Coupon
+from app.models.gift_card import GiftCard
+from app.models.point_transaction import PointTransaction
 from app.models.risk import UserRiskState
 from app.models.service import Service
 from app.models.store import Store
+from app.models.user_coupon import UserCoupon
+from app.models.user_points import UserPoints
 from app.models.user import User
 
 router = APIRouter()
@@ -72,6 +77,53 @@ class CustomerAppointmentItem(BaseModel):
     status: str
     cancel_reason: Optional[str] = None
     created_at: Optional[datetime] = None
+
+
+class CustomerPointsSummary(BaseModel):
+    total_points: int
+    available_points: int
+
+
+class CustomerPointTransactionItem(BaseModel):
+    id: int
+    amount: int
+    type: str
+    reason: str
+    description: Optional[str] = None
+    reference_type: Optional[str] = None
+    reference_id: Optional[int] = None
+    created_at: datetime
+
+
+class CustomerCouponItem(BaseModel):
+    id: int
+    coupon_id: int
+    coupon_name: str
+    status: str
+    source: Optional[str] = None
+    obtained_at: datetime
+    expires_at: datetime
+    used_at: Optional[datetime] = None
+    discount_type: Optional[str] = None
+    discount_value: float
+    min_amount: float
+
+
+class CustomerGiftCardItem(BaseModel):
+    id: int
+    card_number: str
+    status: str
+    balance: float
+    initial_balance: float
+    expires_at: Optional[datetime] = None
+    created_at: datetime
+
+
+class CustomerRewardsResponse(BaseModel):
+    points: CustomerPointsSummary
+    point_transactions: List[CustomerPointTransactionItem]
+    coupons: List[CustomerCouponItem]
+    gift_cards: List[CustomerGiftCardItem]
 
 
 def _base_customer_query(db: Session, current_user: User):
@@ -316,3 +368,99 @@ def get_customer_appointments(
         )
         for appointment, store_name, service_name, service_price in rows
     ]
+
+
+@router.get("/admin/{customer_id}/rewards", response_model=CustomerRewardsResponse)
+def get_customer_rewards(
+    customer_id: int,
+    point_limit: int = Query(20, ge=1, le=200),
+    point_type: Optional[str] = Query(None),
+    coupon_limit: int = Query(20, ge=1, le=200),
+    coupon_status: Optional[str] = Query(None),
+    coupon_validity: Optional[str] = Query(None),
+    gift_card_limit: int = Query(20, ge=1, le=200),
+    gift_card_status: Optional[str] = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_store_admin),
+):
+    customer_exists = _base_customer_query(db, current_user).filter(User.id == customer_id).first()
+    if not customer_exists:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    user_points = db.query(UserPoints).filter(UserPoints.user_id == customer_id).first()
+    points_summary = CustomerPointsSummary(
+        total_points=int(user_points.total_points if user_points else 0),
+        available_points=int(user_points.available_points if user_points else 0),
+    )
+
+    point_rows = []
+    if user_points:
+        point_query = db.query(PointTransaction).filter(PointTransaction.user_points_id == user_points.id)
+        if point_type and point_type != "all":
+            point_query = point_query.filter(PointTransaction.type == point_type)
+        point_rows = point_query.order_by(PointTransaction.created_at.desc()).limit(point_limit).all()
+
+    coupons_query = (
+        db.query(UserCoupon, Coupon)
+        .join(Coupon, Coupon.id == UserCoupon.coupon_id)
+        .filter(UserCoupon.user_id == customer_id)
+    )
+    if coupon_status and coupon_status != "all":
+        coupons_query = coupons_query.filter(UserCoupon.status == coupon_status)
+    if coupon_validity and coupon_validity != "all":
+        now = datetime.utcnow()
+        if coupon_validity == "valid":
+            coupons_query = coupons_query.filter(UserCoupon.expires_at >= now)
+        elif coupon_validity == "expired":
+            coupons_query = coupons_query.filter(UserCoupon.expires_at < now)
+    coupons_rows = coupons_query.order_by(UserCoupon.obtained_at.desc()).limit(coupon_limit).all()
+
+    gift_card_query = db.query(GiftCard).filter(GiftCard.user_id == customer_id)
+    if gift_card_status and gift_card_status != "all":
+        gift_card_query = gift_card_query.filter(GiftCard.status == gift_card_status)
+    gift_card_rows = gift_card_query.order_by(GiftCard.created_at.desc()).limit(gift_card_limit).all()
+
+    return CustomerRewardsResponse(
+        points=points_summary,
+        point_transactions=[
+            CustomerPointTransactionItem(
+                id=row.id,
+                amount=row.amount,
+                type=str(row.type.value if hasattr(row.type, "value") else row.type),
+                reason=row.reason,
+                description=row.description,
+                reference_type=row.reference_type,
+                reference_id=row.reference_id,
+                created_at=row.created_at,
+            )
+            for row in point_rows
+        ],
+        coupons=[
+            CustomerCouponItem(
+                id=user_coupon.id,
+                coupon_id=coupon.id,
+                coupon_name=coupon.name,
+                status=str(user_coupon.status.value if hasattr(user_coupon.status, "value") else user_coupon.status),
+                source=user_coupon.source,
+                obtained_at=user_coupon.obtained_at,
+                expires_at=user_coupon.expires_at,
+                used_at=user_coupon.used_at,
+                discount_type=str(coupon.type.value if hasattr(coupon.type, "value") else coupon.type) if coupon.type else None,
+                discount_value=float(coupon.discount_value or 0.0),
+                min_amount=float(coupon.min_amount or 0.0),
+            )
+            for user_coupon, coupon in coupons_rows
+        ],
+        gift_cards=[
+            CustomerGiftCardItem(
+                id=row.id,
+                card_number=row.card_number,
+                status=row.status,
+                balance=float(row.balance or 0.0),
+                initial_balance=float(row.initial_balance or 0.0),
+                expires_at=row.expires_at,
+                created_at=row.created_at,
+            )
+            for row in gift_card_rows
+        ],
+    )

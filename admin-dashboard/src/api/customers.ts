@@ -43,6 +43,53 @@ export interface CustomerAppointmentItem {
   created_at?: string | null;
 }
 
+export interface CustomerPointsSummary {
+  total_points: number;
+  available_points: number;
+}
+
+export interface CustomerPointTransactionItem {
+  id: number;
+  amount: number;
+  type: string;
+  reason: string;
+  description?: string | null;
+  reference_type?: string | null;
+  reference_id?: number | null;
+  created_at: string;
+}
+
+export interface CustomerCouponItem {
+  id: number;
+  coupon_id: number;
+  coupon_name: string;
+  status: string;
+  source?: string | null;
+  obtained_at: string;
+  expires_at: string;
+  used_at?: string | null;
+  discount_type?: string | null;
+  discount_value: number;
+  min_amount: number;
+}
+
+export interface CustomerGiftCardItem {
+  id: number;
+  card_number: string;
+  status: string;
+  balance: number;
+  initial_balance: number;
+  expires_at?: string | null;
+  created_at: string;
+}
+
+export interface CustomerRewardsResponse {
+  points: CustomerPointsSummary;
+  point_transactions: CustomerPointTransactionItem[];
+  coupons: CustomerCouponItem[];
+  gift_cards: CustomerGiftCardItem[];
+}
+
 export const getCustomers = async (params?: Record<string, any>) => {
   const response = await api.get('/customers/admin', { params });
   return response.data as CustomerListResponse;
@@ -56,4 +103,9 @@ export const getCustomerDetail = async (customerId: number) => {
 export const getCustomerAppointments = async (customerId: number, params?: Record<string, any>) => {
   const response = await api.get(`/customers/admin/${customerId}/appointments`, { params });
   return response.data as CustomerAppointmentItem[];
+};
+
+export const getCustomerRewards = async (customerId: number, params?: Record<string, any>) => {
+  const response = await api.get(`/customers/admin/${customerId}/rewards`, { params });
+  return response.data as CustomerRewardsResponse;
 };
