@@ -12,6 +12,7 @@ from app.core.security import create_access_token, create_refresh_token, verify_
 from app.core.config import settings
 from app.api.deps import get_current_user
 from app.models.user import User
+from app.models.appointment import Appointment as AppointmentModel
 import os
 from datetime import datetime, timedelta
 from app.utils.clamav_scanner import scan_bytes_for_malware
@@ -19,6 +20,28 @@ from app.utils.security_validation import validate_image_bytes
 
 
 router = APIRouter()
+
+
+def _claim_guest_phone_appointments(db: Session, phone: str, user_id: int) -> int:
+    """
+    Claim historical group child appointments by guest_phone for newly registered user.
+    """
+    if not phone:
+        return 0
+    rows = (
+        db.query(AppointmentModel)
+        .filter(
+            AppointmentModel.guest_phone == phone,
+            AppointmentModel.is_group_host == False,
+        )
+        .all()
+    )
+    if not rows:
+        return 0
+    for row in rows:
+        row.user_id = int(user_id)
+    db.commit()
+    return len(rows)
 
 
 @router.post("/send-verification-code", response_model=SendVerificationCodeResponse)
@@ -168,6 +191,7 @@ async def register(
     
     # Create new user with phone_verified=True
     user = crud_user.create(db, obj_in=user_in)
+    _claim_guest_phone_appointments(db, phone=user.phone, user_id=user.id)
     
     # 如果有推荐码，创建推荐关系并发放奖励
     if referrer:

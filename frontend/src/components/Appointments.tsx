@@ -281,9 +281,16 @@ export function Appointments() {
               >
                 {/* Status Badge */}
                 <div className="flex items-center justify-between mb-3">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(displayStatus)}`}>
-                    {getStatusText(displayStatus)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(displayStatus)}`}>
+                      {getStatusText(displayStatus)}
+                    </span>
+                    {apt.group_id ? (
+                      <span className="px-2 py-1 rounded-full text-[10px] font-semibold bg-[#D4AF37]/15 text-[#D4AF37] border border-[#D4AF37]/30">
+                        {apt.is_group_host ? 'Group Host' : 'Group Guest'}
+                      </span>
+                    ) : null}
+                  </div>
                   <div className="flex gap-2">
                     {apt.status === 'completed' && (
                       isReviewWindowOpen(apt) && !apt.review_id ? (

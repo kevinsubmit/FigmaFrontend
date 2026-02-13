@@ -22,6 +22,7 @@ import {
   ChevronDown,
   Navigation,
   ShieldCheck,
+  Trash2,
   Zap
 } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
@@ -47,7 +48,7 @@ import {
 import { Calendar } from "./ui/calendar";  // Calendar component
 import { getServicesByStoreId, Service as APIService } from '../services/services.service';
 import { Store as APIStore } from '../services/stores.service';
-import { createAppointment, getMyAppointments } from '../services/appointments.service';
+import { createAppointment, createAppointmentGroup, getMyAppointments } from '../services/appointments.service';
 import { getStorePortfolio, PortfolioItem } from '../services/store-portfolio.service';
 import StoreReviews from './StoreReviews';
 import { Pin } from '../api/pins';
@@ -163,6 +164,8 @@ interface StoreDetailsProps {
 export function StoreDetails({ store, onBack, onBookingComplete, referencePin, showDistance = false }: StoreDetailsProps) {
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
+  const [bookingMode, setBookingMode] = useState<'single' | 'group'>('single');
+  const [guestRows, setGuestRows] = useState<Array<{ service_id: string }>>([]);
   const [selectedStaff, setSelectedStaff] = useState<Technician | null>(null);
   const [activeTab, setActiveTab] = useState<'services' | 'reviews' | 'portfolio' | 'details'>('services');
   const [api, setApi] = useState<CarouselApi>();
@@ -599,8 +602,14 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
   };
 
   const calculateTotals = () => {
-    const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0);
-    const totalMinutes = selectedServices.reduce((sum, s) => {
+    const hostService = selectedServices[0];
+    const guestServices = guestRows
+      .map((row) => services.find((service) => service.id === Number(row.service_id)))
+      .filter((service): service is Service => Boolean(service));
+    const activeServices = hostService ? [hostService, ...guestServices] : guestServices;
+
+    const totalPrice = activeServices.reduce((sum, s) => sum + s.price, 0);
+    const totalMinutes = activeServices.reduce((sum, s) => {
       const mins = parseInt(s.duration.replace('m', '')) || 0;
       return sum + mins;
     }, 0);
@@ -637,14 +646,51 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
 
   const notesPreview = useMemo(() => {
     const parts: string[] = [];
-    if (selectedServices.length > 1) {
+    if (bookingMode === 'group' && guestRows.length > 0) {
+      const guestServiceNames = guestRows
+        .map((row) => services.find((service) => service.id === Number(row.service_id))?.name)
+        .filter(Boolean);
+      if (guestServiceNames.length > 0) {
+        parts.push(`Group guests: ${guestServiceNames.join(', ')}`);
+      }
+    } else if (selectedServices.length > 1) {
       parts.push(`Multiple services: ${selectedServices.map(s => s.name).join(', ')}`);
     }
     if (referencePin) {
       parts.push(`Reference look: ${referencePin.title} (Pin #${referencePin.id})`);
     }
     return parts.join(' | ');
-  }, [selectedServices, referencePin]);
+  }, [bookingMode, guestRows, referencePin, selectedServices, services]);
+
+  const bookingServiceLines = useMemo(() => {
+    const lines: Array<{ role: string; serviceName: string }> = [];
+    const hostServiceName = selectedServices[0]?.name;
+    if (hostServiceName) {
+      lines.push({ role: 'Host', serviceName: hostServiceName });
+    }
+    if (bookingMode === 'group') {
+      guestRows.forEach((row, index) => {
+        const serviceName = services.find((service) => service.id === Number(row.service_id))?.name || 'Unselected service';
+        lines.push({
+          role: `Guest ${index + 1}`,
+                          serviceName,
+        });
+      });
+    }
+    return lines;
+  }, [bookingMode, guestRows, selectedServices, services]);
+
+  const addGuestRow = () => {
+    setGuestRows((prev) => [...prev, { service_id: '' }]);
+  };
+
+  const removeGuestRow = (index: number) => {
+    setGuestRows((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const updateGuestRow = (index: number, key: 'service_id', value: string) => {
+    setGuestRows((prev) => prev.map((row, idx) => (idx === index ? { ...row, [key]: value } : row)));
+  };
 
   const handleConfirmBooking = async () => {
     if (!selectedDate || !selectedTime) return;
@@ -715,7 +761,9 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
       }
       
       const notesParts: string[] = [];
-      if (selectedServices.length > 1) {
+      if (bookingMode === 'group') {
+        notesParts.push(`Group booking with ${guestRows.length} guest(s)`);
+      } else if (selectedServices.length > 1) {
         notesParts.push(`Multiple services: ${selectedServices.map(s => s.name).join(', ')}`);
       }
       if (referencePin) {
@@ -724,15 +772,42 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
 
       const notes = notesParts.length > 0 ? notesParts.join(' | ') : undefined;
 
-      // Call backend API
-      const appointment = await createAppointment({
-        store_id: store.id,
-        service_id: serviceId,
-        technician_id: selectedStaff?.id,
-        appointment_date: appointmentDate,
-        appointment_time: appointmentTime,
-        notes
-      });
+      let appointment: any;
+      if (bookingMode === 'group') {
+        if (guestRows.length === 0) {
+          setBookingError('Please add at least one guest service for group booking.');
+          setIsBooking(false);
+          return;
+        }
+        const guests = guestRows.map((row, idx) => {
+          const guestServiceId = Number(row.service_id);
+          if (!guestServiceId) {
+            throw new Error(`Please select service for guest #${idx + 1}.`);
+          }
+          return {
+            service_id: guestServiceId,
+          };
+        });
+        const group = await createAppointmentGroup({
+          store_id: store.id,
+          appointment_date: appointmentDate,
+          appointment_time: appointmentTime,
+          host_service_id: serviceId,
+          host_technician_id: selectedStaff?.id,
+          host_notes: notes,
+          guests,
+        });
+        appointment = group.host_appointment;
+      } else {
+        appointment = await createAppointment({
+          store_id: store.id,
+          service_id: serviceId,
+          technician_id: selectedStaff?.id,
+          appointment_date: appointmentDate,
+          appointment_time: appointmentTime,
+          notes,
+        });
+      }
       
       // Show success state
       setIsBooked(true);
@@ -744,7 +819,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
         services: selectedServices,
         totalPrice,
         totalDuration: durationStr,
-        staff: selectedStaff || { name: 'Any Professional' },
+        staff: selectedStaff || { name: 'Any Technician' },
         store: store,
         date: selectedDate,
         time: selectedTime,
@@ -757,6 +832,8 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
         onBookingComplete?.(bookingData);
         // Reset selections
         setSelectedServices([]);
+        setBookingMode('single');
+        setGuestRows([]);
         setSelectedTime(null);
         setSelectedDate(new Date());
       }, 2500);
@@ -783,6 +860,8 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
     ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
     : null;
   const selectedDateKey = formattedSelectedDate;
+  const canSubmitBooking = !!selectedDate && !!selectedTime && selectedServices.length > 0
+    && (bookingMode === 'single' || (guestRows.length > 0 && guestRows.every((row) => Number(row.service_id))));
 
   const parseDurationMinutes = (duration: string) => {
     const minutes = parseInt(duration.replace('m', ''), 10);
@@ -1485,8 +1564,10 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                             <div className="flex justify-between items-start mb-2">
                                 <span className="text-gray-500 text-sm">Services</span>
                                 <div className="text-right">
-                                  {selectedServices.map(s => (
-                                    <div key={s.id} className="text-white font-bold text-sm">{s.name}</div>
+                                  {bookingServiceLines.map((line, idx) => (
+                                    <div key={`success-service-${idx}`} className="text-white font-bold text-sm">
+                                      {line.role}: {line.serviceName}
+                                    </div>
                                   ))}
                                 </div>
                             </div>
@@ -1578,7 +1659,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                                       <p className="mt-3 text-xs text-red-400">{slotsError}</p>
                                     )}
                                     {!slotsError && availableSlots.length === 0 && (
-                                      <p className="mt-3 text-xs text-gray-500">
+                                      <p className="mt-3 text-xs text-red-400">
                                         No available times for this date.
                                       </p>
                                     )}
@@ -1589,11 +1670,86 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                                 </p>
                             </div>
 
-                            {/* Step 3: Select Professional */}
+                            {/* Step 3: Booking Type */}
+                            <div>
+                              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4">Booking Type</h3>
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setBookingMode('single')}
+                                  className={`rounded-xl border px-3 py-3 text-sm font-semibold transition-colors ${
+                                    bookingMode === 'single'
+                                      ? 'border-[#D4AF37] bg-[#D4AF37]/10 text-[#D4AF37]'
+                                      : 'border-[#333] bg-[#1a1a1a] text-gray-300'
+                                  }`}
+                                >
+                                  Single
+                                </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setBookingMode('group');
+                                      if (guestRows.length === 0) {
+                                      setGuestRows([{ service_id: '' }]);
+                                      }
+                                    }}
+                                  className={`rounded-xl border px-3 py-3 text-sm font-semibold transition-colors ${
+                                    bookingMode === 'group'
+                                      ? 'border-[#D4AF37] bg-[#D4AF37]/10 text-[#D4AF37]'
+                                      : 'border-[#333] bg-[#1a1a1a] text-gray-300'
+                                  }`}
+                                >
+                                  Group (Friends)
+                                </button>
+                              </div>
+                              {bookingMode === 'group' && (
+                                <div className="mt-3 rounded-xl border border-[#333] bg-[#1a1a1a] p-3 space-y-3">
+                                  <p className="text-xs text-gray-400">
+                                    Host uses selected service. Each guest needs one service.
+                                  </p>
+                                  {guestRows.map((row, index) => (
+                                    <div key={`guest-row-${index}`} className="grid grid-cols-12 gap-2">
+                                      <div className="col-span-5 rounded-lg border border-[#333] bg-[#111] px-2.5 py-2 text-xs text-gray-300 flex items-center">
+                                        Guest {index + 1}
+                                      </div>
+                                      <select
+                                        value={row.service_id}
+                                        onChange={(e) => updateGuestRow(index, 'service_id', e.target.value)}
+                                        className="col-span-6 rounded-lg border border-[#333] bg-[#111] px-2.5 py-2 text-xs text-white"
+                                      >
+                                        <option value="">Select service</option>
+                                        {services.map((service) => (
+                                          <option key={service.id} value={service.id}>
+                                            {service.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      <button
+                                        type="button"
+                                        onClick={() => removeGuestRow(index)}
+                                        className="col-span-1 rounded-lg border border-red-500 bg-red-500/15 text-red-300 hover:bg-red-500/25 flex items-center justify-center"
+                                        aria-label={`Remove guest ${index + 1}`}
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    onClick={addGuestRow}
+                                    className="rounded-lg border border-[#D4AF37]/40 px-2.5 py-1.5 text-xs text-[#D4AF37]"
+                                  >
+                                    + Add Guest
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Step 4: Select Technician */}
                             {technicians.length > 0 && (
                               <div>
                                 <div className="flex items-center justify-between mb-4">
-                                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Select Professional</h3>
+                                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest">Select Technician</h3>
                                   <span className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded">Optional</span>
                                 </div>
                                 <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4">
@@ -1632,12 +1788,12 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
 
                             {/* Staff Info Row (Integrated Summary) */}
                             <div className="flex items-center justify-between py-3 border-b border-[#D4AF37]/10">
-                                <span className="text-gray-400 text-xs">Professional</span>
+                                <span className="text-gray-400 text-xs">Technician</span>
                                 <div className="flex items-center gap-2">
                                     {selectedStaff ? (
                                         <span className="text-white text-sm font-medium">{selectedStaff.name}</span>
                                     ) : (
-                                        <span className="text-white text-sm font-medium">Any Professional</span>
+                                        <span className="text-white text-sm font-medium">Any Technician</span>
                                     )}
                                 </div>
                             </div>
@@ -1692,9 +1848,11 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                                 <div className="flex items-center justify-between">
                                   <span className="text-gray-500">Service</span>
                                   <span className="text-white font-medium">
-                                    {selectedServices.length > 1
-                                      ? `${selectedServices[0]?.name} +${selectedServices.length - 1}`
-                                      : selectedServices[0]?.name || 'Select service'}
+                                    {bookingMode === 'group'
+                                      ? `${selectedServices[0]?.name || 'Select service'} + ${guestRows.length} guest(s)`
+                                      : selectedServices.length > 1
+                                        ? `${selectedServices[0]?.name} +${selectedServices.length - 1}`
+                                        : selectedServices[0]?.name || 'Select service'}
                                   </span>
                                 </div>
                                 <div className="flex items-center justify-between">
@@ -1740,7 +1898,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                             </div>
                             <button 
                                 onClick={handleConfirmBooking}
-                                disabled={!selectedTime || !selectedDate || isBooking}
+                                disabled={!canSubmitBooking || isBooking}
                                 className="w-full py-4 bg-gradient-to-r from-[#D4AF37] to-[#b5952f] text-black font-bold rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:grayscale shadow-[0_10px_30px_rgba(212,175,55,0.2)] flex items-center justify-center gap-2"
                             >
                                 {isBooking ? (

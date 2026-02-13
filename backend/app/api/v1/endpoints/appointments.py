@@ -14,6 +14,11 @@ from app.schemas.appointment import (
     Appointment,
     AppointmentAmountUpdate,
     AppointmentCreate,
+    AppointmentGuestOwnerUpdate,
+    AppointmentGroupAddGuests,
+    AppointmentGroupCreate,
+    AppointmentGroupGuestCreate,
+    AppointmentGroupResponse,
     AppointmentStaffSplitSummary,
     AppointmentStaffSplitUpdate,
     AppointmentStaffSplitResponse,
@@ -28,10 +33,14 @@ from app.schemas.appointment import (
 )
 from app.schemas.user import UserResponse
 from app.models.appointment import AppointmentStatus
+from app.models.appointment import Appointment as AppointmentModel
+from app.models.appointment_group import AppointmentGroup
 from app.models.service import Service
 from app.models.store import Store
 from app.models.technician import Technician
 from app.models.appointment_staff_split import AppointmentStaffSplit
+from app.models.user import User as UserModel
+from app.models.review import Review
 from app.services import notification_service
 from app.services import reminder_service
 from app.services import risk_service
@@ -40,6 +49,27 @@ from app.crud import coupons as crud_coupons
 
 router = APIRouter()
 ET_TZ = ZoneInfo("America/New_York")
+
+
+def _normalize_us_phone(raw_phone: Optional[str]) -> Optional[str]:
+    if not raw_phone:
+        return None
+    digits = "".join(ch for ch in str(raw_phone) if ch.isdigit())
+    if len(digits) == 10:
+        return f"1{digits}"
+    if len(digits) == 11:
+        return digits
+    return None
+
+
+def _resolve_guest_owner_user_id(db: Session, raw_phone: Optional[str], fallback_user_id: int) -> int:
+    normalized_phone = _normalize_us_phone(raw_phone)
+    if not normalized_phone:
+        return fallback_user_id
+    user = db.query(UserModel).filter(UserModel.phone == normalized_phone, UserModel.is_active == True).first()
+    if user:
+        return int(user.id)
+    return fallback_user_id
 
 def _ensure_not_past_appointment(appointment_date, appointment_time):
     appointment_datetime = datetime.combine(appointment_date, appointment_time).replace(tzinfo=ET_TZ)
@@ -57,6 +87,95 @@ def _resolve_appointment_order_amount(appointment, service: Optional[Service]) -
     if service and service.price is not None:
         return float(service.price)
     return 0.0
+
+
+def _mark_paid_if_completed(appointment: AppointmentModel, service: Optional[Service]) -> None:
+    if appointment.status != AppointmentStatus.COMPLETED:
+        return
+    order_amount = _resolve_appointment_order_amount(appointment, service)
+    appointment.payment_status = "paid"
+    appointment.paid_amount = float(order_amount)
+
+
+def _recompute_group_host_status(db: Session, group_id: int) -> None:
+    group = db.query(AppointmentGroup).filter(AppointmentGroup.id == group_id).first()
+    if not group:
+        return
+    host = db.query(AppointmentModel).filter(AppointmentModel.id == group.host_appointment_id).first()
+    if not host:
+        return
+
+    members = (
+        db.query(AppointmentModel)
+        .filter(AppointmentModel.group_id == group_id)
+        .order_by(AppointmentModel.id.asc())
+        .all()
+    )
+    if not members:
+        return
+
+    statuses = [member.status for member in members]
+    if any(status == AppointmentStatus.COMPLETED for status in statuses):
+        next_status = AppointmentStatus.COMPLETED
+    elif any(status == AppointmentStatus.CONFIRMED for status in statuses):
+        next_status = AppointmentStatus.CONFIRMED
+    elif all(status == AppointmentStatus.CANCELLED for status in statuses):
+        next_status = AppointmentStatus.CANCELLED
+    else:
+        next_status = AppointmentStatus.PENDING
+
+    host.status = next_status
+    host.is_group_host = True
+    if next_status == AppointmentStatus.COMPLETED:
+        service = db.query(Service).filter(Service.id == host.service_id).first()
+        _mark_paid_if_completed(host, service)
+
+
+def _appointment_row_to_details_payload(row_tuple):
+    appt, store_name, store_address, service_name, service_price, service_duration, review_id, user_name, customer_name, customer_phone, technician_name = row_tuple
+    resolved_amount = appt.order_amount if appt.order_amount is not None else service_price
+    resolved_customer_name = appt.guest_name or customer_name or user_name
+    resolved_customer_phone = appt.guest_phone or customer_phone
+    return {
+        **appt.__dict__,
+        "store_name": store_name,
+        "store_address": store_address,
+        "service_name": service_name,
+        "service_price": service_price,
+        "order_amount": resolved_amount,
+        "service_duration": service_duration,
+        "review_id": review_id,
+        "user_name": user_name,
+        "customer_name": resolved_customer_name,
+        "customer_phone": resolved_customer_phone,
+        "technician_name": technician_name,
+    }
+
+
+def _get_group_appointments_with_details(db: Session, group_id: int):
+    return (
+        db.query(
+            AppointmentModel,
+            Store.name.label("store_name"),
+            Store.address.label("store_address"),
+            Service.name.label("service_name"),
+            Service.price.label("service_price"),
+            Service.duration_minutes.label("service_duration"),
+            Review.id.label("review_id"),
+            UserModel.username.label("user_name"),
+            UserModel.full_name.label("customer_name"),
+            UserModel.phone.label("customer_phone"),
+            Technician.name.label("technician_name"),
+        )
+        .join(Store, AppointmentModel.store_id == Store.id)
+        .join(Service, AppointmentModel.service_id == Service.id)
+        .outerjoin(UserModel, AppointmentModel.user_id == UserModel.id)
+        .outerjoin(Technician, AppointmentModel.technician_id == Technician.id)
+        .outerjoin(Review, Review.appointment_id == AppointmentModel.id)
+        .filter(AppointmentModel.group_id == group_id)
+        .order_by(AppointmentModel.id.asc())
+        .all()
+    )
 
 
 @router.post("/", response_model=Appointment)
@@ -150,6 +269,233 @@ def create_appointment(
     return db_appointment
 
 
+def _validate_store_service_for_group(db: Session, store_id: int, service_id: int) -> Service:
+    service = db.query(Service).filter(Service.id == service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail=f"Service {service_id} not found")
+    if service.store_id != store_id:
+        raise HTTPException(status_code=400, detail=f"Service {service.name} does not belong to this store")
+    if service.is_active != 1:
+        raise HTTPException(status_code=400, detail=f"Service {service.name} is not available")
+    return service
+
+
+def _create_group_child_appointment(
+    db: Session,
+    user_id: int,
+    store_id: int,
+    appointment_date,
+    appointment_time,
+    item: AppointmentGroupGuestCreate,
+) -> AppointmentModel:
+    _validate_store_service_for_group(db, store_id, item.service_id)
+    normalized_guest_phone = _normalize_us_phone(item.guest_phone)
+    if item.guest_phone and not normalized_guest_phone:
+        raise HTTPException(status_code=400, detail="Guest phone must be a valid US phone number")
+    owner_user_id = _resolve_guest_owner_user_id(db, normalized_guest_phone, user_id)
+    conflict_result = crud_appointment.check_time_conflict(
+        db,
+        appointment_date=appointment_date,
+        appointment_time=appointment_time,
+        service_id=item.service_id,
+        technician_id=item.technician_id,
+        user_id=owner_user_id if owner_user_id != user_id else None,
+    )
+    if conflict_result["has_conflict"]:
+        raise HTTPException(status_code=400, detail=conflict_result["message"])
+    child = crud_appointment.create_appointment(
+        db,
+        appointment=AppointmentCreate(
+            store_id=store_id,
+            service_id=item.service_id,
+            technician_id=item.technician_id,
+            appointment_date=appointment_date,
+            appointment_time=appointment_time,
+            notes=item.notes,
+        ),
+        user_id=owner_user_id,
+        booked_by_user_id=user_id,
+    )
+    child.guest_name = item.guest_name
+    child.guest_phone = normalized_guest_phone
+    child.is_group_host = False
+    child.payment_status = "unpaid"
+    child.paid_amount = 0.0
+    return child
+
+
+@router.post("/groups", response_model=AppointmentGroupResponse)
+def create_appointment_group(
+    request: Request,
+    payload: AppointmentGroupCreate,
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    _ensure_not_past_appointment(payload.appointment_date, payload.appointment_time)
+    store = db.query(Store).filter(Store.id == payload.store_id).first()
+    if not store or store.is_visible is False:
+        raise HTTPException(status_code=400, detail="Store is not available")
+
+    host_service = _validate_store_service_for_group(db, payload.store_id, payload.host_service_id)
+    conflict_result = crud_appointment.check_time_conflict(
+        db,
+        appointment_date=payload.appointment_date,
+        appointment_time=payload.appointment_time,
+        service_id=payload.host_service_id,
+        technician_id=payload.host_technician_id,
+        user_id=current_user.id,
+    )
+    if conflict_result["has_conflict"]:
+        raise HTTPException(status_code=400, detail=conflict_result["message"])
+
+    host = crud_appointment.create_appointment(
+        db,
+        appointment=AppointmentCreate(
+            store_id=payload.store_id,
+            service_id=payload.host_service_id,
+            technician_id=payload.host_technician_id,
+            appointment_date=payload.appointment_date,
+            appointment_time=payload.appointment_time,
+            notes=payload.host_notes,
+        ),
+        user_id=current_user.id,
+    )
+    if host.order_amount is None and host_service.price is not None:
+        host.order_amount = float(host_service.price)
+    host.is_group_host = True
+    host.payment_status = "unpaid"
+    host.paid_amount = 0.0
+
+    group = AppointmentGroup(
+        host_appointment_id=host.id,
+        store_id=payload.store_id,
+        appointment_date=payload.appointment_date,
+        appointment_time=payload.appointment_time,
+        created_by_user_id=current_user.id,
+    )
+    db.add(group)
+    db.flush()
+    group.group_code = f"GRP{payload.appointment_date.strftime('%y%m%d')}{group.id:06d}"
+    host.group_id = group.id
+
+    guest_appointments: List[AppointmentModel] = []
+    for item in payload.guests:
+        guest = _create_group_child_appointment(
+            db=db,
+            user_id=current_user.id,
+            store_id=payload.store_id,
+            appointment_date=payload.appointment_date,
+            appointment_time=payload.appointment_time,
+            item=item,
+        )
+        guest.group_id = group.id
+        guest_appointments.append(guest)
+
+    _recompute_group_host_status(db, group.id)
+    db.commit()
+
+    rows = _get_group_appointments_with_details(db, group_id=group.id)
+    row_map = {row[0].id: row for row in rows}
+    host_payload = _appointment_row_to_details_payload(row_map[host.id])
+    guest_payloads = [_appointment_row_to_details_payload(row_map[item.id]) for item in guest_appointments]
+    return AppointmentGroupResponse(
+        group_id=group.id,
+        group_code=group.group_code,
+        host_appointment=AppointmentWithDetails(**host_payload),
+        guest_appointments=[AppointmentWithDetails(**item) for item in guest_payloads],
+    )
+
+
+@router.post("/groups/{group_id}/guests", response_model=AppointmentGroupResponse)
+def append_appointment_group_guests(
+    group_id: int,
+    payload: AppointmentGroupAddGuests,
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    group = db.query(AppointmentGroup).filter(AppointmentGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Appointment group not found")
+    host = db.query(AppointmentModel).filter(AppointmentModel.id == group.host_appointment_id).first()
+    if not host:
+        raise HTTPException(status_code=404, detail="Host appointment not found")
+    if host.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to modify this appointment group")
+    if host.status == AppointmentStatus.CANCELLED:
+        raise HTTPException(status_code=400, detail="Cannot append guests to a cancelled group")
+
+    guest_appointments: List[AppointmentModel] = []
+    for item in payload.guests:
+        guest = _create_group_child_appointment(
+            db=db,
+            user_id=host.user_id,
+            store_id=group.store_id,
+            appointment_date=group.appointment_date,
+            appointment_time=group.appointment_time,
+            item=item,
+        )
+        guest.group_id = group.id
+        guest_appointments.append(guest)
+
+    _recompute_group_host_status(db, group.id)
+    db.commit()
+
+    rows = _get_group_appointments_with_details(db, group_id=group.id)
+    host_payload = None
+    guest_payloads = []
+    for row in rows:
+        appointment_id = row[0].id
+        if appointment_id == host.id:
+            host_payload = _appointment_row_to_details_payload(row)
+        elif appointment_id in {item.id for item in guest_appointments}:
+            guest_payloads.append(_appointment_row_to_details_payload(row))
+    if not host_payload:
+        raise HTTPException(status_code=500, detail="Failed to resolve host appointment details")
+    return AppointmentGroupResponse(
+        group_id=group.id,
+        group_code=group.group_code,
+        host_appointment=AppointmentWithDetails(**host_payload),
+        guest_appointments=[AppointmentWithDetails(**item) for item in guest_payloads],
+    )
+
+
+@router.get("/groups/{group_id}", response_model=AppointmentGroupResponse)
+def get_appointment_group(
+    group_id: int,
+    db: Session = Depends(get_db),
+    current_user: UserResponse = Depends(get_current_user),
+):
+    group = db.query(AppointmentGroup).filter(AppointmentGroup.id == group_id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Appointment group not found")
+    host = db.query(AppointmentModel).filter(AppointmentModel.id == group.host_appointment_id).first()
+    if not host:
+        raise HTTPException(status_code=404, detail="Host appointment not found")
+    if host.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to view this appointment group")
+
+    rows = _get_group_appointments_with_details(db, group_id=group.id)
+    host_payload = None
+    guest_payloads = []
+    for row in rows:
+        appt = row[0]
+        if appt.group_id != group.id:
+            continue
+        payload = _appointment_row_to_details_payload(row)
+        if appt.id == host.id:
+            host_payload = payload
+        else:
+            guest_payloads.append(payload)
+    if not host_payload:
+        raise HTTPException(status_code=500, detail="Failed to resolve host appointment details")
+    return AppointmentGroupResponse(
+        group_id=group.id,
+        group_code=group.group_code,
+        host_appointment=AppointmentWithDetails(**host_payload),
+        guest_appointments=[AppointmentWithDetails(**item) for item in guest_payloads],
+    )
+
+
 @router.get("/", response_model=List[AppointmentWithDetails])
 def get_my_appointments(
     skip: int = Query(0, ge=0),
@@ -171,6 +517,8 @@ def get_my_appointments(
     result = []
     for appt, store_name, store_address, service_name, service_price, service_duration, review_id, user_name, customer_name, customer_phone, technician_name in appointments_data:
         resolved_amount = appt.order_amount if appt.order_amount is not None else service_price
+        resolved_customer_name = appt.guest_name or customer_name or user_name
+        resolved_customer_phone = appt.guest_phone or customer_phone
         result.append({
             **appt.__dict__,
             "store_name": store_name,
@@ -181,8 +529,8 @@ def get_my_appointments(
             "service_duration": service_duration,
             "review_id": review_id,
             "user_name": user_name,
-            "customer_name": customer_name or user_name,
-            "customer_phone": customer_phone,
+            "customer_name": resolved_customer_name,
+            "customer_phone": resolved_customer_phone,
             "technician_name": technician_name,
         })
     
@@ -242,6 +590,8 @@ def get_admin_appointments(
     result = []
     for appt, store_name, store_address, service_name, service_price, service_duration, review_id, user_name, customer_name, customer_phone, technician_name in appointments_data:
         resolved_amount = appt.order_amount if appt.order_amount is not None else service_price
+        resolved_customer_name = appt.guest_name or customer_name or user_name
+        resolved_customer_phone = appt.guest_phone or customer_phone
         result.append({
             **appt.__dict__,
             "store_name": store_name,
@@ -252,8 +602,8 @@ def get_admin_appointments(
             "service_duration": service_duration,
             "review_id": review_id,
             "user_name": user_name,
-            "customer_name": customer_name or user_name,
-            "customer_phone": customer_phone,
+            "customer_name": resolved_customer_name,
+            "customer_phone": resolved_customer_phone,
             "technician_name": technician_name,
         })
 
@@ -342,6 +692,9 @@ def cancel_appointment(
         cancel_reason=cancel_data.cancel_reason,
         cancelled_by=current_user.id
     )
+    if cancelled_appointment.group_id:
+        _recompute_group_host_status(db, cancelled_appointment.group_id)
+        db.commit()
     risk_service.log_risk_event(
         db,
         user_id=current_user.id,
@@ -605,7 +958,8 @@ def update_appointment_technician(
     db: Session = Depends(get_db),
 ):
     """
-    Bind completed appointment to technician (Store admin only).
+    Bind appointment to technician (Store admin only).
+    Allowed statuses: pending, confirmed, completed.
     """
     if not current_user.is_admin and not current_user.store_id:
         raise HTTPException(status_code=403, detail="Only store administrators can bind technician")
@@ -623,8 +977,15 @@ def update_appointment_technician(
     if not current_user.is_admin and service.store_id != current_user.store_id:
         raise HTTPException(status_code=403, detail="You can only update appointments from your own store")
 
-    if appointment.status != AppointmentStatus.COMPLETED:
-        raise HTTPException(status_code=400, detail="Only completed appointments can bind technician")
+    if appointment.status not in (
+        AppointmentStatus.PENDING,
+        AppointmentStatus.CONFIRMED,
+        AppointmentStatus.COMPLETED,
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Only pending, confirmed, or completed appointments can bind technician",
+        )
 
     technician = None
     if payload.technician_id is not None:
@@ -653,6 +1014,74 @@ def update_appointment_technician(
         store_id=appointment.store_id,
         before={"technician_id": before_technician_id},
         after={"technician_id": appointment.technician_id},
+    )
+
+    return appointment
+
+
+@router.patch("/{appointment_id}/guest-owner", response_model=Appointment)
+def update_appointment_guest_owner(
+    request: Request,
+    appointment_id: int,
+    payload: AppointmentGuestOwnerUpdate,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Update guest owner info for a group child appointment.
+
+    - Supports unregistered guest by guest_phone snapshot.
+    - If phone already exists as a registered user, appointment ownership is reassigned to that user.
+    """
+    if not current_user.is_admin and not current_user.store_id:
+        raise HTTPException(status_code=403, detail="Only store administrators can update guest owner")
+    if not current_user.is_admin and current_user.store_admin_status != "approved":
+        raise HTTPException(status_code=403, detail="Store admin approval required")
+
+    appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    if not appointment.group_id or appointment.is_group_host:
+        raise HTTPException(status_code=400, detail="Only group child appointments support guest owner assignment")
+
+    if not current_user.is_admin and appointment.store_id != current_user.store_id:
+        raise HTTPException(status_code=403, detail="You can only update appointments from your own store")
+
+    normalized_guest_phone = _normalize_us_phone(payload.guest_phone)
+    if payload.guest_phone and not normalized_guest_phone:
+        raise HTTPException(status_code=400, detail="Guest phone must be a valid US phone number")
+
+    booked_by_user_id = appointment.booked_by_user_id or appointment.user_id
+    target_user = None
+    if normalized_guest_phone:
+        target_user = (
+            db.query(UserModel)
+            .filter(UserModel.phone == normalized_guest_phone, UserModel.is_active == True)
+            .first()
+        )
+
+    appointment.guest_phone = normalized_guest_phone
+    appointment.guest_name = payload.guest_name.strip() if payload.guest_name else None
+    appointment.user_id = int(target_user.id) if target_user else int(booked_by_user_id)
+    db.commit()
+    db.refresh(appointment)
+
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="appointments",
+        action="appointment.guest_owner.update",
+        message="更新团单子单客人归属",
+        target_type="appointment",
+        target_id=str(appointment.id),
+        store_id=appointment.store_id,
+        after={
+            "guest_phone": appointment.guest_phone,
+            "guest_name": appointment.guest_name,
+            "owner_user_id": appointment.user_id,
+        },
     )
 
     return appointment
@@ -891,6 +1320,9 @@ def update_appointment_status(
             appointment_id=appointment_id,
             appointment=AppointmentUpdate(status=AppointmentStatus.CONFIRMED)
         )
+        if updated_appointment.group_id:
+            _recompute_group_host_status(db, updated_appointment.group_id)
+            db.commit()
         notification_service.notify_appointment_confirmed(db, updated_appointment)
         log_service.create_audit_log(
             db,
@@ -924,6 +1356,10 @@ def update_appointment_status(
             appointment_id=appointment_id,
             appointment=AppointmentUpdate(status=AppointmentStatus.COMPLETED)
         )
+        _mark_paid_if_completed(updated_appointment, service)
+        if updated_appointment.group_id:
+            _recompute_group_host_status(db, updated_appointment.group_id)
+        db.commit()
 
         effective_amount = float(
             updated_appointment.order_amount
@@ -1015,6 +1451,9 @@ def update_appointment_status(
             cancel_reason=status_update.cancel_reason,
             cancelled_by=current_user.id
         )
+        if cancelled_appointment.group_id:
+            _recompute_group_host_status(db, cancelled_appointment.group_id)
+            db.commit()
         risk_service.log_risk_event(
             db,
             user_id=cancelled_appointment.user_id,
@@ -1183,6 +1622,9 @@ def mark_appointment_no_show(
         cancel_reason="No show",
         cancelled_by=current_user.id
     )
+    if no_show_appointment.group_id:
+        _recompute_group_host_status(db, no_show_appointment.group_id)
+        db.commit()
     risk_service.log_risk_event(
         db,
         user_id=no_show_appointment.user_id,
@@ -1281,6 +1723,10 @@ def complete_appointment(
         appointment_id=appointment_id,
         appointment=AppointmentUpdate(status=AppointmentStatus.COMPLETED)
     )
+    _mark_paid_if_completed(updated_appointment, service)
+    if updated_appointment.group_id:
+        _recompute_group_host_status(db, updated_appointment.group_id)
+    db.commit()
 
     # Apply coupon if provided (admin selected)
     effective_amount = float(

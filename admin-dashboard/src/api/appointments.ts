@@ -23,10 +23,24 @@ export interface Appointment {
   appointment_date: string;
   appointment_time: string;
   status: string;
+  group_id?: number | null;
+  is_group_host?: boolean | null;
+  payment_status?: string | null;
+  paid_amount?: number | null;
+  booked_by_user_id?: number | null;
+  guest_name?: string | null;
+  guest_phone?: string | null;
   notes?: string | null;
   cancel_reason?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+}
+
+export interface AppointmentGroupResponse {
+  group_id: number;
+  group_code?: string | null;
+  host_appointment: Appointment;
+  guest_appointments: Appointment[];
 }
 
 export interface AppointmentStaffSplit {
@@ -100,4 +114,17 @@ export const updateAppointmentStaffSplits = async (
 ) => {
   const response = await api.put(`/appointments/${id}/splits`, payload);
   return response.data as AppointmentStaffSplitSummary;
+};
+
+export const getAppointmentGroup = async (groupId: number) => {
+  const response = await api.get(`/appointments/groups/${groupId}`);
+  return response.data as AppointmentGroupResponse;
+};
+
+export const updateAppointmentGuestOwner = async (
+  id: number,
+  payload: { guest_phone?: string | null; guest_name?: string | null },
+) => {
+  const response = await api.patch(`/appointments/${id}/guest-owner`, payload);
+  return response.data as Appointment;
 };

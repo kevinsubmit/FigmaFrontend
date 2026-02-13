@@ -25,9 +25,35 @@ export interface AppointmentWithDetails extends Appointment {
 export interface AppointmentCreate {
   store_id: number;
   service_id: number;
+  technician_id?: number;
   appointment_date: string; // YYYY-MM-DD
   appointment_time: string; // HH:MM:SS
   notes?: string;
+}
+
+export interface AppointmentGroupGuestCreate {
+  service_id: number;
+  technician_id?: number;
+  notes?: string;
+  guest_name?: string;
+  guest_phone?: string;
+}
+
+export interface AppointmentGroupCreate {
+  store_id: number;
+  appointment_date: string; // YYYY-MM-DD
+  appointment_time: string; // HH:MM:SS
+  host_service_id: number;
+  host_technician_id?: number;
+  host_notes?: string;
+  guests: AppointmentGroupGuestCreate[];
+}
+
+export interface AppointmentGroupResponse {
+  group_id: number;
+  group_code?: string | null;
+  host_appointment: AppointmentWithDetails;
+  guest_appointments: AppointmentWithDetails[];
 }
 
 export interface AppointmentUpdate {
@@ -47,6 +73,14 @@ export interface AppointmentListParams {
  */
 export const createAppointment = async (data: AppointmentCreate): Promise<Appointment> => {
   const response = await apiClient.post('/appointments/', data);
+  return response.data;
+};
+
+/**
+ * 创建多人团单预约（主单+子单）
+ */
+export const createAppointmentGroup = async (data: AppointmentGroupCreate): Promise<AppointmentGroupResponse> => {
+  const response = await apiClient.post('/appointments/groups', data);
   return response.data;
 };
 

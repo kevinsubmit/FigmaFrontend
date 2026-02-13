@@ -52,6 +52,12 @@ class AppointmentTechnicianUpdate(BaseModel):
     technician_id: Optional[int] = None
 
 
+class AppointmentGuestOwnerUpdate(BaseModel):
+    """Guest owner assignment update (admin)"""
+    guest_phone: Optional[str] = None
+    guest_name: Optional[str] = None
+
+
 class AppointmentStaffSplitItem(BaseModel):
     """Single staff split line"""
     technician_id: int
@@ -90,9 +96,16 @@ class Appointment(AppointmentBase):
     id: int
     order_number: Optional[str] = None
     user_id: int
+    booked_by_user_id: Optional[int] = None
+    guest_name: Optional[str] = None
+    guest_phone: Optional[str] = None
     technician_id: Optional[int] = None
     status: AppointmentStatus
     order_amount: Optional[float] = None
+    group_id: Optional[int] = None
+    is_group_host: Optional[bool] = False
+    payment_status: Optional[str] = None
+    paid_amount: Optional[float] = None
     cancel_reason: Optional[str] = None
     review_id: Optional[int] = None
     created_at: datetime
@@ -132,3 +145,36 @@ class AppointmentReschedule(BaseModel):
 class AppointmentNotesUpdate(BaseModel):
     """Appointment notes update schema"""
     notes: str
+
+
+class AppointmentGroupGuestCreate(BaseModel):
+    """Guest order item under a host appointment group"""
+    service_id: int
+    technician_id: Optional[int] = None
+    notes: Optional[str] = None
+    guest_name: Optional[str] = None
+    guest_phone: Optional[str] = None
+
+
+class AppointmentGroupCreate(BaseModel):
+    """Create host appointment with guest child orders"""
+    store_id: int
+    appointment_date: date
+    appointment_time: time
+    host_service_id: int
+    host_technician_id: Optional[int] = None
+    host_notes: Optional[str] = None
+    guests: List[AppointmentGroupGuestCreate] = []
+
+
+class AppointmentGroupAddGuests(BaseModel):
+    """Append guests to an existing appointment group"""
+    guests: List[AppointmentGroupGuestCreate]
+
+
+class AppointmentGroupResponse(BaseModel):
+    """Appointment group detail response"""
+    group_id: int
+    group_code: Optional[str] = None
+    host_appointment: AppointmentWithDetails
+    guest_appointments: List[AppointmentWithDetails]

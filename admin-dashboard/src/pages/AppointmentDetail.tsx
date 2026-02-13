@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AdminLayout } from '../layout/AdminLayout';
 import { TopBar } from '../layout/TopBar';
-import { Appointment, getAppointments, updateAppointmentStatus } from '../api/appointments';
+import { Appointment, getAppointments, updateAppointmentAmount, updateAppointmentStatus } from '../api/appointments';
 import { toast } from 'react-toastify';
 
 const AppointmentDetail: React.FC = () => {
@@ -11,6 +11,8 @@ const AppointmentDetail: React.FC = () => {
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelReason, setCancelReason] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [savingAmount, setSavingAmount] = useState(false);
 
   const getCustomerName = (apt: Appointment) => apt.customer_name || apt.user_name || `User #${apt.user_id}`;
   const getCustomerPhone = (apt: Appointment) => `${apt.customer_phone || ''}`.trim() || '-';
@@ -27,6 +29,12 @@ const AppointmentDetail: React.FC = () => {
         const data = await getAppointments({ limit: 100 });
         const found = data.find((apt) => String(apt.id) === String(id));
         setAppointment(found || null);
+        if (found) {
+          const amount = typeof found.order_amount === 'number' ? found.order_amount : found.service_price;
+          setEditAmount(typeof amount === 'number' ? String(Math.floor(amount)) : '');
+        } else {
+          setEditAmount('');
+        }
       } catch (error) {
         toast.error('Failed to load appointment');
       } finally {
@@ -44,6 +52,26 @@ const AppointmentDetail: React.FC = () => {
       navigate('/admin/appointments');
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || 'Failed to update status');
+    }
+  };
+
+  const saveAmount = async () => {
+    if (!appointment) return;
+    const parsed = Number.parseInt(editAmount, 10);
+    if (Number.isNaN(parsed) || parsed < 1) {
+      toast.error('Amount must be greater than or equal to 1');
+      return;
+    }
+    setSavingAmount(true);
+    try {
+      const updated = await updateAppointmentAmount(appointment.id, { order_amount: parsed });
+      setAppointment((prev) => (prev ? { ...prev, ...updated } : prev));
+      setEditAmount(String(parsed));
+      toast.success('Order amount updated');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Failed to update order amount');
+    } finally {
+      setSavingAmount(false);
     }
   };
 
@@ -83,6 +111,27 @@ const AppointmentDetail: React.FC = () => {
           <p className="text-sm text-slate-700">
             ${typeof appointment.order_amount === 'number' ? appointment.order_amount : appointment.service_price ?? '-'}
           </p>
+        </div>
+        <div className="card-surface p-4 space-y-3 text-slate-900">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-700">Order Amount</p>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              min={1}
+              step="1"
+              value={editAmount}
+              onChange={(event) => setEditAmount(event.target.value)}
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm !text-slate-900"
+              placeholder="1"
+            />
+            <button
+              onClick={saveAmount}
+              disabled={savingAmount}
+              className="rounded-xl border border-gold-500/60 px-4 py-2 text-sm font-semibold text-slate-900 disabled:opacity-50 whitespace-nowrap"
+            >
+              Save Amount
+            </button>
+          </div>
         </div>
         <div className="card-surface p-4 space-y-2 text-slate-900">
           <p className="text-xs uppercase tracking-[0.2em] text-slate-700">Customer</p>

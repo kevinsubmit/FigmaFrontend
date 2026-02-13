@@ -112,11 +112,17 @@ def get_appointments_with_details(
     ).offset(skip).limit(limit).all()
 
 
-def create_appointment(db: Session, appointment: AppointmentCreate, user_id: int) -> Appointment:
+def create_appointment(
+    db: Session,
+    appointment: AppointmentCreate,
+    user_id: int,
+    booked_by_user_id: Optional[int] = None,
+) -> Appointment:
     """Create new appointment"""
     db_appointment = Appointment(
         **appointment.dict(),
-        user_id=user_id
+        user_id=user_id,
+        booked_by_user_id=booked_by_user_id if booked_by_user_id is not None else user_id,
     )
     db.add(db_appointment)
     db.commit()

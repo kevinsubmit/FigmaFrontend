@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { X, Calendar, Clock, MapPin, User, DollarSign, MessageSquare, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { Appointment, getMyAppointments } from '../api/appointments';
+import { Appointment, AppointmentGroupResponse, getAppointmentGroup, getMyAppointments } from '../api/appointments';
 import { getStoreById, Store } from '../api/stores';
 import { Service } from '../api/services';
 import { Technician } from '../api/technicians';
@@ -43,6 +43,8 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
   const [rescheduleError, setRescheduleError] = useState('');
   const [storeDetails, setStoreDetails] = useState<Store | null>(null);
   const [showMapOptions, setShowMapOptions] = useState(false);
+  const [groupDetails, setGroupDetails] = useState<AppointmentGroupResponse | null>(null);
+  const [groupLoading, setGroupLoading] = useState(false);
 
   const canCancelByStatus = appointment.status === 'pending' || appointment.status === 'confirmed';
   const canRescheduleByStatus = appointment.status === 'pending' || appointment.status === 'confirmed';
@@ -99,6 +101,26 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
         console.error('Failed to load store details:', error);
       });
   }, [appointment.store?.address, appointment.store_id, storeDetails]);
+
+  useEffect(() => {
+    const loadGroup = async () => {
+      if (!appointment.group_id) {
+        setGroupDetails(null);
+        setGroupLoading(false);
+        return;
+      }
+      setGroupLoading(true);
+      try {
+        const data = await getAppointmentGroup(appointment.group_id);
+        setGroupDetails(data);
+      } catch {
+        setGroupDetails(null);
+      } finally {
+        setGroupLoading(false);
+      }
+    };
+    loadGroup();
+  }, [appointment.id, appointment.group_id]);
 
   const resolvedStore = appointment.store || storeDetails;
   const mapQuery = useMemo(() => {
@@ -254,6 +276,49 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
                 {appointment.status}
               </span>
             </div>
+
+            {appointment.group_id && (
+              <div className="rounded-xl bg-white/5 border border-white/10 px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-widest text-gray-400">Group Booking</span>
+                  <span className="text-xs text-gray-300">
+                    {appointment.is_group_host ? 'Host Order' : 'Guest Order'}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-white">
+                  Group {groupDetails?.group_code || `#${appointment.group_id}`}
+                </p>
+                {groupLoading ? (
+                  <p className="mt-2 text-xs text-gray-400">Loading group members...</p>
+                ) : (
+                  <>
+                    {groupDetails ? (
+                      <div className="mt-2 space-y-1.5">
+                        {[groupDetails.host_appointment, ...groupDetails.guest_appointments].map((member) => (
+                          <div
+                            key={member.id}
+                            className={`rounded-lg border px-2.5 py-2 ${
+                              member.id === appointment.id
+                                ? 'border-[#D4AF37]/50 bg-[#D4AF37]/10'
+                                : 'border-white/10 bg-white/5'
+                            }`}
+                          >
+                            <p className="text-xs text-white">
+                              #{member.order_number || member.id} · {member.is_group_host ? 'Host' : 'Guest'}
+                            </p>
+                            <p className="text-xs text-gray-300">
+                              {(member.customer_name || member.user_name || `User #${member.user_id}`)} · {member.status}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-xs text-gray-400">Group details unavailable</p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Store */}
             {appointment.store || appointment.store_name || resolvedStore?.address ? (

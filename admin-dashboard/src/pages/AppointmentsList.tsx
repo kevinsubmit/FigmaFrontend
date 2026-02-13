@@ -16,12 +16,15 @@ import { AdminLayout } from '../layout/AdminLayout';
 import { TopBar } from '../layout/TopBar';
 import {
   Appointment,
+  AppointmentGroupResponse,
   AppointmentStaffSplitSummary,
+  getAppointmentGroup,
   getAppointments,
   getAppointmentStaffSplits,
   markAppointmentNoShow,
   rescheduleAppointment,
   updateAppointmentAmount,
+  updateAppointmentGuestOwner,
   updateAppointmentNotes,
   updateAppointmentStaffSplits,
   updateAppointmentStatus,
@@ -164,6 +167,10 @@ const getOrderAmount = (apt: Appointment) => {
   return null;
 };
 const formatCurrency = (value?: number | null) => (typeof value === 'number' ? `$${Math.floor(value)}` : '-');
+const toGroupRoleLabel = (apt: Appointment) => {
+  if (!apt.group_id) return '';
+  return apt.is_group_host ? 'Host' : 'Guest';
+};
 const normalizeAmountInput = (raw: string) => {
   const trimmed = raw.trim();
   if (!trimmed) return '';
@@ -195,15 +202,20 @@ const AppointmentsList: React.FC = () => {
   const [savingSchedule, setSavingSchedule] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
   const [savingAmount, setSavingAmount] = useState(false);
+  const [showAmountEditor, setShowAmountEditor] = useState(false);
+  const [savingGuestOwner, setSavingGuestOwner] = useState(false);
   const [savingStaff, setSavingStaff] = useState(false);
   const [editAmount, setEditAmount] = useState('');
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<string>('');
+  const [guestOwnerPhone, setGuestOwnerPhone] = useState('');
   const [staffOptionsForSelected, setStaffOptionsForSelected] = useState<Technician[]>([]);
   const [splitRows, setSplitRows] = useState<Array<{ technician_id: string; service_id: string; amount: string }>>([]);
   const [splitServiceOptions, setSplitServiceOptions] = useState<Service[]>([]);
   const [splitSaving, setSplitSaving] = useState(false);
   const [splitLoading, setSplitLoading] = useState(false);
   const [splitSummary, setSplitSummary] = useState<AppointmentStaffSplitSummary | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<AppointmentGroupResponse | null>(null);
+  const [groupLoading, setGroupLoading] = useState(false);
   const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -387,7 +399,9 @@ const AppointmentsList: React.FC = () => {
     setEditNotes(next.notes || '');
     const amount = getOrderAmount(next);
     setEditAmount(typeof amount === 'number' ? String(Math.floor(amount)) : '');
+    setShowAmountEditor(false);
     setSelectedTechnicianId(next.technician_id ? String(next.technician_id) : '');
+    setGuestOwnerPhone(next.guest_phone || '');
   };
 
   useEffect(() => {
@@ -421,6 +435,26 @@ const AppointmentsList: React.FC = () => {
     };
     loadSplitServices();
   }, [selected?.id, selected?.store_id]);
+
+  useEffect(() => {
+    const loadGroup = async () => {
+      if (!selected?.group_id) {
+        setSelectedGroup(null);
+        setGroupLoading(false);
+        return;
+      }
+      setGroupLoading(true);
+      try {
+        const data = await getAppointmentGroup(selected.group_id);
+        setSelectedGroup(data);
+      } catch {
+        setSelectedGroup(null);
+      } finally {
+        setGroupLoading(false);
+      }
+    };
+    loadGroup();
+  }, [selected?.id, selected?.group_id]);
 
   useEffect(() => {
     const loadSplits = async () => {
@@ -538,6 +572,12 @@ const AppointmentsList: React.FC = () => {
       const updated = await updateAppointmentAmount(selected.id, { order_amount: parsed });
       setAppointments((prev) => prev.map((apt) => (apt.id === updated.id ? { ...apt, ...updated } : apt)));
       syncSelected({ ...selected, ...updated });
+      try {
+        const refreshedSummary = await getAppointmentStaffSplits(selected.id);
+        setSplitSummary(refreshedSummary);
+      } catch {
+        // Keep previous split summary when refresh fails.
+      }
       toast.success('Order amount updated');
     } catch (error: any) {
       if (!error?.__api_toast_shown) {
@@ -548,10 +588,34 @@ const AppointmentsList: React.FC = () => {
     }
   };
 
+  const saveGuestOwner = async () => {
+    if (!selected) return;
+    if (!selected.group_id || selected.is_group_host) {
+      toast.error('Only group guest orders support guest owner assignment');
+      return;
+    }
+
+    setSavingGuestOwner(true);
+    try {
+      const updated = await updateAppointmentGuestOwner(selected.id, {
+        guest_phone: guestOwnerPhone.trim() || null,
+      });
+      setAppointments((prev) => prev.map((apt) => (apt.id === updated.id ? { ...apt, ...updated } : apt)));
+      syncSelected({ ...selected, ...updated });
+      toast.success('Guest owner updated');
+    } catch (error: any) {
+      if (!error?.__api_toast_shown) {
+        toast.error(error?.response?.data?.detail || 'Failed to update guest owner');
+      }
+    } finally {
+      setSavingGuestOwner(false);
+    }
+  };
+
   const saveStaffBinding = async () => {
     if (!selected) return;
-    if (normalizeStatus(selected.status) !== 'completed') {
-      toast.error('Only completed appointments can bind staff');
+    if (!canEditSplitByStatus(selected.status)) {
+      toast.error('Only pending, confirmed, or completed appointments can bind staff');
       return;
     }
 
@@ -958,6 +1022,11 @@ const AppointmentsList: React.FC = () => {
                                   <td className="px-3 py-2.5 align-top">
                                     <p className="font-medium text-slate-900">{getCustomerName(apt)}</p>
                                     <p className="text-xs text-slate-700">#{apt.order_number || apt.id}</p>
+                                    {!!apt.group_id && (
+                                      <p className="mt-1 text-[10px] uppercase tracking-wide text-blue-700">
+                                        Group #{apt.group_id} · {toGroupRoleLabel(apt)}
+                                      </p>
+                                    )}
                                     {hasConflict && (
                                       <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
                                         <AlertTriangle className="h-3 w-3" />
@@ -1043,12 +1112,106 @@ const AppointmentsList: React.FC = () => {
                 </div>
                 <p className="text-xs text-slate-600">Order: #{selected.order_number || selected.id}</p>
                 <p className="text-xs text-slate-600">Created At: {formatCreatedAt(selected.created_at)}</p>
+                {selected.group_id && (
+                  <p className="text-xs text-slate-600">
+                    Group: #{selected.group_id} · {toGroupRoleLabel(selected)}
+                  </p>
+                )}
+                {selected.group_id && !selected.is_group_host && (
+                  <div className="pt-2 space-y-2">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Guest Phone (Owner)</p>
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={guestOwnerPhone}
+                        onChange={(event) => setGuestOwnerPhone(event.target.value)}
+                        placeholder="e.g. 14155550123"
+                        className="w-full rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm !text-slate-900 placeholder:text-slate-500 outline-none focus:border-gold-500"
+                      />
+                      <button
+                        onClick={saveGuestOwner}
+                        disabled={savingGuestOwner}
+                        className="rounded-lg border border-gold-500/50 px-3 py-2 text-sm text-blue-700 disabled:opacity-50 whitespace-nowrap"
+                      >
+                        Save
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-600">
+                      录入手机号后：若该手机号已注册，订单会归属到该账号；未注册则先按手机号挂账，注册后自动认领。
+                    </p>
+                  </div>
+                )}
               </div>
+
+              {selected.group_id && (
+                <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2 text-sm">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Group Booking</p>
+                  {groupLoading ? (
+                    <p className="text-xs text-slate-600">Loading group...</p>
+                  ) : selectedGroup ? (
+                    <>
+                      <p className="text-xs text-slate-600">
+                        Group Code: {selectedGroup.group_code || `GRP-${selectedGroup.group_id}`}
+                      </p>
+                      <div className="space-y-1">
+                        {[selectedGroup.host_appointment, ...selectedGroup.guest_appointments].map((member) => {
+                          const isCurrent = member.id === selected.id;
+                          const memberRole = member.is_group_host ? 'Host' : 'Guest';
+                          return (
+                            <div
+                              key={member.id}
+                              className={`rounded-lg border px-2.5 py-2 ${
+                                isCurrent ? 'border-blue-400 bg-blue-100/60' : 'border-blue-200 bg-white'
+                              }`}
+                            >
+                              <p className="text-xs text-slate-900">
+                                #{member.order_number || member.id} · {memberRole}
+                              </p>
+                              <p className="text-xs text-slate-700">
+                                {member.customer_name || member.user_name || `User #${member.user_id}`} · {member.status}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-slate-600">Group detail unavailable</p>
+                  )}
+                </div>
+              )}
 
               <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2 text-sm">
                 <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Service</p>
                 <p className="text-slate-900">{getServiceLabel(selected)}</p>
-                <p className="text-slate-600">Amount: {formatCurrency(getOrderAmount(selected))}</p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-slate-600">Amount: {formatCurrency(getOrderAmount(selected))}</p>
+                  <button
+                    onClick={() => setShowAmountEditor((prev) => !prev)}
+                    className="rounded-md border border-gold-500/60 px-2.5 py-1 text-xs font-semibold text-blue-700"
+                  >
+                    {showAmountEditor ? 'Hide' : 'Edit Amount'}
+                  </button>
+                </div>
+                {showAmountEditor && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      step="1"
+                      value={editAmount}
+                      onChange={(event) => setEditAmount(normalizeAmountInput(event.target.value))}
+                      className="w-full rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-gold-500"
+                      placeholder="1"
+                    />
+                    <button
+                      onClick={saveAmount}
+                      disabled={savingAmount}
+                      className="rounded-lg border border-gold-500/50 px-3 py-2 text-sm text-blue-700 disabled:opacity-50 whitespace-nowrap"
+                    >
+                      Save
+                    </button>
+                  </div>
+                )}
                 <p className="text-slate-600">Current: {formatTimeRange(selected)}</p>
                 <p className="text-slate-600">Staff: {getStaffLabel(selected)}</p>
                 {conflictInfo.ids.has(selected.id) && (
@@ -1060,7 +1223,7 @@ const AppointmentsList: React.FC = () => {
               </div>
 
               <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Bind Staff (Completed only)</p>
+                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Bind Staff (Pending / Confirmed / Completed)</p>
                 {splitSummary && splitSummary.splits.length > 0 ? (
                   <div className="rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm text-slate-900">
                     拆分绑定技师 / Split-bound staff:
@@ -1073,7 +1236,7 @@ const AppointmentsList: React.FC = () => {
                       value={selectedTechnicianId}
                       onChange={(event) => setSelectedTechnicianId(event.target.value)}
                       className="w-full rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm !text-slate-900 [&>option]:text-slate-900 outline-none focus:border-gold-500"
-                      disabled={normalizeStatus(selected.status) !== 'completed'}
+                      disabled={!canEditSplitByStatus(selected.status)}
                     >
                       <option value="">Unassigned</option>
                       {staffOptionsForSelected.map((row) => (
@@ -1084,7 +1247,7 @@ const AppointmentsList: React.FC = () => {
                     </select>
                     <button
                       onClick={saveStaffBinding}
-                      disabled={savingStaff || normalizeStatus(selected.status) !== 'completed'}
+                      disabled={savingStaff || !canEditSplitByStatus(selected.status)}
                       className="rounded-lg border border-gold-500/50 px-3 py-2 text-sm text-blue-700 disabled:opacity-50 whitespace-nowrap"
                     >
                       Save Staff
@@ -1106,32 +1269,13 @@ const AppointmentsList: React.FC = () => {
               </div>
 
               <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Order Amount</p>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={1}
-                    step="1"
-                    value={editAmount}
-                    onChange={(event) => setEditAmount(normalizeAmountInput(event.target.value))}
-                    className="w-full rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm outline-none focus:border-gold-500"
-                    placeholder="1"
-                  />
-                  <button
-                    onClick={saveAmount}
-                    disabled={savingAmount}
-                    className="rounded-lg border border-gold-500/50 px-3 py-2 text-sm text-blue-700 disabled:opacity-50 whitespace-nowrap"
-                  >
-                    Save Amount
-                  </button>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2">
                 <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">技师金额拆分 Staff Amount Split</p>
                 <p className="text-xs text-slate-600">
                   订单总金额：${(splitSummary?.order_amount ?? getOrderAmount(selected) ?? 0).toFixed(2)} | 当前拆分：$
                   {splitTotalLocal.toFixed(2)}
+                </p>
+                <p className="text-[11px] text-slate-600">
+                  支持同一订单多个服务、多位技师拆分；若加做服务，请先在 Service 区域修改订单总金额，再保存拆分。
                 </p>
                 {splitLoading ? (
                   <p className="text-xs text-slate-500">Loading split...</p>

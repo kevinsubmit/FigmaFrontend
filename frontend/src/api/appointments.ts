@@ -12,6 +12,10 @@ export interface Appointment {
   appointment_date: string; // YYYY-MM-DD
   appointment_time: string; // HH:MM:SS
   status: AppointmentStatus;
+  group_id?: number | null;
+  is_group_host?: boolean | null;
+  payment_status?: string | null;
+  paid_amount?: number | null;
   review_id?: number | null;
   notes: string | null;
   created_at: string;
@@ -22,6 +26,16 @@ export interface Appointment {
   service_price?: number | null;
   service_duration?: number | null;
   technician_name?: string | null;
+  user_name?: string | null;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+}
+
+export interface AppointmentGroupResponse {
+  group_id: number;
+  group_code?: string | null;
+  host_appointment: Appointment;
+  guest_appointments: Appointment[];
 }
 
 export interface AppointmentCreate {
@@ -95,4 +109,11 @@ export const updateAppointmentNotes = async (
     { notes },
     true
   );
+};
+
+/**
+ * 获取团单详情
+ */
+export const getAppointmentGroup = async (groupId: number): Promise<AppointmentGroupResponse> => {
+  return apiClient.get(`/api/v1/appointments/groups/${groupId}`, true);
 };
