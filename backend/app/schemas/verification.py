@@ -2,7 +2,7 @@
 Verification Code Pydantic schemas
 """
 from pydantic import BaseModel, Field, field_validator
-import re
+from app.schemas.phone import normalize_us_phone
 
 
 class SendVerificationCodeRequest(BaseModel):
@@ -14,12 +14,7 @@ class SendVerificationCodeRequest(BaseModel):
     @classmethod
     def validate_phone(cls, v: str) -> str:
         """验证手机号格式"""
-        phone_digits = re.sub(r'\D', '', v)
-        if len(phone_digits) == 10:
-            phone_digits = '1' + phone_digits
-        elif len(phone_digits) != 11:
-            raise ValueError('手机号格式不正确')
-        return phone_digits
+        return normalize_us_phone(v, '手机号格式不正确')
     
     @field_validator('purpose')
     @classmethod
@@ -47,12 +42,7 @@ class VerifyCodeRequest(BaseModel):
     @classmethod
     def validate_phone(cls, v: str) -> str:
         """验证手机号格式"""
-        phone_digits = re.sub(r'\D', '', v)
-        if len(phone_digits) == 10:
-            phone_digits = '1' + phone_digits
-        elif len(phone_digits) != 11:
-            raise ValueError('手机号格式不正确')
-        return phone_digits
+        return normalize_us_phone(v, '手机号格式不正确')
 
 
 class VerifyCodeResponse(BaseModel):

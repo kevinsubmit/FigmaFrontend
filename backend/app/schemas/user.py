@@ -4,7 +4,7 @@ User Pydantic schemas for request/response validation
 from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
 from typing import Literal, Optional
 from datetime import datetime, date
-import re
+from app.schemas.phone import normalize_us_phone
 
 
 class UserBase(BaseModel):
@@ -18,15 +18,7 @@ class UserBase(BaseModel):
     @classmethod
     def validate_phone(cls, v: str) -> str:
         """验证手机号格式（支持美国手机号）"""
-        # 移除所有非数字字符
-        phone_digits = re.sub(r'\D', '', v)
-        # 美国手机号应该是10位数字（不含国家码）或11位（含+1）
-        if len(phone_digits) == 10:
-            # 如果是10位，加上国家码
-            phone_digits = '1' + phone_digits
-        elif len(phone_digits) != 11:
-            raise ValueError('手机号必须是10位数字（美国本土）或11位数字（含+1）')
-        return phone_digits
+        return normalize_us_phone(v, '手机号必须是10位数字（美国本土）或11位数字（含+1）')
 
 
 class UserCreate(UserBase):
@@ -81,12 +73,7 @@ class UserLogin(BaseModel):
     @classmethod
     def validate_phone(cls, v: str) -> str:
         """验证手机号格式"""
-        phone_digits = re.sub(r'\D', '', v)
-        if len(phone_digits) == 10:
-            phone_digits = '1' + phone_digits
-        elif len(phone_digits) != 11:
-            raise ValueError('手机号格式不正确')
-        return phone_digits
+        return normalize_us_phone(v, '手机号格式不正确')
 
 
 class Token(BaseModel):
