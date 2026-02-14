@@ -1112,6 +1112,7 @@ const AppointmentsList: React.FC = () => {
                 </div>
                 <p className="text-xs text-slate-600">Order: #{selected.order_number || selected.id}</p>
                 <p className="text-xs text-slate-600">Created At: {formatCreatedAt(selected.created_at)}</p>
+                <p className="text-xs text-slate-600">Completed At: {formatCreatedAt(selected.completed_at)}</p>
                 {selected.group_id && (
                   <p className="text-xs text-slate-600">
                     Group: #{selected.group_id} · {toGroupRoleLabel(selected)}

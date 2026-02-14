@@ -32,6 +32,7 @@ export interface Appointment {
   guest_phone?: string | null;
   notes?: string | null;
   cancel_reason?: string | null;
+  completed_at?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
 }

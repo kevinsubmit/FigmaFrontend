@@ -127,6 +127,8 @@ def _recompute_group_host_status(db: Session, group_id: int) -> None:
     host.status = next_status
     host.is_group_host = True
     if next_status == AppointmentStatus.COMPLETED:
+        if host.completed_at is None:
+            host.completed_at = datetime.utcnow()
         service = db.query(Service).filter(Service.id == host.service_id).first()
         _mark_paid_if_completed(host, service)
 
@@ -1354,7 +1356,10 @@ def update_appointment_status(
         updated_appointment = crud_appointment.update_appointment(
             db,
             appointment_id=appointment_id,
-            appointment=AppointmentUpdate(status=AppointmentStatus.COMPLETED)
+            appointment=AppointmentUpdate(
+                status=AppointmentStatus.COMPLETED,
+                completed_at=datetime.utcnow(),
+            )
         )
         _mark_paid_if_completed(updated_appointment, service)
         if updated_appointment.group_id:
@@ -1721,7 +1726,10 @@ def complete_appointment(
     updated_appointment = crud_appointment.update_appointment(
         db,
         appointment_id=appointment_id,
-        appointment=AppointmentUpdate(status=AppointmentStatus.COMPLETED)
+        appointment=AppointmentUpdate(
+            status=AppointmentStatus.COMPLETED,
+            completed_at=datetime.utcnow(),
+        )
     )
     _mark_paid_if_completed(updated_appointment, service)
     if updated_appointment.group_id:

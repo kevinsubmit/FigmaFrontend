@@ -28,6 +28,7 @@ class AppointmentUpdate(BaseModel):
     appointment_time: Optional[time] = None
     status: Optional[AppointmentStatus] = None
     notes: Optional[str] = None
+    completed_at: Optional[datetime] = None
 
 
 class AppointmentComplete(BaseModel):
@@ -107,6 +108,7 @@ class Appointment(AppointmentBase):
     payment_status: Optional[str] = None
     paid_amount: Optional[float] = None
     cancel_reason: Optional[str] = None
+    completed_at: Optional[datetime] = None
     review_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
