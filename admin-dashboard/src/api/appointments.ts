@@ -10,6 +10,15 @@ export interface Appointment {
   service_name?: string | null;
   service_price?: number | null;
   order_amount?: number | null;
+  original_amount?: number | null;
+  coupon_discount_amount?: number | null;
+  gift_card_used_amount?: number | null;
+  cash_paid_amount?: number | null;
+  final_paid_amount?: number | null;
+  points_earned?: number | null;
+  points_reverted?: number | null;
+  settlement_status?: string | null;
+  settled_at?: string | null;
   service_duration?: number | null;
   user_id: number;
   user_name?: string | null;
@@ -93,6 +102,34 @@ export const updateAppointmentNotes = async (id: number, payload: { notes: strin
 
 export const updateAppointmentAmount = async (id: number, payload: { order_amount: number }) => {
   const response = await api.patch(`/appointments/${id}/amount`, payload);
+  return response.data as Appointment;
+};
+
+export interface AppointmentSettlePayload {
+  idempotency_key: string;
+  original_amount?: number;
+  user_coupon_id?: number;
+  coupon_discount_amount?: number;
+  gift_card_id?: number;
+  gift_card_amount?: number;
+  cash_paid_amount?: number;
+}
+
+export interface AppointmentRefundPayload {
+  idempotency_key: string;
+  refund_cash_amount?: number;
+  refund_gift_card_amount?: number;
+  gift_card_id?: number;
+  reason?: string;
+}
+
+export const settleAppointment = async (id: number, payload: AppointmentSettlePayload) => {
+  const response = await api.post(`/appointments/${id}/settle`, payload);
+  return response.data as Appointment;
+};
+
+export const refundAppointment = async (id: number, payload: AppointmentRefundPayload) => {
+  const response = await api.post(`/appointments/${id}/refund`, payload);
   return response.data as Appointment;
 };
 

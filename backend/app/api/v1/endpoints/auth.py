@@ -8,6 +8,7 @@ from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
 from app.schemas.verification import SendVerificationCodeRequest, VerifyCodeRequest, SendVerificationCodeResponse
 from app.crud import user as crud_user
 from app.crud import verification_code as crud_verification
+from app.crud import coupons as crud_coupons
 from app.core.security import create_access_token, create_refresh_token, verify_password
 from app.core.config import settings
 from app.api.deps import get_current_user
@@ -192,6 +193,7 @@ async def register(
     # Create new user with phone_verified=True
     user = crud_user.create(db, obj_in=user_in)
     _claim_guest_phone_appointments(db, phone=user.phone, user_id=user.id)
+    crud_coupons.claim_phone_pending_grants(db, user_id=user.id, phone=user.phone)
     
     # 如果有推荐码，创建推荐关系并发放奖励
     if referrer:
@@ -292,6 +294,7 @@ async def login(
 
     user.last_login_at = datetime.utcnow()
     db.commit()
+    crud_coupons.claim_phone_pending_grants(db, user_id=user.id, phone=user.phone)
     
     # Create tokens
     access_expires = None

@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import json
 
 from app.api.deps import get_db, get_current_user
 from app.crud import appointment as crud_appointment
@@ -13,6 +14,8 @@ from app.crud import points as crud_points
 from app.schemas.appointment import (
     Appointment,
     AppointmentAmountUpdate,
+    AppointmentSettleRequest,
+    AppointmentRefundRequest,
     AppointmentCreate,
     AppointmentGuestOwnerUpdate,
     AppointmentGroupAddGuests,
@@ -39,8 +42,13 @@ from app.models.service import Service
 from app.models.store import Store
 from app.models.technician import Technician
 from app.models.appointment_staff_split import AppointmentStaffSplit
+from app.models.appointment_settlement_event import AppointmentSettlementEvent
 from app.models.user import User as UserModel
 from app.models.review import Review
+from app.models.gift_card import GiftCard, GiftCardTransaction
+from app.models.user_coupon import UserCoupon, CouponStatus
+from app.models.user_points import UserPoints
+from app.models.point_transaction import PointTransaction, TransactionType
 from app.services import notification_service
 from app.services import reminder_service
 from app.services import risk_service
@@ -95,6 +103,39 @@ def _mark_paid_if_completed(appointment: AppointmentModel, service: Optional[Ser
     order_amount = _resolve_appointment_order_amount(appointment, service)
     appointment.payment_status = "paid"
     appointment.paid_amount = float(order_amount)
+
+
+def _assert_admin_can_operate_appointment(
+    db: Session,
+    current_user: UserResponse,
+    appointment: AppointmentModel,
+) -> Service:
+    if not current_user.is_admin and not current_user.store_id:
+        raise HTTPException(status_code=403, detail="Only store administrators can operate appointments")
+    if not current_user.is_admin and current_user.store_admin_status != "approved":
+        raise HTTPException(status_code=403, detail="Store admin approval required")
+
+    service = db.query(Service).filter(Service.id == appointment.service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    if not current_user.is_admin and service.store_id != current_user.store_id:
+        raise HTTPException(status_code=403, detail="You can only operate appointments from your own store")
+    return service
+
+
+def _get_awarded_points_for_appointment(db: Session, user_id: int, appointment_id: int) -> int:
+    amount = (
+        db.query(PointTransaction.amount)
+        .join(UserPoints, UserPoints.id == PointTransaction.user_points_id)
+        .filter(
+            UserPoints.user_id == user_id,
+            PointTransaction.reference_type == "appointment",
+            PointTransaction.reference_id == appointment_id,
+        )
+        .all()
+    )
+    return int(sum(row[0] or 0 for row in amount))
 
 
 def _recompute_group_host_status(db: Session, group_id: int) -> None:
@@ -245,6 +286,26 @@ def create_appointment(
     )
     if service.price is not None and db_appointment.order_amount is None:
         db_appointment.order_amount = float(service.price)
+    if db_appointment.original_amount is None and db_appointment.order_amount is not None:
+        db_appointment.original_amount = float(db_appointment.order_amount)
+    if service.price is not None and db_appointment.original_amount is None:
+        db_appointment.original_amount = float(service.price)
+    if (
+        db_appointment.coupon_discount_amount is None
+        or db_appointment.gift_card_used_amount is None
+        or db_appointment.cash_paid_amount is None
+        or db_appointment.final_paid_amount is None
+        or db_appointment.points_earned is None
+        or db_appointment.points_reverted is None
+        or db_appointment.settlement_status is None
+    ):
+        db_appointment.coupon_discount_amount = float(db_appointment.coupon_discount_amount or 0)
+        db_appointment.gift_card_used_amount = float(db_appointment.gift_card_used_amount or 0)
+        db_appointment.cash_paid_amount = float(db_appointment.cash_paid_amount or 0)
+        db_appointment.final_paid_amount = float(db_appointment.final_paid_amount or 0)
+        db_appointment.points_earned = int(db_appointment.points_earned or 0)
+        db_appointment.points_reverted = int(db_appointment.points_reverted or 0)
+        db_appointment.settlement_status = db_appointment.settlement_status or "unsettled"
         db.commit()
         db.refresh(db_appointment)
     risk_service.log_risk_event(
@@ -290,7 +351,7 @@ def _create_group_child_appointment(
     appointment_time,
     item: AppointmentGroupGuestCreate,
 ) -> AppointmentModel:
-    _validate_store_service_for_group(db, store_id, item.service_id)
+    service = _validate_store_service_for_group(db, store_id, item.service_id)
     normalized_guest_phone = _normalize_us_phone(item.guest_phone)
     if item.guest_phone and not normalized_guest_phone:
         raise HTTPException(status_code=400, detail="Guest phone must be a valid US phone number")
@@ -320,6 +381,17 @@ def _create_group_child_appointment(
     )
     child.guest_name = item.guest_name
     child.guest_phone = normalized_guest_phone
+    if child.order_amount is None and service.price is not None:
+        child.order_amount = float(service.price)
+    if child.original_amount is None and child.order_amount is not None:
+        child.original_amount = float(child.order_amount)
+    child.coupon_discount_amount = float(child.coupon_discount_amount or 0)
+    child.gift_card_used_amount = float(child.gift_card_used_amount or 0)
+    child.cash_paid_amount = float(child.cash_paid_amount or 0)
+    child.final_paid_amount = float(child.final_paid_amount or 0)
+    child.points_earned = int(child.points_earned or 0)
+    child.points_reverted = int(child.points_reverted or 0)
+    child.settlement_status = child.settlement_status or "unsettled"
     child.is_group_host = False
     child.payment_status = "unpaid"
     child.paid_amount = 0.0
@@ -364,6 +436,15 @@ def create_appointment_group(
     )
     if host.order_amount is None and host_service.price is not None:
         host.order_amount = float(host_service.price)
+    if host.original_amount is None and host.order_amount is not None:
+        host.original_amount = float(host.order_amount)
+    host.coupon_discount_amount = float(host.coupon_discount_amount or 0)
+    host.gift_card_used_amount = float(host.gift_card_used_amount or 0)
+    host.cash_paid_amount = float(host.cash_paid_amount or 0)
+    host.final_paid_amount = float(host.final_paid_amount or 0)
+    host.points_earned = int(host.points_earned or 0)
+    host.points_reverted = int(host.points_reverted or 0)
+    host.settlement_status = host.settlement_status or "unsettled"
     host.is_group_host = True
     host.payment_status = "unpaid"
     host.paid_amount = 0.0
@@ -930,7 +1011,12 @@ def update_appointment_amount(
         raise HTTPException(status_code=403, detail="You can only update appointments from your own store")
 
     before_amount = appointment.order_amount if appointment.order_amount is not None else service.price
+    before_original_amount = appointment.original_amount
     appointment.order_amount = float(amount_data.order_amount)
+    settlement_status = (appointment.settlement_status or "unsettled").strip().lower()
+    # Keep settlement preview in sync before settlement is finalized.
+    if settlement_status in {"", "unsettled"}:
+        appointment.original_amount = float(amount_data.order_amount)
     db.commit()
     db.refresh(appointment)
 
@@ -944,8 +1030,410 @@ def update_appointment_amount(
         target_type="appointment",
         target_id=str(appointment.id),
         store_id=service.store_id if service else None,
-        before={"order_amount": before_amount},
-        after={"order_amount": appointment.order_amount},
+        before={"order_amount": before_amount, "original_amount": before_original_amount},
+        after={"order_amount": appointment.order_amount, "original_amount": appointment.original_amount},
+    )
+
+    return appointment
+
+
+@router.post("/{appointment_id}/settle", response_model=Appointment)
+def settle_appointment(
+    request: Request,
+    appointment_id: int,
+    payload: AppointmentSettleRequest,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Settle an appointment payment (Store admin only).
+
+    Supports coupon discount + gift card + cash split.
+    Requires idempotency_key to avoid duplicate charges.
+    """
+    idem_key = payload.idempotency_key.strip()
+    if not idem_key:
+        raise HTTPException(status_code=400, detail="idempotency_key is required")
+
+    appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    service = _assert_admin_can_operate_appointment(db, current_user, appointment)
+
+    existing_event = (
+        db.query(AppointmentSettlementEvent)
+        .filter(
+            AppointmentSettlementEvent.appointment_id == appointment.id,
+            AppointmentSettlementEvent.event_type == "settle",
+            AppointmentSettlementEvent.idempotency_key == idem_key,
+        )
+        .first()
+    )
+    if existing_event:
+        return appointment
+
+    if appointment.settlement_status == "settled":
+        raise HTTPException(status_code=400, detail="Appointment is already settled")
+
+    base_original = (
+        float(payload.original_amount)
+        if payload.original_amount is not None
+        else float(appointment.original_amount if appointment.original_amount is not None else _resolve_appointment_order_amount(appointment, service))
+    )
+    base_original = max(0.0, base_original)
+
+    selected_user_coupon: Optional[UserCoupon] = None
+    if payload.user_coupon_id is not None:
+        selected_user_coupon = (
+            db.query(UserCoupon)
+            .filter(
+                UserCoupon.id == payload.user_coupon_id,
+                UserCoupon.user_id == appointment.user_id,
+            )
+            .first()
+        )
+        if not selected_user_coupon:
+            raise HTTPException(status_code=404, detail="User coupon not found for this customer")
+        coupon_status = selected_user_coupon.status.value if hasattr(selected_user_coupon.status, "value") else str(selected_user_coupon.status)
+        if coupon_status != CouponStatus.AVAILABLE.value:
+            raise HTTPException(status_code=400, detail=f"Coupon is not available (status: {coupon_status})")
+        if selected_user_coupon.expires_at and selected_user_coupon.expires_at < datetime.utcnow():
+            selected_user_coupon.status = CouponStatus.EXPIRED
+            db.flush()
+            raise HTTPException(status_code=400, detail="Coupon has expired")
+
+        coupon = crud_coupons.get_coupon(db, selected_user_coupon.coupon_id)
+        if not coupon:
+            raise HTTPException(status_code=404, detail="Coupon template not found")
+        if not coupon.is_active:
+            raise HTTPException(status_code=400, detail="Coupon is inactive")
+        try:
+            coupon_discount = crud_coupons.calculate_discount(coupon=coupon, original_amount=base_original)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        if coupon_discount <= 0:
+            raise HTTPException(status_code=400, detail="Coupon is not applicable to this appointment amount")
+        if float(payload.coupon_discount_amount or 0.0) > 0 and abs(float(payload.coupon_discount_amount) - float(coupon_discount)) >= 0.01:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Coupon discount should be {float(coupon_discount):.2f} for selected coupon",
+            )
+    else:
+        coupon_discount = float(payload.coupon_discount_amount or 0.0)
+
+    coupon_discount = min(max(0.0, coupon_discount), base_original)
+    remaining_after_coupon = max(0.0, base_original - coupon_discount)
+
+    gift_card_used = 0.0
+    if (payload.gift_card_amount or 0) > 0:
+        if not payload.gift_card_id:
+            raise HTTPException(status_code=400, detail="gift_card_id is required when gift_card_amount > 0")
+        card = (
+            db.query(GiftCard)
+            .filter(GiftCard.id == payload.gift_card_id, GiftCard.user_id == appointment.user_id)
+            .first()
+        )
+        if not card:
+            raise HTTPException(status_code=404, detail="Gift card not found for this customer")
+        if card.status != "active":
+            raise HTTPException(status_code=400, detail="Gift card is not active")
+        requested_gift = float(payload.gift_card_amount)
+        gift_card_used = min(requested_gift, remaining_after_coupon)
+        if card.balance + 1e-9 < gift_card_used:
+            raise HTTPException(status_code=400, detail="Gift card balance is insufficient")
+        before_balance = float(card.balance or 0.0)
+        card.balance = round(before_balance - gift_card_used, 2)
+        db.add(GiftCardTransaction(
+            gift_card_id=card.id,
+            user_id=current_user.id,
+            transaction_type="consume",
+            amount=-gift_card_used,
+            balance_before=before_balance,
+            balance_after=float(card.balance),
+            note=f"Settlement for appointment #{appointment.order_number or appointment.id}",
+        ))
+
+    remaining_after_gift = max(0.0, remaining_after_coupon - gift_card_used)
+    if payload.cash_paid_amount is None:
+        cash_paid = remaining_after_gift
+    else:
+        cash_paid = float(payload.cash_paid_amount)
+        if abs(cash_paid - remaining_after_gift) >= 0.01:
+            raise HTTPException(
+                status_code=400,
+                detail=f"cash_paid_amount ({cash_paid:.2f}) must equal remaining amount ({remaining_after_gift:.2f})",
+            )
+    if cash_paid < 0:
+        raise HTTPException(status_code=400, detail="cash_paid_amount cannot be negative")
+
+    final_paid = round(gift_card_used + cash_paid, 2)
+
+    target_points = int(final_paid)
+    current_points = _get_awarded_points_for_appointment(db, appointment.user_id, appointment.id)
+    delta_points = target_points - current_points
+    if delta_points > 0:
+        crud_points.add_points(
+            db=db,
+            user_id=appointment.user_id,
+            amount=delta_points,
+            reason="Settlement adjustment",
+            description=f"Adjusted points to {target_points} after settlement",
+            reference_type="appointment",
+            reference_id=appointment.id,
+        )
+    elif delta_points < 0:
+        user_points = crud_points.get_or_create_user_points(db, appointment.user_id)
+        user_points.total_points = max(0, int(user_points.total_points or 0) + delta_points)
+        user_points.available_points = max(0, int(user_points.available_points or 0) + delta_points)
+        user_points.updated_at = datetime.utcnow()
+        db.add(PointTransaction(
+            user_points_id=user_points.id,
+            amount=delta_points,
+            type=TransactionType.SPEND,
+            reason="Settlement adjustment",
+            description=f"Adjusted points to {target_points} after settlement",
+            reference_type="appointment",
+            reference_id=appointment.id,
+        ))
+    earned_points = target_points
+
+    before_settlement = {
+        "settlement_status": appointment.settlement_status,
+        "original_amount": appointment.original_amount,
+        "coupon_discount_amount": appointment.coupon_discount_amount,
+        "gift_card_used_amount": appointment.gift_card_used_amount,
+        "cash_paid_amount": appointment.cash_paid_amount,
+        "final_paid_amount": appointment.final_paid_amount,
+        "points_earned": appointment.points_earned,
+        "points_reverted": appointment.points_reverted,
+        "settled_at": str(appointment.settled_at) if appointment.settled_at else None,
+    }
+
+    appointment.original_amount = base_original
+    appointment.coupon_discount_amount = round(coupon_discount, 2)
+    appointment.gift_card_used_amount = round(gift_card_used, 2)
+    appointment.cash_paid_amount = round(cash_paid, 2)
+    appointment.final_paid_amount = final_paid
+    appointment.points_earned = earned_points
+    appointment.points_reverted = min(int(appointment.points_reverted or 0), earned_points)
+    appointment.settlement_status = "settled"
+    appointment.settled_at = datetime.utcnow()
+    appointment.payment_status = "paid"
+    appointment.paid_amount = final_paid
+    if selected_user_coupon:
+        selected_user_coupon.status = CouponStatus.USED
+        selected_user_coupon.used_at = datetime.utcnow()
+        selected_user_coupon.appointment_id = appointment.id
+
+    db.add(AppointmentSettlementEvent(
+        appointment_id=appointment.id,
+        event_type="settle",
+        idempotency_key=idem_key,
+        payload_json=json.dumps({
+            "original_amount": appointment.original_amount,
+            "user_coupon_id": payload.user_coupon_id,
+            "coupon_discount_amount": appointment.coupon_discount_amount,
+            "gift_card_used_amount": appointment.gift_card_used_amount,
+            "cash_paid_amount": appointment.cash_paid_amount,
+            "final_paid_amount": appointment.final_paid_amount,
+        }),
+    ))
+
+    db.commit()
+    db.refresh(appointment)
+
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="appointments",
+        action="appointment.settle",
+        message="订单完成结算",
+        target_type="appointment",
+        target_id=str(appointment.id),
+        store_id=service.store_id if service else None,
+        before=before_settlement,
+        after={
+            "settlement_status": appointment.settlement_status,
+            "original_amount": appointment.original_amount,
+            "coupon_discount_amount": appointment.coupon_discount_amount,
+            "gift_card_used_amount": appointment.gift_card_used_amount,
+            "cash_paid_amount": appointment.cash_paid_amount,
+            "final_paid_amount": appointment.final_paid_amount,
+            "points_earned": appointment.points_earned,
+            "points_reverted": appointment.points_reverted,
+            "settled_at": str(appointment.settled_at) if appointment.settled_at else None,
+        },
+        meta={"idempotency_key": idem_key, "user_coupon_id": payload.user_coupon_id},
+    )
+
+    return appointment
+
+
+@router.post("/{appointment_id}/refund", response_model=Appointment)
+def refund_appointment(
+    request: Request,
+    appointment_id: int,
+    payload: AppointmentRefundRequest,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Refund settled appointment (Store admin only).
+    Requires idempotency_key to avoid duplicate refunds.
+    """
+    idem_key = payload.idempotency_key.strip()
+    if not idem_key:
+        raise HTTPException(status_code=400, detail="idempotency_key is required")
+
+    appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    service = _assert_admin_can_operate_appointment(db, current_user, appointment)
+
+    existing_event = (
+        db.query(AppointmentSettlementEvent)
+        .filter(
+            AppointmentSettlementEvent.appointment_id == appointment.id,
+            AppointmentSettlementEvent.event_type == "refund",
+            AppointmentSettlementEvent.idempotency_key == idem_key,
+        )
+        .first()
+    )
+    if existing_event:
+        return appointment
+
+    if appointment.settlement_status not in ("settled", "partially_refunded"):
+        raise HTTPException(status_code=400, detail="Appointment is not in refundable settlement status")
+
+    refund_cash = round(float(payload.refund_cash_amount or 0.0), 2)
+    refund_gift = round(float(payload.refund_gift_card_amount or 0.0), 2)
+    if refund_cash <= 0 and refund_gift <= 0:
+        raise HTTPException(status_code=400, detail="Refund amount must be greater than 0")
+
+    current_cash = float(appointment.cash_paid_amount or 0.0)
+    current_gift = float(appointment.gift_card_used_amount or 0.0)
+    if refund_cash - current_cash > 0.009:
+        raise HTTPException(status_code=400, detail="refund_cash_amount exceeds refundable cash amount")
+    if refund_gift - current_gift > 0.009:
+        raise HTTPException(status_code=400, detail="refund_gift_card_amount exceeds refundable gift card amount")
+
+    if refund_gift > 0:
+        if not payload.gift_card_id:
+            raise HTTPException(status_code=400, detail="gift_card_id is required when refund_gift_card_amount > 0")
+        card = (
+            db.query(GiftCard)
+            .filter(GiftCard.id == payload.gift_card_id, GiftCard.user_id == appointment.user_id)
+            .first()
+        )
+        if not card:
+            raise HTTPException(status_code=404, detail="Gift card not found for this customer")
+        before_balance = float(card.balance or 0.0)
+        card.balance = round(before_balance + refund_gift, 2)
+        db.add(GiftCardTransaction(
+            gift_card_id=card.id,
+            user_id=current_user.id,
+            transaction_type="refund",
+            amount=refund_gift,
+            balance_before=before_balance,
+            balance_after=float(card.balance),
+            note=f"Refund for appointment #{appointment.order_number or appointment.id}",
+        ))
+
+    refundable_points_left = max(0, int(appointment.points_earned or 0) - int(appointment.points_reverted or 0))
+    refund_total = int(refund_cash + refund_gift)
+    points_to_revert = min(refundable_points_left, refund_total)
+    if points_to_revert > 0:
+        user_points = crud_points.get_or_create_user_points(db, appointment.user_id)
+        user_points.total_points = max(0, int(user_points.total_points or 0) - points_to_revert)
+        user_points.available_points = max(0, int(user_points.available_points or 0) - points_to_revert)
+        user_points.updated_at = datetime.utcnow()
+        db.add(PointTransaction(
+            user_points_id=user_points.id,
+            amount=-points_to_revert,
+            type=TransactionType.SPEND,
+            reason="Appointment refund rollback",
+            description=f"Rollback {points_to_revert} points from appointment refund",
+            reference_type="appointment",
+            reference_id=appointment.id,
+        ))
+
+    before_refund = {
+        "settlement_status": appointment.settlement_status,
+        "gift_card_used_amount": appointment.gift_card_used_amount,
+        "cash_paid_amount": appointment.cash_paid_amount,
+        "final_paid_amount": appointment.final_paid_amount,
+        "points_reverted": appointment.points_reverted,
+    }
+
+    appointment.cash_paid_amount = round(current_cash - refund_cash, 2)
+    appointment.gift_card_used_amount = round(current_gift - refund_gift, 2)
+    appointment.final_paid_amount = round(float(appointment.cash_paid_amount or 0) + float(appointment.gift_card_used_amount or 0), 2)
+    appointment.points_reverted = int(appointment.points_reverted or 0) + points_to_revert
+    appointment.paid_amount = appointment.final_paid_amount
+    if appointment.final_paid_amount <= 0.009:
+        appointment.settlement_status = "refunded"
+        appointment.payment_status = "unpaid"
+        used_coupon = (
+            db.query(UserCoupon)
+            .filter(
+                UserCoupon.user_id == appointment.user_id,
+                UserCoupon.appointment_id == appointment.id,
+                UserCoupon.status == CouponStatus.USED,
+            )
+            .order_by(UserCoupon.id.desc())
+            .first()
+        )
+        if used_coupon:
+            used_coupon.status = CouponStatus.AVAILABLE
+            used_coupon.used_at = None
+            used_coupon.appointment_id = None
+    else:
+        appointment.settlement_status = "partially_refunded"
+        appointment.payment_status = "paid"
+
+    db.add(AppointmentSettlementEvent(
+        appointment_id=appointment.id,
+        event_type="refund",
+        idempotency_key=idem_key,
+        payload_json=json.dumps({
+            "refund_cash_amount": refund_cash,
+            "refund_gift_card_amount": refund_gift,
+            "points_reverted": points_to_revert,
+            "reason": payload.reason,
+        }),
+    ))
+
+    db.commit()
+    db.refresh(appointment)
+
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="appointments",
+        action="appointment.refund",
+        message="订单退款",
+        target_type="appointment",
+        target_id=str(appointment.id),
+        store_id=service.store_id if service else None,
+        before=before_refund,
+        after={
+            "settlement_status": appointment.settlement_status,
+            "gift_card_used_amount": appointment.gift_card_used_amount,
+            "cash_paid_amount": appointment.cash_paid_amount,
+            "final_paid_amount": appointment.final_paid_amount,
+            "points_reverted": appointment.points_reverted,
+        },
+        meta={
+            "idempotency_key": idem_key,
+            "reason": payload.reason,
+            "refund_cash_amount": refund_cash,
+            "refund_gift_card_amount": refund_gift,
+            "points_reverted": points_to_revert,
+        },
     )
 
     return appointment

@@ -24,6 +24,7 @@ from app.models.user_points import UserPoints
 from app.models.point_transaction import PointTransaction, TransactionType
 from app.models.coupon import Coupon, CouponType, CouponCategory
 from app.models.user_coupon import UserCoupon, CouponStatus
+from app.models.coupon_phone_grant import CouponPhoneGrant
 from app.models.promotion import Promotion, PromotionService, PromotionScope, PromotionDiscountType
 from app.models.store_admin_application import StoreAdminApplication
 from app.models.risk import UserRiskState, RiskEvent
@@ -32,5 +33,6 @@ from app.models.security import SecurityIPRule, SecurityBlockLog
 from app.models.system_log import SystemLog
 from app.models.appointment_staff_split import AppointmentStaffSplit
 from app.models.appointment_group import AppointmentGroup
+from app.models.appointment_settlement_event import AppointmentSettlementEvent
 
-__all__ = ["User", "VerificationCode", "Store", "StoreImage", "Service", "ServiceCatalog", "Appointment", "AppointmentStatus", "Technician", "StoreHours", "TechnicianUnavailable", "Notification", "NotificationType", "Review", "ReviewReply", "AppointmentReminder", "ReminderType", "ReminderStatus", "StoreFavorite", "StorePortfolio", "Referral", "Pin", "Tag", "pin_tags", "PinFavorite", "GiftCard", "GiftCardTransaction", "UserPoints", "PointTransaction", "TransactionType", "Coupon", "CouponType", "CouponCategory", "UserCoupon", "CouponStatus", "Promotion", "PromotionService", "PromotionScope", "PromotionDiscountType", "StoreAdminApplication", "UserRiskState", "RiskEvent", "HomeFeedThemeSetting", "SecurityIPRule", "SecurityBlockLog", "SystemLog", "AppointmentStaffSplit", "AppointmentGroup"]
+__all__ = ["User", "VerificationCode", "Store", "StoreImage", "Service", "ServiceCatalog", "Appointment", "AppointmentStatus", "Technician", "StoreHours", "TechnicianUnavailable", "Notification", "NotificationType", "Review", "ReviewReply", "AppointmentReminder", "ReminderType", "ReminderStatus", "StoreFavorite", "StorePortfolio", "Referral", "Pin", "Tag", "pin_tags", "PinFavorite", "GiftCard", "GiftCardTransaction", "UserPoints", "PointTransaction", "TransactionType", "Coupon", "CouponType", "CouponCategory", "UserCoupon", "CouponStatus", "CouponPhoneGrant", "Promotion", "PromotionService", "PromotionScope", "PromotionDiscountType", "StoreAdminApplication", "UserRiskState", "RiskEvent", "HomeFeedThemeSetting", "SecurityIPRule", "SecurityBlockLog", "SystemLog", "AppointmentStaffSplit", "AppointmentGroup", "AppointmentSettlementEvent"]

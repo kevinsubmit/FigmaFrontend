@@ -56,6 +56,22 @@ export function MyCoupons({ onBack }: MyCouponsProps) {
     }
   };
 
+  const getCouponSubtitle = (coupon: UserCoupon) => {
+    const discountText = getDiscountText(coupon).trim().toLowerCase();
+    const nameText = (coupon.coupon.name || '').trim();
+    const normalizedName = nameText.toLowerCase();
+    if (nameText && normalizedName !== discountText) {
+      return nameText;
+    }
+    if (coupon.coupon.description && coupon.coupon.description.trim()) {
+      return coupon.coupon.description.trim();
+    }
+    if (coupon.source === 'points') return 'Points Exchange Coupon';
+    if (coupon.source === 'referral') return 'Referral Reward Coupon';
+    if (coupon.source === 'activity') return 'Activity Reward Coupon';
+    return 'Store Coupon';
+  };
+
   const getCouponColor = (category: string) => {
     switch (category) {
       case 'newcomer':
@@ -138,7 +154,7 @@ export function MyCoupons({ onBack }: MyCouponsProps) {
                 <h3 className="text-2xl font-bold text-white tracking-tight">
                   {getDiscountText(userCoupon)}
                 </h3>
-                <p className="text-sm font-semibold text-white/90">{userCoupon.coupon.name}</p>
+                <p className="text-sm font-semibold text-white/90 line-clamp-1">{getCouponSubtitle(userCoupon)}</p>
                 <p className="text-xs text-white/60">
                   Min. spend ${userCoupon.coupon.min_amount}
                 </p>

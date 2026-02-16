@@ -2,9 +2,10 @@
 Coupons CRUD operations
 """
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 from app.models.coupon import Coupon, CouponType, CouponCategory
 from app.models.user_coupon import UserCoupon, CouponStatus
+from app.models.coupon_phone_grant import CouponPhoneGrant
 from app.crud import points as crud_points
 from typing import List, Optional
 from datetime import datetime, timedelta
@@ -56,7 +57,98 @@ def get_exchangeable_coupons(db: Session) -> List[Coupon]:
 
 def create_coupon(db: Session, coupon_data: dict) -> Coupon:
     """Create new coupon template"""
+    normalized_name = (coupon_data.get("name") or "").strip()
+    if not normalized_name:
+        raise ValueError("Coupon name is required")
+
+    duplicate_name = (
+        db.query(Coupon)
+        .filter(func.lower(func.trim(Coupon.name)) == normalized_name.lower())
+        .first()
+    )
+    if duplicate_name:
+        raise ValueError("Coupon name already exists")
+
+    discount_value = float(coupon_data.get("discount_value") or 0)
+    min_amount = float(coupon_data.get("min_amount") or 0)
+    valid_days = int(coupon_data.get("valid_days") or 0)
+    points_required = coupon_data.get("points_required")
+    max_discount = coupon_data.get("max_discount")
+    coupon_type = coupon_data.get("type")
+    coupon_category = coupon_data.get("category")
+
+    duplicate_rule_query = db.query(Coupon).filter(
+        Coupon.type == coupon_type,
+        Coupon.category == coupon_category,
+        Coupon.discount_value == discount_value,
+        Coupon.min_amount == min_amount,
+        Coupon.valid_days == valid_days,
+        Coupon.points_required == points_required,
+    )
+    if max_discount is None:
+        duplicate_rule_query = duplicate_rule_query.filter(Coupon.max_discount.is_(None))
+    else:
+        duplicate_rule_query = duplicate_rule_query.filter(Coupon.max_discount == float(max_discount))
+    duplicate_rule = duplicate_rule_query.first()
+    if duplicate_rule:
+        raise ValueError("Coupon rule already exists")
+
+    coupon_data["name"] = normalized_name
     coupon = Coupon(**coupon_data)
+    db.add(coupon)
+    db.commit()
+    db.refresh(coupon)
+    return coupon
+
+
+def update_coupon(db: Session, coupon_id: int, update_data: dict) -> Coupon:
+    coupon = get_coupon(db, coupon_id)
+    if not coupon:
+        raise ValueError("Coupon not found")
+
+    next_name = (update_data.get("name", coupon.name) or "").strip()
+    if not next_name:
+        raise ValueError("Coupon name is required")
+
+    duplicate_name = (
+        db.query(Coupon)
+        .filter(
+            func.lower(func.trim(Coupon.name)) == next_name.lower(),
+            Coupon.id != coupon_id,
+        )
+        .first()
+    )
+    if duplicate_name:
+        raise ValueError("Coupon name already exists")
+
+    next_type = update_data.get("type", coupon.type)
+    next_category = update_data.get("category", coupon.category)
+    next_discount_value = float(update_data.get("discount_value", coupon.discount_value) or 0)
+    next_min_amount = float(update_data.get("min_amount", coupon.min_amount) or 0)
+    next_valid_days = int(update_data.get("valid_days", coupon.valid_days) or 0)
+    next_points_required = update_data.get("points_required", coupon.points_required)
+    next_max_discount = update_data.get("max_discount", coupon.max_discount)
+
+    duplicate_rule_query = db.query(Coupon).filter(
+        Coupon.id != coupon_id,
+        Coupon.type == next_type,
+        Coupon.category == next_category,
+        Coupon.discount_value == next_discount_value,
+        Coupon.min_amount == next_min_amount,
+        Coupon.valid_days == next_valid_days,
+        Coupon.points_required == next_points_required,
+    )
+    if next_max_discount is None:
+        duplicate_rule_query = duplicate_rule_query.filter(Coupon.max_discount.is_(None))
+    else:
+        duplicate_rule_query = duplicate_rule_query.filter(Coupon.max_discount == float(next_max_discount))
+    duplicate_rule = duplicate_rule_query.first()
+    if duplicate_rule:
+        raise ValueError("Coupon rule already exists")
+
+    for key, value in update_data.items():
+        setattr(coupon, key, value)
+    coupon.name = next_name
     db.add(coupon)
     db.commit()
     db.refresh(coupon)
@@ -135,6 +227,148 @@ def claim_coupon(
     db.refresh(user_coupon)
     
     return user_coupon
+
+
+def create_phone_pending_grant(
+    db: Session,
+    phone: str,
+    coupon_id: int,
+    granted_by_user_id: Optional[int] = None,
+    claim_days: int = 30,
+) -> CouponPhoneGrant:
+    """Create a pending coupon grant for a phone that is not yet registered."""
+    coupon = get_coupon(db, coupon_id)
+    if not coupon:
+        raise ValueError("Coupon not found")
+    if not coupon.is_active:
+        raise ValueError("Coupon is not active")
+
+    if coupon.total_quantity is not None and coupon.claimed_quantity >= coupon.total_quantity:
+        raise ValueError("Coupon is sold out")
+
+    now = datetime.utcnow()
+    existing = (
+        db.query(CouponPhoneGrant)
+        .filter(
+            CouponPhoneGrant.phone == phone,
+            CouponPhoneGrant.coupon_id == coupon_id,
+            CouponPhoneGrant.status == "pending",
+            CouponPhoneGrant.claim_expires_at > now,
+        )
+        .first()
+    )
+    if existing:
+        return existing
+
+    grant = CouponPhoneGrant(
+        phone=phone,
+        coupon_id=coupon_id,
+        status="pending",
+        granted_by_user_id=granted_by_user_id,
+        claim_expires_at=now + timedelta(days=claim_days),
+    )
+    db.add(grant)
+    db.commit()
+    db.refresh(grant)
+    return grant
+
+
+def list_phone_pending_grants(
+    db: Session,
+    status: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
+) -> List[CouponPhoneGrant]:
+    query = db.query(CouponPhoneGrant)
+    if status:
+        query = query.filter(CouponPhoneGrant.status == status)
+    return query.order_by(CouponPhoneGrant.granted_at.desc()).offset(skip).limit(limit).all()
+
+
+def revoke_phone_pending_grant(db: Session, grant_id: int) -> Optional[CouponPhoneGrant]:
+    grant = db.query(CouponPhoneGrant).filter(CouponPhoneGrant.id == grant_id).first()
+    if not grant:
+        return None
+    if grant.status in {"claimed", "revoked"}:
+        return grant
+    grant.status = "revoked"
+    grant.note = "Revoked by admin"
+    db.add(grant)
+    db.commit()
+    db.refresh(grant)
+    return grant
+
+
+def expire_phone_pending_grants(db: Session) -> int:
+    now = datetime.utcnow()
+    rows = (
+        db.query(CouponPhoneGrant)
+        .filter(
+            CouponPhoneGrant.status == "pending",
+            CouponPhoneGrant.claim_expires_at.isnot(None),
+            CouponPhoneGrant.claim_expires_at < now,
+        )
+        .all()
+    )
+    for row in rows:
+        row.status = "expired"
+        row.note = "Pending grant expired"
+    if rows:
+        db.commit()
+    return len(rows)
+
+
+def claim_phone_pending_grants(db: Session, user_id: int, phone: str) -> int:
+    """
+    Claim all valid pending phone grants for a newly registered/logged-in user.
+    Returns number of successfully claimed coupons.
+    """
+    expire_phone_pending_grants(db)
+    rows = (
+        db.query(CouponPhoneGrant)
+        .filter(
+            CouponPhoneGrant.phone == phone,
+            CouponPhoneGrant.status == "pending",
+        )
+        .order_by(CouponPhoneGrant.granted_at.asc())
+        .all()
+    )
+    if not rows:
+        return 0
+
+    now = datetime.utcnow()
+    claimed = 0
+    for row in rows:
+        coupon = get_coupon(db, row.coupon_id)
+        if not coupon or not coupon.is_active:
+            row.status = "revoked"
+            row.note = "Coupon inactive or removed before claim"
+            continue
+        if coupon.total_quantity is not None and coupon.claimed_quantity >= coupon.total_quantity:
+            row.status = "revoked"
+            row.note = "Coupon sold out before claim"
+            continue
+
+        user_coupon = UserCoupon(
+            user_id=user_id,
+            coupon_id=row.coupon_id,
+            status=CouponStatus.AVAILABLE,
+            source="phone_pending",
+            expires_at=now + timedelta(days=coupon.valid_days),
+        )
+        db.add(user_coupon)
+        db.flush()
+
+        coupon.claimed_quantity += 1
+        row.status = "claimed"
+        row.claimed_user_id = user_id
+        row.claimed_at = now
+        row.user_coupon_id = user_coupon.id
+        row.note = "Claimed automatically after register/login"
+        claimed += 1
+
+    db.commit()
+    return claimed
 
 
 def exchange_coupon_with_points(

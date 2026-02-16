@@ -3,7 +3,7 @@ Technicians API endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import case, func
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 from datetime import datetime, date
@@ -73,57 +73,98 @@ def get_technician_performance_summary(
     _ensure_store_scope(current_user, target_store_id)
 
     today_et = datetime.now(ET_TZ).date()
+    agg_map: dict[int, dict] = {}
 
-    split_total_subquery = (
+    completed_appointments = (
         db.query(
-            AppointmentStaffSplit.appointment_id.label("appointment_id"),
-            func.coalesce(func.sum(AppointmentStaffSplit.amount), 0.0).label("split_total"),
+            Appointment.id.label("appointment_id"),
+            Appointment.order_number.label("order_number"),
+            Appointment.appointment_date.label("appointment_date"),
+            Appointment.appointment_time.label("appointment_time"),
+            Appointment.technician_id.label("appointment_technician_id"),
+            Appointment.order_amount.label("order_amount"),
+            Service.name.label("service_name"),
+            Service.price.label("service_price"),
+            Service.commission_amount.label("service_commission_amount"),
+            func.coalesce(User.full_name, User.username).label("customer_name"),
         )
-        .group_by(AppointmentStaffSplit.appointment_id)
-        .subquery()
-    )
-    commission_share_expr = case(
-        (split_total_subquery.c.split_total > 0, Service.commission_amount * (AppointmentStaffSplit.amount / split_total_subquery.c.split_total)),
-        else_=0.0,
-    )
-
-    rows = (
-        db.query(
-            AppointmentStaffSplit.technician_id.label("technician_id"),
-            func.count(AppointmentStaffSplit.id).label("total_order_count"),
-            func.coalesce(func.sum(AppointmentStaffSplit.amount), 0.0).label("total_amount"),
-            func.coalesce(func.sum(commission_share_expr), 0.0).label("total_commission"),
-            func.sum(case((Appointment.appointment_date == today_et, 1), else_=0)).label("today_order_count"),
-            func.coalesce(
-                func.sum(case((Appointment.appointment_date == today_et, AppointmentStaffSplit.amount), else_=0.0)),
-                0.0,
-            ).label("today_amount"),
-            func.coalesce(
-                func.sum(case((Appointment.appointment_date == today_et, commission_share_expr), else_=0.0)),
-                0.0,
-            ).label("today_commission"),
-        )
-        .join(Appointment, Appointment.id == AppointmentStaffSplit.appointment_id)
         .join(Service, Service.id == Appointment.service_id)
-        .join(split_total_subquery, split_total_subquery.c.appointment_id == Appointment.id)
+        .join(User, User.id == Appointment.user_id)
         .filter(
             Appointment.store_id == target_store_id,
             Appointment.status == AppointmentStatus.COMPLETED,
         )
-        .group_by(AppointmentStaffSplit.technician_id)
         .all()
     )
-    agg_map = {
-        row.technician_id: {
-            "total_order_count": int(row.total_order_count or 0),
-            "total_amount": float(row.total_amount or 0),
-            "total_commission": float(row.total_commission or 0),
-            "today_order_count": int(row.today_order_count or 0),
-            "today_amount": float(row.today_amount or 0),
-            "today_commission": float(row.today_commission or 0),
-        }
-        for row in rows
-    }
+    appointment_ids = [row.appointment_id for row in completed_appointments]
+    split_rows = []
+    if appointment_ids:
+        split_rows = (
+            db.query(
+                AppointmentStaffSplit.id.label("split_id"),
+                AppointmentStaffSplit.appointment_id.label("appointment_id"),
+                AppointmentStaffSplit.technician_id.label("technician_id"),
+                AppointmentStaffSplit.amount.label("amount"),
+            )
+            .filter(AppointmentStaffSplit.appointment_id.in_(appointment_ids))
+            .all()
+        )
+    split_map: dict[int, list] = {}
+    for row in split_rows:
+        split_map.setdefault(row.appointment_id, []).append(row)
+
+    for appt in completed_appointments:
+        order_amount = float(appt.order_amount if appt.order_amount is not None else (appt.service_price or 0))
+        order_commission = float(appt.service_commission_amount or 0)
+        appointment_splits = split_map.get(appt.appointment_id, [])
+
+        if appointment_splits:
+            split_total = round(sum(float(item.amount or 0) for item in appointment_splits), 2)
+            for split in appointment_splits:
+                technician_id = int(split.technician_id)
+                split_amount = float(split.amount or 0)
+                split_commission = order_commission * (split_amount / split_total) if split_total > 0 else 0.0
+                metrics = agg_map.setdefault(
+                    technician_id,
+                    {
+                        "total_order_count": 0,
+                        "total_amount": 0.0,
+                        "total_commission": 0.0,
+                        "today_order_count": 0,
+                        "today_amount": 0.0,
+                        "today_commission": 0.0,
+                    },
+                )
+                metrics["total_order_count"] += 1
+                metrics["total_amount"] += split_amount
+                metrics["total_commission"] += split_commission
+                if appt.appointment_date == today_et:
+                    metrics["today_order_count"] += 1
+                    metrics["today_amount"] += split_amount
+                    metrics["today_commission"] += split_commission
+            continue
+
+        if not appt.appointment_technician_id:
+            continue
+        technician_id = int(appt.appointment_technician_id)
+        metrics = agg_map.setdefault(
+            technician_id,
+            {
+                "total_order_count": 0,
+                "total_amount": 0.0,
+                "total_commission": 0.0,
+                "today_order_count": 0,
+                "today_amount": 0.0,
+                "today_commission": 0.0,
+            },
+        )
+        metrics["total_order_count"] += 1
+        metrics["total_amount"] += order_amount
+        metrics["total_commission"] += order_commission
+        if appt.appointment_date == today_et:
+            metrics["today_order_count"] += 1
+            metrics["today_amount"] += order_amount
+            metrics["today_commission"] += order_commission
 
     technicians = (
         db.query(TechnicianModel)
@@ -181,125 +222,108 @@ def get_technician_performance_detail(
     if from_date_obj and to_date_obj and from_date_obj > to_date_obj:
         raise HTTPException(status_code=400, detail="date_from cannot be later than date_to")
 
-    split_total_subquery = (
+    completed_appointments = (
         db.query(
-            AppointmentStaffSplit.appointment_id.label("appointment_id"),
-            func.coalesce(func.sum(AppointmentStaffSplit.amount), 0.0).label("split_total"),
-        )
-        .group_by(AppointmentStaffSplit.appointment_id)
-        .subquery()
-    )
-    commission_share_expr = case(
-        (split_total_subquery.c.split_total > 0, Service.commission_amount * (AppointmentStaffSplit.amount / split_total_subquery.c.split_total)),
-        else_=0.0,
-    )
-
-    base_query = (
-        db.query(
-            AppointmentStaffSplit,
+            Appointment.id.label("appointment_id"),
             Appointment.order_number.label("order_number"),
             Appointment.appointment_date.label("appointment_date"),
             Appointment.appointment_time.label("appointment_time"),
+            Appointment.technician_id.label("appointment_technician_id"),
+            Appointment.order_amount.label("order_amount"),
             Service.name.label("service_name"),
+            Service.price.label("service_price"),
+            Service.commission_amount.label("service_commission_amount"),
             func.coalesce(User.full_name, User.username).label("customer_name"),
-            commission_share_expr.label("commission_amount"),
         )
-        .join(Appointment, Appointment.id == AppointmentStaffSplit.appointment_id)
         .join(Service, Service.id == Appointment.service_id)
         .join(User, User.id == Appointment.user_id)
-        .join(split_total_subquery, split_total_subquery.c.appointment_id == Appointment.id)
         .filter(
-            AppointmentStaffSplit.technician_id == technician_id,
+            Appointment.store_id == technician.store_id,
             Appointment.status == AppointmentStatus.COMPLETED,
         )
-    )
-
-    filtered_query = base_query
-    if from_date_obj:
-        filtered_query = filtered_query.filter(Appointment.appointment_date >= from_date_obj)
-    if to_date_obj:
-        filtered_query = filtered_query.filter(Appointment.appointment_date <= to_date_obj)
-
-    rows = (
-        filtered_query.order_by(Appointment.appointment_date.desc(), Appointment.appointment_time.desc())
-        .offset(skip)
-        .limit(limit)
         .all()
     )
+    appointment_ids = [row.appointment_id for row in completed_appointments]
+    split_rows = []
+    if appointment_ids:
+        split_rows = (
+            db.query(
+                AppointmentStaffSplit.id.label("split_id"),
+                AppointmentStaffSplit.appointment_id.label("appointment_id"),
+                AppointmentStaffSplit.technician_id.label("technician_id"),
+                AppointmentStaffSplit.amount.label("amount"),
+            )
+            .filter(AppointmentStaffSplit.appointment_id.in_(appointment_ids))
+            .all()
+        )
+    split_map: dict[int, list] = {}
+    for row in split_rows:
+        split_map.setdefault(row.appointment_id, []).append(row)
 
-    total_all = (
-        db.query(
-            func.count(AppointmentStaffSplit.id).label("total_orders"),
-            func.coalesce(func.sum(AppointmentStaffSplit.amount), 0.0).label("total_amount"),
-            func.coalesce(
-                func.sum(
-                    case(
-                        (
-                            split_total_subquery.c.split_total > 0,
-                            Service.commission_amount * (AppointmentStaffSplit.amount / split_total_subquery.c.split_total),
-                        ),
-                        else_=0.0,
-                    )
-                ),
-                0.0,
-            ).label("total_commission"),
-        )
-        .join(Appointment, Appointment.id == AppointmentStaffSplit.appointment_id)
-        .join(Service, Service.id == Appointment.service_id)
-        .join(split_total_subquery, split_total_subquery.c.appointment_id == Appointment.id)
-        .filter(
-            AppointmentStaffSplit.technician_id == technician_id,
-            Appointment.status == AppointmentStatus.COMPLETED,
-        )
-        .first()
-    )
-    total_period = (
-        db.query(
-            func.count(AppointmentStaffSplit.id).label("period_orders"),
-            func.coalesce(func.sum(AppointmentStaffSplit.amount), 0.0).label("period_amount"),
-            func.coalesce(
-                func.sum(
-                    case(
-                        (
-                            split_total_subquery.c.split_total > 0,
-                            Service.commission_amount * (AppointmentStaffSplit.amount / split_total_subquery.c.split_total),
-                        ),
-                        else_=0.0,
-                    )
-                ),
-                0.0,
-            ).label("period_commission"),
-        )
-        .join(Appointment, Appointment.id == AppointmentStaffSplit.appointment_id)
-        .join(Service, Service.id == Appointment.service_id)
-        .join(split_total_subquery, split_total_subquery.c.appointment_id == Appointment.id)
-        .filter(
-            AppointmentStaffSplit.technician_id == technician_id,
-            Appointment.status == AppointmentStatus.COMPLETED,
-        )
-    )
-    if from_date_obj:
-        total_period = total_period.filter(Appointment.appointment_date >= from_date_obj)
-    if to_date_obj:
-        total_period = total_period.filter(Appointment.appointment_date <= to_date_obj)
-    total_period = total_period.first()
+    all_items = []
+    for appt in completed_appointments:
+        order_amount = float(appt.order_amount if appt.order_amount is not None else (appt.service_price or 0))
+        order_commission = float(appt.service_commission_amount or 0)
+        appointment_splits = split_map.get(appt.appointment_id, [])
+        if appointment_splits:
+            split_total = round(sum(float(item.amount or 0) for item in appointment_splits), 2)
+            for split in appointment_splits:
+                if split.technician_id != technician_id:
+                    continue
+                split_amount = float(split.amount or 0)
+                split_commission = order_commission * (split_amount / split_total) if split_total > 0 else 0.0
+                all_items.append(
+                    {
+                        "split_id": int(split.split_id),
+                        "appointment_id": appt.appointment_id,
+                        "order_number": appt.order_number,
+                        "appointment_date": str(appt.appointment_date),
+                        "appointment_time": str(appt.appointment_time),
+                        "service_name": appt.service_name,
+                        "customer_name": appt.customer_name,
+                        "work_type": appt.service_name,
+                        "amount": split_amount,
+                        "commission_amount": split_commission,
+                    }
+                )
+            continue
 
-    items = []
-    for split, order_number, appointment_date, appointment_time, service_name, customer_name, commission_amount in rows:
-        items.append(
+        if appt.appointment_technician_id != technician_id:
+            continue
+        all_items.append(
             {
-                "split_id": split.id,
-                "appointment_id": split.appointment_id,
-                "order_number": order_number,
-                "appointment_date": str(appointment_date),
-                "appointment_time": str(appointment_time),
-                "service_name": service_name,
-                "customer_name": customer_name,
-                "work_type": split.work_type or service_name,
-                "amount": float(split.amount or 0),
-                "commission_amount": float(commission_amount or 0),
+                "split_id": -int(appt.appointment_id),
+                "appointment_id": appt.appointment_id,
+                "order_number": appt.order_number,
+                "appointment_date": str(appt.appointment_date),
+                "appointment_time": str(appt.appointment_time),
+                "service_name": appt.service_name,
+                "customer_name": appt.customer_name,
+                "work_type": appt.service_name,
+                "amount": order_amount,
+                "commission_amount": order_commission,
             }
         )
+
+    def _in_period(item: dict) -> bool:
+        item_date = datetime.strptime(item["appointment_date"], "%Y-%m-%d").date()
+        if from_date_obj and item_date < from_date_obj:
+            return False
+        if to_date_obj and item_date > to_date_obj:
+            return False
+        return True
+
+    period_items = [item for item in all_items if _in_period(item)]
+    all_items.sort(key=lambda item: (item["appointment_date"], item["appointment_time"]), reverse=True)
+    period_items.sort(key=lambda item: (item["appointment_date"], item["appointment_time"]), reverse=True)
+    paged_items = period_items[skip : skip + limit]
+
+    total_all_orders = len(all_items)
+    total_all_amount = round(sum(float(item["amount"] or 0) for item in all_items), 2)
+    total_all_commission = round(sum(float(item["commission_amount"] or 0) for item in all_items), 2)
+    total_period_orders = len(period_items)
+    total_period_amount = round(sum(float(item["amount"] or 0) for item in period_items), 2)
+    total_period_commission = round(sum(float(item["commission_amount"] or 0) for item in period_items), 2)
 
     return {
         "technician_id": technician.id,
@@ -307,13 +331,13 @@ def get_technician_performance_detail(
         "store_id": technician.store_id,
         "date_from": str(from_date_obj) if from_date_obj else None,
         "date_to": str(to_date_obj) if to_date_obj else None,
-        "period_order_count": int(total_period.period_orders or 0),
-        "period_amount": float(total_period.period_amount or 0),
-        "period_commission": float(total_period.period_commission or 0),
-        "total_order_count": int(total_all.total_orders or 0),
-        "total_amount": float(total_all.total_amount or 0),
-        "total_commission": float(total_all.total_commission or 0),
-        "items": items,
+        "period_order_count": total_period_orders,
+        "period_amount": total_period_amount,
+        "period_commission": total_period_commission,
+        "total_order_count": total_all_orders,
+        "total_amount": total_all_amount,
+        "total_commission": total_all_commission,
+        "items": paged_items,
     }
 
 

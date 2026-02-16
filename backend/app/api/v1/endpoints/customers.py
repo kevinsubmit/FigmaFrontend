@@ -107,6 +107,7 @@ class CustomerCouponItem(BaseModel):
     discount_type: Optional[str] = None
     discount_value: float
     min_amount: float
+    max_discount: Optional[float] = None
 
 
 class CustomerGiftCardItem(BaseModel):
@@ -448,6 +449,7 @@ def get_customer_rewards(
                 discount_type=str(coupon.type.value if hasattr(coupon.type, "value") else coupon.type) if coupon.type else None,
                 discount_value=float(coupon.discount_value or 0.0),
                 min_amount=float(coupon.min_amount or 0.0),
+                max_discount=float(coupon.max_discount) if coupon.max_discount is not None else None,
             )
             for user_coupon, coupon in coupons_rows
         ],

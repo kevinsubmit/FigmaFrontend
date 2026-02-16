@@ -291,9 +291,6 @@ const Staff: React.FC = () => {
                   <th className="px-3 py-2 font-medium">Today Orders</th>
                   <th className="px-3 py-2 font-medium">Today Amount</th>
                   <th className="px-3 py-2 font-medium">Today Commission</th>
-                  <th className="px-3 py-2 font-medium">History Orders</th>
-                  <th className="px-3 py-2 font-medium">History Amount</th>
-                  <th className="px-3 py-2 font-medium">History Commission</th>
                   <th className="px-3 py-2 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -314,9 +311,6 @@ const Staff: React.FC = () => {
                       <td className="px-3 py-2.5 text-slate-700">{perf?.today_order_count || 0}</td>
                       <td className="px-3 py-2.5 text-slate-700">{formatAmount(perf?.today_amount || 0)}</td>
                       <td className="px-3 py-2.5 text-slate-700">{formatAmount(perf?.today_commission || 0)}</td>
-                      <td className="px-3 py-2.5 text-slate-700">{perf?.total_order_count || 0}</td>
-                      <td className="px-3 py-2.5 text-slate-700">{formatAmount(perf?.total_amount || 0)}</td>
-                      <td className="px-3 py-2.5 text-slate-700">{formatAmount(perf?.total_commission || 0)}</td>
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2">
                           <button

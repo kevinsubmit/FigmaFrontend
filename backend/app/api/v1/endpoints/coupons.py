@@ -1,7 +1,7 @@
 """
 Coupons API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.api.deps import get_db, get_current_user, get_current_admin_user
@@ -10,16 +10,81 @@ from app.models.user_coupon import CouponStatus
 from app.schemas.coupons import (
     CouponResponse,
     CouponCreate,
+    CouponUpdate,
     UserCouponResponse,
     ClaimCouponRequest,
-    GrantCouponRequest
+    GrantCouponRequest,
+    GrantCouponResult,
+    GrantCouponBatchRequest,
+    GrantCouponBatchResult,
+    GrantCouponBatchItem,
+    CouponPhoneGrantResponse,
 )
 from app.crud import coupons as crud_coupons
 from app.crud import user as crud_user
+from app.models.coupon import Coupon
+from app.services.coupon_service import send_coupon_claim_sms
 from app.services import notification_service
+from app.services import log_service
+from app.schemas.phone import normalize_us_phone
 
 
 router = APIRouter()
+
+
+def _grant_coupon_for_phone(
+    db: Session,
+    phone: str,
+    coupon_id: int,
+    operator_user_id: Optional[int],
+) -> GrantCouponResult:
+    user = crud_user.get_by_phone(db, phone=phone)
+    if user:
+        user_coupon = crud_coupons.claim_coupon(
+            db=db,
+            user_id=user.id,
+            coupon_id=coupon_id,
+            source="admin"
+        )
+        coupon = crud_coupons.get_coupon(db, coupon_id)
+        if coupon:
+            if coupon.type == "fixed_amount":
+                discount_text = f"${coupon.discount_value:g} off"
+            else:
+                discount_text = f"{coupon.discount_value:g}% off"
+            notification_service.notify_coupon_granted(
+                db=db,
+                user_id=user.id,
+                coupon_name=coupon.name,
+                discount_text=discount_text,
+                expires_at=user_coupon.expires_at
+            )
+        return GrantCouponResult(
+            status="granted",
+            detail="Coupon granted to registered user",
+            sms_sent=False,
+            user_coupon_id=user_coupon.id,
+        )
+
+    pending = crud_coupons.create_phone_pending_grant(
+        db=db,
+        phone=phone,
+        coupon_id=coupon_id,
+        granted_by_user_id=operator_user_id,
+    )
+    coupon = crud_coupons.get_coupon(db, coupon_id)
+    coupon_name = coupon.name if coupon else f"coupon #{coupon_id}"
+    sms_sent = send_coupon_claim_sms(
+        phone=phone,
+        coupon_name=coupon_name,
+        expires_at=pending.claim_expires_at,
+    ) if pending.claim_expires_at else False
+    return GrantCouponResult(
+        status="pending_claim",
+        detail=f"Phone not registered yet. Coupon {coupon_name} saved as pending claim.",
+        sms_sent=sms_sent,
+        pending_grant_id=pending.id,
+    )
 
 
 @router.get("/available", response_model=List[CouponResponse])
@@ -142,6 +207,7 @@ def exchange_coupon(
 
 @router.post("/create", response_model=CouponResponse)
 def create_coupon(
+    http_request: Request,
     coupon: CouponCreate,
     current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
@@ -150,46 +216,129 @@ def create_coupon(
     Create new coupon template (admin only)
     """
     coupon_data = coupon.dict()
-    new_coupon = crud_coupons.create_coupon(db, coupon_data)
-    return new_coupon
+    try:
+        new_coupon = crud_coupons.create_coupon(db, coupon_data)
+        log_service.create_audit_log(
+            db,
+            request=http_request,
+            operator_user_id=current_user.id,
+            module="coupons",
+            action="coupon.template.create",
+            message="创建优惠券模板",
+            target_type="coupon",
+            target_id=str(new_coupon.id),
+            after={
+                "coupon_id": new_coupon.id,
+                "name": new_coupon.name,
+                "type": str(new_coupon.type.value if hasattr(new_coupon.type, "value") else new_coupon.type),
+                "discount_value": float(new_coupon.discount_value or 0),
+                "min_amount": float(new_coupon.min_amount or 0),
+                "valid_days": int(new_coupon.valid_days or 0),
+            },
+        )
+        return new_coupon
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
 
 
-@router.post("/grant", response_model=UserCouponResponse)
+@router.patch("/id/{coupon_id}", response_model=CouponResponse)
+def update_coupon(
+    coupon_id: int,
+    http_request: Request,
+    payload: CouponUpdate,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    update_data = payload.dict(exclude_unset=True)
+    if not update_data:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update")
+    before = crud_coupons.get_coupon(db, coupon_id)
+    if not before:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Coupon not found")
+    before_snapshot = {
+        "name": before.name,
+        "description": before.description,
+        "type": str(before.type.value if hasattr(before.type, "value") else before.type),
+        "category": str(before.category.value if hasattr(before.category, "value") else before.category),
+        "discount_value": float(before.discount_value or 0),
+        "min_amount": float(before.min_amount or 0),
+        "max_discount": before.max_discount,
+        "valid_days": int(before.valid_days or 0),
+        "is_active": bool(before.is_active),
+    }
+
+    try:
+        updated = crud_coupons.update_coupon(db, coupon_id, update_data)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    log_service.create_audit_log(
+        db,
+        request=http_request,
+        operator_user_id=current_user.id,
+        module="coupons",
+        action="coupon.template.update",
+        message="更新优惠券模板",
+        target_type="coupon",
+        target_id=str(updated.id),
+        before=before_snapshot,
+        after={
+            "name": updated.name,
+            "description": updated.description,
+            "type": str(updated.type.value if hasattr(updated.type, "value") else updated.type),
+            "category": str(updated.category.value if hasattr(updated.category, "value") else updated.category),
+            "discount_value": float(updated.discount_value or 0),
+            "min_amount": float(updated.min_amount or 0),
+            "max_discount": updated.max_discount,
+            "valid_days": int(updated.valid_days or 0),
+            "is_active": bool(updated.is_active),
+        },
+    )
+    return updated
+
+
+@router.post("/grant", response_model=GrantCouponResult)
 def grant_coupon_to_user(
-    request: GrantCouponRequest,
+    http_request: Request,
+    payload: GrantCouponRequest,
     current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
     """
     Grant coupon to a specific user by phone (admin only).
     """
-    user = crud_user.get_by_phone(db, phone=request.phone)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
     try:
-        user_coupon = crud_coupons.claim_coupon(
+        result = _grant_coupon_for_phone(
             db=db,
-            user_id=user.id,
-            coupon_id=request.coupon_id,
-            source="admin"
+            phone=payload.phone,
+            coupon_id=payload.coupon_id,
+            operator_user_id=current_user.id,
         )
-        coupon = crud_coupons.get_coupon(db, request.coupon_id)
-        if coupon:
-            if coupon.type == "fixed_amount":
-                discount_text = f"${coupon.discount_value:g} off"
-            else:
-                discount_text = f"{coupon.discount_value:g}% off"
-            notification_service.notify_coupon_granted(
-                db=db,
-                user_id=user.id,
-                coupon_name=coupon.name,
-                discount_text=discount_text,
-                expires_at=user_coupon.expires_at
-            )
-        return user_coupon
+        coupon = crud_coupons.get_coupon(db, payload.coupon_id)
+        log_service.create_audit_log(
+            db,
+            request=http_request,
+            operator_user_id=current_user.id,
+            module="coupons",
+            action="coupon.grant.phone",
+            message="按手机号发放优惠券",
+            target_type="coupon",
+            target_id=str(payload.coupon_id),
+            after={
+                "phone": payload.phone,
+                "coupon_id": payload.coupon_id,
+                "coupon_name": coupon.name if coupon else None,
+                "discount_value": float(coupon.discount_value or 0) if coupon else None,
+                "result_status": result.status,
+                "sms_sent": result.sms_sent,
+                "user_coupon_id": result.user_coupon_id,
+                "pending_grant_id": result.pending_grant_id,
+            },
+        )
+        return result
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -197,7 +346,163 @@ def grant_coupon_to_user(
         )
 
 
-@router.get("/{coupon_id}", response_model=CouponResponse)
+@router.post("/grant/batch", response_model=GrantCouponBatchResult)
+def grant_coupon_batch(
+    http_request: Request,
+    payload: GrantCouponBatchRequest,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    if not payload.phones:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="phones is required")
+
+    items: List[GrantCouponBatchItem] = []
+    seen = set()
+
+    for raw_phone in payload.phones:
+        input_phone = str(raw_phone or "").strip()
+        if not input_phone:
+            continue
+
+        try:
+            normalized = normalize_us_phone(input_phone, "Invalid US phone format")
+        except ValueError as exc:
+            items.append(GrantCouponBatchItem(
+                input_phone=input_phone,
+                status="failed",
+                detail=str(exc),
+            ))
+            continue
+
+        if normalized in seen:
+            items.append(GrantCouponBatchItem(
+                input_phone=input_phone,
+                normalized_phone=normalized,
+                status="failed",
+                detail="Duplicate phone in this batch",
+            ))
+            continue
+        seen.add(normalized)
+
+        try:
+            result = _grant_coupon_for_phone(
+                db=db,
+                phone=normalized,
+                coupon_id=payload.coupon_id,
+                operator_user_id=current_user.id,
+            )
+            items.append(GrantCouponBatchItem(
+                input_phone=input_phone,
+                normalized_phone=normalized,
+                status=result.status,
+                detail=result.detail,
+                sms_sent=result.sms_sent,
+                user_coupon_id=result.user_coupon_id,
+                pending_grant_id=result.pending_grant_id,
+            ))
+        except ValueError as exc:
+            items.append(GrantCouponBatchItem(
+                input_phone=input_phone,
+                normalized_phone=normalized,
+                status="failed",
+                detail=str(exc),
+            ))
+
+    granted_count = sum(1 for item in items if item.status == "granted")
+    pending_count = sum(1 for item in items if item.status == "pending_claim")
+    failed_count = sum(1 for item in items if item.status == "failed")
+
+    result = GrantCouponBatchResult(
+        total=len(items),
+        granted_count=granted_count,
+        pending_count=pending_count,
+        failed_count=failed_count,
+        items=items,
+    )
+    coupon = crud_coupons.get_coupon(db, payload.coupon_id)
+    log_service.create_audit_log(
+        db,
+        request=http_request,
+        operator_user_id=current_user.id,
+        module="coupons",
+        action="coupon.grant.batch",
+        message="批量按手机号发放优惠券",
+        target_type="coupon",
+        target_id=str(payload.coupon_id),
+        after={
+            "coupon_id": payload.coupon_id,
+            "coupon_name": coupon.name if coupon else None,
+            "discount_value": float(coupon.discount_value or 0) if coupon else None,
+            "total": result.total,
+            "granted_count": result.granted_count,
+            "pending_count": result.pending_count,
+            "failed_count": result.failed_count,
+        },
+        meta={"items": [item.dict() for item in result.items]},
+    )
+    return result
+
+
+@router.get("/pending-grants", response_model=List[CouponPhoneGrantResponse])
+def get_coupon_pending_grants(
+    status: Optional[str] = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=500),
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    crud_coupons.expire_phone_pending_grants(db)
+    rows = crud_coupons.list_phone_pending_grants(db=db, status=status, skip=skip, limit=limit)
+    coupon_ids = {row.coupon_id for row in rows}
+    coupon_map = {}
+    if coupon_ids:
+        coupon_map = {row.id: row.name for row in db.query(Coupon).filter(Coupon.id.in_(coupon_ids)).all()}
+    return [
+        CouponPhoneGrantResponse(
+            id=row.id,
+            coupon_id=row.coupon_id,
+            coupon_name=coupon_map.get(row.coupon_id),
+            phone=row.phone,
+            status=row.status,
+            note=row.note,
+            granted_by_user_id=row.granted_by_user_id,
+            granted_at=row.granted_at,
+            claim_expires_at=row.claim_expires_at,
+            claimed_user_id=row.claimed_user_id,
+            claimed_at=row.claimed_at,
+            user_coupon_id=row.user_coupon_id,
+        )
+        for row in rows
+    ]
+
+
+@router.post("/pending-grants/{grant_id}/revoke", response_model=CouponPhoneGrantResponse)
+def revoke_coupon_pending_grant(
+    grant_id: int,
+    current_user: User = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    row = crud_coupons.revoke_phone_pending_grant(db=db, grant_id=grant_id)
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pending grant not found")
+    coupon = crud_coupons.get_coupon(db, row.coupon_id)
+    return CouponPhoneGrantResponse(
+        id=row.id,
+        coupon_id=row.coupon_id,
+        coupon_name=coupon.name if coupon else None,
+        phone=row.phone,
+        status=row.status,
+        note=row.note,
+        granted_by_user_id=row.granted_by_user_id,
+        granted_at=row.granted_at,
+        claim_expires_at=row.claim_expires_at,
+        claimed_user_id=row.claimed_user_id,
+        claimed_at=row.claimed_at,
+        user_coupon_id=row.user_coupon_id,
+    )
+
+
+@router.get("/id/{coupon_id}", response_model=CouponResponse)
 def get_coupon(
     coupon_id: int,
     db: Session = Depends(get_db)

@@ -3,7 +3,7 @@ Gift cards endpoints
 """
 from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_user, get_current_admin_user
 from app.models.user import User
@@ -22,6 +22,7 @@ from app.crud import gift_card as crud_gift_cards
 from app.crud import user as crud_user
 from app.services.gift_card_service import send_gift_card_sms
 from app.services import notification_service
+from app.services import log_service
 from app.core.config import settings
 
 router = APIRouter()
@@ -68,29 +69,30 @@ def get_gift_card_summary(
 
 @router.post("/purchase", response_model=GiftCardPurchaseResponse)
 def purchase_gift_card(
-    request: GiftCardPurchaseRequest,
+    http_request: Request,
+    payload: GiftCardPurchaseRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     gift_card, claim_code = crud_gift_cards.create_gift_card_purchase(
         db=db,
         purchaser_id=current_user.id,
-        amount=request.amount,
-        recipient_phone=request.recipient_phone,
-        message=request.message
+        amount=payload.amount,
+        recipient_phone=payload.recipient_phone,
+        message=payload.message
     )
     sms_sent = False
-    if request.recipient_phone and claim_code and gift_card.claim_expires_at:
+    if payload.recipient_phone and claim_code and gift_card.claim_expires_at:
         sms_sent = send_gift_card_sms(
-            phone=request.recipient_phone,
+            phone=payload.recipient_phone,
             claim_code=claim_code,
-            amount=request.amount,
+            amount=payload.amount,
             expires_at=gift_card.claim_expires_at
         )
         notification_service.notify_gift_card_sent(
             db=db,
             purchaser_id=current_user.id,
-            amount=request.amount,
+            amount=payload.amount,
             recipient_phone=gift_card.recipient_phone,
             expires_at=gift_card.claim_expires_at
         )
@@ -99,9 +101,30 @@ def purchase_gift_card(
             notification_service.notify_gift_card_received(
                 db=db,
                 recipient_id=recipient_user.id,
-                amount=request.amount,
+                amount=payload.amount,
                 expires_at=gift_card.claim_expires_at
             )
+
+    action_name = "gift_card.issue.phone" if payload.recipient_phone else "gift_card.purchase"
+    action_message = "按手机号发放礼品卡" if payload.recipient_phone else "购买礼品卡"
+    log_service.create_audit_log(
+        db,
+        request=http_request,
+        operator_user_id=current_user.id,
+        module="gift_cards",
+        action=action_name,
+        message=action_message,
+        target_type="gift_card",
+        target_id=str(gift_card.id),
+        after={
+            "gift_card_id": gift_card.id,
+            "recipient_phone": payload.recipient_phone,
+            "amount": float(payload.amount or 0),
+            "sms_sent": sms_sent,
+            "status": gift_card.status,
+            "claim_expires_at": str(gift_card.claim_expires_at) if gift_card.claim_expires_at else None,
+        },
+    )
 
     return GiftCardPurchaseResponse(
         gift_card=gift_card,

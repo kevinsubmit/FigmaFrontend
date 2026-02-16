@@ -22,7 +22,9 @@ import {
   getAppointments,
   getAppointmentStaffSplits,
   markAppointmentNoShow,
+  refundAppointment,
   rescheduleAppointment,
+  settleAppointment,
   updateAppointmentAmount,
   updateAppointmentGuestOwner,
   updateAppointmentNotes,
@@ -30,6 +32,7 @@ import {
   updateAppointmentStatus,
   updateAppointmentTechnician,
 } from '../api/appointments';
+import { CustomerCouponItem, CustomerGiftCardItem, getCustomerRewards } from '../api/customers';
 import { getServiceCatalog, getStoreServices, Service } from '../api/services';
 import { getTechnicians, Technician } from '../api/technicians';
 import { useAuth } from '../context/AuthContext';
@@ -166,6 +169,15 @@ const getOrderAmount = (apt: Appointment) => {
   if (typeof apt.service_price === 'number') return apt.service_price;
   return null;
 };
+const asNumberOrZero = (value?: number | null) => (typeof value === 'number' ? value : 0);
+const getSettlementOriginalAmount = (apt: Appointment) => {
+  const settlementStatus = (apt.settlement_status || 'unsettled').toLowerCase();
+  if (settlementStatus === 'unsettled' && typeof apt.order_amount === 'number') {
+    return apt.order_amount;
+  }
+  if (typeof apt.original_amount === 'number') return apt.original_amount;
+  return getOrderAmount(apt) ?? 0;
+};
 const formatCurrency = (value?: number | null) => (typeof value === 'number' ? `$${Math.floor(value)}` : '-');
 const toGroupRoleLabel = (apt: Appointment) => {
   if (!apt.group_id) return '';
@@ -178,6 +190,51 @@ const normalizeAmountInput = (raw: string) => {
   if (!cleaned) return '';
   const integerPart = cleaned.split('.')[0];
   return integerPart.replace(/^0+(?=\d)/, '');
+};
+const parseAmountOrZero = (raw: string) => {
+  const n = Number.parseInt(raw.trim() || '0', 10);
+  if (Number.isNaN(n) || n < 0) return 0;
+  return n;
+};
+const formatShortDate = (value?: string | null) => {
+  if (!value) return 'No expiry';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'No expiry';
+  return date.toLocaleDateString('en-US', {
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric',
+    timeZone: 'America/New_York',
+  });
+};
+const formatCouponRuleLabel = (coupon: CustomerCouponItem) => {
+  const type = (coupon.discount_type || '').toLowerCase();
+  if (type === 'percentage') {
+    const maxText = typeof coupon.max_discount === 'number' && coupon.max_discount > 0 ? `, max $${Math.floor(coupon.max_discount)}` : '';
+    return `${Math.floor(coupon.discount_value)}% off${maxText}`;
+  }
+  return `$${Math.floor(coupon.discount_value)} off`;
+};
+const formatCouponOptionLabel = (coupon: CustomerCouponItem) => {
+  const minText = Number(coupon.min_amount || 0) > 0 ? `, min $${Math.floor(coupon.min_amount)}` : '';
+  return `#${coupon.id} ${coupon.coupon_name} (${formatCouponRuleLabel(coupon)}${minText}) · Exp ${formatShortDate(coupon.expires_at)}`;
+};
+const formatGiftCardOptionLabel = (card: CustomerGiftCardItem) => {
+  const cardTail = String(card.card_number || '').slice(-4) || String(card.id);
+  return `#${card.id} ****${cardTail} · Balance $${Math.floor(Number(card.balance || 0))} · Exp ${formatShortDate(card.expires_at)}`;
+};
+const calculateCouponDiscountAmount = (orderAmount: number, coupon: CustomerCouponItem) => {
+  const minAmount = Number(coupon.min_amount || 0);
+  if (orderAmount < minAmount) return 0;
+  const discountType = (coupon.discount_type || '').toLowerCase();
+  if (discountType === 'percentage') {
+    let value = orderAmount * (Number(coupon.discount_value || 0) / 100);
+    if (typeof coupon.max_discount === 'number' && coupon.max_discount > 0) {
+      value = Math.min(value, Number(coupon.max_discount));
+    }
+    return Math.max(0, Math.floor(value));
+  }
+  return Math.max(0, Math.floor(Number(coupon.discount_value || 0)));
 };
 
 const AppointmentsList: React.FC = () => {
@@ -205,7 +262,23 @@ const AppointmentsList: React.FC = () => {
   const [showAmountEditor, setShowAmountEditor] = useState(false);
   const [savingGuestOwner, setSavingGuestOwner] = useState(false);
   const [savingStaff, setSavingStaff] = useState(false);
+  const [settling, setSettling] = useState(false);
+  const [refunding, setRefunding] = useState(false);
   const [editAmount, setEditAmount] = useState('');
+  const [settlementUserCouponId, setSettlementUserCouponId] = useState('');
+  const [settlementCouponDiscount, setSettlementCouponDiscount] = useState('');
+  const [settlementGiftCardId, setSettlementGiftCardId] = useState('');
+  const [settlementGiftAmount, setSettlementGiftAmount] = useState('');
+  const [settlementCashPaid, setSettlementCashPaid] = useState('');
+  const [settlementIdemKey, setSettlementIdemKey] = useState('');
+  const [settlementCoupons, setSettlementCoupons] = useState<CustomerCouponItem[]>([]);
+  const [settlementGiftCards, setSettlementGiftCards] = useState<CustomerGiftCardItem[]>([]);
+  const [settlementOptionsLoading, setSettlementOptionsLoading] = useState(false);
+  const [refundCashAmount, setRefundCashAmount] = useState('');
+  const [refundGiftAmount, setRefundGiftAmount] = useState('');
+  const [refundGiftCardId, setRefundGiftCardId] = useState('');
+  const [refundReason, setRefundReason] = useState('');
+  const [refundIdemKey, setRefundIdemKey] = useState('');
   const [selectedTechnicianId, setSelectedTechnicianId] = useState<string>('');
   const [guestOwnerPhone, setGuestOwnerPhone] = useState('');
   const [staffOptionsForSelected, setStaffOptionsForSelected] = useState<Technician[]>([]);
@@ -402,6 +475,90 @@ const AppointmentsList: React.FC = () => {
     setShowAmountEditor(false);
     setSelectedTechnicianId(next.technician_id ? String(next.technician_id) : '');
     setGuestOwnerPhone(next.guest_phone || '');
+    setSettlementUserCouponId('');
+    setSettlementCouponDiscount(String(Math.floor(asNumberOrZero(next.coupon_discount_amount))));
+    setSettlementGiftCardId('');
+    setSettlementGiftAmount('');
+    const cashPreview = asNumberOrZero(next.cash_paid_amount);
+    setSettlementCashPaid(cashPreview > 0 ? String(Math.floor(cashPreview)) : '');
+    setSettlementIdemKey(`settle-${next.id}-${Date.now()}`);
+    setRefundCashAmount('');
+    setRefundGiftAmount('');
+    setRefundGiftCardId('');
+    setRefundReason('');
+    setRefundIdemKey(`refund-${next.id}-${Date.now()}`);
+  };
+
+  useEffect(() => {
+    const loadSettlementOptions = async () => {
+      if (!selected?.user_id) {
+        setSettlementCoupons([]);
+        setSettlementGiftCards([]);
+        return;
+      }
+      setSettlementOptionsLoading(true);
+      try {
+        const rewards = await getCustomerRewards(selected.user_id, {
+          coupon_limit: 100,
+          coupon_status: 'available',
+          coupon_validity: 'valid',
+          gift_card_limit: 100,
+          gift_card_status: 'active',
+        });
+        setSettlementCoupons((rewards.coupons || []).filter((item) => String(item.status).toLowerCase() === 'available'));
+        setSettlementGiftCards((rewards.gift_cards || []).filter((item) => String(item.status).toLowerCase() === 'active' && Number(item.balance || 0) > 0));
+      } catch {
+        setSettlementCoupons([]);
+        setSettlementGiftCards([]);
+      } finally {
+        setSettlementOptionsLoading(false);
+      }
+    };
+
+    loadSettlementOptions();
+  }, [selected?.id, selected?.user_id]);
+
+  const handleSettlementCouponChange = (value: string) => {
+    setSettlementUserCouponId(value);
+    if (!selected || !value) {
+      setSettlementCouponDiscount('0');
+      if (selected && settlementGiftCardId) {
+        handleSettlementGiftCardChange(settlementGiftCardId);
+      }
+      return;
+    }
+    const coupon = settlementCoupons.find((item) => item.id === Number.parseInt(value, 10));
+    if (!coupon) {
+      setSettlementCouponDiscount('0');
+      return;
+    }
+    const orderAmount = Math.max(0, Number(getOrderAmount(selected) || 0));
+    const discountAmount = calculateCouponDiscountAmount(orderAmount, coupon);
+    setSettlementCouponDiscount(String(discountAmount));
+    if (settlementGiftCardId) {
+      handleSettlementGiftCardChange(settlementGiftCardId);
+      return;
+    }
+    setSettlementCashPaid(String(Math.max(0, orderAmount - discountAmount)));
+  };
+
+  const handleSettlementGiftCardChange = (value: string) => {
+    setSettlementGiftCardId(value);
+    if (!selected || !value) {
+      setSettlementGiftAmount('');
+      return;
+    }
+    const card = settlementGiftCards.find((item) => item.id === Number.parseInt(value, 10));
+    if (!card) {
+      setSettlementGiftAmount('');
+      return;
+    }
+    const orderAmount = Math.max(0, Number(getOrderAmount(selected) || 0));
+    const couponDiscount = parseAmountOrZero(settlementCouponDiscount);
+    const remainingAfterCoupon = Math.max(0, orderAmount - couponDiscount);
+    const usableGiftAmount = Math.max(0, Math.floor(Math.min(Number(card.balance || 0), remainingAfterCoupon)));
+    setSettlementGiftAmount(String(usableGiftAmount));
+    setSettlementCashPaid(String(Math.max(0, remainingAfterCoupon - usableGiftAmount)));
   };
 
   useEffect(() => {
@@ -585,6 +742,91 @@ const AppointmentsList: React.FC = () => {
       }
     } finally {
       setSavingAmount(false);
+    }
+  };
+
+  const saveSettlement = async () => {
+    if (!selected) return;
+    if (!settlementIdemKey.trim()) {
+      toast.error('Idempotency key is required');
+      return;
+    }
+    const userCouponId = settlementUserCouponId.trim()
+      ? Number.parseInt(settlementUserCouponId.trim(), 10)
+      : undefined;
+    const couponDiscount = parseAmountOrZero(settlementCouponDiscount);
+    const giftAmount = parseAmountOrZero(settlementGiftAmount);
+    const cashPaid = parseAmountOrZero(settlementCashPaid);
+    const giftCardId = settlementGiftCardId.trim() ? Number.parseInt(settlementGiftCardId, 10) : undefined;
+
+    if (giftAmount > 0 && (!giftCardId || Number.isNaN(giftCardId))) {
+      toast.error('Gift card id is required when gift amount > 0');
+      return;
+    }
+    if (settlementUserCouponId.trim() && (!userCouponId || Number.isNaN(userCouponId))) {
+      toast.error('User coupon id is invalid');
+      return;
+    }
+
+    setSettling(true);
+    try {
+      const updated = await settleAppointment(selected.id, {
+        idempotency_key: settlementIdemKey.trim(),
+        user_coupon_id: userCouponId,
+        coupon_discount_amount: couponDiscount,
+        gift_card_id: giftCardId,
+        gift_card_amount: giftAmount,
+        cash_paid_amount: cashPaid,
+      });
+      setAppointments((prev) => prev.map((apt) => (apt.id === updated.id ? { ...apt, ...updated } : apt)));
+      syncSelected({ ...selected, ...updated });
+      toast.success('Settlement saved');
+    } catch (error: any) {
+      if (!error?.__api_toast_shown) {
+        toast.error(error?.response?.data?.detail || 'Failed to settle appointment');
+      }
+    } finally {
+      setSettling(false);
+    }
+  };
+
+  const saveRefund = async () => {
+    if (!selected) return;
+    if (!refundIdemKey.trim()) {
+      toast.error('Idempotency key is required');
+      return;
+    }
+    const refundCash = parseAmountOrZero(refundCashAmount);
+    const refundGift = parseAmountOrZero(refundGiftAmount);
+    const giftCardId = refundGiftCardId.trim() ? Number.parseInt(refundGiftCardId, 10) : undefined;
+
+    if (refundCash <= 0 && refundGift <= 0) {
+      toast.error('Refund amount must be greater than 0');
+      return;
+    }
+    if (refundGift > 0 && (!giftCardId || Number.isNaN(giftCardId))) {
+      toast.error('Gift card id is required when refund gift amount > 0');
+      return;
+    }
+
+    setRefunding(true);
+    try {
+      const updated = await refundAppointment(selected.id, {
+        idempotency_key: refundIdemKey.trim(),
+        refund_cash_amount: refundCash,
+        refund_gift_card_amount: refundGift,
+        gift_card_id: giftCardId,
+        reason: refundReason.trim() || undefined,
+      });
+      setAppointments((prev) => prev.map((apt) => (apt.id === updated.id ? { ...apt, ...updated } : apt)));
+      syncSelected({ ...selected, ...updated });
+      toast.success('Refund saved');
+    } catch (error: any) {
+      if (!error?.__api_toast_shown) {
+        toast.error(error?.response?.data?.detail || 'Failed to refund appointment');
+      }
+    } finally {
+      setRefunding(false);
     }
   };
 
@@ -1221,6 +1463,140 @@ const AppointmentsList: React.FC = () => {
                     {conflictInfo.messages[selected.id]}
                   </p>
                 )}
+              </div>
+
+              <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-1.5 text-sm">
+                <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Settlement (Preview)</p>
+                <p className="text-slate-700">Original: ${getSettlementOriginalAmount(selected).toFixed(2)}</p>
+                <p className="text-slate-700">Coupon Discount: ${asNumberOrZero(selected.coupon_discount_amount).toFixed(2)}</p>
+                <p className="text-slate-700">Gift Card Used: ${asNumberOrZero(selected.gift_card_used_amount).toFixed(2)}</p>
+                <p className="text-slate-700">Cash Paid: ${asNumberOrZero(selected.cash_paid_amount).toFixed(2)}</p>
+                <p className="text-slate-700">Final Paid: ${asNumberOrZero(selected.final_paid_amount).toFixed(2)}</p>
+                <p className="text-slate-700">Points Earned: {Math.floor(asNumberOrZero(selected.points_earned))}</p>
+                <p className="text-slate-700">Points Reverted: {Math.floor(asNumberOrZero(selected.points_reverted))}</p>
+                <p className="text-slate-700">Settlement Status: {selected.settlement_status || 'unsettled'}</p>
+                <p className="text-slate-700">Settled At: {formatCreatedAt(selected.settled_at)}</p>
+                <div className="pt-2 space-y-2 border-t border-blue-100">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Settle</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={settlementUserCouponId}
+                      onChange={(event) => handleSettlementCouponChange(event.target.value)}
+                      className="rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-xs !text-slate-900"
+                    >
+                      <option value="">{settlementOptionsLoading ? 'Loading coupons...' : 'Select Coupon'}</option>
+                      {settlementCoupons.map((coupon) => (
+                        <option key={coupon.id} value={coupon.id}>
+                          {formatCouponOptionLabel(coupon)}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={settlementCouponDiscount}
+                      onChange={(event) => setSettlementCouponDiscount(normalizeAmountInput(event.target.value))}
+                      placeholder="Coupon Discount"
+                      className="rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-xs !text-slate-900"
+                    />
+                    <select
+                      value={settlementGiftCardId}
+                      onChange={(event) => handleSettlementGiftCardChange(event.target.value)}
+                      className="rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-xs !text-slate-900"
+                    >
+                      <option value="">{settlementOptionsLoading ? 'Loading gift cards...' : 'Select Gift Card'}</option>
+                      {settlementGiftCards.map((card) => (
+                        <option key={card.id} value={card.id}>
+                          {formatGiftCardOptionLabel(card)}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={settlementGiftAmount}
+                      onChange={(event) => setSettlementGiftAmount(normalizeAmountInput(event.target.value))}
+                      placeholder="Gift Amount"
+                      className="rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-xs !text-slate-900"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={settlementCashPaid}
+                      onChange={(event) => setSettlementCashPaid(normalizeAmountInput(event.target.value))}
+                      placeholder="Cash Paid"
+                      className="rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-xs !text-slate-900"
+                    />
+                    <input
+                      value={settlementIdemKey}
+                      onChange={(event) => setSettlementIdemKey(event.target.value)}
+                      placeholder="Idempotency Key"
+                      className="rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-xs !text-slate-900"
+                    />
+                  </div>
+                  <button
+                    onClick={saveSettlement}
+                    disabled={settling}
+                    className="w-full rounded-lg border border-gold-500/50 px-3 py-2 text-sm text-blue-700 disabled:opacity-50"
+                  >
+                    Save Settlement
+                  </button>
+                </div>
+
+                <div className="pt-2 space-y-2 border-t border-blue-100">
+                  <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Refund</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={refundCashAmount}
+                      onChange={(event) => setRefundCashAmount(normalizeAmountInput(event.target.value))}
+                      placeholder="Refund Cash"
+                      className="rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-xs !text-slate-900"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={refundGiftAmount}
+                      onChange={(event) => setRefundGiftAmount(normalizeAmountInput(event.target.value))}
+                      placeholder="Refund Gift"
+                      className="rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-xs !text-slate-900"
+                    />
+                    <input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={refundGiftCardId}
+                      onChange={(event) => setRefundGiftCardId(event.target.value.replace(/[^\d]/g, ''))}
+                      placeholder="Gift Card ID"
+                      className="rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-xs !text-slate-900"
+                    />
+                    <input
+                      value={refundIdemKey}
+                      onChange={(event) => setRefundIdemKey(event.target.value)}
+                      placeholder="Idempotency Key"
+                      className="rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-xs !text-slate-900"
+                    />
+                    <input
+                      value={refundReason}
+                      onChange={(event) => setRefundReason(event.target.value)}
+                      placeholder="Refund Reason"
+                      className="col-span-2 rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-xs !text-slate-900"
+                    />
+                  </div>
+                  <button
+                    onClick={saveRefund}
+                    disabled={refunding}
+                    className="w-full rounded-lg border border-rose-500/50 px-3 py-2 text-sm text-rose-700 disabled:opacity-50"
+                  >
+                    Save Refund
+                  </button>
+                </div>
               </div>
 
               <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2">

@@ -97,7 +97,7 @@ class CouponsService {
    * Get coupon details
    */
   async getCouponDetails(couponId: number): Promise<Coupon> {
-    const response = await apiClient.get<Coupon>(`/coupons/${couponId}`);
+    const response = await apiClient.get<Coupon>(`/coupons/id/${couponId}`);
     return response.data;
   }
 }

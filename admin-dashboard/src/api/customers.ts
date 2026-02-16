@@ -71,6 +71,7 @@ export interface CustomerCouponItem {
   discount_type?: string | null;
   discount_value: number;
   min_amount: number;
+  max_discount?: number | null;
 }
 
 export interface CustomerGiftCardItem {

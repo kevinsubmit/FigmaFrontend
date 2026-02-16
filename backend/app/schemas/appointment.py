@@ -29,6 +29,15 @@ class AppointmentUpdate(BaseModel):
     status: Optional[AppointmentStatus] = None
     notes: Optional[str] = None
     completed_at: Optional[datetime] = None
+    original_amount: Optional[float] = None
+    coupon_discount_amount: Optional[float] = None
+    gift_card_used_amount: Optional[float] = None
+    cash_paid_amount: Optional[float] = None
+    final_paid_amount: Optional[float] = None
+    points_earned: Optional[int] = None
+    points_reverted: Optional[int] = None
+    settlement_status: Optional[str] = None
+    settled_at: Optional[datetime] = None
 
 
 class AppointmentComplete(BaseModel):
@@ -46,6 +55,26 @@ class AppointmentStatusUpdate(BaseModel):
 class AppointmentAmountUpdate(BaseModel):
     """Appointment amount update (admin)"""
     order_amount: float = Field(..., ge=1)
+
+
+class AppointmentSettleRequest(BaseModel):
+    """Appointment settlement request (admin)"""
+    idempotency_key: str = Field(..., min_length=6, max_length=80)
+    original_amount: Optional[float] = Field(None, ge=0)
+    user_coupon_id: Optional[int] = None
+    coupon_discount_amount: float = Field(0, ge=0)
+    gift_card_id: Optional[int] = None
+    gift_card_amount: float = Field(0, ge=0)
+    cash_paid_amount: Optional[float] = Field(None, ge=0)
+
+
+class AppointmentRefundRequest(BaseModel):
+    """Appointment refund request (admin)"""
+    idempotency_key: str = Field(..., min_length=6, max_length=80)
+    refund_cash_amount: float = Field(0, ge=0)
+    refund_gift_card_amount: float = Field(0, ge=0)
+    gift_card_id: Optional[int] = None
+    reason: Optional[str] = None
 
 
 class AppointmentTechnicianUpdate(BaseModel):
@@ -103,6 +132,15 @@ class Appointment(AppointmentBase):
     technician_id: Optional[int] = None
     status: AppointmentStatus
     order_amount: Optional[float] = None
+    original_amount: Optional[float] = None
+    coupon_discount_amount: Optional[float] = None
+    gift_card_used_amount: Optional[float] = None
+    cash_paid_amount: Optional[float] = None
+    final_paid_amount: Optional[float] = None
+    points_earned: Optional[int] = None
+    points_reverted: Optional[int] = None
+    settlement_status: Optional[str] = None
+    settled_at: Optional[datetime] = None
     group_id: Optional[int] = None
     is_group_host: Optional[bool] = False
     payment_status: Optional[str] = None
