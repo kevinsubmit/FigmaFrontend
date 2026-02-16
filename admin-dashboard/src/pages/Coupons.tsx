@@ -26,6 +26,7 @@ const Coupons: React.FC = () => {
   const [batchGranting, setBatchGranting] = useState(false);
   const [batchResult, setBatchResult] = useState<GrantCouponBatchResult | null>(null);
   const [quickPhone, setQuickPhone] = useState('');
+  const [quickTemplateCouponId, setQuickTemplateCouponId] = useState('');
   const [quickAmount, setQuickAmount] = useState('10');
   const [quickMinSpend, setQuickMinSpend] = useState('20');
   const [quickValidDays, setQuickValidDays] = useState('30');
@@ -138,6 +139,11 @@ const Coupons: React.FC = () => {
     };
   }, [coupons]);
 
+  const grantableCoupons = useMemo(
+    () => coupons.filter((coupon) => coupon.is_active !== false),
+    [coupons],
+  );
+
   const handleRevokePending = async (grantId: number) => {
     try {
       await revokeCouponPendingGrant(grantId);
@@ -184,42 +190,55 @@ const Coupons: React.FC = () => {
   };
 
   const handleQuickCreateAndGrant = async () => {
-    const amount = Number.parseInt(quickAmount, 10);
-    const minSpend = Number.parseInt(quickMinSpend, 10);
-    const validDays = Number.parseInt(quickValidDays, 10);
     if (!quickPhone.trim()) {
       toast.error('Phone is required');
-      return;
-    }
-    if (Number.isNaN(amount) || amount < 1) {
-      toast.error('Coupon amount must be at least 1');
-      return;
-    }
-    if (Number.isNaN(minSpend) || minSpend < 0) {
-      toast.error('Min spend must be 0 or greater');
-      return;
-    }
-    if (Number.isNaN(validDays) || validDays < 1) {
-      toast.error('Valid days must be at least 1');
       return;
     }
 
     setQuickGranting(true);
     try {
-      const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
-      const created = await createCoupon({
-        name: `$${amount} OFF ${stamp}`,
-        description: `Admin quick issue $${amount} coupon`,
-        type: 'fixed_amount',
-        category: 'activity',
-        discount_value: amount,
-        min_amount: minSpend,
-        valid_days: validDays,
-        is_active: true,
-      });
-      const result = await grantCoupon({ phone: quickPhone.trim(), coupon_id: created.id });
-      toast.success(`Created coupon #${created.id} and ${result.status === 'pending_claim' ? 'queued pending claim' : 'granted'}`);
+      if (quickTemplateCouponId) {
+        const result = await grantCoupon({
+          phone: quickPhone.trim(),
+          coupon_id: Number(quickTemplateCouponId),
+        });
+        toast.success(
+          result.status === 'pending_claim'
+            ? 'Template granted as pending claim'
+            : 'Template granted successfully',
+        );
+      } else {
+        const amount = Number.parseInt(quickAmount, 10);
+        const minSpend = Number.parseInt(quickMinSpend, 10);
+        const validDays = Number.parseInt(quickValidDays, 10);
+        if (Number.isNaN(amount) || amount < 1) {
+          toast.error('Coupon amount must be at least 1');
+          return;
+        }
+        if (Number.isNaN(minSpend) || minSpend < 0) {
+          toast.error('Min spend must be 0 or greater');
+          return;
+        }
+        if (Number.isNaN(validDays) || validDays < 1) {
+          toast.error('Valid days must be at least 1');
+          return;
+        }
+        const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
+        const created = await createCoupon({
+          name: `$${amount} OFF ${stamp}`,
+          description: `Admin quick issue $${amount} coupon`,
+          type: 'fixed_amount',
+          category: 'activity',
+          discount_value: amount,
+          min_amount: minSpend,
+          valid_days: validDays,
+          is_active: true,
+        });
+        const result = await grantCoupon({ phone: quickPhone.trim(), coupon_id: created.id });
+        toast.success(`Created coupon #${created.id} and ${result.status === 'pending_claim' ? 'queued pending claim' : 'granted'}`);
+      }
       setQuickPhone('');
+      setQuickTemplateCouponId('');
       await Promise.all([loadPendingGrants(), loadCoupons()]);
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || 'Failed to create and grant coupon');
@@ -378,49 +397,64 @@ const Coupons: React.FC = () => {
         <div className="card-surface p-5 space-y-3">
           <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Coupon Distribution</p>
           <div className="space-y-2">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Quick Create & Grant (Fixed Amount)</p>
-            <input
-              value={quickPhone}
-              onChange={(event) => setQuickPhone(event.target.value)}
-              placeholder="Recipient phone"
-              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900"
-            />
-            <div className="grid grid-cols-3 gap-2">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Quick Create & Grant (Fixed Amount)</p>
               <input
-                type="number"
-                min={1}
-                step={1}
-                value={quickAmount}
-                onChange={(event) => setQuickAmount(event.target.value)}
-                placeholder="Amount"
-                className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900"
+                value={quickPhone}
+                onChange={(event) => setQuickPhone(event.target.value)}
+                placeholder="Recipient phone"
+                className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900"
               />
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={quickMinSpend}
-                onChange={(event) => setQuickMinSpend(event.target.value)}
-                placeholder="Min Spend"
-                className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900"
-              />
-              <input
-                type="number"
-                min={1}
-                step={1}
-                value={quickValidDays}
-                onChange={(event) => setQuickValidDays(event.target.value)}
-                placeholder="Valid Days"
-                className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900"
-              />
-            </div>
-            <button
-              onClick={handleQuickCreateAndGrant}
-              disabled={quickGranting}
-              className="w-full rounded-xl border border-blue-300 py-3 text-sm font-semibold text-blue-700 disabled:opacity-60"
-            >
-              {quickGranting ? 'Processing...' : 'Create & Grant'}
-            </button>
+              <select
+                value={quickTemplateCouponId}
+                onChange={(event) => setQuickTemplateCouponId(event.target.value)}
+                className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900"
+              >
+                <option value="">Select coupon template (optional)</option>
+                {grantableCoupons.map((coupon) => (
+                  <option key={coupon.id} value={coupon.id}>
+                    {coupon.name} ({formatCouponRule(coupon)}, min ${coupon.min_amount})
+                  </option>
+                ))}
+              </select>
+              <div className="grid grid-cols-3 gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={quickAmount}
+                  onChange={(event) => setQuickAmount(event.target.value)}
+                  placeholder="Amount"
+                  disabled={!!quickTemplateCouponId}
+                  className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900"
+                />
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={quickMinSpend}
+                  onChange={(event) => setQuickMinSpend(event.target.value)}
+                  placeholder="Min Spend"
+                  disabled={!!quickTemplateCouponId}
+                  className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900"
+                />
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={quickValidDays}
+                  onChange={(event) => setQuickValidDays(event.target.value)}
+                  placeholder="Valid Days"
+                  disabled={!!quickTemplateCouponId}
+                  className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900"
+                />
+              </div>
+              <button
+                onClick={handleQuickCreateAndGrant}
+                disabled={quickGranting}
+                className="w-full rounded-xl border border-blue-300 py-3 text-sm font-semibold text-blue-700 disabled:opacity-60"
+              >
+                {quickGranting ? 'Processing...' : quickTemplateCouponId ? 'Grant Template' : 'Create & Grant'}
+              </button>
           </div>
 
           <div className="pt-2 border-t border-blue-100 space-y-2">
@@ -431,7 +465,7 @@ const Coupons: React.FC = () => {
               className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900"
             >
               <option value="">Select coupon template</option>
-              {coupons.map((coupon) => (
+              {grantableCoupons.map((coupon) => (
                 <option key={coupon.id} value={coupon.id}>
                   {coupon.name} ({formatCouponRule(coupon)}, min ${coupon.min_amount})
                 </option>
