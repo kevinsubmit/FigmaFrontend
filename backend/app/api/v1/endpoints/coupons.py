@@ -1,12 +1,17 @@
 """
 Coupons API endpoints
 """
+from datetime import datetime, time
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.api.deps import get_db, get_current_user, get_current_admin_user
+from app.core.config import settings
 from app.models.user import User
 from app.models.user_coupon import CouponStatus
+from app.models.user_coupon import UserCoupon
+from app.models.coupon_phone_grant import CouponPhoneGrant
 from app.schemas.coupons import (
     CouponResponse,
     CouponCreate,
@@ -30,6 +35,72 @@ from app.schemas.phone import normalize_us_phone
 
 
 router = APIRouter()
+
+
+def _today_start_utc() -> datetime:
+    now = datetime.utcnow()
+    return datetime.combine(now.date(), time.min)
+
+
+def _coupon_today_grant_total_face_value(db: Session) -> float:
+    """
+    Global daily face value for admin coupon grants.
+    Includes directly granted user coupons (source=admin) and pending phone grants.
+    """
+    start_at = _today_start_utc()
+    direct_total = (
+        db.query(func.coalesce(func.sum(Coupon.discount_value), 0.0))
+        .select_from(UserCoupon)
+        .join(Coupon, Coupon.id == UserCoupon.coupon_id)
+        .filter(
+            UserCoupon.source == "admin",
+            UserCoupon.obtained_at >= start_at,
+        )
+        .scalar()
+        or 0.0
+    )
+    pending_total = (
+        db.query(func.coalesce(func.sum(Coupon.discount_value), 0.0))
+        .select_from(CouponPhoneGrant)
+        .join(Coupon, Coupon.id == CouponPhoneGrant.coupon_id)
+        .filter(CouponPhoneGrant.granted_at >= start_at)
+        .scalar()
+        or 0.0
+    )
+    return float(direct_total or 0.0) + float(pending_total or 0.0)
+
+
+def _enforce_coupon_grant_guardrails(
+    db: Session,
+    *,
+    coupon: Coupon,
+    requested_count: int,
+) -> None:
+    if coupon.is_active is False:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Coupon template is inactive")
+
+    face_value = float(coupon.discount_value or 0.0)
+    if face_value <= 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Coupon face value must be greater than 0")
+
+    if face_value > settings.ADMIN_COUPON_GRANT_MAX_FACE_VALUE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Coupon face value exceeds limit (${settings.ADMIN_COUPON_GRANT_MAX_FACE_VALUE:g}). "
+                "Please reduce discount value or adjust security threshold."
+            ),
+        )
+
+    projected = _coupon_today_grant_total_face_value(db) + face_value * max(requested_count, 1)
+    if projected > settings.ADMIN_COUPON_GRANT_DAILY_TOTAL_FACE_VALUE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Daily coupon grant total limit exceeded (${settings.ADMIN_COUPON_GRANT_DAILY_TOTAL_FACE_VALUE:g}). "
+                "Please try tomorrow or reduce grant amount/count."
+            ),
+        )
 
 
 def _grant_coupon_for_phone(
@@ -311,13 +382,17 @@ def grant_coupon_to_user(
     Grant coupon to a specific user by phone (admin only).
     """
     try:
+        coupon = crud_coupons.get_coupon(db, payload.coupon_id)
+        if not coupon:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Coupon not found")
+        _enforce_coupon_grant_guardrails(db, coupon=coupon, requested_count=1)
+
         result = _grant_coupon_for_phone(
             db=db,
             phone=payload.phone,
             coupon_id=payload.coupon_id,
             operator_user_id=current_user.id,
         )
-        coupon = crud_coupons.get_coupon(db, payload.coupon_id)
         log_service.create_audit_log(
             db,
             request=http_request,
@@ -355,6 +430,17 @@ def grant_coupon_batch(
 ):
     if not payload.phones:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="phones is required")
+    if len(payload.phones) > settings.ADMIN_COUPON_BATCH_MAX_RECIPIENTS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Batch recipients exceed limit ({settings.ADMIN_COUPON_BATCH_MAX_RECIPIENTS})",
+        )
+
+    coupon = crud_coupons.get_coupon(db, payload.coupon_id)
+    if not coupon:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Coupon not found")
+
+    _enforce_coupon_grant_guardrails(db, coupon=coupon, requested_count=len(payload.phones))
 
     items: List[GrantCouponBatchItem] = []
     seen = set()
@@ -419,7 +505,6 @@ def grant_coupon_batch(
         failed_count=failed_count,
         items=items,
     )
-    coupon = crud_coupons.get_coupon(db, payload.coupon_id)
     log_service.create_audit_log(
         db,
         request=http_request,

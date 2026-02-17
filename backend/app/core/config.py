@@ -79,6 +79,13 @@ class Settings(BaseSettings):
     # Pagination
     DEFAULT_PAGE_SIZE: int = 20
     MAX_PAGE_SIZE: int = 100
+
+    # Financial-equivalent asset controls (coupon/gift-card grants)
+    ADMIN_COUPON_BATCH_MAX_RECIPIENTS: int = 200
+    ADMIN_COUPON_GRANT_MAX_FACE_VALUE: float = 200.0
+    ADMIN_COUPON_GRANT_DAILY_TOTAL_FACE_VALUE: float = 5000.0
+    ADMIN_GIFTCARD_ISSUE_MAX_AMOUNT: float = 500.0
+    ADMIN_GIFTCARD_ISSUE_DAILY_TOTAL_AMOUNT: float = 5000.0
     
     class Config:
         env_file = ".env"

@@ -2,11 +2,13 @@
 Gift cards endpoints
 """
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, time
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_current_user, get_current_admin_user
 from app.models.user import User
+from app.models.gift_card import GiftCard
 from app.schemas.gift_card import (
     GiftCardResponse,
     GiftCardSummary,
@@ -26,6 +28,26 @@ from app.services import log_service
 from app.core.config import settings
 
 router = APIRouter()
+
+
+def _today_start_utc() -> datetime:
+    now = datetime.utcnow()
+    return datetime.combine(now.date(), time.min)
+
+
+def _admin_today_issued_amount(db: Session, admin_user_id: int) -> float:
+    start_at = _today_start_utc()
+    total = (
+        db.query(func.coalesce(func.sum(GiftCard.initial_balance), 0.0))
+        .filter(
+            GiftCard.purchaser_id == admin_user_id,
+            GiftCard.recipient_phone.isnot(None),
+            GiftCard.created_at >= start_at,
+        )
+        .scalar()
+        or 0.0
+    )
+    return float(total or 0.0)
 
 
 @router.get("/", response_model=List[GiftCardResponse])
@@ -74,6 +96,30 @@ def purchase_gift_card(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    # Security hardening:
+    # - issuing to phone is admin-only
+    # - enforce amount and daily limits for admin issuance
+    if payload.recipient_phone:
+        if not current_user.is_admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only super admin can issue gift cards to phone",
+            )
+        if payload.amount > settings.ADMIN_GIFTCARD_ISSUE_MAX_AMOUNT:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Issue amount exceeds limit (${settings.ADMIN_GIFTCARD_ISSUE_MAX_AMOUNT:g})",
+            )
+        projected = _admin_today_issued_amount(db, current_user.id) + float(payload.amount or 0)
+        if projected > settings.ADMIN_GIFTCARD_ISSUE_DAILY_TOTAL_AMOUNT:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    "Daily gift card issue total limit exceeded "
+                    f"(${settings.ADMIN_GIFTCARD_ISSUE_DAILY_TOTAL_AMOUNT:g})"
+                ),
+            )
+
     gift_card, claim_code = crud_gift_cards.create_gift_card_purchase(
         db=db,
         purchaser_id=current_user.id,
