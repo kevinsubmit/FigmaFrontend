@@ -2,6 +2,7 @@ import { ArrowLeft, Coins, TrendingUp, TrendingDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Loader } from './ui/Loader';
 import pointsService, { PointsBalance, PointTransaction } from '../services/points.service';
+import couponsService, { Coupon } from '../services/coupons.service';
 
 interface MyPointsProps {
   onBack: () => void;
@@ -11,6 +12,8 @@ export function MyPoints({ onBack }: MyPointsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [balance, setBalance] = useState<PointsBalance | null>(null);
   const [transactions, setTransactions] = useState<PointTransaction[]>([]);
+  const [exchangeableCoupons, setExchangeableCoupons] = useState<Coupon[]>([]);
+  const [exchangingCouponId, setExchangingCouponId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,11 +40,31 @@ export function MyPoints({ onBack }: MyPointsProps) {
 
       setBalance(balanceData);
       setTransactions(transactionsData);
+
+      const couponsData = await couponsService.getExchangeableCoupons(token);
+      setExchangeableCoupons(couponsData);
     } catch (err: any) {
       console.error('Error loading points data:', err);
       setError(err.response?.data?.detail || 'Failed to load points data');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleExchangeCoupon = async (couponId: number) => {
+    try {
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+      if (!token) {
+        setError('Please login to exchange coupons');
+        return;
+      }
+      setExchangingCouponId(couponId);
+      await couponsService.exchangeCoupon(token, couponId);
+      await loadPointsData();
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to exchange coupon');
+    } finally {
+      setExchangingCouponId(null);
     }
   };
 
@@ -94,6 +117,37 @@ export function MyPoints({ onBack }: MyPointsProps) {
       )}
 
       <div className="px-4 py-6">
+        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 pl-1">Exchange Coupons</h3>
+        {exchangeableCoupons.length === 0 ? (
+          <div className="mb-6 text-center py-6 rounded-xl border border-[#333] bg-[#0f0f0f]">
+            <p className="text-sm text-gray-500">No exchangeable coupons right now</p>
+          </div>
+        ) : (
+          <div className="mb-6 space-y-3">
+            {exchangeableCoupons.map((coupon) => {
+              const requiredPoints = coupon.points_required ?? 0;
+              const canExchange = totalPoints >= requiredPoints;
+              return (
+                <div key={coupon.id} className="rounded-xl border border-[#333] bg-[#111] p-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-white">{coupon.name}</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Need {requiredPoints} pts • Min spend ${coupon.min_amount}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleExchangeCoupon(coupon.id)}
+                    disabled={!canExchange || exchangingCouponId === coupon.id}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-[#D4AF37]/40 text-[#D4AF37] disabled:opacity-50"
+                  >
+                    {exchangingCouponId === coupon.id ? 'Exchanging...' : 'Exchange'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4 pl-1">History</h3>
         
         {transactions.length === 0 ? (

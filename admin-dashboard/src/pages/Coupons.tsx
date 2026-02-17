@@ -39,6 +39,7 @@ const Coupons: React.FC = () => {
   const [templateMinAmount, setTemplateMinAmount] = useState('20');
   const [templateMaxDiscount, setTemplateMaxDiscount] = useState('');
   const [templateValidDays, setTemplateValidDays] = useState('30');
+  const [templatePointsRequired, setTemplatePointsRequired] = useState('');
   const [templateCreating, setTemplateCreating] = useState(false);
   const [editingCouponId, setEditingCouponId] = useState<number | null>(null);
   const [editName, setEditName] = useState('');
@@ -49,6 +50,7 @@ const Coupons: React.FC = () => {
   const [editMinAmount, setEditMinAmount] = useState('0');
   const [editMaxDiscount, setEditMaxDiscount] = useState('');
   const [editValidDays, setEditValidDays] = useState('30');
+  const [editPointsRequired, setEditPointsRequired] = useState('');
   const [editIsActive, setEditIsActive] = useState(true);
   const [editSaving, setEditSaving] = useState(false);
   const [togglingCouponId, setTogglingCouponId] = useState<number | null>(null);
@@ -252,6 +254,7 @@ const Coupons: React.FC = () => {
     const minAmount = Number.parseFloat(templateMinAmount);
     const validDays = Number.parseInt(templateValidDays, 10);
     const maxDiscount = templateType === 'percentage' && templateMaxDiscount.trim() ? Number.parseFloat(templateMaxDiscount) : undefined;
+    const pointsRequired = templatePointsRequired.trim() ? Number.parseInt(templatePointsRequired, 10) : null;
 
     if (!templateName.trim()) {
       toast.error('Template name is required');
@@ -273,6 +276,10 @@ const Coupons: React.FC = () => {
       toast.error('Max discount must be greater than 0');
       return;
     }
+    if (templatePointsRequired.trim() && (Number.isNaN(pointsRequired as number) || (pointsRequired as number) < 1)) {
+      toast.error('Points required must be at least 1');
+      return;
+    }
 
     setTemplateCreating(true);
     try {
@@ -285,6 +292,7 @@ const Coupons: React.FC = () => {
         min_amount: minAmount,
         max_discount: templateType === 'percentage' ? (templateMaxDiscount.trim() ? maxDiscount : null) : null,
         valid_days: validDays,
+        points_required: pointsRequired,
         is_active: true,
       });
       toast.success(`Template created: #${created.id}`);
@@ -294,6 +302,7 @@ const Coupons: React.FC = () => {
       setTemplateMinAmount('20');
       setTemplateMaxDiscount('');
       setTemplateValidDays('30');
+      setTemplatePointsRequired('');
       await loadCoupons();
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || 'Failed to create coupon template');
@@ -312,6 +321,7 @@ const Coupons: React.FC = () => {
     setEditMinAmount(String(coupon.min_amount ?? 0));
     setEditMaxDiscount(coupon.max_discount == null ? '' : String(coupon.max_discount));
     setEditValidDays(String(coupon.valid_days ?? 30));
+    setEditPointsRequired(coupon.points_required == null ? '' : String(coupon.points_required));
     setEditIsActive(coupon.is_active !== false);
   };
 
@@ -321,6 +331,7 @@ const Coupons: React.FC = () => {
     const minAmount = Number.parseFloat(editMinAmount);
     const maxDiscount = editType === 'percentage' && editMaxDiscount.trim() ? Number.parseFloat(editMaxDiscount) : undefined;
     const validDays = Number.parseInt(editValidDays, 10);
+    const pointsRequired = editPointsRequired.trim() ? Number.parseInt(editPointsRequired, 10) : null;
     if (!editName.trim()) {
       toast.error('Template name is required');
       return;
@@ -341,6 +352,10 @@ const Coupons: React.FC = () => {
       toast.error('Valid days must be at least 1');
       return;
     }
+    if (editPointsRequired.trim() && (Number.isNaN(pointsRequired as number) || (pointsRequired as number) < 1)) {
+      toast.error('Points required must be at least 1');
+      return;
+    }
     setEditSaving(true);
     try {
       await updateCoupon(editingCouponId, {
@@ -352,6 +367,7 @@ const Coupons: React.FC = () => {
         min_amount: minAmount,
         max_discount: editType === 'percentage' ? (editMaxDiscount.trim() ? maxDiscount : null) : null,
         valid_days: validDays,
+        points_required: pointsRequired,
         is_active: editIsActive,
       });
       toast.success('Coupon template updated');
@@ -612,6 +628,15 @@ const Coupons: React.FC = () => {
               className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900 disabled:opacity-50"
             />
           </div>
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={templatePointsRequired}
+            onChange={(event) => setTemplatePointsRequired(event.target.value)}
+            placeholder="Points Required (optional)"
+            className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900"
+          />
           <button
             onClick={handleCreateTemplate}
             disabled={templateCreating}
@@ -636,6 +661,7 @@ const Coupons: React.FC = () => {
                     <th className="px-4 py-3 font-medium">Value</th>
                     <th className="px-4 py-3 font-medium">Min Spend</th>
                     <th className="px-4 py-3 font-medium">Valid Days</th>
+                    <th className="px-4 py-3 font-medium">Points Req</th>
                     <th className="px-4 py-3 font-medium">Status</th>
                     <th className="px-4 py-3 font-medium">Edit</th>
                     <th className="px-4 py-3 font-medium">重复提示</th>
@@ -650,6 +676,7 @@ const Coupons: React.FC = () => {
                       <td className="px-4 py-3 text-slate-700">{formatCouponRule(coupon)}</td>
                       <td className="px-4 py-3 text-slate-700">${coupon.min_amount}</td>
                       <td className="px-4 py-3 text-slate-700">{coupon.valid_days} days</td>
+                      <td className="px-4 py-3 text-slate-700">{coupon.points_required ?? '-'}</td>
                       <td className="px-4 py-3">
                         <button
                           onClick={() => handleToggleCouponActive(coupon)}
@@ -775,6 +802,15 @@ const Coupons: React.FC = () => {
                 className="rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900"
               />
             </div>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              value={editPointsRequired}
+              onChange={(event) => setEditPointsRequired(event.target.value)}
+              placeholder="Points Required (optional)"
+              className="w-full rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-sm text-slate-900"
+            />
             <label className="inline-flex items-center gap-2 text-sm text-slate-700">
               <input
                 type="checkbox"

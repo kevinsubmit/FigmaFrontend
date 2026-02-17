@@ -1,4 +1,4 @@
-import { Share, MoreHorizontal, Crown, Coins, Ticket, Receipt, UserCog, Settings, TrendingUp, Camera, Gift, Users, Pencil, Check, X, AlertCircle, Sparkles, ChevronRight, Bell, Star, Heart } from 'lucide-react';
+import { Share, MoreHorizontal, Crown, Coins, Ticket, Receipt, UserCog, Settings, TrendingUp, Camera, Gift, Users, Pencil, Check, X, Sparkles, ChevronRight, Bell, Star, Heart } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
@@ -443,13 +443,6 @@ export function Profile({ onNavigate }: ProfileProps) {
                        <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] group-hover:text-[#D4AF37] transition-colors">Total Points</p>
                    </div>
 
-                   {/* Redemption Rule Info */}
-                   <div className="mt-3 flex items-center justify-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                       <AlertCircle className="w-2.5 h-2.5 text-[#D4AF37]" />
-                       <p className="text-[8px] font-bold text-gray-500 uppercase tracking-tighter">
-                           100 pts = $5 Discount
-                       </p>
-                   </div>
                 </div>
              </motion.button>
 

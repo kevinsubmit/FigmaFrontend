@@ -2,6 +2,7 @@ import { ArrowLeft, Ticket, Clock, Percent, Gift } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Loader } from './ui/Loader';
 import couponsService, { UserCoupon } from '../services/coupons.service';
+import { toast } from 'react-toastify';
 
 interface MyCouponsProps {
   onBack: () => void;
@@ -87,6 +88,20 @@ export function MyCoupons({ onBack }: MyCouponsProps) {
     }
   };
 
+  const handleUseCoupon = async (userCoupon: UserCoupon) => {
+    const userCouponId = String(userCoupon.id);
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(userCouponId);
+      }
+      toast.info(`Show this to staff: User Coupon ID #${userCouponId}. Copied.`);
+      return;
+    } catch (_error) {
+      // Fall through and still show guidance.
+    }
+    toast.info(`Show this to staff: User Coupon ID #${userCouponId}.`);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black pt-20">
@@ -158,6 +173,9 @@ export function MyCoupons({ onBack }: MyCouponsProps) {
                 <p className="text-xs text-white/60">
                   Min. spend ${userCoupon.coupon.min_amount}
                 </p>
+                <p className="text-[11px] text-white/70">
+                  User Coupon ID: #{userCoupon.id}
+                </p>
                 {userCoupon.source === 'points' && (
                   <div className="flex items-center gap-1 text-[10px] text-[#D4AF37] mt-1">
                     <Gift className="w-3 h-3" />
@@ -182,8 +200,11 @@ export function MyCoupons({ onBack }: MyCouponsProps) {
                   {formatDate(userCoupon.status === 'used' && userCoupon.used_at ? userCoupon.used_at : userCoupon.expires_at)}
                 </div>
                 {userCoupon.status === 'available' && (
-                  <button className="mt-3 bg-white text-black text-xs font-bold px-3 py-1.5 rounded-full hover:bg-gray-200 transition-colors">
-                    Use
+                  <button
+                    onClick={() => handleUseCoupon(userCoupon)}
+                    className="mt-3 bg-white text-black text-xs font-bold px-3 py-1.5 rounded-full hover:bg-gray-200 transition-colors"
+                  >
+                    Show to Staff
                   </button>
                 )}
                 {userCoupon.status === 'used' && (
