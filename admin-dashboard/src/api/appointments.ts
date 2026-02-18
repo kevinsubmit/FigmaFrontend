@@ -24,6 +24,7 @@ export interface Appointment {
   user_name?: string | null;
   customer_name?: string | null;
   customer_phone?: string | null;
+  is_new_customer?: boolean | null;
   staff_name?: string | null;
   stylist_name?: string | null;
   technician_name?: string | null;

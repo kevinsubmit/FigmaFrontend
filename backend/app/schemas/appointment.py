@@ -166,6 +166,7 @@ class AppointmentWithDetails(Appointment):
     user_name: Optional[str] = None
     customer_name: Optional[str] = None
     customer_phone: Optional[str] = None
+    is_new_customer: Optional[bool] = None
 
     class Config:
         from_attributes = True

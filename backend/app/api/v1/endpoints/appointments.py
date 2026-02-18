@@ -670,6 +670,20 @@ def get_admin_appointments(
         status=status_enum
     )
 
+    user_ids = sorted({int(appt.user_id) for appt, *_ in appointments_data if appt.user_id})
+    completed_user_ids = set()
+    if user_ids:
+        completed_rows = (
+            db.query(AppointmentModel.user_id)
+            .filter(
+                AppointmentModel.user_id.in_(user_ids),
+                AppointmentModel.status == AppointmentStatus.COMPLETED,
+            )
+            .distinct()
+            .all()
+        )
+        completed_user_ids = {int(row_user_id) for (row_user_id,) in completed_rows}
+
     result = []
     for appt, store_name, store_address, service_name, service_price, service_duration, review_id, user_name, customer_name, customer_phone, technician_name in appointments_data:
         resolved_amount = appt.order_amount if appt.order_amount is not None else service_price
@@ -688,6 +702,7 @@ def get_admin_appointments(
             "customer_name": resolved_customer_name,
             "customer_phone": resolved_customer_phone,
             "technician_name": technician_name,
+            "is_new_customer": int(appt.user_id) not in completed_user_ids,
         })
 
     return result

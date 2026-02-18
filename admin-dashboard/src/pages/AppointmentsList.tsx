@@ -162,6 +162,7 @@ const resolvePhone = (apt: Appointment) => {
 };
 const getServiceLabel = (apt: Appointment) => apt.service_name || `Service #${apt.service_id}`;
 const getStaffLabel = (apt: Appointment) => apt.staff_name || apt.stylist_name || apt.technician_name || '-';
+const hasBookedTechnician = (apt: Appointment) => typeof apt.technician_id === 'number' && apt.technician_id > 0;
 const getStoreLabel = (apt: Appointment) => apt.store_name || `Store #${apt.store_id}`;
 const getStartTimeLabel = (time: string) => (time || '--:--').slice(0, 5);
 const getOrderAmount = (apt: Appointment) => {
@@ -1191,7 +1192,19 @@ const AppointmentsList: React.FC = () => {
                                   >
                                     <div className="flex items-start justify-between gap-2">
                                       <p className="text-xs font-medium">{getCustomerName(apt)}</p>
-                                      {hasConflict && <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />}
+                                      <div className="flex items-center gap-1">
+                                        {hasBookedTechnician(apt) && (
+                                          <span className="inline-flex rounded-full border border-blue-300 bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-blue-700">
+                                            Tech
+                                          </span>
+                                        )}
+                                        {apt.is_new_customer && (
+                                          <span className="inline-flex rounded-full border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-emerald-700">
+                                            New
+                                          </span>
+                                        )}
+                                        {hasConflict && <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />}
+                                      </div>
                                     </div>
                                     <p className="text-[11px] opacity-90">{getServiceLabel(apt)}</p>
                                     <p className="text-[10px] opacity-80">{formatTimeRange(apt)}</p>
@@ -1262,7 +1275,21 @@ const AppointmentsList: React.FC = () => {
                                     </p>
                                   </td>
                                   <td className="px-3 py-2.5 align-top">
-                                    <p className="font-medium text-slate-900">{getCustomerName(apt)}</p>
+                                    <div className="flex items-start justify-between gap-2">
+                                      <p className="font-medium text-slate-900">{getCustomerName(apt)}</p>
+                                      <div className="flex items-center gap-1">
+                                        {hasBookedTechnician(apt) && (
+                                          <span className="inline-flex rounded-full border border-blue-300 bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-blue-700">
+                                            Tech
+                                          </span>
+                                        )}
+                                        {apt.is_new_customer && (
+                                          <span className="inline-flex rounded-full border border-emerald-300 bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-emerald-700">
+                                            New
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
                                     <p className="text-xs text-slate-700">#{apt.order_number || apt.id}</p>
                                     {!!apt.group_id && (
                                       <p className="mt-1 text-[10px] uppercase tracking-wide text-blue-700">
