@@ -43,6 +43,27 @@ export interface StoreHoursUpsert {
   is_closed: boolean;
 }
 
+export interface StoreBlockedSlot {
+  id: number;
+  store_id: number;
+  blocked_date: string;
+  start_time: string;
+  end_time: string;
+  reason?: string | null;
+  status: 'active' | 'inactive';
+  created_by?: number | null;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export interface StoreBlockedSlotCreate {
+  blocked_date: string;
+  start_time: string;
+  end_time: string;
+  reason?: string;
+  status?: 'active' | 'inactive';
+}
+
 export const getStores = async (params?: Record<string, any>) => {
   const response = await api.get('/stores', { params });
   return response.data as Store[];
@@ -95,4 +116,30 @@ export const getStoreHours = async (storeId: number) => {
 export const setStoreHours = async (storeId: number, hours: StoreHoursUpsert[]) => {
   const response = await api.put(`/stores/${storeId}/hours`, { hours });
   return response.data as StoreHours[];
+};
+
+export const getStoreBlockedSlots = async (
+  storeId: number,
+  params?: { date_from?: string; date_to?: string; include_inactive?: boolean },
+) => {
+  const response = await api.get(`/stores/${storeId}/blocked-slots`, { params });
+  return response.data as StoreBlockedSlot[];
+};
+
+export const createStoreBlockedSlot = async (storeId: number, payload: StoreBlockedSlotCreate) => {
+  const response = await api.post(`/stores/${storeId}/blocked-slots`, payload);
+  return response.data as StoreBlockedSlot;
+};
+
+export const updateStoreBlockedSlot = async (
+  storeId: number,
+  slotId: number,
+  payload: Partial<StoreBlockedSlotCreate> & { status?: 'active' | 'inactive' },
+) => {
+  const response = await api.patch(`/stores/${storeId}/blocked-slots/${slotId}`, payload);
+  return response.data as StoreBlockedSlot;
+};
+
+export const deleteStoreBlockedSlot = async (storeId: number, slotId: number) => {
+  await api.delete(`/stores/${storeId}/blocked-slots/${slotId}`);
 };

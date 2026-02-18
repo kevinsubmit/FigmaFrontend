@@ -2,7 +2,10 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ProtectedRoute: React.FC<{ children: React.ReactNode; requireSuperAdmin?: boolean }> = ({
+  children,
+  requireSuperAdmin = false,
+}) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -22,6 +25,10 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ childr
     if (location.pathname !== '/admin/store-application') {
       return <Navigate to="/admin/store-application" replace />;
     }
+  }
+
+  if (requireSuperAdmin && !user.is_admin) {
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
   return <>{children}</>;

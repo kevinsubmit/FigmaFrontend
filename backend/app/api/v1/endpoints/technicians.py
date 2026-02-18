@@ -15,6 +15,7 @@ from app.models.appointment import Appointment, AppointmentStatus
 from app.models.appointment_staff_split import AppointmentStaffSplit
 from app.models.service import Service
 from app.models.technician import Technician as TechnicianModel
+from app.models.store_blocked_slot import StoreBlockedSlot
 from app.crud import technician as crud_technician
 from app.schemas.technician import Technician as TechnicianSchema, TechnicianCreate, TechnicianUpdate
 
@@ -675,6 +676,24 @@ def get_technician_available_slots(
             start_datetime = datetime.combine(check_date, period.start_time)
             end_datetime = datetime.combine(check_date, period.end_time)
             busy_ranges.append((start_datetime, end_datetime))
+
+    # Add store-level blocked slots
+    blocked_slots = (
+        db.query(StoreBlockedSlot)
+        .filter(
+            StoreBlockedSlot.store_id == technician.store_id,
+            StoreBlockedSlot.blocked_date == check_date,
+            StoreBlockedSlot.status == "active",
+        )
+        .all()
+    )
+    for slot in blocked_slots:
+        busy_ranges.append(
+            (
+                datetime.combine(check_date, slot.start_time),
+                datetime.combine(check_date, slot.end_time),
+            )
+        )
     
     # Generate available slots
     available_slots = []

@@ -30,6 +30,16 @@ export interface StoreImage {
   created_at: string;
 }
 
+export interface StoreBlockedSlot {
+  id: number;
+  store_id: number;
+  blocked_date: string;
+  start_time: string;
+  end_time: string;
+  reason?: string | null;
+  status?: string;
+}
+
 /**
  * 获取所有店铺列表
  */
@@ -65,6 +75,10 @@ export const getStoreHours = async (storeId: number): Promise<StoreHours[]> => {
  */
 export const getStoreImages = async (storeId: number): Promise<StoreImage[]> => {
   return apiClient.get(`/api/v1/stores/${storeId}/images`);
+};
+
+export const getStoreBlockedSlotsPublic = async (storeId: number, date: string): Promise<StoreBlockedSlot[]> => {
+  return apiClient.get(`/api/v1/stores/${storeId}/blocked-slots/public`, { params: { date } });
 };
 
 /**

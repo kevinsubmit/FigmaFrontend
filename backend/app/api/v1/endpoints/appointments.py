@@ -4,7 +4,7 @@ Appointments API endpoints
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import json
 
@@ -44,11 +44,13 @@ from app.models.technician import Technician
 from app.models.appointment_staff_split import AppointmentStaffSplit
 from app.models.appointment_settlement_event import AppointmentSettlementEvent
 from app.models.user import User as UserModel
+from app.models.vip_level import VIPLevelConfig
 from app.models.review import Review
 from app.models.gift_card import GiftCard, GiftCardTransaction
 from app.models.user_coupon import UserCoupon, CouponStatus
 from app.models.user_points import UserPoints
 from app.models.point_transaction import PointTransaction, TransactionType
+from app.models.store_blocked_slot import StoreBlockedSlot
 from app.services import notification_service
 from app.services import reminder_service
 from app.services import risk_service
@@ -57,6 +59,50 @@ from app.crud import coupons as crud_coupons
 
 router = APIRouter()
 ET_TZ = ZoneInfo("America/New_York")
+
+
+DEFAULT_VIP_LEVELS = [
+    {"level": 0, "min_spend": 0, "min_visits": 0, "is_active": True},
+    {"level": 1, "min_spend": 35, "min_visits": 1, "is_active": True},
+    {"level": 2, "min_spend": 2000, "min_visits": 5, "is_active": True},
+    {"level": 3, "min_spend": 5000, "min_visits": 15, "is_active": True},
+    {"level": 4, "min_spend": 10000, "min_visits": 30, "is_active": True},
+    {"level": 5, "min_spend": 20000, "min_visits": 50, "is_active": True},
+    {"level": 6, "min_spend": 35000, "min_visits": 80, "is_active": True},
+    {"level": 7, "min_spend": 50000, "min_visits": 120, "is_active": True},
+    {"level": 8, "min_spend": 80000, "min_visits": 180, "is_active": True},
+    {"level": 9, "min_spend": 120000, "min_visits": 250, "is_active": True},
+    {"level": 10, "min_spend": 200000, "min_visits": 350, "is_active": True},
+]
+
+
+def _load_vip_levels_for_appointments(db: Session):
+    try:
+        rows = db.query(VIPLevelConfig).order_by(VIPLevelConfig.level.asc()).all()
+    except Exception:
+        return DEFAULT_VIP_LEVELS
+    if not rows:
+        return DEFAULT_VIP_LEVELS
+    return [
+        {
+            "level": int(row.level),
+            "min_spend": float(row.min_spend or 0),
+            "min_visits": int(row.min_visits or 0),
+            "is_active": bool(row.is_active),
+        }
+        for row in rows
+    ]
+
+
+def _resolve_vip_level(total_spend: float, total_visits: int, levels) -> int:
+    active_levels = [item for item in levels if item.get("is_active", True)]
+    if not active_levels:
+        return 0
+    current_level = int(active_levels[0]["level"])
+    for level in active_levels:
+        if total_spend >= float(level["min_spend"]) and total_visits >= int(level["min_visits"]):
+            current_level = int(level["level"])
+    return current_level
 
 
 def _normalize_us_phone(raw_phone: Optional[str]) -> Optional[str]:
@@ -87,6 +133,35 @@ def _ensure_not_past_appointment(appointment_date, appointment_time):
             status_code=400,
             detail="Past time cannot be booked. Please select a future time."
         )
+
+
+def _ensure_not_blocked_by_store_slot(
+    db: Session,
+    store_id: int,
+    appointment_date,
+    appointment_time,
+    duration_minutes: int,
+):
+    appt_start = datetime.combine(appointment_date, appointment_time)
+    appt_end = appt_start + timedelta(minutes=max(int(duration_minutes or 0), 1))
+    blocked_rows = (
+        db.query(StoreBlockedSlot)
+        .filter(
+            StoreBlockedSlot.store_id == store_id,
+            StoreBlockedSlot.blocked_date == appointment_date,
+            StoreBlockedSlot.status == "active",
+        )
+        .all()
+    )
+    for row in blocked_rows:
+        blocked_start = datetime.combine(appointment_date, row.start_time)
+        blocked_end = datetime.combine(appointment_date, row.end_time)
+        if appt_start < blocked_end and appt_end > blocked_start:
+            reason_text = f" ({row.reason})" if row.reason else ""
+            raise HTTPException(
+                status_code=400,
+                detail=f"This time slot is blocked by store{reason_text}. Please choose another time.",
+            )
 
 
 def _resolve_appointment_order_amount(appointment, service: Optional[Service]) -> float:
@@ -259,6 +334,13 @@ def create_appointment(
         raise HTTPException(status_code=400, detail="Service does not belong to this store")
     if service.is_active != 1:
         raise HTTPException(status_code=400, detail="Service is not available")
+    _ensure_not_blocked_by_store_slot(
+        db=db,
+        store_id=appointment.store_id,
+        appointment_date=appointment.appointment_date,
+        appointment_time=appointment.appointment_time,
+        duration_minutes=service.duration_minutes,
+    )
     store = db.query(Store).filter(Store.id == appointment.store_id).first()
     if not store or store.is_visible is False:
         raise HTTPException(status_code=400, detail="Store is not available")
@@ -352,6 +434,13 @@ def _create_group_child_appointment(
     item: AppointmentGroupGuestCreate,
 ) -> AppointmentModel:
     service = _validate_store_service_for_group(db, store_id, item.service_id)
+    _ensure_not_blocked_by_store_slot(
+        db=db,
+        store_id=store_id,
+        appointment_date=appointment_date,
+        appointment_time=appointment_time,
+        duration_minutes=service.duration_minutes,
+    )
     normalized_guest_phone = _normalize_us_phone(item.guest_phone)
     if item.guest_phone and not normalized_guest_phone:
         raise HTTPException(status_code=400, detail="Guest phone must be a valid US phone number")
@@ -411,6 +500,13 @@ def create_appointment_group(
         raise HTTPException(status_code=400, detail="Store is not available")
 
     host_service = _validate_store_service_for_group(db, payload.store_id, payload.host_service_id)
+    _ensure_not_blocked_by_store_slot(
+        db=db,
+        store_id=payload.store_id,
+        appointment_date=payload.appointment_date,
+        appointment_time=payload.appointment_time,
+        duration_minutes=host_service.duration_minutes,
+    )
     conflict_result = crud_appointment.check_time_conflict(
         db,
         appointment_date=payload.appointment_date,
@@ -672,17 +768,34 @@ def get_admin_appointments(
 
     user_ids = sorted({int(appt.user_id) for appt, *_ in appointments_data if appt.user_id})
     completed_user_ids = set()
+    vip_level_map = {uid: 0 for uid in user_ids}
     if user_ids:
         completed_rows = (
-            db.query(AppointmentModel.user_id)
+            db.query(
+                AppointmentModel.user_id,
+                AppointmentModel.order_amount,
+                AppointmentModel.final_paid_amount,
+            )
             .filter(
                 AppointmentModel.user_id.in_(user_ids),
                 AppointmentModel.status == AppointmentStatus.COMPLETED,
             )
-            .distinct()
             .all()
         )
-        completed_user_ids = {int(row_user_id) for (row_user_id,) in completed_rows}
+        levels = _load_vip_levels_for_appointments(db)
+        stats_map = {uid: {"visits": 0, "spend": 0.0} for uid in user_ids}
+        for row_user_id, row_order_amount, row_final_paid_amount in completed_rows:
+            uid = int(row_user_id)
+            completed_user_ids.add(uid)
+            current = stats_map.setdefault(uid, {"visits": 0, "spend": 0.0})
+            current["visits"] += 1
+            final_paid = float(row_final_paid_amount or 0)
+            order_amount = float(row_order_amount or 0)
+            current["spend"] += final_paid if final_paid > 0 else max(order_amount, 0)
+        vip_level_map = {
+            uid: _resolve_vip_level(total_spend=stats["spend"], total_visits=stats["visits"], levels=levels)
+            for uid, stats in stats_map.items()
+        }
 
     result = []
     for appt, store_name, store_address, service_name, service_price, service_duration, review_id, user_name, customer_name, customer_phone, technician_name in appointments_data:
@@ -703,6 +816,7 @@ def get_admin_appointments(
             "customer_phone": resolved_customer_phone,
             "technician_name": technician_name,
             "is_new_customer": int(appt.user_id) not in completed_user_ids,
+            "customer_vip_level": vip_level_map.get(int(appt.user_id), 0),
         })
 
     return result
@@ -860,6 +974,17 @@ def reschedule_appointment(
     
     if appointment.status == AppointmentStatus.COMPLETED:
         raise HTTPException(status_code=400, detail="Cannot reschedule a completed appointment")
+
+    service = db.query(Service).filter(Service.id == appointment.service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+    _ensure_not_blocked_by_store_slot(
+        db=db,
+        store_id=service.store_id,
+        appointment_date=reschedule_data.new_date,
+        appointment_time=reschedule_data.new_time,
+        duration_minutes=service.duration_minutes,
+    )
     
     # Check for time conflicts
     conflict_result = crud_appointment.check_time_conflict(
@@ -899,7 +1024,7 @@ def reschedule_appointment(
     )
 
     if current_user.is_admin or current_user.store_id:
-        store_id_value = service.store_id if "service" in locals() and service else None
+        store_id_value = service.store_id if service else None
         if store_id_value is None:
             service_for_log = db.query(Service).filter(Service.id == appointment.service_id).first()
             store_id_value = service_for_log.store_id if service_for_log else None

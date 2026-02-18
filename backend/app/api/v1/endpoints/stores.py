@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
+from datetime import datetime
 
 from app.api.deps import get_db, get_current_admin_user, get_current_store_admin, get_current_user
 from app.core.security import decode_token
@@ -19,12 +20,28 @@ from app.schemas.store import (
     StoreImageCreate,
     StoreVisibilityUpdate,
     StoreRankingUpdate,
+    StoreBlockedSlotCreate,
+    StoreBlockedSlotUpdate,
+    StoreBlockedSlotResponse,
 )
 from app.schemas.service import Service
 from app.schemas.user import UserResponse
 from app.services import log_service
+from app.models.store_blocked_slot import StoreBlockedSlot
 
 router = APIRouter()
+
+
+def _assert_store_scope(current_user: User, store_id: int):
+    if not current_user.is_admin:
+        if current_user.store_admin_status != "approved":
+            raise HTTPException(status_code=403, detail="Store admin approval required")
+        if current_user.store_id != store_id:
+            raise HTTPException(status_code=403, detail="You can only manage your own store")
+
+
+def _ranges_overlap(start_a, end_a, start_b, end_b) -> bool:
+    return start_a < end_b and end_a > start_b
 
 
 def _resolve_optional_user(db: Session, request: Request) -> Optional[User]:
@@ -579,6 +596,250 @@ def get_store_appointment_stats(
             "completed": month_completed
         }
     }
+
+
+@router.get("/{store_id}/blocked-slots", response_model=List[StoreBlockedSlotResponse])
+def get_store_blocked_slots(
+    store_id: int,
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
+    include_inactive: bool = Query(False),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_store_admin),
+):
+    """Get blocked slots for a store (store admin/super admin)."""
+    store = crud_store.get_store(db, store_id=store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+    _assert_store_scope(current_user, store_id)
+
+    query = db.query(StoreBlockedSlot).filter(StoreBlockedSlot.store_id == store_id)
+    if not include_inactive:
+        query = query.filter(StoreBlockedSlot.status == "active")
+    if date_from:
+        try:
+            df = datetime.strptime(date_from, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="date_from must be YYYY-MM-DD")
+        query = query.filter(StoreBlockedSlot.blocked_date >= df)
+    if date_to:
+        try:
+            dt = datetime.strptime(date_to, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="date_to must be YYYY-MM-DD")
+        query = query.filter(StoreBlockedSlot.blocked_date <= dt)
+    return query.order_by(StoreBlockedSlot.blocked_date.asc(), StoreBlockedSlot.start_time.asc()).all()
+
+
+@router.get("/{store_id}/blocked-slots/public", response_model=List[StoreBlockedSlotResponse])
+def get_store_blocked_slots_public(
+    store_id: int,
+    date: str = Query(..., description="YYYY-MM-DD"),
+    db: Session = Depends(get_db),
+):
+    """Public blocked slots for H5 booking page date filtering."""
+    store = crud_store.get_store(db, store_id=store_id)
+    if not store or store.is_visible is False:
+        raise HTTPException(status_code=404, detail="Store not found")
+    try:
+        target_date = datetime.strptime(date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="date must be YYYY-MM-DD")
+    return (
+        db.query(StoreBlockedSlot)
+        .filter(
+            StoreBlockedSlot.store_id == store_id,
+            StoreBlockedSlot.blocked_date == target_date,
+            StoreBlockedSlot.status == "active",
+        )
+        .order_by(StoreBlockedSlot.start_time.asc())
+        .all()
+    )
+
+
+@router.post("/{store_id}/blocked-slots", response_model=StoreBlockedSlotResponse)
+def create_store_blocked_slot(
+    request: Request,
+    store_id: int,
+    payload: StoreBlockedSlotCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_store_admin),
+):
+    """Create a blocked time slot for a store."""
+    store = crud_store.get_store(db, store_id=store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+    _assert_store_scope(current_user, store_id)
+    if payload.start_time >= payload.end_time:
+        raise HTTPException(status_code=400, detail="end_time must be greater than start_time")
+    if payload.status and payload.status not in {"active", "inactive"}:
+        raise HTTPException(status_code=400, detail="status must be active or inactive")
+
+    overlap = (
+        db.query(StoreBlockedSlot)
+        .filter(
+            StoreBlockedSlot.store_id == store_id,
+            StoreBlockedSlot.blocked_date == payload.blocked_date,
+            StoreBlockedSlot.status == "active",
+        )
+        .all()
+    )
+    for item in overlap:
+        if _ranges_overlap(payload.start_time, payload.end_time, item.start_time, item.end_time):
+            raise HTTPException(status_code=400, detail="Blocked slot overlaps with existing slot")
+
+    row = StoreBlockedSlot(
+        store_id=store_id,
+        blocked_date=payload.blocked_date,
+        start_time=payload.start_time,
+        end_time=payload.end_time,
+        reason=(payload.reason or "").strip() or None,
+        status=payload.status or "active",
+        created_by=current_user.id,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="stores",
+        action="store.blocked_slot.create",
+        message="新增店铺封锁时段",
+        target_type="store_blocked_slot",
+        target_id=str(row.id),
+        store_id=store_id,
+        after={
+            "blocked_date": str(row.blocked_date),
+            "start_time": str(row.start_time),
+            "end_time": str(row.end_time),
+            "reason": row.reason,
+            "status": row.status,
+        },
+    )
+    return row
+
+
+@router.patch("/{store_id}/blocked-slots/{slot_id}", response_model=StoreBlockedSlotResponse)
+def update_store_blocked_slot(
+    request: Request,
+    store_id: int,
+    slot_id: int,
+    payload: StoreBlockedSlotUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_store_admin),
+):
+    """Update a blocked time slot."""
+    store = crud_store.get_store(db, store_id=store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+    _assert_store_scope(current_user, store_id)
+
+    row = db.query(StoreBlockedSlot).filter(StoreBlockedSlot.id == slot_id, StoreBlockedSlot.store_id == store_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Blocked slot not found")
+
+    next_date = payload.blocked_date if payload.blocked_date is not None else row.blocked_date
+    next_start = payload.start_time if payload.start_time is not None else row.start_time
+    next_end = payload.end_time if payload.end_time is not None else row.end_time
+    next_status = payload.status if payload.status is not None else row.status
+    if next_start >= next_end:
+        raise HTTPException(status_code=400, detail="end_time must be greater than start_time")
+    if next_status not in {"active", "inactive"}:
+        raise HTTPException(status_code=400, detail="status must be active or inactive")
+
+    overlap = (
+        db.query(StoreBlockedSlot)
+        .filter(
+            StoreBlockedSlot.store_id == store_id,
+            StoreBlockedSlot.blocked_date == next_date,
+            StoreBlockedSlot.status == "active",
+            StoreBlockedSlot.id != slot_id,
+        )
+        .all()
+    )
+    for item in overlap:
+        if _ranges_overlap(next_start, next_end, item.start_time, item.end_time):
+            raise HTTPException(status_code=400, detail="Blocked slot overlaps with existing slot")
+
+    before = {
+        "blocked_date": str(row.blocked_date),
+        "start_time": str(row.start_time),
+        "end_time": str(row.end_time),
+        "reason": row.reason,
+        "status": row.status,
+    }
+    row.blocked_date = next_date
+    row.start_time = next_start
+    row.end_time = next_end
+    row.reason = (payload.reason if payload.reason is not None else row.reason) or None
+    row.status = next_status
+    db.commit()
+    db.refresh(row)
+
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="stores",
+        action="store.blocked_slot.update",
+        message="更新店铺封锁时段",
+        target_type="store_blocked_slot",
+        target_id=str(row.id),
+        store_id=store_id,
+        before=before,
+        after={
+            "blocked_date": str(row.blocked_date),
+            "start_time": str(row.start_time),
+            "end_time": str(row.end_time),
+            "reason": row.reason,
+            "status": row.status,
+        },
+    )
+    return row
+
+
+@router.delete("/{store_id}/blocked-slots/{slot_id}", status_code=204)
+def delete_store_blocked_slot(
+    request: Request,
+    store_id: int,
+    slot_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_store_admin),
+):
+    """Delete a blocked time slot."""
+    store = crud_store.get_store(db, store_id=store_id)
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+    _assert_store_scope(current_user, store_id)
+    row = db.query(StoreBlockedSlot).filter(StoreBlockedSlot.id == slot_id, StoreBlockedSlot.store_id == store_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Blocked slot not found")
+    before = {
+        "blocked_date": str(row.blocked_date),
+        "start_time": str(row.start_time),
+        "end_time": str(row.end_time),
+        "reason": row.reason,
+        "status": row.status,
+    }
+    db.delete(row)
+    db.commit()
+
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="stores",
+        action="store.blocked_slot.delete",
+        message="删除店铺封锁时段",
+        target_type="store_blocked_slot",
+        target_id=str(slot_id),
+        store_id=store_id,
+        before=before,
+    )
+    return None
 
 
 

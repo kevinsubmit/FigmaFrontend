@@ -57,9 +57,11 @@ import { getAvailableSlots, getTechniciansByStore, Technician } from '../api/tec
 import {
   addStoreToFavorites,
   checkIfStoreFavorited,
+  getStoreBlockedSlotsPublic,
   getStoreHours,
   getStoreImages,
   removeStoreFromFavorites,
+  StoreBlockedSlot,
   StoreHours,
   StoreImage,
 } from '../api/stores';
@@ -911,6 +913,22 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
     return slots;
   };
 
+  const filterBlockedSlots = (slots: string[], blocked: StoreBlockedSlot[], durationMinutes: number) => {
+    if (!blocked.length || !slots.length) return slots;
+    return slots.filter((slot) => {
+      const [slotH, slotM] = slot.split(':').map(Number);
+      const slotStart = slotH * 60 + slotM;
+      const slotEnd = slotStart + durationMinutes;
+      return !blocked.some((item) => {
+        const [startH, startM] = String(item.start_time || '').slice(0, 5).split(':').map(Number);
+        const [endH, endM] = String(item.end_time || '').slice(0, 5).split(':').map(Number);
+        const blockedStart = startH * 60 + startM;
+        const blockedEnd = endH * 60 + endM;
+        return slotStart < blockedEnd && slotEnd > blockedStart;
+      });
+    });
+  };
+
   useEffect(() => {
     const cacheKey = `storeTechnicians:${store.id}`;
     const cached = localStorage.getItem(cacheKey);
@@ -977,13 +995,14 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
 
       try {
         const durationMinutes = parseDurationMinutes(selectedServiceDuration);
+        const blockedSlots = await getStoreBlockedSlotsPublic(store.id, formattedSelectedDate).catch(() => []);
         const technicianList = selectedStaff
           ? [selectedStaff]
           : technicians;
 
         if (technicianList.length === 0) {
           const storeSlots = buildSlotsFromStoreHours(formattedSelectedDate, durationMinutes);
-          setAvailableSlots(storeSlots);
+          setAvailableSlots(filterBlockedSlots(storeSlots, blockedSlots, durationMinutes));
           setSlotsHint('Times are based on store hours. Staff selection is optional.');
           return;
         }
@@ -1000,11 +1019,12 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
         });
 
         const sortedSlots = Array.from(combinedSlots).sort();
+        const slotsAfterBlocked = filterBlockedSlots(sortedSlots, blockedSlots, durationMinutes);
 
         if (formattedSelectedDate === formatLocalDateYYYYMMDD(new Date())) {
           const now = new Date();
           const minTime = new Date(now.getTime() + 30 * 60 * 1000);
-          const filtered = sortedSlots.filter((time) => {
+          const filtered = slotsAfterBlocked.filter((time) => {
             const [hours, minutes] = time.split(':').map(Number);
             const slotTime = new Date(selectedDate!);
             slotTime.setHours(hours, minutes, 0, 0);
@@ -1012,7 +1032,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
           });
           setAvailableSlots(filtered);
         } else {
-          setAvailableSlots(sortedSlots);
+          setAvailableSlots(slotsAfterBlocked);
         }
         setSlotsHint('Times are based on store hours and staff availability.');
       } catch (error) {

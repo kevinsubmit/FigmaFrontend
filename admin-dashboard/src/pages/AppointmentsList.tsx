@@ -35,6 +35,7 @@ import {
 import { CustomerCouponItem, CustomerGiftCardItem, getCustomerRewards } from '../api/customers';
 import { getServiceCatalog, getStoreServices, Service } from '../api/services';
 import { getTechnicians, Technician } from '../api/technicians';
+import { createStoreBlockedSlot, deleteStoreBlockedSlot, getStoreBlockedSlots, StoreBlockedSlot } from '../api/stores';
 import { useAuth } from '../context/AuthContext';
 import { formatApiDateTimeET, formatYmdAsETDate, getTodayYmdET } from '../utils/time';
 
@@ -157,6 +158,10 @@ const toTelHref = (phone?: string | null) => {
 };
 
 const getCustomerName = (apt: Appointment) => apt.customer_name || apt.user_name || `User #${apt.user_id}`;
+const getCustomerVipLevel = (apt: Appointment) => {
+  if (typeof apt.customer_vip_level === 'number' && apt.customer_vip_level >= 0) return apt.customer_vip_level;
+  return 0;
+};
 const resolvePhone = (apt: Appointment) => {
   return `${apt.customer_phone || ''}`.trim() || '-';
 };
@@ -296,6 +301,13 @@ const AppointmentsList: React.FC = () => {
   const [selectedGroup, setSelectedGroup] = useState<AppointmentGroupResponse | null>(null);
   const [groupLoading, setGroupLoading] = useState(false);
   const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Record<string, boolean>>({});
+  const [blockedSlots, setBlockedSlots] = useState<StoreBlockedSlot[]>([]);
+  const [blockedLoading, setBlockedLoading] = useState(false);
+  const [savingBlocked, setSavingBlocked] = useState(false);
+  const [newBlockedStart, setNewBlockedStart] = useState('10:00');
+  const [newBlockedEnd, setNewBlockedEnd] = useState('11:00');
+  const [newBlockedReason, setNewBlockedReason] = useState('Busy');
+  const [selectedBlockedStoreId, setSelectedBlockedStoreId] = useState<string>('');
 
   useEffect(() => {
     const load = async () => {
@@ -320,6 +332,86 @@ const AppointmentsList: React.FC = () => {
 
     load();
   }, [role, user]);
+
+  const blockedStoreOptions = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const apt of appointments) {
+      if (typeof apt.store_id === 'number' && apt.store_id > 0) {
+        map.set(apt.store_id, apt.store_name || `Store #${apt.store_id}`);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [appointments]);
+
+  const getBlockedStoreId = () => {
+    if (role === 'store_admin' && user?.store_id) return user.store_id;
+    if (role === 'super_admin') {
+      const parsed = Number.parseInt(selectedBlockedStoreId, 10);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+    return null;
+  };
+
+  const loadBlockedSlots = async () => {
+    const targetStoreId = getBlockedStoreId();
+    if (!targetStoreId) {
+      setBlockedSlots([]);
+      return;
+    }
+    setBlockedLoading(true);
+    try {
+      const rows = await getStoreBlockedSlots(targetStoreId, {
+        date_from: dateCursor,
+        date_to: dateCursor,
+      });
+      setBlockedSlots(rows);
+    } catch {
+      setBlockedSlots([]);
+    } finally {
+      setBlockedLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBlockedSlots();
+  }, [role, user?.store_id, dateCursor, selectedBlockedStoreId]);
+
+  const addBlockedSlot = async () => {
+    const targetStoreId = getBlockedStoreId();
+    if (!targetStoreId) return;
+    if (!newBlockedStart || !newBlockedEnd || newBlockedStart >= newBlockedEnd) {
+      toast.error('End time must be later than start time');
+      return;
+    }
+    setSavingBlocked(true);
+    try {
+      await createStoreBlockedSlot(targetStoreId, {
+        blocked_date: dateCursor,
+        start_time: `${newBlockedStart}:00`,
+        end_time: `${newBlockedEnd}:00`,
+        reason: newBlockedReason.trim() || undefined,
+        status: 'active',
+      });
+      await loadBlockedSlots();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Failed to create blocked slot');
+    } finally {
+      setSavingBlocked(false);
+    }
+  };
+
+  const removeBlockedSlot = async (slotId: number) => {
+    const targetStoreId = getBlockedStoreId();
+    if (!targetStoreId) return;
+    try {
+      await deleteStoreBlockedSlot(targetStoreId, slotId);
+      await loadBlockedSlots();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Failed to delete blocked slot');
+    }
+  };
 
   const weekDates = useMemo(() => {
     const anchor = safeParseDate(dateCursor);
@@ -1153,6 +1245,75 @@ const AppointmentsList: React.FC = () => {
           </div>
         </div>
 
+        {(role === 'store_admin' || role === 'super_admin') && (
+          <div className="card-surface p-3 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Blocked Time ({dateCursor})</div>
+              <span className="text-xs text-slate-500">{blockedLoading ? '-' : `${blockedSlots.length} slots`}</span>
+            </div>
+            {role === 'super_admin' && (
+              <select
+                value={selectedBlockedStoreId}
+                onChange={(event) => setSelectedBlockedStoreId(event.target.value)}
+                className="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm !text-slate-900"
+              >
+                <option value="">Select store</option>
+                {blockedStoreOptions.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-[140px_140px_1fr_auto]">
+              <input
+                type="time"
+                value={newBlockedStart}
+                onChange={(event) => setNewBlockedStart(event.target.value)}
+                className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm !text-slate-900"
+              />
+              <input
+                type="time"
+                value={newBlockedEnd}
+                onChange={(event) => setNewBlockedEnd(event.target.value)}
+                className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm !text-slate-900"
+              />
+              <input
+                value={newBlockedReason}
+                onChange={(event) => setNewBlockedReason(event.target.value)}
+                placeholder="Reason (optional)"
+                className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm !text-slate-900 placeholder:text-slate-500"
+              />
+              <button
+                onClick={addBlockedSlot}
+                disabled={savingBlocked || !getBlockedStoreId()}
+                className="rounded-xl border border-gold-500/50 px-3 py-2 text-sm text-slate-900 disabled:opacity-60"
+              >
+                Add
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              {blockedSlots.map((slot) => (
+                <div key={slot.id} className="flex items-center justify-between rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm">
+                  <div className="text-slate-800">
+                    {String(slot.start_time).slice(0, 5)} - {String(slot.end_time).slice(0, 5)}
+                    {slot.reason ? ` · ${slot.reason}` : ''}
+                  </div>
+                  <button
+                    onClick={() => removeBlockedSlot(slot.id)}
+                    className="rounded-lg border border-rose-300 px-2 py-1 text-xs text-rose-700"
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+              {!blockedLoading && blockedSlots.length === 0 && (
+                <div className="text-xs text-slate-500">No blocked slots for this date.</div>
+              )}
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div className="text-sm text-slate-600">Loading appointments...</div>
         ) : (
@@ -1196,7 +1357,12 @@ const AppointmentsList: React.FC = () => {
                                     }`}
                                   >
                                     <div className="flex items-start justify-between gap-2">
-                                      <p className="text-xs font-medium">{getCustomerName(apt)}</p>
+                                      <div className="flex items-center gap-1.5">
+                                        <p className="text-xs font-medium">{getCustomerName(apt)}</p>
+                                        <span className="inline-flex rounded-full border border-violet-300 bg-violet-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-violet-700">
+                                          VIP {getCustomerVipLevel(apt)}
+                                        </span>
+                                      </div>
                                       <div className="flex items-center gap-1">
                                         {hasBookedTechnician(apt) && (
                                           <span className="inline-flex max-w-[140px] truncate rounded-full border border-blue-300 bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold text-blue-700">
@@ -1281,7 +1447,12 @@ const AppointmentsList: React.FC = () => {
                                   </td>
                                   <td className="px-3 py-2.5 align-top">
                                     <div className="flex items-start justify-between gap-2">
-                                      <p className="font-medium text-slate-900">{getCustomerName(apt)}</p>
+                                      <div className="flex items-center gap-1.5">
+                                        <p className="font-medium text-slate-900">{getCustomerName(apt)}</p>
+                                        <span className="inline-flex rounded-full border border-violet-300 bg-violet-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-violet-700">
+                                          VIP {getCustomerVipLevel(apt)}
+                                        </span>
+                                      </div>
                                       <div className="flex items-center gap-1">
                                         {hasBookedTechnician(apt) && (
                                           <span className="inline-flex max-w-[140px] truncate rounded-full border border-blue-300 bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold text-blue-700">

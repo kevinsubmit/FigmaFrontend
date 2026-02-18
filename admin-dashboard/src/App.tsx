@@ -110,7 +110,7 @@ const App = () => (
         <Route
           path="/admin/coupons"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireSuperAdmin>
               <Coupons />
             </ProtectedRoute>
           }
@@ -118,7 +118,7 @@ const App = () => (
         <Route
           path="/admin/gift-cards"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireSuperAdmin>
               <GiftCards />
             </ProtectedRoute>
           }

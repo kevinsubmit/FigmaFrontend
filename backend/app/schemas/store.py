@@ -3,7 +3,7 @@ Store Schemas
 """
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, date, time
 
 
 class StoreImageBase(BaseModel):
@@ -98,3 +98,34 @@ class StoreRankingUpdate(BaseModel):
     manual_rank: Optional[int] = None
     boost_score: Optional[float] = None
     featured_until: Optional[datetime] = None
+
+
+class StoreBlockedSlotBase(BaseModel):
+    blocked_date: date
+    start_time: time
+    end_time: time
+    reason: Optional[str] = None
+    status: Optional[str] = "active"
+
+
+class StoreBlockedSlotCreate(StoreBlockedSlotBase):
+    pass
+
+
+class StoreBlockedSlotUpdate(BaseModel):
+    blocked_date: Optional[date] = None
+    start_time: Optional[time] = None
+    end_time: Optional[time] = None
+    reason: Optional[str] = None
+    status: Optional[str] = None
+
+
+class StoreBlockedSlotResponse(StoreBlockedSlotBase):
+    id: int
+    store_id: int
+    created_by: Optional[int] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
