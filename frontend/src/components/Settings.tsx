@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from "sonner@2.0.3";
 import authService from '../services/auth.service';
 import { LANGUAGE_OPTIONS, useLanguage } from '../contexts/LanguageContext';
+import vipService from '../services/vip.service';
 
 type SettingsSection = 'main' | 'language' | 'partnership' | 'about' | 'feedback' | 'vip' | 'notifications' | 'password' | 'phone';
 
@@ -32,12 +33,25 @@ export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<SettingsSection>(initialSection);
   const [notificationEnabled, setNotificationEnabled] = useState(true);
+  const [vipBadge, setVipBadge] = useState('VIP 0');
   const { language, setLanguage, t } = useLanguage();
   const selectedLanguageLabel = LANGUAGE_OPTIONS.find((option) => option.code === language)?.name ?? 'English';
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   }, [activeSection]);
+
+  useEffect(() => {
+    const loadVip = async () => {
+      try {
+        const status = await vipService.getStatus();
+        setVipBadge(`VIP ${status.current_level.level}`);
+      } catch (error) {
+        console.error('Failed to load VIP status:', error);
+      }
+    };
+    loadVip();
+  }, []);
 
   const renderSectionHeader = (title: string) => (
     <div className="sticky top-0 z-10 bg-black/80 backdrop-blur-md border-b border-[#333]">
@@ -72,7 +86,7 @@ export function Settings({ onBack, initialSection = 'main' }: SettingsProps) {
         { label: t('settings.profileSettings'), icon: User, action: () => navigate('/edit-profile') },
         { label: t('settings.changePassword'), icon: ShieldCheck, action: () => navigate('/change-password') },
         { label: t('settings.phoneNumber'), icon: Bell, action: () => navigate('/phone-management') },
-        { label: t('settings.vipMembership'), icon: Star, badge: "VIP 3", action: () => navigate('/vip-description', { state: { from: 'settings' } }) },
+        { label: t('settings.vipMembership'), icon: Star, badge: vipBadge, action: () => navigate('/vip-description', { state: { from: 'settings' } }) },
         { 
           label: t('settings.language'), 
           icon: Share2, // Using Share2 as a proxy for language/globe if Globe is not checked

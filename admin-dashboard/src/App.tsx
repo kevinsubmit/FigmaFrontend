@@ -25,6 +25,7 @@ import Customers from './pages/Customers';
 import Security from './pages/Security';
 import Logs from './pages/Logs';
 import Staff from './pages/Staff';
+import VipLevels from './pages/VipLevels';
 
 const App = () => (
   <AuthProvider>
@@ -199,6 +200,14 @@ const App = () => (
           element={
             <ProtectedRoute>
               <Staff />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/vip-levels"
+          element={
+            <ProtectedRoute>
+              <VipLevels />
             </ProtectedRoute>
           }
         />

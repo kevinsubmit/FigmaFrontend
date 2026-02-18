@@ -7,6 +7,7 @@ import { notificationsService } from '../services/notifications.service';
 import pointsService from '../services/points.service';
 import couponsService from '../services/coupons.service';
 import giftCardsService from '../services/gift-cards.service';
+import vipService, { type VipStatus } from '../services/vip.service';
 import { getMyAppointments } from '../api/appointments';
 import { getMyReviews } from '../api/reviews';
 import { getMyFavoritePinsCount } from '../api/pins';
@@ -19,28 +20,24 @@ interface ProfileProps {
   onNavigate?: (page: 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'notifications' | 'my-reviews' | 'my-favorites', subPage?: 'referral') => void;
 }
 
-// Mock Data
 const USER_INFO = {
   name: "Jessica Glam",
   avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
-  vipLevel: 1,
-  spendAmount: 20,
-  visitCount: 0
+  vipLevel: 0,
 };
 
-// VIP Levels Config
 const VIP_LEVELS = [
-  { level: 0, minSpend: 0, minVisits: 0, benefit: "Member Access" },
-  { level: 1, minSpend: 35, minVisits: 1, benefit: "Priority Service (No Waiting)" },
-  { level: 2, minSpend: 2000, minVisits: 5, benefit: "Free Nail Care Kit" },
-  { level: 3, minSpend: 5000, minVisits: 15, benefit: "5% Discount on Services" },
-  { level: 4, minSpend: 10000, minVisits: 30, benefit: "10% Discount on Services" },
-  { level: 5, minSpend: 20000, minVisits: 50, benefit: "15% Discount + Personal Assistant" },
-  { level: 6, minSpend: 35000, minVisits: 80, benefit: "18% Discount + Birthday Gift" },
-  { level: 7, minSpend: 50000, minVisits: 120, benefit: "20% Discount + Exclusive Events" },
-  { level: 8, minSpend: 80000, minVisits: 180, benefit: "25% Discount + Home Service" },
-  { level: 9, minSpend: 120000, minVisits: 250, benefit: "30% Discount + Quarterly Luxury Gift" },
-  { level: 10, minSpend: 200000, minVisits: 350, benefit: "40% Discount + Black Card Status" },
+  { level: 0, min_spend: 0, min_visits: 0, benefit: "Member Access" },
+  { level: 1, min_spend: 35, min_visits: 1, benefit: "Priority Service (No Waiting)" },
+  { level: 2, min_spend: 2000, min_visits: 5, benefit: "Free Nail Care Kit" },
+  { level: 3, min_spend: 5000, min_visits: 15, benefit: "5% Discount on Services" },
+  { level: 4, min_spend: 10000, min_visits: 30, benefit: "10% Discount on Services" },
+  { level: 5, min_spend: 20000, min_visits: 50, benefit: "15% Discount + Personal Assistant" },
+  { level: 6, min_spend: 35000, min_visits: 80, benefit: "18% Discount + Birthday Gift" },
+  { level: 7, min_spend: 50000, min_visits: 120, benefit: "20% Discount + Exclusive Events" },
+  { level: 8, min_spend: 80000, min_visits: 180, benefit: "25% Discount + Home Service" },
+  { level: 9, min_spend: 120000, min_visits: 250, benefit: "30% Discount + Quarterly Luxury Gift" },
+  { level: 10, min_spend: 200000, min_visits: 350, benefit: "40% Discount + Black Card Status" },
 ];
 
 export function Profile({ onNavigate }: ProfileProps) {
@@ -53,6 +50,8 @@ export function Profile({ onNavigate }: ProfileProps) {
   const [nameError, setNameError] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [vipStatus, setVipStatus] = useState<VipStatus | null>(null);
+  const [vipLoaded, setVipLoaded] = useState(false);
   const [stats, setStats] = useState({
     points: 0,
     coupons: 0,
@@ -61,6 +60,33 @@ export function Profile({ onNavigate }: ProfileProps) {
     reviews: 0,
     favorites: 0,
   });
+
+  const buildFallbackVipStatus = (appointments: any[]): VipStatus => {
+    const completed = appointments.filter((apt) => apt?.status === 'completed');
+    const totalVisits = completed.length;
+    const totalSpend = completed.reduce((sum, apt) => {
+      const finalPaid = Number(apt?.final_paid_amount ?? 0);
+      const orderAmount = Number(apt?.order_amount ?? apt?.amount ?? 0);
+      return sum + (finalPaid > 0 ? finalPaid : Math.max(orderAmount, 0));
+    }, 0);
+    let current = VIP_LEVELS[0];
+    for (const level of VIP_LEVELS) {
+      if (totalSpend >= level.min_spend && totalVisits >= level.min_visits) current = level;
+    }
+    const next = VIP_LEVELS.find((v) => v.level > current.level) ?? null;
+    const spendRequired = next ? next.min_spend : Math.max(totalSpend, 0);
+    const visitsRequired = next ? next.min_visits : Math.max(totalVisits, 0);
+    const spendPercent = spendRequired > 0 ? Math.min(100, (totalSpend / spendRequired) * 100) : 100;
+    const visitsPercent = visitsRequired > 0 ? Math.min(100, (totalVisits / visitsRequired) * 100) : 100;
+    return {
+      current_level: current,
+      total_spend: Number(totalSpend.toFixed(2)),
+      total_visits: totalVisits,
+      spend_progress: { current: totalSpend, required: spendRequired, percent: spendPercent },
+      visits_progress: { current: totalVisits, required: visitsRequired, percent: visitsPercent },
+      next_level: next,
+    };
+  };
   
   // Fetch unread notification count
   useEffect(() => {
@@ -108,6 +134,7 @@ export function Profile({ onNavigate }: ProfileProps) {
           getMyReviews(token),
           getMyFavoritePinsCount(token),
           giftCardsService.getSummary(token),
+          vipService.getStatus(),
         ]);
 
         const pointsResult = results[0].status === 'fulfilled' ? results[0].value : null;
@@ -117,6 +144,7 @@ export function Profile({ onNavigate }: ProfileProps) {
         const reviewsResult = results[3].status === 'fulfilled' ? results[3].value : [];
         const favoritesResult = results[4].status === 'fulfilled' ? results[4].value : null;
         const giftSummaryResult = results[5].status === 'fulfilled' ? results[5].value : null;
+        const vipStatusResult = results[6].status === 'fulfilled' ? results[6].value : null;
 
         setStats({
           points: pointsResult?.available_points ?? 0,
@@ -126,8 +154,17 @@ export function Profile({ onNavigate }: ProfileProps) {
           reviews: reviewsResult.length,
           favorites: favoritesResult?.count ?? 0,
         });
+        setVipStatus(vipStatusResult ?? buildFallbackVipStatus(appointmentsResult));
+        setVipLoaded(true);
       } catch (error) {
         console.error('Failed to load profile stats:', error);
+        try {
+          const appointments = await getMyAppointments();
+          setVipStatus(buildFallbackVipStatus(appointments));
+        } catch (fallbackError) {
+          console.error('Failed to build fallback VIP status:', fallbackError);
+        }
+        setVipLoaded(true);
       }
     };
 
@@ -320,7 +357,7 @@ export function Profile({ onNavigate }: ProfileProps) {
                  <div className="relative z-10 flex justify-between items-start mb-4">
                     <div>
                         <div className="flex items-center gap-2 mb-1">
-                            <span className="text-2xl font-black text-white tracking-tighter italic">VIP {USER_INFO.vipLevel}</span>
+                            <span className="text-2xl font-black text-white tracking-tighter italic">VIP {vipStatus?.current_level.level ?? USER_INFO.vipLevel}</span>
                             <motion.span 
                               initial={{ scale: 0.8 }}
                               animate={{ scale: 1 }}
@@ -330,7 +367,7 @@ export function Profile({ onNavigate }: ProfileProps) {
                             </motion.span>
                         </div>
                         <p className="text-[#D4AF37] text-sm font-medium">
-                            {VIP_LEVELS.find(l => l.level === USER_INFO.vipLevel)?.benefit}
+                            {vipStatus?.current_level.benefit ?? "Member Access"}
                         </p>
                     </div>
                     <motion.div 
@@ -345,22 +382,23 @@ export function Profile({ onNavigate }: ProfileProps) {
                  </div>
 
                  {/* Progress to Next Level */}
-                 {USER_INFO.vipLevel < 10 ? (
+                 {!vipLoaded ? (
+                    <p className="text-sm text-gray-400">Loading VIP status...</p>
+                 ) : vipStatus?.next_level ? (
                     <div className="space-y-3">
                         {(() => {
-                            const nextLevel = VIP_LEVELS.find(l => l.level === USER_INFO.vipLevel + 1);
-                            if (!nextLevel) return null;
-                            
-                            const spendProgress = Math.min(100, (USER_INFO.spendAmount / nextLevel.minSpend) * 100);
-                            const visitProgress = Math.min(100, (USER_INFO.visitCount / nextLevel.minVisits) * 100);
+                            if (!vipStatus || !vipStatus.next_level) return null;
+                            const nextLevel = vipStatus.next_level;
+                            const spendProgress = vipStatus.spend_progress.percent;
+                            const visitProgress = vipStatus.visits_progress.percent;
                             
                             return (
                                 <>
                                     <div className="space-y-1">
                                         <div className="flex justify-between text-[10px] text-gray-400">
                                             <span>Spend Amount</span>
-                                            <span className={USER_INFO.spendAmount >= nextLevel.minSpend ? "text-[#D4AF37]" : ""}>
-                                                ${USER_INFO.spendAmount} / ${nextLevel.minSpend}
+                                            <span className={vipStatus.total_spend >= nextLevel.min_spend ? "text-[#D4AF37]" : ""}>
+                                                ${vipStatus.total_spend.toFixed(2)} / ${nextLevel.min_spend.toFixed(2)}
                                             </span>
                                         </div>
                                         <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-[#333]">
@@ -376,8 +414,8 @@ export function Profile({ onNavigate }: ProfileProps) {
                                     <div className="space-y-1">
                                         <div className="flex justify-between text-[10px] text-gray-400">
                                             <span>Visits</span>
-                                            <span className={USER_INFO.visitCount >= nextLevel.minVisits ? "text-[#D4AF37]" : ""}>
-                                                {USER_INFO.visitCount} / {nextLevel.minVisits}
+                                            <span className={vipStatus.total_visits >= nextLevel.min_visits ? "text-[#D4AF37]" : ""}>
+                                                {vipStatus.total_visits} / {nextLevel.min_visits}
                                             </span>
                                         </div>
                                         <div className="h-1.5 w-full bg-black/40 rounded-full overflow-hidden border border-[#333]">
@@ -392,14 +430,16 @@ export function Profile({ onNavigate }: ProfileProps) {
                                     
                                     <p className="text-[10px] text-gray-500 pt-1 flex items-center gap-1">
                                         <TrendingUp className="w-3 h-3" />
-                                        Next level to <span className="text-[#D4AF37] font-bold">VIP 2</span>
+                                        Next level to <span className="text-[#D4AF37] font-bold">VIP {nextLevel.level}</span>
                                     </p>
                                 </>
                             );
                         })()}
                     </div>
-                 ) : (
+                 ) : vipStatus ? (
                     <p className="text-sm text-[#D4AF37] font-medium">You have reached the highest VIP level!</p>
+                 ) : (
+                    <p className="text-sm text-gray-400">Loading VIP status...</p>
                  )}
               </motion.div>
             </div>
