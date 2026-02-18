@@ -163,6 +163,11 @@ const resolvePhone = (apt: Appointment) => {
 const getServiceLabel = (apt: Appointment) => apt.service_name || `Service #${apt.service_id}`;
 const getStaffLabel = (apt: Appointment) => apt.staff_name || apt.stylist_name || apt.technician_name || '-';
 const hasBookedTechnician = (apt: Appointment) => typeof apt.technician_id === 'number' && apt.technician_id > 0;
+const getBookedTechnicianBadgeLabel = (apt: Appointment) => {
+  const label = getStaffLabel(apt);
+  if (!label || label === '-') return 'Assigned';
+  return label;
+};
 const getStoreLabel = (apt: Appointment) => apt.store_name || `Store #${apt.store_id}`;
 const getStartTimeLabel = (time: string) => (time || '--:--').slice(0, 5);
 const getOrderAmount = (apt: Appointment) => {
@@ -1194,8 +1199,8 @@ const AppointmentsList: React.FC = () => {
                                       <p className="text-xs font-medium">{getCustomerName(apt)}</p>
                                       <div className="flex items-center gap-1">
                                         {hasBookedTechnician(apt) && (
-                                          <span className="inline-flex rounded-full border border-blue-300 bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-blue-700">
-                                            Tech
+                                          <span className="inline-flex max-w-[140px] truncate rounded-full border border-blue-300 bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold text-blue-700">
+                                            {getBookedTechnicianBadgeLabel(apt)}
                                           </span>
                                         )}
                                         {apt.is_new_customer && (
@@ -1279,8 +1284,8 @@ const AppointmentsList: React.FC = () => {
                                       <p className="font-medium text-slate-900">{getCustomerName(apt)}</p>
                                       <div className="flex items-center gap-1">
                                         {hasBookedTechnician(apt) && (
-                                          <span className="inline-flex rounded-full border border-blue-300 bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-blue-700">
-                                            Tech
+                                          <span className="inline-flex max-w-[140px] truncate rounded-full border border-blue-300 bg-blue-50 px-1.5 py-0.5 text-[9px] font-semibold text-blue-700">
+                                            {getBookedTechnicianBadgeLabel(apt)}
                                           </span>
                                         )}
                                         {apt.is_new_customer && (
