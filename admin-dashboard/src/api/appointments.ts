@@ -24,6 +24,7 @@ export interface Appointment {
   user_name?: string | null;
   customer_name?: string | null;
   customer_phone?: string | null;
+  customer_vip_level?: number | null;
   is_new_customer?: boolean | null;
   staff_name?: string | null;
   stylist_name?: string | null;
@@ -71,6 +72,22 @@ export interface AppointmentStaffSplitSummary {
   split_total: number;
   is_balanced: boolean;
   splits: AppointmentStaffSplit[];
+}
+
+export interface AppointmentServiceItem {
+  id: number;
+  appointment_id: number;
+  service_id: number;
+  service_name?: string | null;
+  amount: number;
+  is_primary: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+export interface AppointmentServiceSummary {
+  order_amount: number;
+  items: AppointmentServiceItem[];
 }
 
 export const getAppointments = async (params?: Record<string, any>) => {
@@ -158,6 +175,24 @@ export const updateAppointmentStaffSplits = async (
 export const getAppointmentGroup = async (groupId: number) => {
   const response = await api.get(`/appointments/groups/${groupId}`);
   return response.data as AppointmentGroupResponse;
+};
+
+export const getAppointmentServices = async (id: number) => {
+  const response = await api.get(`/appointments/${id}/services`);
+  return response.data as AppointmentServiceSummary;
+};
+
+export const addAppointmentService = async (
+  id: number,
+  payload: { service_id: number; amount: number },
+) => {
+  const response = await api.post(`/appointments/${id}/services`, payload);
+  return response.data as AppointmentServiceSummary;
+};
+
+export const deleteAppointmentService = async (id: number, itemId: number) => {
+  const response = await api.delete(`/appointments/${id}/services/${itemId}`);
+  return response.data as AppointmentServiceSummary;
 };
 
 export const updateAppointmentGuestOwner = async (

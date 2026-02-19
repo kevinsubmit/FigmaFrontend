@@ -86,7 +86,7 @@ const App = () => (
         <Route
           path="/admin/promotions"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireSuperAdmin>
               <PromotionsList />
             </ProtectedRoute>
           }
@@ -94,7 +94,7 @@ const App = () => (
         <Route
           path="/admin/promotions/new"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireSuperAdmin>
               <PromotionForm />
             </ProtectedRoute>
           }
@@ -102,7 +102,7 @@ const App = () => (
         <Route
           path="/admin/promotions/:id/edit"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireSuperAdmin>
               <PromotionForm />
             </ProtectedRoute>
           }

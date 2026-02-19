@@ -73,6 +73,20 @@ const formatLocalDateYYYYMMDD = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+const formatUSAddress = (
+  address?: string | null,
+  city?: string | null,
+  state?: string | null,
+  zipCode?: string | null,
+) => {
+  const street = String(address || '').trim();
+  const cityText = String(city || '').trim();
+  const stateText = String(state || '').trim();
+  const zipText = String(zipCode || '').trim();
+  const cityStateZip = [cityText, [stateText, zipText].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  return [street, cityStateZip].filter(Boolean).join(', ') || street || '';
+};
+
 // Use the Store type from stores.service
 type Store = APIStore;
 
@@ -470,14 +484,21 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
     }
   };
 
+  const storeAddressDisplay = useMemo(
+    () => formatUSAddress(store.address, store.city, store.state, store.zip_code),
+    [store.address, store.city, store.state, store.zip_code],
+  );
+
   const handleOpenGoogleMaps = () => {
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store.address)}`;
+    const mapAddress = storeAddressDisplay || store.address;
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapAddress)}`;
     window.open(url, '_blank');
     setIsMapDrawerOpen(false);
   };
 
   const handleOpenAppleMaps = () => {
-    const url = `https://maps.apple.com/?q=${encodeURIComponent(store.address)}`;
+    const mapAddress = storeAddressDisplay || store.address;
+    const url = `https://maps.apple.com/?q=${encodeURIComponent(mapAddress)}`;
     window.open(url, '_blank');
     setIsMapDrawerOpen(false);
   };
@@ -624,9 +645,9 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
   };
 
   const mapQuery = useMemo(() => {
-    const parts = [store.name, store.address, store.city, store.state].filter(Boolean);
+    const parts = [store.name, storeAddressDisplay || store.address].filter(Boolean);
     return parts.join(' ').trim();
-  }, [store.address, store.city, store.name, store.state]);
+  }, [store.address, store.name, storeAddressDisplay]);
 
   const distanceInfo = useMemo(() => {
     if (store.distance === undefined || store.distance === null) {
@@ -1129,7 +1150,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
       {/* Store Info */}
       <div className="px-4 mb-6">
         <h2 className="text-3xl font-bold text-white mb-2">{store.name}</h2>
-        <p className="text-gray-300 text-sm mb-3">{store.address}</p>
+        <p className="text-gray-300 text-sm mb-3">{storeAddressDisplay || store.address}</p>
         <div className="flex items-center gap-2 mb-2">
           <Star className="w-4 h-4 text-[#D4AF37] fill-[#D4AF37]" />
           <span className="text-white font-bold">
@@ -1311,7 +1332,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                              </div>
                              <div className="flex-1 min-w-0">
                                  <h3 className="font-bold text-white text-sm truncate">{store.name}</h3>
-                                 <p className="text-xs text-gray-300 truncate">{store.address}</p>
+                                 <p className="text-xs text-gray-300 truncate">{storeAddressDisplay || store.address}</p>
                              </div>
                           </div>
                           <button 
@@ -1896,7 +1917,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                                   >
                                     <MapPin className="w-4 h-4" />
                                     <span className="underline decoration-white/30 underline-offset-4">
-                                      {store.address}
+                                      {storeAddressDisplay || store.address}
                                     </span>
                                   </button>
                                 </div>

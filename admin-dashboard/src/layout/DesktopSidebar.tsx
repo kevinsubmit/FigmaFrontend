@@ -6,6 +6,9 @@ import { primaryNavItems } from './navConfig';
 export const DesktopSidebar = () => {
   const { user, logout } = useAuth();
   if (!user) return null;
+  const navItems = user.is_admin
+    ? primaryNavItems
+    : primaryNavItems.filter((item) => item.to !== '/admin/promotions');
 
   return (
     <aside className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 lg:flex-col border-r border-blue-100 bg-white/95 backdrop-blur">
@@ -15,7 +18,7 @@ export const DesktopSidebar = () => {
       </div>
 
       <nav className="flex-1 overflow-auto px-3 py-4 space-y-1.5">
-        {primaryNavItems.map((item) => {
+        {navItems.map((item) => {
           const Icon = item.icon;
           return (
             <NavLink
@@ -54,4 +57,3 @@ export const DesktopSidebar = () => {
     </aside>
   );
 };
-

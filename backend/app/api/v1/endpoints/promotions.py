@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 
-from app.api.deps import get_db, get_current_store_admin
+from app.api.deps import get_db, get_current_admin_user
 from app.crud import promotion as crud_promotion
 from app.models.promotion import PromotionScope
 from app.schemas.promotion import PromotionCreate, PromotionUpdate, PromotionResponse
@@ -48,7 +48,7 @@ def get_promotion(promotion_id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=PromotionResponse, status_code=201)
 def create_promotion(
     payload: PromotionCreate,
-    current_user: User = Depends(get_current_store_admin),
+    current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
     if payload.end_at <= payload.start_at:
@@ -80,18 +80,12 @@ def create_promotion(
 def update_promotion(
     promotion_id: int,
     payload: PromotionUpdate,
-    current_user: User = Depends(get_current_store_admin),
+    current_user: User = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
     promotion = crud_promotion.get_promotion(db, promotion_id=promotion_id)
     if not promotion:
         raise HTTPException(status_code=404, detail="Promotion not found")
-
-    if promotion.scope == PromotionScope.PLATFORM and not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Not enough permissions")
-
-    if not current_user.is_admin and promotion.store_id != current_user.store_id:
-        raise HTTPException(status_code=403, detail="Cannot manage other stores")
 
     update_data = payload.dict(exclude_unset=True, exclude={"service_rules"})
     if "start_at" in update_data and "end_at" in update_data:

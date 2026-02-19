@@ -12,6 +12,7 @@ import {
   getAdminReviews,
   updateReviewReply,
 } from '../api/reviews';
+import { formatApiDateTimeET } from '../utils/time';
 
 const Reviews: React.FC = () => {
   const { role } = useAuth();
@@ -204,7 +205,7 @@ const Reviews: React.FC = () => {
                     <span className="font-semibold text-slate-900">{item.user_name || `User #${item.user_id}`}</span>
                     {item.store_name && <span className="text-slate-700">@ {item.store_name}</span>}
                     <span className="text-slate-600">Order #{item.order_number || item.appointment_id}</span>
-                    <span className="text-slate-600">{new Date(item.created_at).toLocaleString('en-US')}</span>
+                    <span className="text-slate-600">{formatApiDateTimeET(item.created_at, true)}</span>
                   </div>
 
                   <div className="flex items-center gap-1 text-amber-500">
@@ -238,7 +239,7 @@ const Reviews: React.FC = () => {
                           <>
                             <p className="mt-1 text-sm text-slate-900">{item.reply.content}</p>
                             <p className="mt-1 text-xs text-slate-600">
-                              by {item.reply.admin_name || 'Admin'} · {new Date(item.reply.created_at).toLocaleString('en-US')}
+                              by {item.reply.admin_name || 'Admin'} · {formatApiDateTimeET(item.reply.created_at, true)}
                             </p>
                           </>
                         ) : (

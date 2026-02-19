@@ -32,9 +32,10 @@ from app.models.home_feed_theme import HomeFeedThemeSetting
 from app.models.security import SecurityIPRule, SecurityBlockLog
 from app.models.system_log import SystemLog
 from app.models.appointment_staff_split import AppointmentStaffSplit
+from app.models.appointment_service_item import AppointmentServiceItem
 from app.models.appointment_group import AppointmentGroup
 from app.models.appointment_settlement_event import AppointmentSettlementEvent
 from app.models.vip_level import VIPLevelConfig
 from app.models.store_blocked_slot import StoreBlockedSlot
 
-__all__ = ["User", "VerificationCode", "Store", "StoreImage", "Service", "ServiceCatalog", "Appointment", "AppointmentStatus", "Technician", "StoreHours", "TechnicianUnavailable", "Notification", "NotificationType", "Review", "ReviewReply", "AppointmentReminder", "ReminderType", "ReminderStatus", "StoreFavorite", "StorePortfolio", "Referral", "Pin", "Tag", "pin_tags", "PinFavorite", "GiftCard", "GiftCardTransaction", "UserPoints", "PointTransaction", "TransactionType", "Coupon", "CouponType", "CouponCategory", "UserCoupon", "CouponStatus", "CouponPhoneGrant", "Promotion", "PromotionService", "PromotionScope", "PromotionDiscountType", "StoreAdminApplication", "UserRiskState", "RiskEvent", "HomeFeedThemeSetting", "SecurityIPRule", "SecurityBlockLog", "SystemLog", "AppointmentStaffSplit", "AppointmentGroup", "AppointmentSettlementEvent", "VIPLevelConfig", "StoreBlockedSlot"]
+__all__ = ["User", "VerificationCode", "Store", "StoreImage", "Service", "ServiceCatalog", "Appointment", "AppointmentStatus", "Technician", "StoreHours", "TechnicianUnavailable", "Notification", "NotificationType", "Review", "ReviewReply", "AppointmentReminder", "ReminderType", "ReminderStatus", "StoreFavorite", "StorePortfolio", "Referral", "Pin", "Tag", "pin_tags", "PinFavorite", "GiftCard", "GiftCardTransaction", "UserPoints", "PointTransaction", "TransactionType", "Coupon", "CouponType", "CouponCategory", "UserCoupon", "CouponStatus", "CouponPhoneGrant", "Promotion", "PromotionService", "PromotionScope", "PromotionDiscountType", "StoreAdminApplication", "UserRiskState", "RiskEvent", "HomeFeedThemeSetting", "SecurityIPRule", "SecurityBlockLog", "SystemLog", "AppointmentStaffSplit", "AppointmentServiceItem", "AppointmentGroup", "AppointmentSettlementEvent", "VIPLevelConfig", "StoreBlockedSlot"]

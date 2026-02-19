@@ -32,7 +32,10 @@ from app.schemas.appointment import (
     AppointmentReschedule,
     AppointmentNotesUpdate,
     AppointmentComplete,
-    AppointmentStatusUpdate
+    AppointmentStatusUpdate,
+    AppointmentServiceItemCreate,
+    AppointmentServiceSummary,
+    AppointmentServiceItemResponse,
 )
 from app.schemas.user import UserResponse
 from app.models.appointment import AppointmentStatus
@@ -42,6 +45,7 @@ from app.models.service import Service
 from app.models.store import Store
 from app.models.technician import Technician
 from app.models.appointment_staff_split import AppointmentStaffSplit
+from app.models.appointment_service_item import AppointmentServiceItem
 from app.models.appointment_settlement_event import AppointmentSettlementEvent
 from app.models.user import User as UserModel
 from app.models.vip_level import VIPLevelConfig
@@ -170,6 +174,86 @@ def _resolve_appointment_order_amount(appointment, service: Optional[Service]) -
     if service and service.price is not None:
         return float(service.price)
     return 0.0
+
+
+def _sync_appointment_total_from_service_items(appointment: AppointmentModel, items: List[AppointmentServiceItem]) -> float:
+    total = round(sum(float(item.amount or 0) for item in items), 2)
+    appointment.order_amount = total
+    settlement_status = (appointment.settlement_status or "unsettled").strip().lower()
+    if settlement_status in {"", "unsettled"}:
+        appointment.original_amount = total
+    return total
+
+
+def _ensure_appointment_service_items_initialized(
+    db: Session,
+    appointment: AppointmentModel,
+    current_user: UserResponse,
+) -> List[AppointmentServiceItem]:
+    rows = (
+        db.query(AppointmentServiceItem)
+        .filter(AppointmentServiceItem.appointment_id == appointment.id)
+        .order_by(AppointmentServiceItem.id.asc())
+        .all()
+    )
+    if rows:
+        return rows
+
+    primary_service = db.query(Service).filter(Service.id == appointment.service_id).first()
+    if not primary_service:
+        raise HTTPException(status_code=404, detail="Primary service not found")
+    init_amount = _resolve_appointment_order_amount(appointment, primary_service)
+    if init_amount < 1:
+        init_amount = 1.0
+
+    primary_item = AppointmentServiceItem(
+        appointment_id=appointment.id,
+        service_id=appointment.service_id,
+        amount=round(float(init_amount), 2),
+        is_primary=True,
+        created_by=current_user.id,
+    )
+    db.add(primary_item)
+    db.flush()
+    rows = (
+        db.query(AppointmentServiceItem)
+        .filter(AppointmentServiceItem.appointment_id == appointment.id)
+        .order_by(AppointmentServiceItem.id.asc())
+        .all()
+    )
+    _sync_appointment_total_from_service_items(appointment, rows)
+    db.flush()
+    return rows
+
+
+def _build_appointment_service_summary(
+    db: Session,
+    appointment: AppointmentModel,
+    items: List[AppointmentServiceItem],
+) -> AppointmentServiceSummary:
+    if not items:
+        return AppointmentServiceSummary(order_amount=0, items=[])
+    service_ids = sorted({int(item.service_id) for item in items if item.service_id})
+    service_map = {}
+    if service_ids:
+        service_rows = db.query(Service.id, Service.name).filter(Service.id.in_(service_ids)).all()
+        service_map = {int(service_id): service_name for service_id, service_name in service_rows}
+    return AppointmentServiceSummary(
+        order_amount=round(float(appointment.order_amount or 0), 2),
+        items=[
+            AppointmentServiceItemResponse(
+                id=int(item.id),
+                appointment_id=int(item.appointment_id),
+                service_id=int(item.service_id),
+                service_name=service_map.get(int(item.service_id)),
+                amount=round(float(item.amount or 0), 2),
+                is_primary=bool(item.is_primary),
+                created_at=item.created_at,
+                updated_at=item.updated_at,
+            )
+            for item in items
+        ],
+    )
 
 
 def _mark_paid_if_completed(appointment: AppointmentModel, service: Optional[Service]) -> None:
@@ -1152,11 +1236,33 @@ def update_appointment_amount(
 
     before_amount = appointment.order_amount if appointment.order_amount is not None else service.price
     before_original_amount = appointment.original_amount
-    appointment.order_amount = float(amount_data.order_amount)
-    settlement_status = (appointment.settlement_status or "unsettled").strip().lower()
-    # Keep settlement preview in sync before settlement is finalized.
-    if settlement_status in {"", "unsettled"}:
-        appointment.original_amount = float(amount_data.order_amount)
+
+    existing_items = (
+        db.query(AppointmentServiceItem)
+        .filter(AppointmentServiceItem.appointment_id == appointment.id)
+        .order_by(AppointmentServiceItem.id.asc())
+        .all()
+    )
+    if existing_items:
+        primary = next((row for row in existing_items if bool(row.is_primary)), existing_items[0])
+        other_total = round(
+            sum(float(row.amount or 0) for row in existing_items if int(row.id) != int(primary.id)),
+            2,
+        )
+        next_primary_amount = round(float(amount_data.order_amount) - other_total, 2)
+        if next_primary_amount < 1:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Order amount is too low. Added services already total ${other_total:.2f}.",
+            )
+        primary.amount = next_primary_amount
+        _sync_appointment_total_from_service_items(appointment, existing_items)
+    else:
+        appointment.order_amount = float(amount_data.order_amount)
+        settlement_status = (appointment.settlement_status or "unsettled").strip().lower()
+        # Keep settlement preview in sync before settlement is finalized.
+        if settlement_status in {"", "unsettled"}:
+            appointment.original_amount = float(amount_data.order_amount)
     db.commit()
     db.refresh(appointment)
 
@@ -1715,6 +1821,144 @@ def update_appointment_guest_owner(
     )
 
     return appointment
+
+
+@router.get("/{appointment_id}/services", response_model=AppointmentServiceSummary)
+def get_appointment_service_items(
+    appointment_id: int,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    _assert_admin_can_operate_appointment(db, current_user, appointment)
+    items = _ensure_appointment_service_items_initialized(db, appointment, current_user)
+    db.commit()
+    return _build_appointment_service_summary(db, appointment, items)
+
+
+@router.post("/{appointment_id}/services", response_model=AppointmentServiceSummary)
+def add_appointment_service_item(
+    request: Request,
+    appointment_id: int,
+    payload: AppointmentServiceItemCreate,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    _assert_admin_can_operate_appointment(db, current_user, appointment)
+    if appointment.status == AppointmentStatus.CANCELLED:
+        raise HTTPException(status_code=400, detail="Cannot add service to cancelled appointment")
+    if (appointment.settlement_status or "unsettled").strip().lower() not in {"", "unsettled"}:
+        raise HTTPException(status_code=400, detail="Cannot modify services after settlement")
+
+    target_service = db.query(Service).filter(Service.id == payload.service_id).first()
+    if not target_service:
+        raise HTTPException(status_code=404, detail="Service not found")
+    if target_service.store_id != appointment.store_id:
+        raise HTTPException(status_code=400, detail="Service does not belong to this store")
+    if target_service.is_active != 1:
+        raise HTTPException(status_code=400, detail="Service is not active")
+
+    _ensure_appointment_service_items_initialized(db, appointment, current_user)
+    db.add(
+        AppointmentServiceItem(
+            appointment_id=appointment.id,
+            service_id=int(payload.service_id),
+            amount=round(float(payload.amount), 2),
+            is_primary=False,
+            created_by=current_user.id,
+        )
+    )
+    db.flush()
+    items = (
+        db.query(AppointmentServiceItem)
+        .filter(AppointmentServiceItem.appointment_id == appointment.id)
+        .order_by(AppointmentServiceItem.id.asc())
+        .all()
+    )
+    total_amount = _sync_appointment_total_from_service_items(appointment, items)
+    db.commit()
+
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="appointments",
+        action="appointment.service_item.add",
+        message="为订单新增服务明细",
+        target_type="appointment",
+        target_id=str(appointment.id),
+        store_id=appointment.store_id,
+        after={
+            "service_id": int(payload.service_id),
+            "amount": round(float(payload.amount), 2),
+            "order_amount": total_amount,
+        },
+    )
+
+    return _build_appointment_service_summary(db, appointment, items)
+
+
+@router.delete("/{appointment_id}/services/{item_id}", response_model=AppointmentServiceSummary)
+def delete_appointment_service_item(
+    request: Request,
+    appointment_id: int,
+    item_id: int,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    _assert_admin_can_operate_appointment(db, current_user, appointment)
+    if appointment.status == AppointmentStatus.CANCELLED:
+        raise HTTPException(status_code=400, detail="Cannot modify services on cancelled appointment")
+    if (appointment.settlement_status or "unsettled").strip().lower() not in {"", "unsettled"}:
+        raise HTTPException(status_code=400, detail="Cannot modify services after settlement")
+
+    items = _ensure_appointment_service_items_initialized(db, appointment, current_user)
+    target = next((row for row in items if int(row.id) == int(item_id)), None)
+    if not target:
+        raise HTTPException(status_code=404, detail="Service item not found")
+    if bool(target.is_primary):
+        raise HTTPException(status_code=400, detail="Primary service cannot be removed")
+    if len(items) <= 1:
+        raise HTTPException(status_code=400, detail="At least one service item is required")
+
+    before_payload = {
+        "service_id": int(target.service_id),
+        "amount": round(float(target.amount or 0), 2),
+    }
+    db.delete(target)
+    db.flush()
+    items = (
+        db.query(AppointmentServiceItem)
+        .filter(AppointmentServiceItem.appointment_id == appointment.id)
+        .order_by(AppointmentServiceItem.id.asc())
+        .all()
+    )
+    total_amount = _sync_appointment_total_from_service_items(appointment, items)
+    db.commit()
+
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="appointments",
+        action="appointment.service_item.delete",
+        message="删除订单服务明细",
+        target_type="appointment",
+        target_id=str(appointment.id),
+        store_id=appointment.store_id,
+        before=before_payload,
+        after={"order_amount": total_amount},
+    )
+
+    return _build_appointment_service_summary(db, appointment, items)
 
 
 @router.get("/{appointment_id}/splits", response_model=AppointmentStaffSplitSummary)

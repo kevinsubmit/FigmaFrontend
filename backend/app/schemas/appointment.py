@@ -121,6 +121,30 @@ class AppointmentStaffSplitSummary(BaseModel):
     splits: List[AppointmentStaffSplitResponse]
 
 
+class AppointmentServiceItemCreate(BaseModel):
+    """Appointment service item create payload"""
+    service_id: int
+    amount: float = Field(..., ge=1)
+
+
+class AppointmentServiceItemResponse(BaseModel):
+    """Appointment service item response"""
+    id: int
+    appointment_id: int
+    service_id: int
+    service_name: Optional[str] = None
+    amount: float
+    is_primary: bool = False
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+
+class AppointmentServiceSummary(BaseModel):
+    """Appointment service summary under one order"""
+    order_amount: float
+    items: List[AppointmentServiceItemResponse]
+
+
 class Appointment(AppointmentBase):
     """Appointment response schema"""
     id: int
@@ -167,6 +191,7 @@ class AppointmentWithDetails(Appointment):
     customer_name: Optional[str] = None
     customer_phone: Optional[str] = None
     is_new_customer: Optional[bool] = None
+    customer_vip_level: Optional[int] = None
 
     class Config:
         from_attributes = True

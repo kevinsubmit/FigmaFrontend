@@ -15,9 +15,13 @@ import { toast } from 'react-toastify';
 import { AdminLayout } from '../layout/AdminLayout';
 import { TopBar } from '../layout/TopBar';
 import {
+  addAppointmentService,
   Appointment,
   AppointmentGroupResponse,
+  AppointmentServiceSummary,
   AppointmentStaffSplitSummary,
+  deleteAppointmentService,
+  getAppointmentServices,
   getAppointmentGroup,
   getAppointments,
   getAppointmentStaffSplits,
@@ -298,6 +302,11 @@ const AppointmentsList: React.FC = () => {
   const [splitSaving, setSplitSaving] = useState(false);
   const [splitLoading, setSplitLoading] = useState(false);
   const [splitSummary, setSplitSummary] = useState<AppointmentStaffSplitSummary | null>(null);
+  const [serviceSummary, setServiceSummary] = useState<AppointmentServiceSummary | null>(null);
+  const [serviceItemsLoading, setServiceItemsLoading] = useState(false);
+  const [serviceItemSaving, setServiceItemSaving] = useState(false);
+  const [newServiceItemId, setNewServiceItemId] = useState('');
+  const [newServiceItemAmount, setNewServiceItemAmount] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<AppointmentGroupResponse | null>(null);
   const [groupLoading, setGroupLoading] = useState(false);
   const [collapsedGroupKeys, setCollapsedGroupKeys] = useState<Record<string, boolean>>({});
@@ -587,6 +596,21 @@ const AppointmentsList: React.FC = () => {
     setRefundIdemKey(`refund-${next.id}-${Date.now()}`);
   };
 
+  const syncSelectedOrderAmount = (orderAmount: number) => {
+    if (!selected) return;
+    const normalized = Math.floor(Number(orderAmount || 0));
+    const patch: Partial<Appointment> = {
+      order_amount: normalized,
+      original_amount:
+        (selected.settlement_status || 'unsettled').toLowerCase() === 'unsettled'
+          ? normalized
+          : selected.original_amount,
+    };
+    const merged = { ...selected, ...patch };
+    setAppointments((prev) => prev.map((apt) => (apt.id === selected.id ? { ...apt, ...patch } : apt)));
+    syncSelected(merged);
+  };
+
   useEffect(() => {
     const loadSettlementOptions = async () => {
       if (!selected?.user_id) {
@@ -710,6 +734,36 @@ const AppointmentsList: React.FC = () => {
     };
     loadGroup();
   }, [selected?.id, selected?.group_id]);
+
+  useEffect(() => {
+    const loadServiceItems = async () => {
+      if (!selected?.id) {
+        setServiceSummary(null);
+        setNewServiceItemId('');
+        setNewServiceItemAmount('');
+        return;
+      }
+      setServiceItemsLoading(true);
+      try {
+        const summary = await getAppointmentServices(selected.id);
+        setServiceSummary(summary);
+        const matchedDefault = splitServiceOptions.find((item) => item.id === selected.service_id);
+        const fallbackServiceId = matchedDefault?.id || splitServiceOptions[0]?.id;
+        setNewServiceItemId(fallbackServiceId ? String(fallbackServiceId) : '');
+        setNewServiceItemAmount(
+          fallbackServiceId
+            ? String(Math.floor(splitServiceOptions.find((item) => item.id === fallbackServiceId)?.price || 1))
+            : '1',
+        );
+        syncSelectedOrderAmount(summary.order_amount);
+      } catch {
+        setServiceSummary(null);
+      } finally {
+        setServiceItemsLoading(false);
+      }
+    };
+    loadServiceItems();
+  }, [selected?.id, splitServiceOptions]);
 
   useEffect(() => {
     const loadSplits = async () => {
@@ -840,6 +894,58 @@ const AppointmentsList: React.FC = () => {
       }
     } finally {
       setSavingAmount(false);
+    }
+  };
+
+  const handleServiceItemSelectChange = (serviceId: string) => {
+    setNewServiceItemId(serviceId);
+    const service = splitServiceOptions.find((item) => String(item.id) === serviceId);
+    const suggested = service?.price ? Math.max(1, Math.floor(service.price)) : 1;
+    setNewServiceItemAmount(String(suggested));
+  };
+
+  const addServiceItem = async () => {
+    if (!selected) return;
+    const serviceId = Number.parseInt(newServiceItemId, 10);
+    const amount = Number.parseInt(newServiceItemAmount, 10);
+    if (!serviceId || Number.isNaN(serviceId)) {
+      toast.error('Please select a service');
+      return;
+    }
+    if (Number.isNaN(amount) || amount < 1) {
+      toast.error('Service amount must be greater than or equal to 1');
+      return;
+    }
+
+    setServiceItemSaving(true);
+    try {
+      const summary = await addAppointmentService(selected.id, { service_id: serviceId, amount });
+      setServiceSummary(summary);
+      syncSelectedOrderAmount(summary.order_amount);
+      toast.success('Service added to order');
+    } catch (error: any) {
+      if (!error?.__api_toast_shown) {
+        toast.error(error?.response?.data?.detail || 'Failed to add service');
+      }
+    } finally {
+      setServiceItemSaving(false);
+    }
+  };
+
+  const removeServiceItem = async (itemId: number) => {
+    if (!selected) return;
+    setServiceItemSaving(true);
+    try {
+      const summary = await deleteAppointmentService(selected.id, itemId);
+      setServiceSummary(summary);
+      syncSelectedOrderAmount(summary.order_amount);
+      toast.success('Service removed from order');
+    } catch (error: any) {
+      if (!error?.__api_toast_shown) {
+        toast.error(error?.response?.data?.detail || 'Failed to remove service');
+      }
+    } finally {
+      setServiceItemSaving(false);
     }
   };
 
@@ -1224,27 +1330,6 @@ const AppointmentsList: React.FC = () => {
           </div>
         </div>
 
-        <div className="card-surface p-3">
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-700">
-            <span className="text-slate-500">订单颜色说明 / Color Legend:</span>
-            <span className={`inline-flex rounded-full border px-2 py-0.5 ${statusBadgeClass.pending}`}>
-              待处理 Pending
-            </span>
-            <span className={`inline-flex rounded-full border px-2 py-0.5 ${statusBadgeClass.confirmed}`}>
-              已确认 Confirmed
-            </span>
-            <span className={`inline-flex rounded-full border px-2 py-0.5 ${statusBadgeClass.completed}`}>
-              已完成 Completed
-            </span>
-            <span className={`inline-flex rounded-full border px-2 py-0.5 ${statusBadgeClass.cancelled}`}>
-              已取消 Cancelled
-            </span>
-            <span className="inline-flex rounded-full border border-rose-300 bg-rose-50 px-2 py-0.5 text-rose-700">
-              冲突 Conflict
-            </span>
-          </div>
-        </div>
-
         {(role === 'store_admin' || role === 'super_admin') && (
           <div className="card-surface p-3 space-y-3">
             <div className="flex items-center justify-between">
@@ -1313,6 +1398,27 @@ const AppointmentsList: React.FC = () => {
             </div>
           </div>
         )}
+
+        <div className="card-surface p-3">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-700">
+            <span className="text-slate-500">订单颜色说明 / Color Legend:</span>
+            <span className={`inline-flex rounded-full border px-2 py-0.5 ${statusBadgeClass.pending}`}>
+              待处理 Pending
+            </span>
+            <span className={`inline-flex rounded-full border px-2 py-0.5 ${statusBadgeClass.confirmed}`}>
+              已确认 Confirmed
+            </span>
+            <span className={`inline-flex rounded-full border px-2 py-0.5 ${statusBadgeClass.completed}`}>
+              已完成 Completed
+            </span>
+            <span className={`inline-flex rounded-full border px-2 py-0.5 ${statusBadgeClass.cancelled}`}>
+              已取消 Cancelled
+            </span>
+            <span className="inline-flex rounded-full border border-rose-300 bg-rose-50 px-2 py-0.5 text-rose-700">
+              冲突 Conflict
+            </span>
+          </div>
+        </div>
 
         {loading ? (
           <div className="text-sm text-slate-600">Loading appointments...</div>
@@ -1628,7 +1734,67 @@ const AppointmentsList: React.FC = () => {
 
               <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2 text-sm">
                 <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Service</p>
-                <p className="text-slate-900">{getServiceLabel(selected)}</p>
+                <div className="space-y-1.5">
+                  {serviceItemsLoading ? (
+                    <p className="text-xs text-slate-500">Loading services...</p>
+                  ) : serviceSummary && serviceSummary.items.length > 0 ? (
+                    serviceSummary.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between gap-2 rounded-lg border border-blue-100 bg-white px-2.5 py-2"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-slate-900 text-sm truncate">
+                            {item.service_name || `Service #${item.service_id}`}
+                            {item.is_primary && <span className="ml-1.5 text-[10px] text-slate-500">(Booked)</span>}
+                          </p>
+                          <p className="text-xs text-slate-600">${Math.floor(item.amount)}</p>
+                        </div>
+                        {!item.is_primary && (
+                          <button
+                            onClick={() => removeServiceItem(item.id)}
+                            disabled={serviceItemSaving}
+                            className="rounded-md border border-rose-300 px-2 py-1 text-xs text-rose-700 disabled:opacity-60"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-500">No service items</p>
+                  )}
+                </div>
+                <div className="flex flex-nowrap items-center gap-2">
+                  <select
+                    value={newServiceItemId}
+                    onChange={(event) => handleServiceItemSelectChange(event.target.value)}
+                    className="w-[130px] min-w-[130px] rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm !text-slate-900"
+                  >
+                    <option value="">Select service</option>
+                    {splitServiceOptions.map((service) => (
+                      <option key={service.id} value={service.id}>
+                        {service.name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    min={1}
+                    step="1"
+                    value={newServiceItemAmount}
+                    onChange={(event) => setNewServiceItemAmount(normalizeAmountInput(event.target.value))}
+                    className="w-[84px] min-w-[84px] rounded-lg border border-blue-200 bg-white px-2.5 py-2 text-sm !text-slate-900"
+                    placeholder="Amount"
+                  />
+                  <button
+                    onClick={addServiceItem}
+                    disabled={serviceItemSaving || !newServiceItemId}
+                    className="min-w-[96px] rounded-lg border border-gold-500/50 px-2.5 py-2 text-xs text-blue-700 disabled:opacity-50 whitespace-nowrap"
+                  >
+                    Add Service
+                  </button>
+                </div>
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-slate-600">Amount: {formatCurrency(getOrderAmount(selected))}</p>
                   <button

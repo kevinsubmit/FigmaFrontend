@@ -6,6 +6,7 @@ import { TopBar } from '../layout/TopBar';
 import { useAuth } from '../context/AuthContext';
 import { getStoreById } from '../api/stores';
 import { getDashboardRealtimeNotifications, getDashboardSummary } from '../api/dashboard';
+import { parseApiDateTimeAsUTC } from '../utils/time';
 
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -32,15 +33,17 @@ const Dashboard: React.FC = () => {
 
   const formatRelativeTime = (value: string) => {
     if (!value) return '-';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '-';
+    const date = parseApiDateTimeAsUTC(value);
+    if (!date || Number.isNaN(date.getTime())) return '-';
     const diffMs = Date.now() - date.getTime();
-    const minutes = Math.max(1, Math.floor(diffMs / 60000));
-    if (minutes < 60) return `${minutes} minutes ago`;
+    if (diffMs < 0) return 'just now';
+    const minutes = Math.floor(diffMs / 60000);
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} hours ago`;
+    if (hours < 24) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
     const days = Math.floor(hours / 24);
-    return `${days} days ago`;
+    return `${days} ${days === 1 ? 'day' : 'days'} ago`;
   };
 
   useEffect(() => {

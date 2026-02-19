@@ -8,11 +8,14 @@ export const BottomTabs = () => {
   if (!user.is_admin && user.store_admin_status && user.store_admin_status !== 'approved') {
     return null;
   }
+  const navItems = user.is_admin
+    ? primaryNavItems
+    : primaryNavItems.filter((item) => item.to !== '/admin/promotions');
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 border-t border-blue-100 backdrop-blur lg:hidden">
-      <div className="grid grid-cols-5 px-2 py-3">
-        {primaryNavItems.map((tab) => {
+      <div className="grid px-2 py-3" style={{ gridTemplateColumns: `repeat(${navItems.length}, minmax(0, 1fr))` }}>
+        {navItems.map((tab) => {
           const Icon = tab.icon;
           return (
             <NavLink
