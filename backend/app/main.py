@@ -67,10 +67,19 @@ app.include_router(api_router, prefix="/api/v1")
 
 
 def _extract_client_ip(request) -> str:
+    remote_ip = request.client.host if request.client else ""
+    if not settings.TRUST_X_FORWARDED_FOR:
+        return remote_ip
+
+    if settings.trusted_proxy_ips_list and remote_ip not in settings.trusted_proxy_ips_list:
+        return remote_ip
+
     forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else ""
+    if not forwarded:
+        return remote_ip
+
+    client_ip = forwarded.split(",")[0].strip()
+    return client_ip or remote_ip
 
 
 def _extract_request_id(request) -> str:

@@ -28,6 +28,7 @@ from app.schemas.service import Service
 from app.schemas.user import UserResponse
 from app.services import log_service
 from app.models.store_blocked_slot import StoreBlockedSlot
+from app.utils.security_validation import sanitize_image_url
 
 router = APIRouter()
 
@@ -353,11 +354,21 @@ def create_store_image(
                 status_code=403,
                 detail="You can only add images to your own store"
             )
+
+    try:
+        normalized_image_url = sanitize_image_url(
+            image_url,
+            field_name="image_url",
+            max_length=1000,
+            allow_external_http=True,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     
     new_image = crud_store.create_store_image(
         db,
         store_id=store_id,
-        image_url=image_url,
+        image_url=normalized_image_url,
         is_primary=is_primary,
         display_order=display_order
     )

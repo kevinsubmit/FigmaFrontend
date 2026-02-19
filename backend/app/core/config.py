@@ -43,6 +43,14 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> List[str]:
         """Parse CORS origins from comma-separated string"""
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+
+    # Proxy trust (for client IP extraction)
+    TRUST_X_FORWARDED_FOR: bool = False
+    TRUSTED_PROXY_IPS: str = "127.0.0.1,::1"
+
+    @property
+    def trusted_proxy_ips_list(self) -> List[str]:
+        return [ip.strip() for ip in self.TRUSTED_PROXY_IPS.split(",") if ip.strip()]
     
     # AWS S3
     AWS_ACCESS_KEY_ID: str = ""

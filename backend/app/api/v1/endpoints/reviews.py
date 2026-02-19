@@ -17,6 +17,7 @@ from app.schemas.review import (
     ReviewAdminListResponse,
 )
 from app.api.deps import get_current_user, get_current_store_admin
+from app.utils.security_validation import sanitize_image_url
 
 router = APIRouter()
 REVIEW_WINDOW_DAYS = 30
@@ -51,7 +52,22 @@ def _refresh_store_rating_summary(db: Session, store_id: int) -> None:
 def _validate_review_images(images: Optional[List[str]]) -> Optional[List[str]]:
     if images is None:
         return None
-    cleaned = [str(item).strip() for item in images if str(item).strip()]
+    cleaned: List[str] = []
+    for item in images:
+        try:
+            normalized = sanitize_image_url(
+                str(item),
+                field_name="review_image",
+                max_length=500,
+                allow_external_http=True,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
+        if normalized:
+            cleaned.append(normalized)
     if len(cleaned) > 5:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

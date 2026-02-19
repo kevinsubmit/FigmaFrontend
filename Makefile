@@ -1,10 +1,17 @@
-.PHONY: docker-up docker-down docker-logs
+.PHONY: docker-up docker-down docker-logs security-smoke
 
 docker-up:
-\tdocker compose up --build
+	docker compose up --build
 
 docker-down:
-\tdocker compose down
+	docker compose down
 
 docker-logs:
-\tdocker compose logs -f
+	docker compose logs -f
+
+security-smoke:
+	@if [ -z "$$ADMIN_PHONE" ] || [ -z "$$ADMIN_PASSWORD" ]; then \
+		echo "Usage: ADMIN_PHONE=... ADMIN_PASSWORD=... make security-smoke"; \
+		exit 1; \
+	fi
+	@backend/venv311/bin/python scripts/security_smoke.py

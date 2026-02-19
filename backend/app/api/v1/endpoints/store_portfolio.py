@@ -206,13 +206,14 @@ def delete_portfolio_item(
     
     # Delete file from filesystem
     if portfolio_item.image_url.startswith('/uploads/'):
-        file_path = Path(settings.UPLOAD_DIR) / portfolio_item.image_url.lstrip("/")
-        if file_path.exists():
+        upload_root = Path(settings.UPLOAD_DIR).resolve()
+        candidate_path = (upload_root / portfolio_item.image_url.lstrip("/")).resolve()
+        if upload_root in candidate_path.parents and candidate_path.exists():
             try:
-                file_path.unlink()
+                candidate_path.unlink()
             except Exception as e:
                 # Log error but don't fail the request
-                print(f"Failed to delete file {file_path}: {e}")
+                print(f"Failed to delete file {candidate_path}: {e}")
     
     # Delete from database
     success = crud_portfolio.delete_portfolio_item(db, portfolio_id)

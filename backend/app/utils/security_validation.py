@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import re
 from typing import Optional, Set, Tuple
+from urllib.parse import urlparse
 
 from PIL import Image, UnidentifiedImageError
 from PIL import ImageFile
@@ -69,3 +70,41 @@ def validate_image_bytes(
         raise ValueError("Image dimensions are too large")
 
     return detected_format, width, height
+
+
+def sanitize_image_url(
+    value: Optional[str],
+    *,
+    field_name: str = "image_url",
+    max_length: int = 1000,
+    allow_external_http: bool = True,
+    local_prefix: str = "/uploads/",
+) -> Optional[str]:
+    """
+    Normalize and validate image URL.
+    Allows local upload paths or (optionally) http/https URLs.
+    Blocks script/data/file style schemes.
+    """
+    if value is None:
+        return None
+
+    normalized = value.strip()
+    if not normalized:
+        return None
+    if len(normalized) > max_length:
+        raise ValueError(f"{field_name} is too long (max {max_length})")
+
+    lowered = normalized.lower()
+    if lowered.startswith(("javascript:", "data:", "vbscript:", "file:")):
+        raise ValueError(f"{field_name} has an invalid URL scheme")
+
+    if normalized.startswith(local_prefix):
+        return normalized
+
+    parsed = urlparse(normalized)
+    if allow_external_http and parsed.scheme in {"http", "https"} and parsed.netloc:
+        return normalized
+
+    raise ValueError(
+        f"{field_name} must start with {local_prefix} or be a valid http(s) URL"
+    )

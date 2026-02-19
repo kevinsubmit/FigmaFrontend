@@ -14,6 +14,7 @@ from app.crud import user as crud_user
 from app.crud import verification_code as crud_verification
 from app.core.security import verify_password, get_password_hash
 from app.schemas.user import UserResponse
+from app.utils.security_validation import sanitize_image_url
 
 
 router = APIRouter()
@@ -118,7 +119,18 @@ async def update_profile(
     
     # Avatar URL
     if request.avatar_url is not None:
-        update_data['avatar_url'] = request.avatar_url
+        try:
+            update_data['avatar_url'] = sanitize_image_url(
+                request.avatar_url,
+                field_name="avatar_url",
+                max_length=500,
+                allow_external_http=True,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
     
     # Gender
     if request.gender is not None:

@@ -17,7 +17,7 @@ from app.models.appointment import Appointment as AppointmentModel
 import os
 from datetime import datetime, timedelta
 from app.utils.clamav_scanner import scan_bytes_for_malware
-from app.utils.security_validation import validate_image_bytes
+from app.utils.security_validation import validate_image_bytes, sanitize_image_url, sanitize_plain_text
 
 
 router = APIRouter()
@@ -405,15 +405,58 @@ async def update_current_user(
         - date_of_birth cannot be changed once set
         - Only updates provided fields
     """
+    allowed_fields = {"full_name", "avatar_url", "gender", "date_of_birth"}
+    unknown_fields = [key for key in user_update.keys() if key not in allowed_fields]
+    if unknown_fields:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported update fields: {', '.join(unknown_fields)}"
+        )
+
+    sanitized_update: dict = {}
+
+    if "full_name" in user_update:
+        try:
+            sanitized_full_name = sanitize_plain_text(
+                user_update.get("full_name"),
+                field_name="full_name",
+                max_length=200,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        sanitized_update["full_name"] = sanitized_full_name
+
+    if "avatar_url" in user_update:
+        try:
+            sanitized_update["avatar_url"] = sanitize_image_url(
+                user_update.get("avatar_url"),
+                field_name="avatar_url",
+                max_length=500,
+                allow_external_http=True,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    if "gender" in user_update:
+        gender = user_update.get("gender")
+        if gender is not None and gender not in {"male", "female", "other"}:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="gender must be male, female, or other",
+            )
+        sanitized_update["gender"] = gender
+
     # Check if trying to update date_of_birth when it's already set
     if 'date_of_birth' in user_update and current_user.date_of_birth is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Date of birth cannot be changed once set"
         )
+    if "date_of_birth" in user_update:
+        sanitized_update["date_of_birth"] = user_update.get("date_of_birth")
     
     # Update user
-    updated_user = crud_user.update_user(db, current_user.id, user_update)
+    updated_user = crud_user.update_user(db, current_user.id, sanitized_update)
     return updated_user
 
 
