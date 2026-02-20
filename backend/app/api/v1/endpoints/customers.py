@@ -54,6 +54,7 @@ class CustomerDetail(BaseModel):
     name: str
     username: str
     phone: str
+    date_of_birth: Optional[date] = None
     registered_at: datetime
     last_login_at: Optional[datetime] = None
     total_appointments: int
@@ -344,6 +345,7 @@ def get_customer_detail(
         name=customer.full_name or customer.username,
         username=customer.username,
         phone=customer.phone if include_full_phone else mask_phone(customer.phone),
+        date_of_birth=customer.date_of_birth,
         registered_at=customer.created_at,
         last_login_at=customer.last_login_at or customer.updated_at,
         total_appointments=summary["total"],

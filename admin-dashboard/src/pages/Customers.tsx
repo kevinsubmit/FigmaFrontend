@@ -24,6 +24,11 @@ const formatDateTime = (value?: string | null) => {
   return formatApiDateTimeET(value, true);
 };
 
+const formatDateOnly = (value?: string | null) => {
+  if (!value) return '-';
+  return value;
+};
+
 const getEnumParam = (raw: string | null, allowed: string[], fallback = 'all') => {
   if (!raw) return fallback;
   return allowed.includes(raw) ? raw : fallback;
@@ -399,6 +404,7 @@ const Customers: React.FC = () => {
                       <span className="font-medium">{detail.name}</span>
                     </div>
                     <p className="text-sm text-slate-700">Phone: {maskPhone(detail.phone)}</p>
+                    <p className="text-sm text-slate-700">Birthday: {formatDateOnly(detail.date_of_birth)}</p>
                     <p className="text-sm text-slate-700">Registered: {formatDateTime(detail.registered_at)}</p>
                     <p className="text-sm text-slate-700">Last Login: {formatDateTime(detail.last_login_at)}</p>
                   </div>

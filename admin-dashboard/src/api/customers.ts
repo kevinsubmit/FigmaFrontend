@@ -25,6 +25,7 @@ export interface CustomerListResponse {
 
 export interface CustomerDetail extends CustomerListItem {
   username: string;
+  date_of_birth?: string | null;
   cancel_rate: number;
   lifetime_spent: number;
 }
