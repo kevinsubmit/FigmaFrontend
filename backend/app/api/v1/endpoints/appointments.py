@@ -828,6 +828,11 @@ def get_admin_appointments(
             status_code=403,
             detail="Store admin approval required"
         )
+    if include_full_phone and not current_user.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="Only super admin can access full phone numbers",
+        )
 
     resolved_store_id = store_id
     if not current_user.is_admin:

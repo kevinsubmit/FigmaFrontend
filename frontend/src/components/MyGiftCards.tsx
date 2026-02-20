@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import giftCardsService, { GiftCard } from '../services/gift-cards.service';
+import { maskPhone } from '../utils/privacy';
 
 interface GiftingData {
   recipientPhone: string;
@@ -60,8 +61,7 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
   };
 
   const formatPhone = (phone?: string | null) => {
-    if (!phone) return '';
-    return phone.length === 11 && phone.startsWith('1') ? `+${phone}` : phone;
+    return maskPhone(phone);
   };
 
   const totalBalance = useMemo(

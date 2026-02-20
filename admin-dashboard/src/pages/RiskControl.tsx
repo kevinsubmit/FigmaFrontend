@@ -5,6 +5,7 @@ import { AdminLayout } from '../layout/AdminLayout';
 import { TopBar } from '../layout/TopBar';
 import { getRiskUsers, RiskUserItem, updateRiskUser } from '../api/risk';
 import { formatApiDateTimeET, isFutureThanNowByApiTimestamp } from '../utils/time';
+import { maskPhone } from '../utils/privacy';
 
 const RiskControl: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -113,7 +114,7 @@ const RiskControl: React.FC = () => {
                   <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
                       <p className="text-sm font-semibold text-slate-900">
-                        {user.full_name || user.username} <span className="text-slate-700">({user.phone})</span>
+                        {user.full_name || user.username} <span className="text-slate-700">({maskPhone(user.phone)})</span>
                       </p>
                       <p className="text-xs text-slate-500 mt-1">
                         risk={user.risk_level} | cancel_7d={user.cancel_7d} | no_show_30d={user.no_show_30d}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Copy, Gift, Share2, Star, CheckCircle2, Users } from 'lucide-react';
 import referralService, { ReferralStats, ReferralListItem } from '../services/referral.service';
+import { maskPhone } from '../utils/privacy';
 
 const ReferralPage: React.FC = () => {
   const navigate = useNavigate();
@@ -196,7 +197,7 @@ const ReferralPage: React.FC = () => {
                 >
                   <div className="flex-1">
                     <p className="font-medium text-white">{item.referee_name}</p>
-                    <p className="text-sm text-gray-500">{item.referee_phone}</p>
+                    <p className="text-sm text-gray-500">{maskPhone(item.referee_phone)}</p>
                     <p className="text-xs text-gray-600 mt-1">Joined: {formatDate(item.created_at)}</p>
                   </div>
                   <div className="text-right">

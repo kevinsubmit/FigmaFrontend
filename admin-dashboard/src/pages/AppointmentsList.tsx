@@ -1655,7 +1655,7 @@ const AppointmentsList: React.FC = () => {
                   <Phone className="h-4 w-4 text-gold-500" />
                   {resolvePhone(selected) !== '-' ? (
                     <a href={toTelHref(resolvePhone(selected))} className="text-slate-900 hover:text-blue-600 underline-offset-2 hover:underline">
-                      {resolvePhone(selected)}
+                      {maskPhone(resolvePhone(selected))}
                     </a>
                   ) : (
                     <span>-</span>

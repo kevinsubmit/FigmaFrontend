@@ -4,6 +4,7 @@ import { AdminLayout } from '../layout/AdminLayout';
 import { TopBar } from '../layout/TopBar';
 import { Appointment, getAppointments, updateAppointmentAmount, updateAppointmentStatus } from '../api/appointments';
 import { toast } from 'react-toastify';
+import { maskPhone } from '../utils/privacy';
 
 const AppointmentDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ const AppointmentDetail: React.FC = () => {
 
   const getCustomerName = (apt: Appointment) => apt.customer_name || apt.user_name || `User #${apt.user_id}`;
   const getCustomerPhone = (apt: Appointment) => `${apt.customer_phone || ''}`.trim() || '-';
+  const getCustomerPhoneDisplay = (apt: Appointment) => maskPhone(getCustomerPhone(apt));
   const getTelHref = (phone: string) => {
     if (!phone || phone === '-') return '';
     const sanitized = phone.replace(/[^\d+]/g, '');
@@ -138,7 +140,7 @@ const AppointmentDetail: React.FC = () => {
           <p className="text-sm text-slate-900">{getCustomerName(appointment)}</p>
           {getCustomerPhone(appointment) !== '-' ? (
             <a href={getTelHref(getCustomerPhone(appointment))} className="text-sm text-slate-900 hover:text-blue-600 underline-offset-2 hover:underline">
-              {getCustomerPhone(appointment)}
+              {getCustomerPhoneDisplay(appointment)}
             </a>
           ) : (
             <p className="text-sm text-slate-900">-</p>

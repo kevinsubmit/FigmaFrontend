@@ -4,6 +4,7 @@ import { AdminLayout } from '../layout/AdminLayout';
 import { TopBar } from '../layout/TopBar';
 import { getSystemLogDetail, getSystemLogs, getSystemLogStats, SystemLogDetail, SystemLogItem, SystemLogStats } from '../api/logs';
 import { formatApiDateTimeET } from '../utils/time';
+import { maskPhone } from '../utils/privacy';
 
 const formatDateTime = (value?: string | null) => {
   return formatApiDateTimeET(value, true);
@@ -259,7 +260,7 @@ const Logs: React.FC = () => {
                       <td className="px-3 py-2 text-slate-700">{item.status_code ?? '-'}</td>
                       <td className="px-3 py-2 text-slate-700">{item.latency_ms ?? '-'} ms</td>
                       <td className="px-3 py-2 text-slate-700">
-                        {item.operator_phone ? item.operator_phone : (item.operator_user_id ? `ID ${item.operator_user_id}` : '-')}
+                        {item.operator_phone ? maskPhone(item.operator_phone) : (item.operator_user_id ? `ID ${item.operator_user_id}` : '-')}
                       </td>
                       <td className="px-3 py-2 text-xs text-slate-500">{item.request_id || '-'}</td>
                     </tr>
@@ -283,7 +284,7 @@ const Logs: React.FC = () => {
                   <p>动作：{detail.action || '-'}</p>
                   <p>消息：{detail.message || '-'}</p>
                   <p>
-                    操作人：{detail.operator_phone ? `${detail.operator_phone}` : (detail.operator_user_id ? `ID ${detail.operator_user_id}` : '-')}
+                    操作人：{detail.operator_phone ? `${maskPhone(detail.operator_phone)}` : (detail.operator_user_id ? `ID ${detail.operator_user_id}` : '-')}
                   </p>
                   <p>目标：{detail.target_type || '-'} / {detail.target_id || '-'}</p>
                   <p>请求：{detail.method || '-'} {detail.path || '-'}</p>

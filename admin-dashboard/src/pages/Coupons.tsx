@@ -15,6 +15,7 @@ import {
   updateCoupon,
 } from '../api/coupons';
 import { toast } from 'react-toastify';
+import { maskPhone } from '../utils/privacy';
 
 const Coupons: React.FC = () => {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -523,8 +524,8 @@ const Coupons: React.FC = () => {
                     <tbody>
                       {batchResult.items.map((item, idx) => (
                         <tr key={`${item.input_phone}-${idx}`} className="border-t border-blue-100">
-                          <td className="px-2 py-2 text-slate-900">{item.input_phone}</td>
-                          <td className="px-2 py-2 text-slate-700">{item.normalized_phone || '-'}</td>
+                          <td className="px-2 py-2 text-slate-900">{maskPhone(item.input_phone)}</td>
+                          <td className="px-2 py-2 text-slate-700">{maskPhone(item.normalized_phone)}</td>
                           <td className="px-2 py-2">
                             <span
                               className={`inline-flex rounded-full px-2 py-0.5 ${
@@ -859,7 +860,7 @@ const Coupons: React.FC = () => {
                 <tbody>
                   {pendingGrants.map((row) => (
                     <tr key={row.id} className="border-t border-blue-100">
-                      <td className="px-4 py-3 font-medium text-slate-900">{row.phone}</td>
+                      <td className="px-4 py-3 font-medium text-slate-900">{maskPhone(row.phone)}</td>
                       <td className="px-4 py-3 text-slate-700">{row.coupon_name || `#${row.coupon_id}`}</td>
                       <td className="px-4 py-3 text-slate-700">{new Date(row.granted_at).toLocaleString()}</td>
                       <td className="px-4 py-3 text-slate-700">{row.claim_expires_at ? new Date(row.claim_expires_at).toLocaleString() : '-'}</td>

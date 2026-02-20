@@ -18,15 +18,10 @@ import {
   getCustomerRewards,
 } from '../api/customers';
 import { formatApiDateTimeET } from '../utils/time';
+import { maskPhone } from '../utils/privacy';
 
 const formatDateTime = (value?: string | null) => {
   return formatApiDateTimeET(value, true);
-};
-
-const maskPhone = (phone?: string | null) => {
-  if (!phone) return '-';
-  if (phone.length <= 4) return phone;
-  return `${phone.slice(0, 3)}****${phone.slice(-4)}`;
 };
 
 const getEnumParam = (raw: string | null, allowed: string[], fallback = 'all') => {
@@ -403,7 +398,7 @@ const Customers: React.FC = () => {
                       <UserRound className="h-4 w-4 text-gold-500" />
                       <span className="font-medium">{detail.name}</span>
                     </div>
-                    <p className="text-sm text-slate-700">Phone: {detail.phone}</p>
+                    <p className="text-sm text-slate-700">Phone: {maskPhone(detail.phone)}</p>
                     <p className="text-sm text-slate-700">Registered: {formatDateTime(detail.registered_at)}</p>
                     <p className="text-sm text-slate-700">Last Login: {formatDateTime(detail.last_login_at)}</p>
                   </div>

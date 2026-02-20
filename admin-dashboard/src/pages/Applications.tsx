@@ -9,6 +9,7 @@ import {
   StoreAdminApplication,
 } from '../api/storeAdminApplications';
 import { toast } from 'react-toastify';
+import { maskPhone } from '../utils/privacy';
 
 const Applications: React.FC = () => {
   const { user } = useAuth();
@@ -93,7 +94,7 @@ const Applications: React.FC = () => {
                   <div className="text-slate-900">
                     <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Store</p>
                     <h3 className="text-lg font-semibold text-slate-900">{application.store_name}</h3>
-                    <p className="text-xs text-slate-500">{application.phone}</p>
+                    <p className="text-xs text-slate-500">{maskPhone(application.phone)}</p>
                   </div>
                   <span className="badge">{application.status}</span>
                 </div>

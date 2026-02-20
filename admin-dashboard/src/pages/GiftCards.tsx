@@ -4,6 +4,7 @@ import { AdminLayout } from '../layout/AdminLayout';
 import { TopBar } from '../layout/TopBar';
 import { GiftCard, getGiftCards, issueGiftCardToPhone, revokeGiftCard } from '../api/giftCards';
 import { toast } from 'react-toastify';
+import { maskPhone } from '../utils/privacy';
 
 const GiftCards: React.FC = () => {
   const [cards, setCards] = useState<GiftCard[]>([]);
@@ -134,7 +135,7 @@ const GiftCards: React.FC = () => {
                   <tr key={card.id} className="border-t border-blue-100">
                     <td className="px-4 py-3 font-medium text-slate-900">{card.card_number}</td>
                     <td className="px-4 py-3 text-slate-700">${card.balance}</td>
-                    <td className="px-4 py-3 text-slate-700">{card.recipient_phone || 'N/A'}</td>
+                    <td className="px-4 py-3 text-slate-700">{maskPhone(card.recipient_phone)}</td>
                     <td className="px-4 py-3 text-slate-700">
                       {card.claim_expires_at ? new Date(card.claim_expires_at).toLocaleString() : '-'}
                     </td>

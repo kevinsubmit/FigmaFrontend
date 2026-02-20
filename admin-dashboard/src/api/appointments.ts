@@ -91,8 +91,18 @@ export interface AppointmentServiceSummary {
 }
 
 export const getAppointments = async (params?: Record<string, any>) => {
+  const userRaw = localStorage.getItem('user');
+  let includeFullPhone = false;
+  if (userRaw) {
+    try {
+      const user = JSON.parse(userRaw) as { is_admin?: boolean };
+      includeFullPhone = Boolean(user?.is_admin);
+    } catch {
+      includeFullPhone = false;
+    }
+  }
   const response = await api.get('/appointments/admin', {
-    params: { ...(params || {}), include_full_phone: true },
+    params: { ...(params || {}), include_full_phone: includeFullPhone },
   });
   return response.data as Appointment[];
 };

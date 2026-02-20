@@ -8,6 +8,7 @@ import {
   updateMyStoreAdminApplication,
 } from '../api/storeAdminApplications';
 import { toast } from 'react-toastify';
+import { maskPhone } from '../utils/privacy';
 
 const StoreApplication: React.FC = () => {
   const { user, logout, refreshUser } = useAuth();
@@ -190,7 +191,7 @@ const StoreApplication: React.FC = () => {
       <div className="px-4 py-6 space-y-6">
         <div className="card-surface p-4 space-y-3">
           <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Account</p>
-          <p className="text-sm text-slate-700">{user?.phone}</p>
+          <p className="text-sm text-slate-700">{maskPhone(user?.phone)}</p>
           <p className="text-xs text-slate-500">
             Status: {applicationStatus === 'pending_review' ? 'Under Review' : 'Profile Setup'}
           </p>
