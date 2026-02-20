@@ -91,7 +91,9 @@ export interface AppointmentServiceSummary {
 }
 
 export const getAppointments = async (params?: Record<string, any>) => {
-  const response = await api.get('/appointments/admin', { params });
+  const response = await api.get('/appointments/admin', {
+    params: { ...(params || {}), include_full_phone: true },
+  });
   return response.data as Appointment[];
 };
 

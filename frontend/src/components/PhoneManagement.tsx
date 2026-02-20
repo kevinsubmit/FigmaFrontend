@@ -41,9 +41,26 @@ const PhoneManagement: React.FC = () => {
     }
   }, [countdown]);
 
+  const getAuthToken = (): string | null => {
+    return localStorage.getItem('access_token') || localStorage.getItem('token');
+  };
+
+  const handleAuthExpired = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    toast.error('Session expired. Please log in again.');
+    navigate('/login');
+  };
+
   const fetchCurrentPhone = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = getAuthToken();
+      if (!token) {
+        handleAuthExpired();
+        return;
+      }
       const response = await axios.get(`${API_BASE_URL}/auth/me`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -52,6 +69,10 @@ const PhoneManagement: React.FC = () => {
       setIsPhoneVerified(response.data.phone_verified);
     } catch (error) {
       console.error('Failed to fetch phone:', error);
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        handleAuthExpired();
+        return;
+      }
       toast.error('Failed to load phone number');
     }
   };
@@ -123,7 +144,11 @@ const PhoneManagement: React.FC = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = getAuthToken();
+      if (!token) {
+        handleAuthExpired();
+        return;
+      }
       await axios.put(
         `${API_BASE_URL}/users/phone`,
         {
@@ -140,6 +165,10 @@ const PhoneManagement: React.FC = () => {
       navigate('/profile');
     } catch (error: any) {
       console.error('Failed to update phone:', error);
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        handleAuthExpired();
+        return;
+      }
       const errorMessage = error.response?.data?.detail || 'Failed to update phone number';
       toast.error(errorMessage);
     } finally {

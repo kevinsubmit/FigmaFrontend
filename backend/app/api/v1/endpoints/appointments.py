@@ -60,6 +60,7 @@ from app.services import reminder_service
 from app.services import risk_service
 from app.services import log_service
 from app.crud import coupons as crud_coupons
+from app.utils.phone_privacy import mask_phone
 
 router = APIRouter()
 ET_TZ = ZoneInfo("America/New_York")
@@ -802,10 +803,12 @@ def get_my_appointments(
 
 @router.get("/admin", response_model=List[AppointmentWithDetails])
 def get_admin_appointments(
+    request: Request,
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=200),
     status: Optional[str] = Query(None, description="Filter by status"),
     store_id: Optional[int] = Query(None, description="Filter by store ID (super admin only)"),
+    include_full_phone: bool = Query(False, description="Return full customer phone (audited)"),
     current_user: UserResponse = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -885,7 +888,8 @@ def get_admin_appointments(
     for appt, store_name, store_address, service_name, service_price, service_duration, review_id, user_name, customer_name, customer_phone, technician_name in appointments_data:
         resolved_amount = appt.order_amount if appt.order_amount is not None else service_price
         resolved_customer_name = appt.guest_name or customer_name or user_name
-        resolved_customer_phone = appt.guest_phone or customer_phone
+        raw_customer_phone = appt.guest_phone or customer_phone
+        resolved_customer_phone = raw_customer_phone if include_full_phone else mask_phone(raw_customer_phone)
         result.append({
             **appt.__dict__,
             "store_name": store_name,
@@ -902,6 +906,19 @@ def get_admin_appointments(
             "is_new_customer": int(appt.user_id) not in completed_user_ids,
             "customer_vip_level": vip_level_map.get(int(appt.user_id), 0),
         })
+
+    if include_full_phone:
+        log_service.create_audit_log(
+            db,
+            request=request,
+            operator_user_id=current_user.id,
+            module="appointments",
+            action="appointments.admin.full_phone",
+            message="管理员查询预约列表明文手机号",
+            target_type="appointment",
+            store_id=resolved_store_id,
+            meta={"count": len(result), "status": status},
+        )
 
     return result
 

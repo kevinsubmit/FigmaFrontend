@@ -4,14 +4,16 @@ Risk control admin endpoints
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_admin_user, get_db
 from app.models.risk import UserRiskState
 from app.models.user import User
+from app.services import log_service
 from app.services import risk_service
+from app.utils.phone_privacy import mask_phone, validate_keyword_min_length
 
 router = APIRouter()
 
@@ -37,14 +39,23 @@ class RiskUserActionPayload(BaseModel):
 
 @router.get("/users", response_model=List[RiskUserItem])
 def list_risk_users(
+    request: Request,
     keyword: Optional[str] = Query(None),
+    include_full_phone: bool = Query(False, description="Only super admin can request full phone"),
     risk_level: Optional[str] = Query(None),
     restricted_only: bool = Query(False),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user),
+    current_user: User = Depends(get_current_admin_user),
 ):
+    if include_full_phone and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only super admin can access full phone numbers")
+    try:
+        validate_keyword_min_length(keyword, min_length=3)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     query = (
         db.query(User, UserRiskState)
         .outerjoin(UserRiskState, UserRiskState.user_id == User.id)
@@ -71,7 +82,7 @@ def list_risk_users(
             RiskUserItem(
                 user_id=user.id,
                 username=user.username,
-                phone=user.phone,
+                phone=user.phone if include_full_phone else mask_phone(user.phone),
                 full_name=user.full_name,
                 risk_level=state.risk_level,
                 restricted_until=state.restricted_until,
@@ -79,6 +90,17 @@ def list_risk_users(
                 no_show_30d=state.no_show_30d,
                 manual_note=state.manual_note,
             )
+        )
+    if include_full_phone:
+        log_service.create_audit_log(
+            db,
+            request=request,
+            operator_user_id=current_user.id,
+            module="risk",
+            action="risk.users.full_phone",
+            message="管理员查询风控列表明文手机号",
+            target_type="user",
+            meta={"count": len(result)},
         )
     return result
 
@@ -150,7 +172,7 @@ def handle_risk_user_action(
     return RiskUserItem(
         user_id=target_user.id,
         username=target_user.username,
-        phone=target_user.phone,
+        phone=mask_phone(target_user.phone),
         full_name=target_user.full_name,
         risk_level=state.risk_level,
         restricted_until=state.restricted_until,

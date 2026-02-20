@@ -4,7 +4,7 @@ Customer management admin endpoints
 from datetime import date, datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import Session
@@ -20,6 +20,8 @@ from app.models.store import Store
 from app.models.user_coupon import UserCoupon
 from app.models.user_points import UserPoints
 from app.models.user import User
+from app.services import log_service
+from app.utils.phone_privacy import mask_phone, validate_keyword_min_length
 
 router = APIRouter()
 
@@ -206,7 +208,9 @@ def _summarize_customer(db: Session, customer_id: int, current_user: User):
 
 @router.get("/admin", response_model=CustomerListResponse)
 def list_customers(
+    request: Request,
     keyword: Optional[str] = Query(None),
+    include_full_phone: bool = Query(False, description="Only super admin can request full phone"),
     register_from: Optional[date] = Query(None),
     register_to: Optional[date] = Query(None),
     restricted_only: bool = Query(False),
@@ -217,6 +221,13 @@ def list_customers(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_store_admin),
 ):
+    if include_full_phone and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only super admin can access full phone numbers")
+    try:
+        validate_keyword_min_length(keyword, min_length=3)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     query = _base_customer_query(db, current_user).outerjoin(UserRiskState, UserRiskState.user_id == User.id)
 
     if keyword:
@@ -268,7 +279,7 @@ def list_customers(
             CustomerListItem(
                 id=user.id,
                 name=user.full_name or user.username,
-                phone=user.phone,
+                phone=user.phone if include_full_phone else mask_phone(user.phone),
                 registered_at=user.created_at,
                 last_login_at=user.last_login_at or user.updated_at,
                 total_appointments=summary["total"],
@@ -282,6 +293,18 @@ def list_customers(
             )
         )
 
+    if include_full_phone:
+        log_service.create_audit_log(
+            db,
+            request=request,
+            operator_user_id=current_user.id,
+            module="customers",
+            action="customers.list.full_phone",
+            message="管理员查询客户列表明文手机号",
+            target_type="customer",
+            meta={"count": len(result)},
+        )
+
     total = len(result)
     page_items = result[skip : skip + limit]
     return CustomerListResponse(items=page_items, total=total, skip=skip, limit=limit)
@@ -289,10 +312,15 @@ def list_customers(
 
 @router.get("/admin/{customer_id}", response_model=CustomerDetail)
 def get_customer_detail(
+    request: Request,
     customer_id: int,
+    include_full_phone: bool = Query(False, description="Only super admin can request full phone"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_store_admin),
 ):
+    if include_full_phone and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only super admin can access full phone numbers")
+
     customer = _base_customer_query(db, current_user).filter(User.id == customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -311,11 +339,11 @@ def get_customer_detail(
 
     cancel_rate = (summary["cancelled"] + summary["no_show"]) / summary["total"] if summary["total"] else 0.0
 
-    return CustomerDetail(
+    detail = CustomerDetail(
         id=customer.id,
         name=customer.full_name or customer.username,
         username=customer.username,
-        phone=customer.phone,
+        phone=customer.phone if include_full_phone else mask_phone(customer.phone),
         registered_at=customer.created_at,
         last_login_at=customer.last_login_at or customer.updated_at,
         total_appointments=summary["total"],
@@ -328,6 +356,18 @@ def get_customer_detail(
         cancel_rate=round(cancel_rate, 4),
         lifetime_spent=float(lifetime_spent or 0.0),
     )
+    if include_full_phone:
+        log_service.create_audit_log(
+            db,
+            request=request,
+            operator_user_id=current_user.id,
+            module="customers",
+            action="customers.detail.full_phone",
+            message="管理员查看客户详情明文手机号",
+            target_type="customer",
+            target_id=str(customer.id),
+        )
+    return detail
 
 
 @router.get("/admin/{customer_id}/appointments", response_model=List[CustomerAppointmentItem])
