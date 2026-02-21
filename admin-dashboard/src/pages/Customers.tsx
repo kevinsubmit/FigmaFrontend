@@ -16,6 +16,7 @@ import {
   getCustomerDetail,
   getCustomers,
   getCustomerRewards,
+  updateCustomerTags,
 } from '../api/customers';
 import { formatApiDateTimeET } from '../utils/time';
 import { maskPhone } from '../utils/privacy';
@@ -61,6 +62,8 @@ const Customers: React.FC = () => {
   const [rewards, setRewards] = useState<CustomerRewardsResponse | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [rewardsLoading, setRewardsLoading] = useState(false);
+  const [tagsDraft, setTagsDraft] = useState('');
+  const [savingTags, setSavingTags] = useState(false);
   const [rewardsApiUnavailable, setRewardsApiUnavailable] = useState(false);
   const [pointTypeFilter, setPointTypeFilter] = useState(() =>
     getEnumParam(searchParams.get('pt'), ['all', 'earn', 'spend']),
@@ -143,6 +146,7 @@ const Customers: React.FC = () => {
       ]);
       setSelectedId(customerId);
       setDetail(profile);
+      setTagsDraft((profile.tags || []).join(', '));
       setAppointments(rows);
       setRewards(null);
     } catch (error: any) {
@@ -164,6 +168,40 @@ const Customers: React.FC = () => {
     if (!selectedId) return;
     loadRewards(selectedId);
   }, [selectedId, pointTypeFilter, couponStatusFilter, couponValidityFilter, giftCardStatusFilter]);
+
+  const parseTagsDraft = (raw: string): string[] => {
+    const parts = raw
+      .split(/[,\n]+/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const part of parts) {
+      const key = part.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(part.slice(0, 24));
+      if (result.length >= 8) break;
+    }
+    return result;
+  };
+
+  const saveCustomerTags = async () => {
+    if (!detail) return;
+    setSavingTags(true);
+    try {
+      const tags = parseTagsDraft(tagsDraft);
+      const updated = await updateCustomerTags(detail.id, tags);
+      setDetail(updated);
+      setTagsDraft((updated.tags || []).join(', '));
+      setCustomers((prev) => prev.map((item) => (item.id === updated.id ? { ...item, tags: updated.tags || [] } : item)));
+      toast.success('Customer tags updated');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Failed to update tags');
+    } finally {
+      setSavingTags(false);
+    }
+  };
 
   useEffect(() => {
     if (!selectedId) return;
@@ -290,7 +328,17 @@ const Customers: React.FC = () => {
                     }`}
                   >
                     <td className="px-3 py-2.5">
-                      <p className="font-medium text-slate-900">{customer.name}</p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="font-medium text-slate-900">{customer.name}</p>
+                        {(customer.tags || []).map((tag) => (
+                          <span
+                            key={`${customer.id}-${tag}`}
+                            className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] text-blue-700"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                       <p className="text-xs text-slate-600">{maskPhone(customer.phone)}</p>
                     </td>
                     <td className="px-3 py-2.5 text-slate-700">{formatDateTime(customer.registered_at)}</td>
@@ -382,6 +430,7 @@ const Customers: React.FC = () => {
                   onClick={() => {
                     setSelectedId(null);
                     setDetail(null);
+                    setTagsDraft('');
                     setAppointments([]);
                     setRewards(null);
                   }}
@@ -404,6 +453,31 @@ const Customers: React.FC = () => {
                       <span className="font-medium">{detail.name}</span>
                     </div>
                     <p className="text-sm text-slate-700">Phone: {maskPhone(detail.phone)}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(detail.tags || []).map((tag) => (
+                        <span key={`detail-tag-${tag}`} className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] text-blue-700">
+                          {tag}
+                        </span>
+                      ))}
+                      {(!detail.tags || detail.tags.length === 0) && (
+                        <span className="text-xs text-slate-500">No tags</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        value={tagsDraft}
+                        onChange={(event) => setTagsDraft(event.target.value)}
+                        placeholder="Add tags, separated by comma. e.g. Good tipper, Late"
+                        className="flex-1 rounded-lg border border-blue-100 bg-white px-2.5 py-2 text-xs !text-slate-900 placeholder:text-slate-500"
+                      />
+                      <button
+                        onClick={saveCustomerTags}
+                        disabled={savingTags}
+                        className="rounded-lg border border-blue-300 px-3 py-2 text-xs font-semibold text-blue-700 disabled:opacity-60"
+                      >
+                        {savingTags ? 'Saving...' : 'Save Tags'}
+                      </button>
+                    </div>
                     <p className="text-sm text-slate-700">Birthday: {formatDateOnly(detail.date_of_birth)}</p>
                     <p className="text-sm text-slate-700">Registered: {formatDateTime(detail.registered_at)}</p>
                     <p className="text-sm text-slate-700">Last Login: {formatDateTime(detail.last_login_at)}</p>

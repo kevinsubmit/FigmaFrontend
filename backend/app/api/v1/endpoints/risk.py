@@ -28,6 +28,8 @@ class RiskUserItem(BaseModel):
     cancel_7d: int
     no_show_30d: int
     manual_note: Optional[str] = None
+    is_active: bool = True
+    account_status: str = "active"
 
 
 class RiskUserActionPayload(BaseModel):
@@ -59,7 +61,7 @@ def list_risk_users(
     query = (
         db.query(User, UserRiskState)
         .outerjoin(UserRiskState, UserRiskState.user_id == User.id)
-        .filter(User.is_active == True)
+        .filter(User.is_admin == False)
     )
 
     if keyword:
@@ -89,6 +91,8 @@ def list_risk_users(
                 cancel_7d=state.cancel_7d,
                 no_show_30d=state.no_show_30d,
                 manual_note=state.manual_note,
+                is_active=bool(user.is_active),
+                account_status="active" if bool(user.is_active) else "permanently_banned",
             )
         )
     if include_full_phone:
@@ -107,12 +111,13 @@ def list_risk_users(
 
 @router.patch("/users/{user_id}", response_model=RiskUserItem)
 def handle_risk_user_action(
+    request: Request,
     user_id: int,
     payload: RiskUserActionPayload,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
 ):
-    target_user = db.query(User).filter(User.id == user_id, User.is_active == True).first()
+    target_user = db.query(User).filter(User.id == user_id, User.is_admin == False).first()
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -166,6 +171,67 @@ def handle_risk_user_action(
             reason=payload.risk_level,
             meta={"admin_id": current_user.id},
         )
+    elif action == "ban_permanent":
+        if target_user.is_admin:
+            raise HTTPException(status_code=400, detail="Cannot ban super admin account")
+        target_user.is_active = False
+        db.add(target_user)
+        db.commit()
+        db.refresh(target_user)
+        state = risk_service.set_user_risk_level(
+            db,
+            user_id=user_id,
+            admin_id=current_user.id,
+            risk_level="high",
+            note=payload.note or "permanent_ban",
+        )
+        log_service.create_audit_log(
+            db,
+            request=request,
+            operator_user_id=current_user.id,
+            module="risk",
+            action="risk.user.permanent_ban",
+            message="超级管理员永久封禁账号",
+            target_type="user",
+            target_id=str(user_id),
+            after={"is_active": False, "note": payload.note},
+        )
+        risk_service.log_risk_event(
+            db,
+            user_id=user_id,
+            event_type="manual_restriction",
+            reason="ban_permanent",
+            meta={"admin_id": current_user.id, "note": payload.note},
+        )
+    elif action == "unban_permanent":
+        target_user.is_active = True
+        db.add(target_user)
+        db.commit()
+        db.refresh(target_user)
+        state = risk_service.unrestrict_user(
+            db,
+            user_id=user_id,
+            admin_id=current_user.id,
+            note=payload.note or "unban_permanent",
+        )
+        log_service.create_audit_log(
+            db,
+            request=request,
+            operator_user_id=current_user.id,
+            module="risk",
+            action="risk.user.permanent_unban",
+            message="超级管理员解除永久封禁",
+            target_type="user",
+            target_id=str(user_id),
+            after={"is_active": True, "note": payload.note},
+        )
+        risk_service.log_risk_event(
+            db,
+            user_id=user_id,
+            event_type="manual_restriction",
+            reason="unban_permanent",
+            meta={"admin_id": current_user.id, "note": payload.note},
+        )
     else:
         raise HTTPException(status_code=400, detail="Unsupported action")
 
@@ -179,4 +245,6 @@ def handle_risk_user_action(
         cancel_7d=state.cancel_7d,
         no_show_30d=state.no_show_30d,
         manual_note=state.manual_note,
+        is_active=bool(target_user.is_active),
+        account_status="active" if bool(target_user.is_active) else "permanently_banned",
     )

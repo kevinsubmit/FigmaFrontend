@@ -14,6 +14,7 @@ export interface CustomerListItem {
   risk_level: string;
   restricted_until?: string | null;
   status: 'active' | 'restricted' | string;
+  tags: string[];
 }
 
 export interface CustomerListResponse {
@@ -110,4 +111,9 @@ export const getCustomerAppointments = async (customerId: number, params?: Recor
 export const getCustomerRewards = async (customerId: number, params?: Record<string, any>) => {
   const response = await api.get(`/customers/admin/${customerId}/rewards`, { params });
   return response.data as CustomerRewardsResponse;
+};
+
+export const updateCustomerTags = async (customerId: number, tags: string[]) => {
+  const response = await api.put(`/customers/admin/${customerId}/tags`, { tags });
+  return response.data as CustomerDetail;
 };

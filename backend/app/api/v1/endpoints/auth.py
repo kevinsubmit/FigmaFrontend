@@ -13,6 +13,7 @@ from app.core.security import create_access_token, create_refresh_token, verify_
 from app.core.config import settings
 from app.api.deps import get_current_user
 from app.models.user import User
+from app.models.risk import UserRiskState
 from app.models.appointment import Appointment as AppointmentModel
 import os
 from datetime import datetime, timedelta
@@ -279,6 +280,19 @@ async def login(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
         )
+
+    # Frontend regular users: block login when temporary restriction is active.
+    if not user.is_admin and user.store_id is None:
+        risk_state = (
+            db.query(UserRiskState)
+            .filter(UserRiskState.user_id == user.id)
+            .first()
+        )
+        if risk_state and risk_state.restricted_until and risk_state.restricted_until > datetime.now():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your account is temporarily restricted from booking. Please try again later.",
+            )
 
     is_admin_portal_user = bool(user.is_admin or user.store_id is not None)
     if user_credentials.login_portal == "frontend" and is_admin_portal_user:

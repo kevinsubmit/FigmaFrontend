@@ -40,12 +40,19 @@ const RiskControl: React.FC = () => {
     [users],
   );
 
-  const runAction = async (userId: number, action: 'restrict_24h' | 'unrestrict', note?: string) => {
+  const runAction = async (
+    userId: number,
+    action: 'restrict_24h' | 'unrestrict' | 'ban_permanent' | 'unban_permanent',
+    note?: string,
+  ) => {
     setActionLoadingUserId(userId);
     try {
       const updated = await updateRiskUser(userId, { action, note });
       setUsers((prev) => prev.map((user) => (user.user_id === userId ? updated : user)));
-      toast.success(action === 'restrict_24h' ? 'User restricted for 24h' : 'User restriction removed');
+      if (action === 'restrict_24h') toast.success('User restricted for 24h');
+      else if (action === 'unrestrict') toast.success('User restriction removed');
+      else if (action === 'ban_permanent') toast.success('Account permanently banned');
+      else toast.success('Permanent ban removed');
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || 'Action failed');
     } finally {
@@ -109,6 +116,7 @@ const RiskControl: React.FC = () => {
           <div className="space-y-3">
             {users.map((user) => {
               const isRestricted = isFutureThanNowByApiTimestamp(user.restricted_until);
+              const isPermanentlyBanned = user.is_active === false || user.account_status === 'permanently_banned';
               return (
                 <div key={user.user_id} className="card-surface p-4">
                   <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -119,25 +127,45 @@ const RiskControl: React.FC = () => {
                       <p className="text-xs text-slate-500 mt-1">
                         risk={user.risk_level} | cancel_7d={user.cancel_7d} | no_show_30d={user.no_show_30d}
                       </p>
+                      <p className={`text-xs mt-1 ${isPermanentlyBanned ? 'text-rose-600' : 'text-emerald-700'}`}>
+                        Account: {isPermanentlyBanned ? 'Permanently Banned' : 'Active'}
+                      </p>
                       {isRestricted && (
                         <p className="text-xs text-rose-600 mt-1">Restricted until: {formatApiDateTimeET(user.restricted_until, true)}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        disabled={actionLoadingUserId === user.user_id || isRestricted}
+                        disabled={actionLoadingUserId === user.user_id || isRestricted || isPermanentlyBanned}
                         onClick={() => runAction(user.user_id, 'restrict_24h', 'manual restriction by admin')}
                         className="rounded-lg border border-rose-500/50 px-3 py-1.5 text-xs text-rose-700 disabled:opacity-50"
                       >
                         Restrict 24h
                       </button>
                       <button
-                        disabled={actionLoadingUserId === user.user_id || !isRestricted}
+                        disabled={actionLoadingUserId === user.user_id || !isRestricted || isPermanentlyBanned}
                         onClick={() => runAction(user.user_id, 'unrestrict', 'manual unrestrict by admin')}
                         className="rounded-lg border border-emerald-500/50 px-3 py-1.5 text-xs text-emerald-700 disabled:opacity-50"
                       >
                         Unrestrict
                       </button>
+                      {!isPermanentlyBanned ? (
+                        <button
+                          disabled={actionLoadingUserId === user.user_id}
+                          onClick={() => runAction(user.user_id, 'ban_permanent', 'manual permanent ban by super admin')}
+                          className="rounded-lg border border-rose-600/50 px-3 py-1.5 text-xs text-rose-700 disabled:opacity-50"
+                        >
+                          Permanent Ban
+                        </button>
+                      ) : (
+                        <button
+                          disabled={actionLoadingUserId === user.user_id}
+                          onClick={() => runAction(user.user_id, 'unban_permanent', 'manual unban by super admin')}
+                          className="rounded-lg border border-emerald-600/50 px-3 py-1.5 text-xs text-emerald-700 disabled:opacity-50"
+                        >
+                          Remove Ban
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

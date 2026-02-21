@@ -110,6 +110,33 @@ def _resolve_vip_level(total_spend: float, total_visits: int, levels) -> int:
     return current_level
 
 
+def _parse_customer_tags(raw_tags: Optional[str]) -> List[str]:
+    if not raw_tags:
+        return []
+    try:
+        parsed = json.loads(raw_tags)
+    except Exception:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    result: List[str] = []
+    seen = set()
+    for item in parsed:
+        if not isinstance(item, str):
+            continue
+        tag = item.strip()
+        if not tag:
+            continue
+        lowered = tag.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        result.append(tag[:24])
+        if len(result) >= 8:
+            break
+    return result
+
+
 def _normalize_us_phone(raw_phone: Optional[str]) -> Optional[str]:
     if not raw_phone:
         return None
@@ -861,7 +888,17 @@ def get_admin_appointments(
     user_ids = sorted({int(appt.user_id) for appt, *_ in appointments_data if appt.user_id})
     completed_user_ids = set()
     vip_level_map = {uid: 0 for uid in user_ids}
+    customer_tags_map = {uid: [] for uid in user_ids}
     if user_ids:
+        user_rows = (
+            db.query(UserModel.id, UserModel.customer_tags)
+            .filter(UserModel.id.in_(user_ids))
+            .all()
+        )
+        customer_tags_map = {
+            int(user_id): _parse_customer_tags(raw_tags)
+            for user_id, raw_tags in user_rows
+        }
         completed_rows = (
             db.query(
                 AppointmentModel.user_id,
@@ -907,6 +944,7 @@ def get_admin_appointments(
             "user_name": user_name,
             "customer_name": resolved_customer_name,
             "customer_phone": resolved_customer_phone,
+            "customer_tags": customer_tags_map.get(int(appt.user_id), []),
             "technician_name": technician_name,
             "is_new_customer": int(appt.user_id) not in completed_user_ids,
             "customer_vip_level": vip_level_map.get(int(appt.user_id), 0),

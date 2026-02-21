@@ -162,6 +162,10 @@ const toTelHref = (phone?: string | null) => {
 };
 
 const getCustomerName = (apt: Appointment) => apt.customer_name || apt.user_name || `User #${apt.user_id}`;
+const getCustomerTags = (apt: Appointment) => {
+  if (!Array.isArray(apt.customer_tags)) return [];
+  return apt.customer_tags.filter((tag): tag is string => typeof tag === 'string' && !!tag.trim()).slice(0, 4);
+};
 const getCustomerVipLevel = (apt: Appointment) => {
   if (typeof apt.customer_vip_level === 'number' && apt.customer_vip_level >= 0) return apt.customer_vip_level;
   return 0;
@@ -1465,6 +1469,14 @@ const AppointmentsList: React.FC = () => {
                                     <div className="flex items-start justify-between gap-2">
                                       <div className="flex items-center gap-1.5">
                                         <p className="text-xs font-medium">{getCustomerName(apt)}</p>
+                                        {getCustomerTags(apt).map((tag) => (
+                                          <span
+                                            key={`${apt.id}-timeline-${tag}`}
+                                            className="inline-flex rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700"
+                                          >
+                                            {tag}
+                                          </span>
+                                        ))}
                                         <span className="inline-flex rounded-full border border-violet-300 bg-violet-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-violet-700">
                                           VIP {getCustomerVipLevel(apt)}
                                         </span>
@@ -1555,6 +1567,14 @@ const AppointmentsList: React.FC = () => {
                                     <div className="flex items-start justify-between gap-2">
                                       <div className="flex items-center gap-1.5">
                                         <p className="font-medium text-slate-900">{getCustomerName(apt)}</p>
+                                        {getCustomerTags(apt).map((tag) => (
+                                          <span
+                                            key={`${apt.id}-list-${tag}`}
+                                            className="inline-flex rounded-full border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[9px] font-semibold text-amber-700"
+                                          >
+                                            {tag}
+                                          </span>
+                                        ))}
                                         <span className="inline-flex rounded-full border border-violet-300 bg-violet-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-violet-700">
                                           VIP {getCustomerVipLevel(apt)}
                                         </span>

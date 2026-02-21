@@ -10,6 +10,8 @@ export interface RiskUserItem {
   cancel_7d: number;
   no_show_30d: number;
   manual_note?: string | null;
+  is_active?: boolean;
+  account_status?: 'active' | 'permanently_banned' | string;
 }
 
 export const getRiskUsers = async (params?: Record<string, any>) => {

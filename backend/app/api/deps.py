@@ -1,12 +1,14 @@
 """
 API dependencies
 """
+from datetime import datetime
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.core.security import decode_token, verify_token_type
 from app.crud import user as crud_user
+from app.models.risk import UserRiskState
 from app.models.user import User
 
 
@@ -65,6 +67,20 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
         )
+
+    # For regular frontend users, enforce temporary restriction globally.
+    # This ensures H5 can immediately logout/redirect when account is restricted.
+    if not user.is_admin and user.store_id is None:
+        risk_state = (
+            db.query(UserRiskState)
+            .filter(UserRiskState.user_id == user.id)
+            .first()
+        )
+        if risk_state and risk_state.restricted_until and risk_state.restricted_until > datetime.now():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your account is temporarily restricted from booking. Please try again later.",
+            )
     
     return user
 

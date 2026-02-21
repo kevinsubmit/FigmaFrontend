@@ -2,6 +2,7 @@
  * API Client Configuration
  * Handles all HTTP requests to the backend API
  */
+import { forceRelogin, shouldForceRelogin } from '../utils/authGuard';
 
 // API base URL from Vite env
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -90,7 +91,7 @@ class APIClient {
           (config.headers as Record<string, string>)['Authorization'] = `Bearer ${refreshed}`;
           return this.request<T>(endpoint, options, false);
         }
-        this.removeToken();
+        forceRelogin();
       }
 
       // Handle non-OK responses
@@ -98,6 +99,9 @@ class APIClient {
         const error = await response.json().catch(() => ({
           detail: response.statusText,
         }));
+        if (shouldForceRelogin(response.status, error?.detail ?? error)) {
+          forceRelogin();
+        }
         throw new Error(error.detail || 'Request failed');
       }
 

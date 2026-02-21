@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { forceRelogin, shouldForceRelogin } from '../utils/authGuard';
 
 // API Base URL - 根据环境变量配置
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -31,6 +32,13 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const status = error?.response?.status;
+    const detail = error?.response?.data?.detail ?? error?.response?.data;
+
+    if (shouldForceRelogin(status, detail)) {
+      forceRelogin();
+      return Promise.reject(error);
+    }
 
     // 如果是401错误且不是refresh请求，尝试刷新Token
     if (error.response?.status === 401 && !originalRequest._retry) {
@@ -56,10 +64,7 @@ apiClient.interceptors.response.use(
         }
       } catch (refreshError) {
         // Token刷新失败，清除本地存储并跳转到登录页
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        forceRelogin();
         return Promise.reject(refreshError);
       }
     }

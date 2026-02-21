@@ -1,11 +1,12 @@
 """
 Customer management admin endpoints
 """
+import json
 from datetime import date, datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import Session
 
@@ -40,6 +41,7 @@ class CustomerListItem(BaseModel):
     risk_level: str = "normal"
     restricted_until: Optional[datetime] = None
     status: str
+    tags: List[str] = Field(default_factory=list)
 
 
 class CustomerListResponse(BaseModel):
@@ -66,6 +68,11 @@ class CustomerDetail(BaseModel):
     restricted_until: Optional[datetime] = None
     cancel_rate: float
     lifetime_spent: float
+    tags: List[str] = Field(default_factory=list)
+
+
+class CustomerTagsPayload(BaseModel):
+    tags: List[str] = Field(default_factory=list)
 
 
 class CustomerAppointmentItem(BaseModel):
@@ -145,6 +152,50 @@ def _base_customer_query(db: Session, current_user: User):
         .subquery()
     )
     return query.filter(User.id.in_(subquery))
+
+
+def _parse_customer_tags(raw_tags: Optional[str]) -> List[str]:
+    if not raw_tags:
+        return []
+    try:
+        parsed = json.loads(raw_tags)
+    except Exception:
+        return []
+    if not isinstance(parsed, list):
+        return []
+    result: List[str] = []
+    seen = set()
+    for item in parsed:
+        if not isinstance(item, str):
+            continue
+        tag = item.strip()
+        if not tag:
+            continue
+        lowered = tag.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        result.append(tag[:24])
+        if len(result) >= 8:
+            break
+    return result
+
+
+def _normalize_customer_tags(tags: List[str]) -> List[str]:
+    result: List[str] = []
+    seen = set()
+    for item in tags:
+        tag = str(item or "").strip()
+        if not tag:
+            continue
+        lowered = tag.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        result.append(tag[:24])
+        if len(result) >= 8:
+            break
+    return result
 
 
 def _appointment_scope_filter(current_user: User):
@@ -291,6 +342,7 @@ def list_customers(
                 risk_level=state.risk_level if state else "normal",
                 restricted_until=restricted_until,
                 status="restricted" if is_restricted else "active",
+                tags=_parse_customer_tags(user.customer_tags),
             )
         )
 
@@ -357,6 +409,7 @@ def get_customer_detail(
         restricted_until=state.restricted_until if state else None,
         cancel_rate=round(cancel_rate, 4),
         lifetime_spent=float(lifetime_spent or 0.0),
+        tags=_parse_customer_tags(customer.customer_tags),
     )
     if include_full_phone:
         log_service.create_audit_log(
@@ -370,6 +423,69 @@ def get_customer_detail(
             target_id=str(customer.id),
         )
     return detail
+
+
+@router.put("/admin/{customer_id}/tags", response_model=CustomerDetail)
+def update_customer_tags(
+    request: Request,
+    customer_id: int,
+    payload: CustomerTagsPayload,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_store_admin),
+):
+    customer = _base_customer_query(db, current_user).filter(User.id == customer_id).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    normalized_tags = _normalize_customer_tags(payload.tags)
+    customer.customer_tags = json.dumps(normalized_tags, ensure_ascii=False)
+    db.add(customer)
+    db.commit()
+    db.refresh(customer)
+
+    log_service.create_audit_log(
+        db,
+        request=request,
+        operator_user_id=current_user.id,
+        module="customers",
+        action="customers.tags.update",
+        message="管理员更新客户自定义标签",
+        target_type="customer",
+        target_id=str(customer.id),
+        after={"tags": normalized_tags},
+    )
+
+    summary = _summarize_customer(db, customer.id, current_user)
+    state = db.query(UserRiskState).filter(UserRiskState.user_id == customer.id).first()
+    scope_filters = _appointment_scope_filter(current_user)
+    lifetime_spent = (
+        db.query(func.coalesce(func.sum(Service.price), 0.0))
+        .select_from(Appointment)
+        .join(Service, Service.id == Appointment.service_id)
+        .filter(Appointment.user_id == customer.id, Appointment.status == "completed", *scope_filters)
+        .scalar()
+    )
+    cancel_rate = (summary["cancelled"] + summary["no_show"]) / summary["total"] if summary["total"] else 0.0
+
+    return CustomerDetail(
+        id=customer.id,
+        name=customer.full_name or customer.username,
+        username=customer.username,
+        phone=mask_phone(customer.phone),
+        date_of_birth=customer.date_of_birth,
+        registered_at=customer.created_at,
+        last_login_at=customer.last_login_at or customer.updated_at,
+        total_appointments=summary["total"],
+        completed_count=summary["completed"],
+        cancelled_count=summary["cancelled"],
+        no_show_count=summary["no_show"],
+        next_appointment_at=summary["next_appointment_at"],
+        risk_level=state.risk_level if state else "normal",
+        restricted_until=state.restricted_until if state else None,
+        cancel_rate=round(cancel_rate, 4),
+        lifetime_spent=float(lifetime_spent or 0.0),
+        tags=_parse_customer_tags(customer.customer_tags),
+    )
 
 
 @router.get("/admin/{customer_id}/appointments", response_model=List[CustomerAppointmentItem])

@@ -190,6 +190,7 @@ class AppointmentWithDetails(Appointment):
     user_name: Optional[str] = None
     customer_name: Optional[str] = None
     customer_phone: Optional[str] = None
+    customer_tags: List[str] = Field(default_factory=list)
     is_new_customer: Optional[bool] = None
     customer_vip_level: Optional[int] = None
 

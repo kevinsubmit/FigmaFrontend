@@ -1,7 +1,7 @@
 """
 User database model
 """
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, func
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, Text, func
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 
@@ -19,6 +19,7 @@ class User(Base):
     avatar_url = Column(String(500), nullable=True)
     gender = Column(String(20), nullable=True)  # 性别: male, female, other
     date_of_birth = Column(Date, nullable=True)  # 生日，一旦设置不可修改
+    customer_tags = Column(Text, nullable=True)  # 客户自定义标签(JSON数组字符串)
     phone_verified = Column(Boolean, default=False, nullable=False)  # 手机号是否已验证
     is_active = Column(Boolean, default=True, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)  # 超级管理员
