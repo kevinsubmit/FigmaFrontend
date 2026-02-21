@@ -11,9 +11,11 @@ import {
   CustomerGiftCardItem,
   CustomerListItem,
   CustomerPointTransactionItem,
+  CustomerReferralsResponse,
   CustomerRewardsResponse,
   getCustomerAppointments,
   getCustomerDetail,
+  getCustomerReferrals,
   getCustomers,
   getCustomerRewards,
   updateCustomerTags,
@@ -60,8 +62,11 @@ const Customers: React.FC = () => {
   const [detail, setDetail] = useState<CustomerDetail | null>(null);
   const [appointments, setAppointments] = useState<CustomerAppointmentItem[]>([]);
   const [rewards, setRewards] = useState<CustomerRewardsResponse | null>(null);
+  const [referrals, setReferrals] = useState<CustomerReferralsResponse | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [rewardsLoading, setRewardsLoading] = useState(false);
+  const [referralsLoading, setReferralsLoading] = useState(false);
+  const [referralsApiUnavailable, setReferralsApiUnavailable] = useState(false);
   const [tagsDraft, setTagsDraft] = useState('');
   const [savingTags, setSavingTags] = useState(false);
   const [rewardsApiUnavailable, setRewardsApiUnavailable] = useState(false);
@@ -139,6 +144,7 @@ const Customers: React.FC = () => {
 
   const loadDetail = async (customerId: number) => {
     setDetailLoading(true);
+    setReferralsLoading(true);
     try {
       const [profile, rows] = await Promise.all([
         getCustomerDetail(customerId),
@@ -149,10 +155,29 @@ const Customers: React.FC = () => {
       setTagsDraft((profile.tags || []).join(', '));
       setAppointments(rows);
       setRewards(null);
+
+      if (!referralsApiUnavailable) {
+        try {
+          const referralData = await getCustomerReferrals(customerId);
+          setReferrals(referralData);
+        } catch (error: any) {
+          if (error?.response?.status === 404) {
+            setReferralsApiUnavailable(true);
+            setReferrals({ referred_by: null, invited_users: [] });
+            toast.info('Current backend version does not support customer referrals endpoint yet.');
+          } else {
+            toast.error(error?.response?.data?.detail || 'Failed to load referrals');
+            setReferrals({ referred_by: null, invited_users: [] });
+          }
+        }
+      } else {
+        setReferrals({ referred_by: null, invited_users: [] });
+      }
     } catch (error: any) {
       toast.error(error?.response?.data?.detail || 'Failed to load customer detail');
     } finally {
       setDetailLoading(false);
+      setReferralsLoading(false);
     }
   };
 
@@ -432,6 +457,7 @@ const Customers: React.FC = () => {
                     setDetail(null);
                     setTagsDraft('');
                     setAppointments([]);
+                    setReferrals(null);
                     setRewards(null);
                   }}
                   className="rounded-full border border-blue-200 p-1.5 text-slate-700"
@@ -489,6 +515,12 @@ const Customers: React.FC = () => {
                       升级后端并重启后，该区域会自动恢复。
                     </div>
                   )}
+                  {referralsApiUnavailable && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                      当前后端版本暂不支持客户推荐关系接口（`/customers/admin/:customer_id/referrals`）。
+                      升级后端并重启后，该区域会自动恢复。
+                    </div>
+                  )}
 
                   <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2 text-sm text-slate-700">
                     <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Stats</p>
@@ -499,6 +531,48 @@ const Customers: React.FC = () => {
                     <p>Cancel Rate: {(detail.cancel_rate * 100).toFixed(1)}%</p>
                     <p>Lifetime Spent: ${detail.lifetime_spent.toFixed(2)}</p>
                     <p>Next Booking: {formatDateTime(detail.next_appointment_at)}</p>
+                  </div>
+
+                  <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2">
+                    <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Referrals</p>
+                    {referralsLoading ? (
+                      <div className="text-sm text-slate-500">Loading referrals...</div>
+                    ) : (
+                      <>
+                        <div className="rounded-lg border border-blue-100 bg-white px-3 py-2 text-sm">
+                          <p className="font-medium text-slate-900">Referred By</p>
+                          {referrals?.referred_by ? (
+                            <>
+                              <p className="text-slate-800 mt-1">{referrals.referred_by.user_name}</p>
+                              <p className="text-xs text-slate-600 mt-0.5">{maskPhone(referrals.referred_by.user_phone)}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                Joined: {formatDateTime(referrals.referred_by.created_at)} | Status: {referrals.referred_by.status}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-xs text-slate-500 mt-1">No referrer.</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-slate-900">
+                            Invited Users ({referrals?.invited_users?.length || 0})
+                          </p>
+                          {(referrals?.invited_users || []).map((item) => (
+                            <div key={item.referral_id} className="rounded-lg border border-blue-100 bg-white px-3 py-2 text-sm">
+                              <p className="font-medium text-slate-900">{item.user_name}</p>
+                              <p className="text-xs text-slate-600 mt-0.5">{maskPhone(item.user_phone)}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                Joined: {formatDateTime(item.created_at)} | Status: {item.status}
+                              </p>
+                            </div>
+                          ))}
+                          {!referrals?.invited_users?.length && (
+                            <div className="text-sm text-slate-500">No invited users yet.</div>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2 text-sm text-slate-700">

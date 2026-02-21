@@ -69,7 +69,7 @@ const ReferralPage: React.FC = () => {
 
   const shareReferral = async () => {
     const shareUrl = `${window.location.origin}/register?ref=${referralCode}`;
-    const shareText = `Join me on Nails Booking! Use my referral code ${referralCode} and get $10 off your first booking!`;
+    const shareText = `Join me on Nails Booking! Use my referral code ${referralCode} and get a $10 coupon right after registration!`;
 
     if (navigator.share) {
       try {
@@ -147,7 +147,7 @@ const ReferralPage: React.FC = () => {
           <p className="text-gray-400 leading-relaxed max-w-xs mx-auto">
             Share the glow! Both you and your friend will receive{' '}
             <span className="text-[#D4AF37] font-bold">1 Free Coupon ($10 value)</span>{' '}
-            after their first booking.
+            immediately after successful registration.
           </p>
         </div>
 

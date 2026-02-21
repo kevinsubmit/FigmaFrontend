@@ -93,6 +93,24 @@ export interface CustomerRewardsResponse {
   gift_cards: CustomerGiftCardItem[];
 }
 
+export interface CustomerReferralItem {
+  referral_id: number;
+  relation: 'referred_by' | 'invited' | string;
+  user_id: number;
+  user_name: string;
+  user_phone: string;
+  status: string;
+  created_at: string;
+  rewarded_at?: string | null;
+  referrer_reward_given: boolean;
+  referee_reward_given: boolean;
+}
+
+export interface CustomerReferralsResponse {
+  referred_by?: CustomerReferralItem | null;
+  invited_users: CustomerReferralItem[];
+}
+
 export const getCustomers = async (params?: Record<string, any>) => {
   const response = await api.get('/customers/admin', { params });
   return response.data as CustomerListResponse;
@@ -111,6 +129,11 @@ export const getCustomerAppointments = async (customerId: number, params?: Recor
 export const getCustomerRewards = async (customerId: number, params?: Record<string, any>) => {
   const response = await api.get(`/customers/admin/${customerId}/rewards`, { params });
   return response.data as CustomerRewardsResponse;
+};
+
+export const getCustomerReferrals = async (customerId: number, params?: Record<string, any>) => {
+  const response = await api.get(`/customers/admin/${customerId}/referrals`, { params });
+  return response.data as CustomerReferralsResponse;
 };
 
 export const updateCustomerTags = async (customerId: number, tags: string[]) => {

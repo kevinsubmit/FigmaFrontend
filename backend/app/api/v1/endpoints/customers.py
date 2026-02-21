@@ -21,6 +21,7 @@ from app.models.store import Store
 from app.models.user_coupon import UserCoupon
 from app.models.user_points import UserPoints
 from app.models.user import User
+from app.models.referral import Referral
 from app.services import log_service
 from app.utils.phone_privacy import mask_phone, validate_keyword_min_length
 
@@ -135,6 +136,24 @@ class CustomerRewardsResponse(BaseModel):
     point_transactions: List[CustomerPointTransactionItem]
     coupons: List[CustomerCouponItem]
     gift_cards: List[CustomerGiftCardItem]
+
+
+class CustomerReferralItem(BaseModel):
+    referral_id: int
+    relation: str
+    user_id: int
+    user_name: str
+    user_phone: str
+    status: str
+    created_at: datetime
+    rewarded_at: Optional[datetime] = None
+    referrer_reward_given: bool = False
+    referee_reward_given: bool = False
+
+
+class CustomerReferralsResponse(BaseModel):
+    referred_by: Optional[CustomerReferralItem] = None
+    invited_users: List[CustomerReferralItem] = Field(default_factory=list)
 
 
 def _base_customer_query(db: Session, current_user: User):
@@ -624,3 +643,97 @@ def get_customer_rewards(
             for row in gift_card_rows
         ],
     )
+
+
+@router.get("/admin/{customer_id}/referrals", response_model=CustomerReferralsResponse)
+def get_customer_referrals(
+    request: Request,
+    customer_id: int,
+    include_full_phone: bool = Query(False, description="Only super admin can request full phone"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_store_admin),
+):
+    if include_full_phone and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only super admin can access full phone numbers")
+
+    customer_exists = _base_customer_query(db, current_user).filter(User.id == customer_id).first()
+    if not customer_exists:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    rows = (
+        db.query(Referral)
+        .filter(
+            or_(
+                Referral.referrer_id == customer_id,
+                Referral.referee_id == customer_id,
+            )
+        )
+        .order_by(Referral.created_at.desc())
+        .all()
+    )
+    if not rows:
+        return CustomerReferralsResponse(referred_by=None, invited_users=[])
+
+    counterpart_ids = set()
+    for row in rows:
+        if int(row.referrer_id) == int(customer_id):
+            counterpart_ids.add(int(row.referee_id))
+        else:
+            counterpart_ids.add(int(row.referrer_id))
+
+    counterpart_users = db.query(User).filter(User.id.in_(counterpart_ids)).all() if counterpart_ids else []
+    user_map = {int(row.id): row for row in counterpart_users}
+
+    scoped_ids = set()
+    if not current_user.is_admin and counterpart_ids:
+        scoped_rows = _base_customer_query(db, current_user).filter(User.id.in_(counterpart_ids)).all()
+        scoped_ids = {int(row.id) for row in scoped_rows}
+
+    def _build_item(row: Referral, relation: str, other_user_id: int) -> CustomerReferralItem:
+        other = user_map.get(int(other_user_id))
+        if not other:
+            display_name = f"User #{other_user_id}"
+            display_phone = "-"
+        else:
+            if current_user.is_admin or int(other.id) in scoped_ids:
+                display_name = other.full_name or other.username or f"User #{other_user_id}"
+                display_phone = other.phone if include_full_phone else mask_phone(other.phone)
+            else:
+                display_name = "Out of scope customer"
+                display_phone = "-"
+        return CustomerReferralItem(
+            referral_id=int(row.id),
+            relation=relation,
+            user_id=int(other_user_id),
+            user_name=display_name,
+            user_phone=display_phone,
+            status=row.status,
+            created_at=row.created_at,
+            rewarded_at=row.rewarded_at,
+            referrer_reward_given=bool(row.referrer_reward_given),
+            referee_reward_given=bool(row.referee_reward_given),
+        )
+
+    referred_by: Optional[CustomerReferralItem] = None
+    invited_users: List[CustomerReferralItem] = []
+
+    for row in rows:
+        if int(row.referee_id) == int(customer_id):
+            referred_by = _build_item(row, "referred_by", int(row.referrer_id))
+        elif int(row.referrer_id) == int(customer_id):
+            invited_users.append(_build_item(row, "invited", int(row.referee_id)))
+
+    if include_full_phone:
+        log_service.create_audit_log(
+            db,
+            request=request,
+            operator_user_id=current_user.id,
+            module="customers",
+            action="customers.referrals.full_phone",
+            message="管理员查看客户推荐关系明文手机号",
+            target_type="customer",
+            target_id=str(customer_id),
+            meta={"invited_count": len(invited_users), "has_referrer": referred_by is not None},
+        )
+
+    return CustomerReferralsResponse(referred_by=referred_by, invited_users=invited_users)
