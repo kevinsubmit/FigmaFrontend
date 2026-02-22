@@ -150,9 +150,7 @@ export function MyCoupons({ onBack }: MyCouponsProps) {
           <div className="text-center py-12">
             <Ticket className="mx-auto text-gray-600 mb-4" size={48} />
             <p className="text-gray-500">No {activeTab} coupons</p>
-            <p className="text-sm text-gray-600 mt-2">
-              {activeTab === 'available' && 'Claim coupons or exchange with points'}
-            </p>
+            {activeTab === 'available' && <p className="text-sm text-gray-600 mt-2">Claim coupons from store promotions</p>}
           </div>
         ) : (
           coupons.map((userCoupon) => (

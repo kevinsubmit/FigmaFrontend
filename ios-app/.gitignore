@@ -1,0 +1,26 @@
+# Xcode user data
+xcuserdata/
+*.xcuserstate
+*.xcworkspace
+
+# Build artifacts
+build/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.swiftpm/
+.build/
+Package.resolved
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# Secrets / local config
+*.env
+*.env.local

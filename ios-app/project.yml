@@ -1,0 +1,38 @@
+name: NailsDashIOS
+options:
+  minimumXcodeGenVersion: 2.37.0
+  deploymentTarget:
+    iOS: 16.0
+settings:
+  base:
+    SWIFT_VERSION: 5.0
+    PRODUCT_BUNDLE_IDENTIFIER: com.figmafrontend.nailsdash.ios
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 1.0.0
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+targets:
+  NailsDashIOS:
+    type: application
+    platform: iOS
+    sources:
+      - path: NailsDashIOS/Sources
+      - path: NailsDashIOS/Resources
+    settings:
+      base:
+        INFOPLIST_FILE: NailsDashIOS/Resources/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    scheme:
+      testTargets:
+        - NailsDashIOSTests
+  NailsDashIOSTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: NailsDashIOSTests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: NailsDashIOS

@@ -1,0 +1,557 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		09769325FBB26B532C0ED1C1 /* AppointmentsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62FEF46D46BA3679CBD5C6AD /* AppointmentsService.swift */; };
+		29359FB573E617D7E0498D11 /* NailsDashApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD1C5C353519E7F91DDA17A /* NailsDashApp.swift */; };
+		36ABAF8E177D9B071F3BC4D7 /* BookAppointmentViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A93FE0C0C05C49238A947AF /* BookAppointmentViewModel.swift */; };
+		516B855BD37582763D9CA0D1 /* BookAppointmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9545DF0A4ABD1935546B6A2 /* BookAppointmentView.swift */; };
+		598A5611A236ECA5B26CF27A /* PhoneFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1643BED7FC99E52520186313 /* PhoneFormatter.swift */; };
+		6460B7113D3C2D3F9D47F247 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48EDF5BB4443EAB30BB2CFAC /* AppState.swift */; };
+		6933756772F078B938769065 /* StoreModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E637FC76552DE0DB5F90C5E5 /* StoreModels.swift */; };
+		6E58B3D8F8633DED3017500E /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A71C8FD57CF3D60EC95B4C /* APIClient.swift */; };
+		8533FF84E1096435EB1FA763 /* NailsDashIOSTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0223719970CAFE1A510CB70 /* NailsDashIOSTests.swift */; };
+		87185F16A1D7A5B0274718C7 /* StoresListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFC50FB29BFE863D2A9433C1 /* StoresListView.swift */; };
+		8B76ADAB759AEE7C687A83A9 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50F645E1D2DEB975D8534F13 /* LoginView.swift */; };
+		8D3DDACAEE0DCEB24ADCC7C5 /* StoreDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C8A331C66095FDF04E81AF3 /* StoreDetailView.swift */; };
+		8D4DB742DF359AE373C1958D /* AuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33DAF15624B4E327D9378F81 /* AuthModels.swift */; };
+		915A910E62EFC74ED5F9CC07 /* StoresService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F1FA00668ACF5A4F9C8936D /* StoresService.swift */; };
+		9940EC4C0B5582DD6EA8B730 /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B79367B80E53991EA6A6E23 /* TokenStore.swift */; };
+		C26E9BB373441BF4C009CDF2 /* AppointmentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 353835D4F888821BAA3D8DDC /* AppointmentModels.swift */; };
+		C84C1AFADA6A0BDF13EFA1DF /* StoresViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CBE6600EF1F41C68120D8D6 /* StoresViewModel.swift */; };
+		E938B4A98D458A5C00ED4F65 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69971322EED483F5BA88EA3E /* HomeView.swift */; };
+		E97894949AFB6E70D0E37A14 /* MyAppointmentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABA11B03E51EF58C41B4813 /* MyAppointmentsView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		DF59883A3CE6A1B0C43BF3E5 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F282D465A2893F2198723461 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 85A0E59EDA17344D9EF3E861;
+			remoteInfo = NailsDashIOS;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0761888B7B591F6DD1A5B18B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		1643BED7FC99E52520186313 /* PhoneFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneFormatter.swift; sourceTree = "<group>"; };
+		1B79367B80E53991EA6A6E23 /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
+		2A93FE0C0C05C49238A947AF /* BookAppointmentViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookAppointmentViewModel.swift; sourceTree = "<group>"; };
+		2C8A331C66095FDF04E81AF3 /* StoreDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreDetailView.swift; sourceTree = "<group>"; };
+		33DAF15624B4E327D9378F81 /* AuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModels.swift; sourceTree = "<group>"; };
+		353835D4F888821BAA3D8DDC /* AppointmentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentModels.swift; sourceTree = "<group>"; };
+		48EDF5BB4443EAB30BB2CFAC /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		50F645E1D2DEB975D8534F13 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		62FEF46D46BA3679CBD5C6AD /* AppointmentsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentsService.swift; sourceTree = "<group>"; };
+		69971322EED483F5BA88EA3E /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		6BD1C5C353519E7F91DDA17A /* NailsDashApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NailsDashApp.swift; sourceTree = "<group>"; };
+		7CBE6600EF1F41C68120D8D6 /* StoresViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoresViewModel.swift; sourceTree = "<group>"; };
+		7F1FA00668ACF5A4F9C8936D /* StoresService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoresService.swift; sourceTree = "<group>"; };
+		C8A71C8FD57CF3D60EC95B4C /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		C9545DF0A4ABD1935546B6A2 /* BookAppointmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookAppointmentView.swift; sourceTree = "<group>"; };
+		C99C5C13D6058F84542D1B66 /* NailsDashIOSTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = NailsDashIOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CABA11B03E51EF58C41B4813 /* MyAppointmentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyAppointmentsView.swift; sourceTree = "<group>"; };
+		DFC50FB29BFE863D2A9433C1 /* StoresListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoresListView.swift; sourceTree = "<group>"; };
+		E0223719970CAFE1A510CB70 /* NailsDashIOSTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NailsDashIOSTests.swift; sourceTree = "<group>"; };
+		E637FC76552DE0DB5F90C5E5 /* StoreModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreModels.swift; sourceTree = "<group>"; };
+		F0D75736C682585EE701A3DD /* NailsDashIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NailsDashIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		1188341BE047A25F23C7EFAB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F0D75736C682585EE701A3DD /* NailsDashIOS.app */,
+				C99C5C13D6058F84542D1B66 /* NailsDashIOSTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		136E749B55E7AE897E5C5634 = {
+			isa = PBXGroup;
+			children = (
+				51641077CCE7BC87070F43E8 /* NailsDashIOSTests */,
+				F98214D2EB95A33F05FF7D95 /* Resources */,
+				2D1399512315FF03BD756D86 /* Sources */,
+				1188341BE047A25F23C7EFAB /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		2D1399512315FF03BD756D86 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				6484E489F1F5F9157B0C0257 /* App */,
+				E5C76CD14CF5BB4109288BE0 /* Core */,
+				DA5134E5F1B122EEF7DA142A /* Features */,
+			);
+			name = Sources;
+			path = NailsDashIOS/Sources;
+			sourceTree = "<group>";
+		};
+		31DD7BD7FE38994A94E1E54C /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				33DAF15624B4E327D9378F81 /* AuthModels.swift */,
+				1B79367B80E53991EA6A6E23 /* TokenStore.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		3C8CBC1218D0207834AB5E2F /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				69971322EED483F5BA88EA3E /* HomeView.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		51641077CCE7BC87070F43E8 /* NailsDashIOSTests */ = {
+			isa = PBXGroup;
+			children = (
+				E0223719970CAFE1A510CB70 /* NailsDashIOSTests.swift */,
+			);
+			path = NailsDashIOSTests;
+			sourceTree = "<group>";
+		};
+		5EBE14E07F2F0E4DACF53277 /* Network */ = {
+			isa = PBXGroup;
+			children = (
+				C8A71C8FD57CF3D60EC95B4C /* APIClient.swift */,
+			);
+			path = Network;
+			sourceTree = "<group>";
+		};
+		5FD0DE029877C0E70ABC3ACC /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				50F645E1D2DEB975D8534F13 /* LoginView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		6484E489F1F5F9157B0C0257 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				48EDF5BB4443EAB30BB2CFAC /* AppState.swift */,
+				6BD1C5C353519E7F91DDA17A /* NailsDashApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		DA5134E5F1B122EEF7DA142A /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				F070DB808A156B50364E37F6 /* Appointments */,
+				5FD0DE029877C0E70ABC3ACC /* Auth */,
+				3C8CBC1218D0207834AB5E2F /* Home */,
+				EE711A927730CC95175E4DFB /* Stores */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		E5C76CD14CF5BB4109288BE0 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				31DD7BD7FE38994A94E1E54C /* Auth */,
+				5EBE14E07F2F0E4DACF53277 /* Network */,
+				E977A903382A94AEB6A90EFE /* Utils */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		E977A903382A94AEB6A90EFE /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				1643BED7FC99E52520186313 /* PhoneFormatter.swift */,
+			);
+			path = Utils;
+			sourceTree = "<group>";
+		};
+		EE711A927730CC95175E4DFB /* Stores */ = {
+			isa = PBXGroup;
+			children = (
+				2C8A331C66095FDF04E81AF3 /* StoreDetailView.swift */,
+				E637FC76552DE0DB5F90C5E5 /* StoreModels.swift */,
+				DFC50FB29BFE863D2A9433C1 /* StoresListView.swift */,
+				7F1FA00668ACF5A4F9C8936D /* StoresService.swift */,
+				7CBE6600EF1F41C68120D8D6 /* StoresViewModel.swift */,
+			);
+			path = Stores;
+			sourceTree = "<group>";
+		};
+		F070DB808A156B50364E37F6 /* Appointments */ = {
+			isa = PBXGroup;
+			children = (
+				353835D4F888821BAA3D8DDC /* AppointmentModels.swift */,
+				62FEF46D46BA3679CBD5C6AD /* AppointmentsService.swift */,
+				C9545DF0A4ABD1935546B6A2 /* BookAppointmentView.swift */,
+				2A93FE0C0C05C49238A947AF /* BookAppointmentViewModel.swift */,
+				CABA11B03E51EF58C41B4813 /* MyAppointmentsView.swift */,
+			);
+			path = Appointments;
+			sourceTree = "<group>";
+		};
+		F98214D2EB95A33F05FF7D95 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				0761888B7B591F6DD1A5B18B /* Info.plist */,
+			);
+			name = Resources;
+			path = NailsDashIOS/Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		85A0E59EDA17344D9EF3E861 /* NailsDashIOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1D92582003DF1815870FC080 /* Build configuration list for PBXNativeTarget "NailsDashIOS" */;
+			buildPhases = (
+				F36CD4E0C24683316AC2B715 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NailsDashIOS;
+			packageProductDependencies = (
+			);
+			productName = NailsDashIOS;
+			productReference = F0D75736C682585EE701A3DD /* NailsDashIOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D8A3A5DAD63CBB07845CAA8B /* NailsDashIOSTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 06562F214DA39F7B263EF93C /* Build configuration list for PBXNativeTarget "NailsDashIOSTests" */;
+			buildPhases = (
+				156E105E787F2915CE7554B8 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				38EA9BFAE638F3B61769993E /* PBXTargetDependency */,
+			);
+			name = NailsDashIOSTests;
+			packageProductDependencies = (
+			);
+			productName = NailsDashIOSTests;
+			productReference = C99C5C13D6058F84542D1B66 /* NailsDashIOSTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		F282D465A2893F2198723461 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					85A0E59EDA17344D9EF3E861 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					D8A3A5DAD63CBB07845CAA8B = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 075C14D08D59A3A2B04E8CB6 /* Build configuration list for PBXProject "NailsDashIOS" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 136E749B55E7AE897E5C5634;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				85A0E59EDA17344D9EF3E861 /* NailsDashIOS */,
+				D8A3A5DAD63CBB07845CAA8B /* NailsDashIOSTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		156E105E787F2915CE7554B8 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8533FF84E1096435EB1FA763 /* NailsDashIOSTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F36CD4E0C24683316AC2B715 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6E58B3D8F8633DED3017500E /* APIClient.swift in Sources */,
+				6460B7113D3C2D3F9D47F247 /* AppState.swift in Sources */,
+				C26E9BB373441BF4C009CDF2 /* AppointmentModels.swift in Sources */,
+				09769325FBB26B532C0ED1C1 /* AppointmentsService.swift in Sources */,
+				8D4DB742DF359AE373C1958D /* AuthModels.swift in Sources */,
+				516B855BD37582763D9CA0D1 /* BookAppointmentView.swift in Sources */,
+				36ABAF8E177D9B071F3BC4D7 /* BookAppointmentViewModel.swift in Sources */,
+				E938B4A98D458A5C00ED4F65 /* HomeView.swift in Sources */,
+				8B76ADAB759AEE7C687A83A9 /* LoginView.swift in Sources */,
+				E97894949AFB6E70D0E37A14 /* MyAppointmentsView.swift in Sources */,
+				29359FB573E617D7E0498D11 /* NailsDashApp.swift in Sources */,
+				598A5611A236ECA5B26CF27A /* PhoneFormatter.swift in Sources */,
+				8D3DDACAEE0DCEB24ADCC7C5 /* StoreDetailView.swift in Sources */,
+				6933756772F078B938769065 /* StoreModels.swift in Sources */,
+				87185F16A1D7A5B0274718C7 /* StoresListView.swift in Sources */,
+				915A910E62EFC74ED5F9CC07 /* StoresService.swift in Sources */,
+				C84C1AFADA6A0BDF13EFA1DF /* StoresViewModel.swift in Sources */,
+				9940EC4C0B5582DD6EA8B730 /* TokenStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		38EA9BFAE638F3B61769993E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 85A0E59EDA17344D9EF3E861 /* NailsDashIOS */;
+			targetProxy = DF59883A3CE6A1B0C43BF3E5 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		17D1FAE506662D2FE6C311F9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.figmafrontend.nailsdash.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		1AC4299D319BAA2484302254 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = NailsDashIOS/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		4F6554077D0859DAC0532057 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NailsDashIOS.app/NailsDashIOS";
+			};
+			name = Debug;
+		};
+		8998CEA8693860CC7CD59D12 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = NailsDashIOS/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		8ADA54531BCED75FF23D00A3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.figmafrontend.nailsdash.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		9453E7D9563D904C2B77ECA7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NailsDashIOS.app/NailsDashIOS";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		06562F214DA39F7B263EF93C /* Build configuration list for PBXNativeTarget "NailsDashIOSTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4F6554077D0859DAC0532057 /* Debug */,
+				9453E7D9563D904C2B77ECA7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		075C14D08D59A3A2B04E8CB6 /* Build configuration list for PBXProject "NailsDashIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				17D1FAE506662D2FE6C311F9 /* Debug */,
+				8ADA54531BCED75FF23D00A3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		1D92582003DF1815870FC080 /* Build configuration list for PBXNativeTarget "NailsDashIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8998CEA8693860CC7CD59D12 /* Debug */,
+				1AC4299D319BAA2484302254 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = F282D465A2893F2198723461 /* Project object */;
+}
