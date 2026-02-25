@@ -1,13 +1,15 @@
 import SwiftUI
+import UIKit
 
 struct HomeView: View {
     @EnvironmentObject private var appState: AppState
 
     var body: some View {
-        TabView {
+        TabView(selection: $appState.selectedTab) {
             NavigationStack {
                 HomeFeedView()
             }
+            .tag(AppTab.home)
             .tabItem {
                 Label("Home", systemImage: "house")
             }
@@ -15,6 +17,8 @@ struct HomeView: View {
             NavigationStack {
                 StoresListView()
             }
+            .id(appState.bookTabResetID)
+            .tag(AppTab.book)
             .tabItem {
                 Label("Book", systemImage: "storefront")
             }
@@ -22,6 +26,7 @@ struct HomeView: View {
             NavigationStack {
                 MyAppointmentsView()
             }
+            .tag(AppTab.appointments)
             .tabItem {
                 Label("Appointments", systemImage: "calendar")
             }
@@ -29,6 +34,7 @@ struct HomeView: View {
             NavigationStack {
                 DealsView()
             }
+            .tag(AppTab.deals)
             .tabItem {
                 Label("Deals", systemImage: "tag")
             }
@@ -37,11 +43,17 @@ struct HomeView: View {
                 ProfileCenterView()
                     .environmentObject(appState)
             }
+            .tag(AppTab.profile)
             .tabItem {
                 Label("Profile", systemImage: "person")
             }
         }
         .tint(UITheme.brandGold)
+        .onChange(of: appState.selectedTab) { newValue in
+            if newValue != .book {
+                appState.resetBookFlowSource()
+            }
+        }
     }
 }
 
@@ -61,6 +73,9 @@ private final class ProfileCenterViewModel: ObservableObject {
     @Published var couponCount: Int = 0
     @Published var giftBalance: Double = 0
     @Published var completedOrders: Int = 0
+    @Published var reviewCount: Int = 0
+    @Published var favoriteCount: Int = 0
+    @Published var vipStatus: VipStatusDTO?
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
 
@@ -80,13 +95,19 @@ private final class ProfileCenterViewModel: ObservableObject {
             async let pointsTask = rewardsService.getPointsBalance(token: token)
             async let couponsTask = rewardsService.getMyCoupons(token: token, status: "available", limit: 100)
             async let giftCardsTask = rewardsService.getMyGiftCards(token: token, limit: 100)
-            async let appointmentsTask = appointmentsService.getMyAppointments(token: token, limit: 200)
+            async let appointmentsTask = appointmentsService.getMyAppointments(token: token, limit: 100)
+            async let reviewsTask: [UserReviewDTO]? = try? rewardsService.getMyReviews(token: token, limit: 100)
+            async let favoritesTask: Int? = try? rewardsService.getMyFavoritePinsCount(token: token)
+            async let vipStatusTask: VipStatusDTO? = try? rewardsService.getVipStatus(token: token)
 
             let unread = try await unreadTask
             let pointsBalance = try await pointsTask
             let coupons = try await couponsTask
             let giftCards = try await giftCardsTask
             let appointments = try await appointmentsTask
+            let reviews = await reviewsTask ?? []
+            let favoritePinsCount = await favoritesTask ?? 0
+            let vipStatus = await vipStatusTask
 
             unreadCount = unread.unread_count
             points = pointsBalance.available_points
@@ -95,6 +116,9 @@ private final class ProfileCenterViewModel: ObservableObject {
                 .filter { $0.status.lowercased() != "expired" }
                 .reduce(0) { $0 + max($1.balance, 0) }
             completedOrders = appointments.filter { $0.status.lowercased() == "completed" }.count
+            reviewCount = reviews.count
+            favoriteCount = max(favoritePinsCount, 0)
+            self.vipStatus = vipStatus
             errorMessage = nil
         } catch let err as APIError {
             errorMessage = mapError(err)
@@ -112,6 +136,11 @@ private struct ProfileCenterView: View {
     private let brandGold = UITheme.brandGold
     private let cardBG = UITheme.cardBackground
     private let gridColumns = [GridItem(.flexible(), spacing: UITheme.spacing10), GridItem(.flexible(), spacing: UITheme.spacing10)]
+    private let profileNameFontSize: CGFloat = 40
+    private let vipLevelFontSize: CGFloat = 36
+    private let statsValueFontSize: CGFloat = 44
+    private let statsLabelFontSize: CGFloat = 10
+    private let statsLabelKerning: CGFloat = 3.2
 
     var body: some View {
         VStack(spacing: 0) {
@@ -120,11 +149,9 @@ private struct ProfileCenterView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: UITheme.spacing14) {
                     profileHeaderCard
-                    vipAccessCard
+                    vipAccessCardLink
                     inviteFriendsCard
                     statsGrid
-                    actionMenuCard
-                    signOutButton
                 }
                 .padding(.horizontal, UITheme.pagePadding)
                 .padding(.top, UITheme.spacing10)
@@ -156,14 +183,32 @@ private struct ProfileCenterView: View {
         HStack {
             Spacer()
             HStack(spacing: UITheme.spacing10) {
-                topIconButton(systemImage: "bell") {
-                    alertMessage = "Notifications page is coming soon."
-                    showAlert = true
-                } badge: {
-                    if viewModel.unreadCount > 0 {
-                        Text(viewModel.unreadCount > 99 ? "99+" : "\(viewModel.unreadCount)")
+                NavigationLink {
+                    NotificationsView()
+                        .environmentObject(appState)
+                } label: {
+                    ZStack(alignment: .topTrailing) {
+                        Image(systemName: "bell")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: UITheme.iconControlSize, height: UITheme.iconControlSize)
+                            .background(Color.white.opacity(0.05))
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(brandGold.opacity(0.28), lineWidth: 1))
+
+                        if viewModel.unreadCount > 0 {
+                            Text(viewModel.unreadCount > 99 ? "99+" : "\(viewModel.unreadCount)")
+                                .font(.system(size: UITheme.tinyBadgeFontSize, weight: .bold))
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, UITheme.spacing5)
+                                .padding(.vertical, UITheme.spacing2)
+                                .background(brandGold)
+                                .clipShape(Capsule())
+                                .offset(x: 7, y: -6)
+                        }
                     }
                 }
+                .buttonStyle(.plain)
 
                 topIconButton(systemImage: "gearshape") {
                     alertMessage = "Settings page is coming soon."
@@ -213,7 +258,7 @@ private struct ProfileCenterView: View {
             profileAvatar
 
             Text(appState.currentUser?.full_name ?? appState.currentUser?.username ?? "User")
-                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .font(.system(size: profileNameFontSize, weight: .bold, design: .rounded))
                 .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -264,78 +309,81 @@ private struct ProfileCenterView: View {
     }
 
     private var vipAccessCard: some View {
-        let pointsGoal = 1000
-        let visitsGoal = 15
-        let pointsProgress = min(max(Double(viewModel.points) / Double(pointsGoal), 0), 1)
-        let visitProgress = min(max(Double(viewModel.completedOrders) / Double(visitsGoal), 0), 1)
+        let currentLevel = viewModel.vipStatus?.current_level.level ?? (viewModel.completedOrders >= 10 ? 2 : 1)
+        let nextLevel = viewModel.vipStatus?.next_level?.level ?? (currentLevel + 1)
+
+        let spendCurrent = max(viewModel.vipStatus?.spend_progress.current ?? viewModel.vipStatus?.total_spend ?? 0, 0)
+        let spendRequiredRaw = viewModel.vipStatus?.spend_progress.required ?? 1000
+        let spendRequired = max(spendRequiredRaw, 1)
+        let spendPercentRaw = viewModel.vipStatus?.spend_progress.percent ?? ((spendCurrent / spendRequired) * 100.0)
+        let spendProgress = min(max(spendPercentRaw / 100.0, 0), 1)
+
+        let visitsCurrent = max(viewModel.vipStatus?.visits_progress.current ?? Double(viewModel.completedOrders), 0)
+        let visitsRequiredRaw = viewModel.vipStatus?.visits_progress.required ?? 15
+        let visitsRequired = max(visitsRequiredRaw, 1)
+        let visitsPercentRaw = viewModel.vipStatus?.visits_progress.percent ?? ((visitsCurrent / visitsRequired) * 100.0)
+        let visitProgress = min(max(visitsPercentRaw / 100.0, 0), 1)
 
         return VStack(alignment: .leading, spacing: UITheme.spacing12) {
             HStack(alignment: .top) {
                 HStack(spacing: UITheme.spacing8) {
-                    Text(viewModel.points >= 500 || viewModel.completedOrders >= 10 ? "VIP 2" : "VIP 1")
-                        .font(.system(size: 44, weight: .black, design: .rounded))
+                    Text("VIP \(currentLevel)")
+                        .font(.system(size: vipLevelFontSize, weight: .black, design: .rounded))
                         .foregroundStyle(.white)
 
                     Text("CURRENT")
-                        .font(.caption.weight(.bold))
+                        .font(.system(size: 11, weight: .bold))
                         .kerning(1.0)
                         .foregroundStyle(.black)
-                        .padding(.horizontal, UITheme.spacing9)
-                        .padding(.vertical, UITheme.spacing5)
+                        .padding(.horizontal, UITheme.spacing8)
+                        .padding(.vertical, UITheme.spacing4)
                         .background(brandGold)
                         .clipShape(RoundedRectangle(cornerRadius: UITheme.chipCornerRadius, style: .continuous))
                 }
 
                 Spacer()
 
-                ZStack {
-                    Circle()
-                        .fill(brandGold.opacity(0.08))
-                        .frame(width: 52, height: 52)
-                    Image(systemName: "crown")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(brandGold)
-                }
-                .overlay(
-                    Circle()
-                        .stroke(brandGold.opacity(0.25), lineWidth: 1)
-                )
+                RotatingCrownIcon(size: 48)
             }
 
             Text("Member Access")
-                .font(.title3.weight(.semibold))
+                .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(brandGold)
 
             vipMetricBar(
-                title: "Points",
-                value: "\(viewModel.points) / \(pointsGoal)",
-                progress: pointsProgress
+                title: "Spend Amount",
+                value: "$\(String(format: "%.2f", spendCurrent)) / $\(String(format: "%.2f", spendRequired))",
+                progress: spendProgress
             )
 
             vipMetricBar(
                 title: "Visits",
-                value: "\(viewModel.completedOrders) / \(visitsGoal)",
+                value: "\(Int(visitsCurrent.rounded(.down))) / \(Int(visitsRequired.rounded(.down)))",
                 progress: visitProgress
             )
 
             HStack(spacing: UITheme.spacing6) {
                 Image(systemName: "arrow.up.right")
-                    .font(.caption.weight(.semibold))
-                Text("Next level to \(viewModel.points >= 500 || viewModel.completedOrders >= 10 ? "VIP 3" : "VIP 2")")
-                    .font(.title3.weight(.bold))
+                    .font(.system(size: 12, weight: .semibold))
+                Text("Next level to VIP \(nextLevel)")
+                    .font(.system(size: 18, weight: .bold))
             }
             .foregroundStyle(Color.white.opacity(0.52))
         }
         .padding(UITheme.spacing16)
         .background(
-            LinearGradient(
-                colors: [
-                    cardBG.opacity(0.98),
-                    Color(red: 43.0 / 255.0, green: 41.0 / 255.0, blue: 34.0 / 255.0),
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        cardBG.opacity(0.98),
+                        Color(red: 43.0 / 255.0, green: 41.0 / 255.0, blue: 34.0 / 255.0),
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+
+                VipCardGoldSweep()
+            }
         )
         .clipShape(RoundedRectangle(cornerRadius: UITheme.panelCornerRadius, style: .continuous))
         .overlay(alignment: .top) {
@@ -350,15 +398,25 @@ private struct ProfileCenterView: View {
         )
     }
 
+    private var vipAccessCardLink: some View {
+        NavigationLink {
+            VipMembershipView()
+                .environmentObject(appState)
+        } label: {
+            vipAccessCard
+        }
+        .buttonStyle(.plain)
+    }
+
     private func vipMetricBar(title: String, value: String, progress: Double) -> some View {
         VStack(alignment: .leading, spacing: UITheme.spacing6) {
             HStack {
                 Text(title)
-                    .font(.title3.weight(.medium))
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(Color.white.opacity(0.7))
                 Spacer()
                 Text(value)
-                    .font(.title3.weight(.medium))
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(Color.white.opacity(0.76))
             }
 
@@ -377,26 +435,26 @@ private struct ProfileCenterView: View {
     }
 
     private var inviteFriendsCard: some View {
-        Button {
-            alertMessage = "Invite flow is coming soon."
-            showAlert = true
+        NavigationLink {
+            ReferAFriendView()
+                .environmentObject(appState)
         } label: {
             HStack(spacing: UITheme.spacing12) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(brandGold.opacity(0.14))
-                        .frame(width: 72, height: 72)
+                        .frame(width: 64, height: 64)
                     Image(systemName: "gift.fill")
-                        .font(.title2.weight(.semibold))
+                        .font(.system(size: 24, weight: .semibold))
                         .foregroundStyle(brandGold)
                 }
 
                 VStack(alignment: .leading, spacing: UITheme.spacing4) {
                     Text("Invite Friends, Get $10")
-                        .font(.title3.weight(.semibold))
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(.white)
                     Text("Share your love for nails and save")
-                        .font(.title3.weight(.regular))
+                        .font(.system(size: 15, weight: .regular))
                         .foregroundStyle(Color.white.opacity(0.64))
                 }
 
@@ -424,186 +482,92 @@ private struct ProfileCenterView: View {
     }
 
     private var statsGrid: some View {
-        VStack(alignment: .leading, spacing: UITheme.spacing10) {
-            HStack(spacing: UITheme.spacing6) {
-                Circle()
-                    .fill(brandGold)
-                    .frame(width: 5, height: 5)
-                Text("OVERVIEW")
-                    .font(.caption.weight(.bold))
-                    .kerning(2.0)
-                    .foregroundStyle(.secondary)
+        LazyVGrid(columns: gridColumns, spacing: UITheme.spacing10) {
+            profileOverviewCardLink(title: "TOTAL POINTS", value: "\(viewModel.points)", icon: "sparkles") {
+                PointsView()
+                    .environmentObject(appState)
             }
-
-            LazyVGrid(columns: gridColumns, spacing: UITheme.spacing10) {
-                profileStatCard(title: "Points", value: "\(viewModel.points)", icon: "sparkles", accent: brandGold)
-                profileStatCard(title: "Coupons", value: "\(viewModel.couponCount)", icon: "ticket.fill", accent: .green)
-                profileStatCard(title: "Gift Balance", value: "$\(String(format: "%.2f", viewModel.giftBalance))", icon: "gift.fill", accent: .cyan)
-                profileStatCard(title: "Orders", value: "\(viewModel.completedOrders)", icon: "checkmark.seal.fill", accent: .orange)
+            profileOverviewCardLink(title: "COUPONS", value: "\(viewModel.couponCount)", icon: "ticket") {
+                CouponsView()
+                    .environmentObject(appState)
+            }
+            profileOverviewCardLink(title: "GIFT CARDS", value: "$\(String(format: "%.2f", viewModel.giftBalance))", icon: "gift", emphasizedLabel: true) {
+                GiftCardsView()
+                    .environmentObject(appState)
+            }
+            profileOverviewCardLink(title: "ORDERS", value: "\(viewModel.completedOrders)", icon: "receipt") {
+                OrderHistoryView()
+                    .environmentObject(appState)
+            }
+            profileOverviewCardLink(title: "REVIEWS", value: "\(viewModel.reviewCount)", icon: "star") {
+                MyReviewsView()
+                    .environmentObject(appState)
+            }
+            profileOverviewCardLink(title: "FAVORITES", value: "\(viewModel.favoriteCount)", icon: "heart") {
+                MyFavoritesView()
+                    .environmentObject(appState)
             }
         }
     }
 
-    private func profileStatCard(title: String, value: String, icon: String, accent: Color) -> some View {
-        VStack(alignment: .leading, spacing: UITheme.spacing8) {
-            HStack {
-                ZStack {
-                    RoundedRectangle(cornerRadius: UITheme.spacing8)
-                        .fill(accent.opacity(0.14))
-                        .frame(width: 28, height: 28)
-                    Image(systemName: icon)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(accent)
-                }
-                Text(title.uppercased())
-                    .font(.caption2.weight(.bold))
-                    .kerning(1.0)
-                    .foregroundStyle(.secondary)
-                Spacer()
-            }
-            Text(value)
-                .font(.title3.weight(.bold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-            Text(title)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
-        .padding(UITheme.spacing13)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(
-                colors: [cardBG, Color.white.opacity(0.01)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: UITheme.cardCornerRadius))
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(accent.opacity(0.8))
-                .frame(height: UITheme.spacing2)
-                .clipShape(RoundedRectangle(cornerRadius: UITheme.cardCornerRadius))
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: UITheme.cardCornerRadius)
-                .stroke(brandGold.opacity(0.14), lineWidth: 1)
-        )
-    }
-
-    private var actionMenuCard: some View {
-        VStack(alignment: .leading, spacing: UITheme.spacing10) {
-            Text("TOOLS")
-                .font(.caption.weight(.bold))
-                .kerning(2.2)
-                .foregroundStyle(.secondary)
-
-            VStack(spacing: 0) {
-                profileLinkRow(
-                    title: "My Points",
-                    subtitle: "View balance and history",
-                    systemImage: "sparkles"
-                ) {
-                    PointsView()
-                        .environmentObject(appState)
-                }
-                rowDivider
-                profileLinkRow(
-                    title: "My Coupons",
-                    subtitle: "Manage available/used/expired",
-                    systemImage: "ticket.fill"
-                ) {
-                    CouponsView()
-                        .environmentObject(appState)
-                }
-                rowDivider
-                profileLinkRow(
-                    title: "My Gift Cards",
-                    subtitle: "Check card balances",
-                    systemImage: "gift.fill"
-                ) {
-                    GiftCardsView()
-                        .environmentObject(appState)
-                }
-            }
-            .padding(.horizontal, UITheme.spacing4)
-        }
-        .padding(UITheme.cardPadding)
-        .background(cardBG)
-        .clipShape(RoundedRectangle(cornerRadius: UITheme.panelCornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: UITheme.panelCornerRadius)
-                .stroke(brandGold.opacity(0.18), lineWidth: 1)
-        )
-    }
-
-    private var signOutButton: some View {
-        Button(role: .destructive) {
-            appState.forceLogout()
-        } label: {
-            Text("Sign Out")
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: UITheme.ctaHeight)
-                .background(Color.red.opacity(0.12))
-                .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius))
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(.red)
-        .overlay(
-            RoundedRectangle(cornerRadius: UITheme.controlCornerRadius)
-                .stroke(Color.red.opacity(0.35), lineWidth: 1)
-        )
-    }
-
-    private func profileLinkRow<Destination: View>(
+    private func profileOverviewCardLink<Destination: View>(
         title: String,
-        subtitle: String,
-        systemImage: String,
+        value: String,
+        icon: String,
+        emphasizedLabel: Bool = false,
         @ViewBuilder destination: () -> Destination
     ) -> some View {
         NavigationLink {
             destination()
         } label: {
-            HStack(spacing: UITheme.spacing12) {
-                Image(systemName: systemImage)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(brandGold)
-                    .frame(width: UITheme.iconControlSize, height: UITheme.iconControlSize)
-                    .background(brandGold.opacity(0.14))
-                    .clipShape(RoundedRectangle(cornerRadius: UITheme.chipCornerRadius))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: UITheme.chipCornerRadius)
-                            .stroke(brandGold.opacity(0.22), lineWidth: 1)
-                    )
-                VStack(alignment: .leading, spacing: UITheme.spacing2) {
-                    Text(title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundStyle(Color.white.opacity(0.62))
-                }
-                Spacer()
-                ZStack {
-                    Circle()
-                        .fill(Color.white.opacity(0.05))
-                        .frame(width: UITheme.miniControlSize, height: UITheme.miniControlSize)
-                    Image(systemName: "chevron.right")
-                        .font(.caption.bold())
-                        .foregroundStyle(Color.white.opacity(0.72))
-                }
-            }
-            .padding(.vertical, UITheme.spacing10)
+            profileOverviewCard(title: title, value: value, icon: icon, emphasizedLabel: emphasizedLabel)
         }
         .buttonStyle(.plain)
     }
 
-    private var rowDivider: some View {
-        Rectangle()
-            .fill(Color.white.opacity(0.08))
-            .frame(height: UITheme.spacing1)
-            .padding(.horizontal, UITheme.spacing2)
+    private func profileOverviewCard(title: String, value: String, icon: String, emphasizedLabel: Bool = false) -> some View {
+        VStack(spacing: UITheme.spacing12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .fill(Color.white.opacity(0.05))
+                    .frame(width: 64, height: 64)
+                Image(systemName: icon)
+                    .font(.system(size: 24, weight: .regular))
+                    .foregroundStyle(brandGold)
+            }
+
+            Text(value)
+                .font(.system(size: statsValueFontSize, weight: .black, design: .rounded))
+                .foregroundStyle(.white)
+                .minimumScaleFactor(0.45)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
+
+            Text(title)
+                .font(.system(size: statsLabelFontSize, weight: .black))
+                .kerning(statsLabelKerning)
+                .foregroundStyle(emphasizedLabel ? brandGold : Color.white.opacity(0.5))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.horizontal, UITheme.spacing10)
+        .padding(.vertical, UITheme.spacing16)
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: 206)
+        .background(
+            LinearGradient(
+                colors: [cardBG, Color.white.opacity(0.02)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(brandGold.opacity(emphasizedLabel ? 0.32 : 0.18), lineWidth: 1)
+        )
     }
 
     private func displayPhone(_ raw: String?) -> String {
@@ -635,6 +599,1097 @@ private struct ProfileCenterView: View {
         }
         let base = APIClient.shared.baseURL.replacingOccurrences(of: "/api/v1", with: "")
         return "\(base)\(raw)"
+    }
+}
+
+private struct RotatingCrownIcon: View {
+    let size: CGFloat
+    private let brandGold = UITheme.brandGold
+    @State private var rotation3DAngle: Double = 0
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(brandGold.opacity(0.08))
+                .frame(width: size, height: size)
+            Image(systemName: "crown")
+                .font(.system(size: size * 0.42, weight: .semibold))
+                .foregroundStyle(brandGold)
+        }
+        .overlay(
+            Circle()
+                .stroke(brandGold.opacity(0.25), lineWidth: 1)
+        )
+        .rotation3DEffect(
+            .degrees(rotation3DAngle),
+            axis: (x: 0.18, y: 1, z: 0),
+            perspective: 0.78
+        )
+        .shadow(color: brandGold.opacity(0.18), radius: 6, y: 2)
+        .onAppear {
+            rotation3DAngle = 0
+            withAnimation(.linear(duration: 3.2).repeatForever(autoreverses: false)) {
+                rotation3DAngle = 360
+            }
+        }
+    }
+}
+
+private struct VipCardGoldSweep: View {
+    private let brandGold = UITheme.brandGold
+    @State private var phase: CGFloat = -1
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = max(proxy.size.width, 1)
+            let height = max(proxy.size.height, 1)
+            let sweepWidth = max(width * 0.55, 150)
+            let travel = width + sweepWidth * 2
+
+            LinearGradient(
+                colors: [
+                    Color.clear,
+                    brandGold.opacity(0.02),
+                    brandGold.opacity(0.20),
+                    Color.white.opacity(0.28),
+                    brandGold.opacity(0.16),
+                    Color.clear,
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .frame(width: sweepWidth, height: height * 1.5)
+            .rotationEffect(.degrees(15))
+            .offset(x: phase * travel * 0.5)
+            .blur(radius: 1.2)
+            .blendMode(.screen)
+            .onAppear {
+                phase = -1
+                withAnimation(.linear(duration: 3.6).repeatForever(autoreverses: false)) {
+                    phase = 1
+                }
+            }
+        }
+        .allowsHitTesting(false)
+        .opacity(0.9)
+    }
+}
+
+private struct VipTierItem: Identifiable {
+    let id = UUID()
+    let level: String
+    let title: String
+    let icon: String
+    let iconColor: Color
+    let benefits: [String]
+}
+
+private struct VipMembershipView: View {
+    @Environment(\.dismiss) private var dismiss
+    private let brandGold = UITheme.brandGold
+    private let tiers: [VipTierItem] = [
+        VipTierItem(
+            level: "VIP 1-3",
+            title: "Silver Perks",
+            icon: "shield.fill",
+            iconColor: Color(red: 0.72, green: 0.74, blue: 0.79),
+            benefits: [
+                "5% off all services",
+                "Birthday gift coupon",
+                "Member-only events",
+            ]
+        ),
+        VipTierItem(
+            level: "VIP 4-6",
+            title: "Gold Status",
+            icon: "star.fill",
+            iconColor: UITheme.brandGold,
+            benefits: [
+                "10% off all services",
+                "Priority booking",
+                "Free soak-off service",
+            ]
+        ),
+        VipTierItem(
+            level: "VIP 7-9",
+            title: "Platinum Luxe",
+            icon: "sparkles",
+            iconColor: Color(red: 0.60, green: 0.78, blue: 1.0),
+            benefits: [
+                "15% off all services",
+                "Free hand mask with every visit",
+                "Skip the line queue",
+            ]
+        ),
+        VipTierItem(
+            level: "VIP 10",
+            title: "Diamond Elite",
+            icon: "crown.fill",
+            iconColor: UITheme.brandGold,
+            benefits: [
+                "20% off all services",
+                "Personal style consultant",
+                "Free premium drink & snacks",
+            ]
+        ),
+    ]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            RewardsTopBar(title: "VIP Membership") {
+                dismiss()
+            }
+
+            ScrollView {
+                VStack(spacing: UITheme.spacing24) {
+                    heroSection
+
+                    VStack(spacing: UITheme.spacing12) {
+                        ForEach(tiers) { tier in
+                            tierCard(tier)
+                        }
+                    }
+
+                    redemptionSection
+
+                    Text("Figma Make Nails • Exclusive American Salon Program")
+                        .font(.system(size: 10, weight: .semibold))
+                        .kerning(1.8)
+                        .foregroundStyle(Color.white.opacity(0.32))
+                        .multilineTextAlignment(.center)
+                        .padding(.top, UITheme.spacing6)
+                }
+                .padding(.horizontal, UITheme.pagePadding)
+                .padding(.top, UITheme.spacing20)
+                .padding(.bottom, UITheme.spacing28)
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
+        .background(Color.black)
+        .tint(brandGold)
+    }
+
+    private var heroSection: some View {
+        VStack(spacing: UITheme.spacing12) {
+            ZStack {
+                Circle()
+                    .fill(brandGold.opacity(0.14))
+                    .frame(width: 72, height: 72)
+                Circle()
+                    .stroke(brandGold.opacity(0.34), lineWidth: 1)
+                    .frame(width: 72, height: 72)
+                Image(systemName: "crown.fill")
+                    .font(.system(size: 30, weight: .semibold))
+                    .foregroundStyle(brandGold)
+            }
+
+            Text("Elite Rewards Program")
+                .font(.system(size: 23, weight: .medium))
+                .kerning(1.8)
+                .foregroundStyle(.white)
+                .textCase(.uppercase)
+
+            Text("Elevate your experience with our tiered rewards. The more you pamper yourself, the more exclusive your benefits become.")
+                .font(.footnote)
+                .foregroundStyle(Color.white.opacity(0.58))
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+                .padding(.horizontal, UITheme.spacing10)
+        }
+        .padding(.top, UITheme.spacing4)
+    }
+
+    private func tierCard(_ tier: VipTierItem) -> some View {
+        VStack(alignment: .leading, spacing: UITheme.spacing12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: UITheme.spacing4) {
+                    Text(tier.level)
+                        .font(.title3.weight(.heavy))
+                        .italic()
+                        .foregroundStyle(brandGold)
+                    Text(tier.title)
+                        .font(.caption.weight(.bold))
+                        .kerning(1.4)
+                        .foregroundStyle(Color.white.opacity(0.48))
+                        .textCase(.uppercase)
+                }
+                Spacer()
+                Image(systemName: tier.icon)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(tier.iconColor)
+            }
+
+            VStack(alignment: .leading, spacing: UITheme.spacing8) {
+                ForEach(tier.benefits, id: \.self) { benefit in
+                    HStack(alignment: .top, spacing: UITheme.spacing8) {
+                        Image(systemName: "sparkles")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(brandGold)
+                            .padding(.top, UITheme.spacing2)
+                        Text(benefit)
+                            .font(.footnote)
+                            .foregroundStyle(Color.white.opacity(0.72))
+                            .lineSpacing(1.6)
+                    }
+                }
+            }
+        }
+        .padding(UITheme.spacing16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(red: 0.07, green: 0.07, blue: 0.07))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
+    }
+
+    private var redemptionSection: some View {
+        VStack(alignment: .leading, spacing: UITheme.spacing10) {
+            HStack(spacing: UITheme.spacing6) {
+                Image(systemName: "sparkles")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(brandGold)
+                Text("REDEMPTION LOGIC")
+                    .font(.caption.weight(.bold))
+                    .kerning(2.2)
+                    .foregroundStyle(brandGold)
+            }
+
+            Text("\"Points are accumulated automatically with every visit. To redeem your benefits, simply present your digital membership card to your technician during checkout. All vouchers and tier rewards must be redeemed in-store.\"")
+                .font(.footnote)
+                .foregroundStyle(Color.white.opacity(0.68))
+                .lineSpacing(3)
+                .italic()
+        }
+        .padding(UITheme.spacing16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            LinearGradient(
+                colors: [brandGold.opacity(0.10), Color.clear],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(brandGold.opacity(0.28), lineWidth: 1)
+        )
+    }
+}
+
+@MainActor
+private final class ReferAFriendViewModel: ObservableObject {
+    @Published var referralCode: String = ""
+    @Published var stats: ReferralStatsDTO?
+    @Published var referralList: [ReferralListItemDTO] = []
+    @Published var isLoading = false
+    @Published var copied = false
+    @Published var copyNotice: String?
+    @Published var errorMessage: String?
+
+    private let service = ProfileRewardsService()
+
+    func load(token: String) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            async let codeTask = service.getReferralCode(token: token)
+            async let statsTask = service.getReferralStats(token: token)
+            async let listTask = service.getReferralList(token: token, limit: 100)
+
+            let code = try await codeTask
+            let stats = try await statsTask
+            let list = try await listTask
+
+            referralCode = code.referral_code
+            self.stats = stats
+            referralList = list
+            errorMessage = nil
+        } catch let err as APIError {
+            errorMessage = mapError(err)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func copyReferralCode() {
+        let code = referralCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !code.isEmpty else { return }
+        UIPasteboard.general.string = code
+        copied = true
+        copyNotice = "Referral code copied"
+        Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard !Task.isCancelled else { return }
+            copied = false
+            copyNotice = nil
+        }
+    }
+
+    func sharePayload() -> [Any]? {
+        let code = referralCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !code.isEmpty else { return nil }
+        let text = "Join me on Nails Booking! Use my referral code \(code) and get a $10 coupon right after registration!"
+        if let url = referralURL(code: code) {
+            return [text, url]
+        }
+        return [text]
+    }
+
+    private func referralURL(code: String) -> URL? {
+        let overrideBase = ProcessInfo.processInfo.environment["NAILSDASH_WEB_BASE_URL"]?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let defaultBase = APIClient.shared.baseURL.replacingOccurrences(of: "/api/v1", with: "")
+        let base = (overrideBase?.isEmpty == false ? overrideBase! : defaultBase).trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedBase = base.hasSuffix("/") ? String(base.dropLast()) : base
+        return URL(string: "\(normalizedBase)/register?ref=\(code)")
+    }
+}
+
+private struct ActivityView: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+private struct ReferAFriendView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
+    @StateObject private var viewModel = ReferAFriendViewModel()
+    @State private var alertMessage: String = ""
+    @State private var showAlert: Bool = false
+    @State private var shareItems: [Any] = []
+    @State private var showShareSheet = false
+    private let brandGold = UITheme.brandGold
+    private let cardBG = UITheme.cardBackground
+
+    var body: some View {
+        VStack(spacing: 0) {
+            RewardsTopBar(title: "Refer a Friend") {
+                dismiss()
+            }
+
+            ScrollView {
+                VStack(spacing: UITheme.spacing20) {
+                    heroSection
+                    codeSection
+                    actionsSection
+                    historySection
+                }
+                .padding(.horizontal, UITheme.pagePadding)
+                .padding(.top, UITheme.spacing16)
+                .padding(.bottom, UITheme.spacing24)
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
+        .background(Color.black)
+        .tint(brandGold)
+        .task { await reload() }
+        .refreshable { await reload() }
+        .onChange(of: viewModel.errorMessage) { value in
+            guard let value, !value.isEmpty else { return }
+            alertMessage = value
+            showAlert = true
+        }
+        .sheet(isPresented: $showShareSheet) {
+            ActivityView(activityItems: shareItems)
+        }
+        .unifiedNoticeAlert(isPresented: $showAlert, message: alertMessage)
+        .overlay {
+            UnifiedLoadingOverlay(isLoading: viewModel.isLoading)
+        }
+    }
+
+    private func reload() async {
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.load(token: token)
+    }
+
+    private var heroSection: some View {
+        VStack(spacing: UITheme.spacing12) {
+            ZStack {
+                Circle()
+                    .fill(brandGold.opacity(0.12))
+                    .frame(width: 80, height: 80)
+                Circle()
+                    .stroke(brandGold.opacity(0.24), lineWidth: 1)
+                    .frame(width: 80, height: 80)
+                Image(systemName: "gift.fill")
+                    .font(.system(size: 36, weight: .semibold))
+                    .foregroundStyle(brandGold)
+            }
+
+            Text("Refer a Friend")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(.white)
+
+            Text("Share the glow! Both you and your friend will receive 1 Free Coupon ($10 value) immediately after successful registration.")
+                .font(.footnote)
+                .foregroundStyle(Color.white.opacity(0.68))
+                .multilineTextAlignment(.center)
+                .lineSpacing(2)
+        }
+    }
+
+    private var codeSection: some View {
+        VStack(spacing: UITheme.spacing10) {
+            Text("YOUR REFERRAL CODE")
+                .font(.caption.weight(.bold))
+                .kerning(1.8)
+                .foregroundStyle(Color.white.opacity(0.48))
+
+            HStack(spacing: UITheme.spacing10) {
+                Text(viewModel.referralCode.isEmpty ? "—" : viewModel.referralCode)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .kerning(5.2)
+                    .foregroundStyle(brandGold)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Button {
+                    viewModel.copyReferralCode()
+                } label: {
+                    Image(systemName: viewModel.copied ? "checkmark.circle.fill" : "doc.on.doc.fill")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(.black)
+                        .frame(width: 48, height: 48)
+                        .background(brandGold)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(viewModel.referralCode.isEmpty)
+                .opacity(viewModel.referralCode.isEmpty ? 0.45 : 1)
+            }
+            .padding(UITheme.spacing12)
+            .frame(maxWidth: .infinity)
+            .background(Color.black)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+            )
+
+            Text("Your code is unique and stays the same.")
+                .font(.caption)
+                .foregroundStyle(Color.white.opacity(0.5))
+
+            if let notice = viewModel.copyNotice, !notice.isEmpty {
+                Text(notice)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(brandGold)
+            }
+        }
+        .padding(UITheme.spacing16)
+        .frame(maxWidth: .infinity)
+        .background(cardBG)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+        )
+    }
+
+    private var actionsSection: some View {
+        VStack(spacing: UITheme.spacing10) {
+            Button {
+                guard let payload = viewModel.sharePayload() else { return }
+                shareItems = payload
+                showShareSheet = true
+            } label: {
+                HStack(spacing: UITheme.spacing8) {
+                    Image(systemName: "square.and.arrow.up")
+                    Text("Share with Friends")
+                }
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.black)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 50)
+                .background(Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .disabled(viewModel.referralCode.isEmpty)
+            .opacity(viewModel.referralCode.isEmpty ? 0.45 : 1)
+
+            HStack(spacing: UITheme.spacing10) {
+                statInfoChip(
+                    icon: "person.2.fill",
+                    text: "\(viewModel.stats?.total_referrals ?? 0) Referrals",
+                    color: Color.white.opacity(0.62)
+                )
+                Circle()
+                    .fill(Color.white.opacity(0.28))
+                    .frame(width: 3, height: 3)
+                statInfoChip(
+                    icon: "star.fill",
+                    text: "\(viewModel.stats?.total_rewards_earned ?? 0) Coupons Earned",
+                    color: brandGold
+                )
+            }
+            .font(.caption)
+        }
+    }
+
+    private func statInfoChip(icon: String, text: String, color: Color) -> some View {
+        HStack(spacing: UITheme.spacing4) {
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+            Text(text)
+                .font(.caption.weight(.medium))
+        }
+        .foregroundStyle(color)
+    }
+
+    @ViewBuilder
+    private var historySection: some View {
+        if viewModel.referralList.isEmpty {
+            VStack(spacing: UITheme.spacing12) {
+                Image(systemName: "person.2")
+                    .font(.system(size: 42, weight: .regular))
+                    .foregroundStyle(Color.white.opacity(0.34))
+                Text("No referrals yet. Start inviting friends!")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.white.opacity(0.58))
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.vertical, UITheme.spacing24)
+            .frame(maxWidth: .infinity)
+            .background(cardBG)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+            )
+        } else {
+            VStack(alignment: .leading, spacing: UITheme.spacing8) {
+                Text("REFERRAL HISTORY")
+                    .font(.caption.weight(.bold))
+                    .kerning(1.8)
+                    .foregroundStyle(Color.white.opacity(0.52))
+
+                VStack(spacing: UITheme.spacing8) {
+                    ForEach(viewModel.referralList) { item in
+                        historyRow(item)
+                    }
+                }
+            }
+        }
+    }
+
+    private func historyRow(_ item: ReferralListItemDTO) -> some View {
+        HStack(spacing: UITheme.spacing10) {
+            VStack(alignment: .leading, spacing: UITheme.spacing3) {
+                Text(item.referee_name.isEmpty ? "User" : item.referee_name)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                Text(maskPhone(item.referee_phone))
+                    .font(.footnote)
+                    .foregroundStyle(Color.white.opacity(0.58))
+                Text("Joined: \(formatJoinedDate(item.created_at))")
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.42))
+            }
+
+            Spacer()
+
+            if item.referrer_reward_given {
+                HStack(spacing: UITheme.spacing4) {
+                    Image(systemName: "checkmark.circle.fill")
+                    Text("Rewarded")
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.green.opacity(0.88))
+            } else {
+                Text("Pending")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(brandGold)
+            }
+        }
+        .padding(UITheme.spacing12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBG)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+        )
+    }
+
+    private func maskPhone(_ raw: String) -> String {
+        let digits = raw.filter(\.isNumber)
+        guard digits.count >= 4 else { return raw }
+        return "***\(digits.suffix(4))"
+    }
+
+    private func formatJoinedDate(_ raw: String) -> String {
+        let parse = ISO8601DateFormatter()
+        if let date = parse.date(from: raw) {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .none
+            return formatter.string(from: date)
+        }
+        if let date = parseServerDateFallback(raw) {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .none
+            return formatter.string(from: date)
+        }
+        return raw
+    }
+
+    private func parseServerDateFallback(_ raw: String) -> Date? {
+        let parser = DateFormatter()
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.timeZone = TimeZone(secondsFromGMT: 0)
+        parser.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+        if let date = parser.date(from: raw) {
+            return date
+        }
+        parser.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return parser.date(from: raw)
+    }
+}
+
+private enum NotificationsFilter: String {
+    case all = "All"
+    case unread = "Unread"
+
+    var unreadOnly: Bool { self == .unread }
+}
+
+private struct AppNotificationDTO: Decodable, Identifiable {
+    let id: Int
+    let type: String
+    let title: String
+    let message: String
+    let appointment_id: Int?
+    var is_read: Bool
+    let created_at: String
+    var read_at: String?
+}
+
+private struct NotificationsService {
+    func getNotifications(token: String, unreadOnly: Bool) async throws -> [AppNotificationDTO] {
+        var params = ["skip=0", "limit=100"]
+        if unreadOnly {
+            params.append("unread_only=true")
+        }
+        let path = "/notifications/?\(params.joined(separator: "&"))"
+        return try await APIClient.shared.request(path: path, token: token)
+    }
+
+    func getUnreadCount(token: String) async throws -> Int {
+        let payload: UnreadCountDTO = try await APIClient.shared.request(path: "/notifications/unread-count", token: token)
+        return payload.unread_count
+    }
+
+    func markAsRead(notificationID: Int, token: String) async throws -> AppNotificationDTO {
+        try await APIClient.shared.request(
+            path: "/notifications/\(notificationID)/read",
+            method: "PATCH",
+            token: token
+        )
+    }
+
+    func deleteNotification(notificationID: Int, token: String) async throws {
+        let _: EmptyResponse = try await APIClient.shared.request(
+            path: "/notifications/\(notificationID)",
+            method: "DELETE",
+            token: token
+        )
+    }
+}
+
+@MainActor
+private final class NotificationsViewModel: ObservableObject {
+    @Published var items: [AppNotificationDTO] = []
+    @Published var selectedFilter: NotificationsFilter = .all
+    @Published var unreadCount: Int = 0
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+
+    private let service = NotificationsService()
+
+    func load(token: String) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            async let notificationsTask = service.getNotifications(token: token, unreadOnly: selectedFilter.unreadOnly)
+            async let unreadTask = service.getUnreadCount(token: token)
+            let notifications = try await notificationsTask
+            let unread = try await unreadTask
+
+            items = notifications
+            unreadCount = unread
+            errorMessage = nil
+        } catch let err as APIError {
+            errorMessage = mapError(err)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func selectFilter(_ filter: NotificationsFilter, token: String) async {
+        guard filter != selectedFilter else { return }
+        selectedFilter = filter
+        await load(token: token)
+    }
+
+    func markAsRead(notificationID: Int, token: String) async {
+        guard let index = items.firstIndex(where: { $0.id == notificationID }) else { return }
+        guard !items[index].is_read else { return }
+
+        do {
+            let updated = try await service.markAsRead(notificationID: notificationID, token: token)
+            if selectedFilter == .unread {
+                items.remove(at: index)
+            } else {
+                items[index] = updated
+            }
+            unreadCount = max(unreadCount - 1, 0)
+            errorMessage = nil
+        } catch let err as APIError {
+            errorMessage = mapError(err)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteNotification(notificationID: Int, token: String) async {
+        let wasUnread = items.first(where: { $0.id == notificationID })?.is_read == false
+
+        do {
+            try await service.deleteNotification(notificationID: notificationID, token: token)
+            items.removeAll { $0.id == notificationID }
+            if wasUnread {
+                unreadCount = max(unreadCount - 1, 0)
+            }
+            errorMessage = nil
+        } catch let err as APIError {
+            errorMessage = mapError(err)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func handleTap(_ item: AppNotificationDTO, token: String) async -> Bool {
+        if !item.is_read {
+            await markAsRead(notificationID: item.id, token: token)
+        }
+        return item.appointment_id != nil
+    }
+}
+
+private struct NotificationsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
+    @StateObject private var viewModel = NotificationsViewModel()
+    @State private var alertMessage: String = ""
+    @State private var showAlert: Bool = false
+    private let brandGold = UITheme.brandGold
+
+    var body: some View {
+        VStack(spacing: 0) {
+            topBar
+            filterBar
+            content
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .background(Color.black)
+        .tint(brandGold)
+        .task { await reload() }
+        .onChange(of: viewModel.errorMessage) { value in
+            guard let value, !value.isEmpty else { return }
+            alertMessage = value
+            showAlert = true
+        }
+        .unifiedNoticeAlert(isPresented: $showAlert, message: alertMessage)
+        .overlay {
+            UnifiedLoadingOverlay(isLoading: viewModel.isLoading)
+        }
+    }
+
+    private func reload() async {
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.load(token: token)
+    }
+
+    private var topBar: some View {
+        HStack(spacing: UITheme.spacing10) {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: UITheme.navIconSize, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: UITheme.navControlSize, height: UITheme.navControlSize)
+                    .background(Color.white.opacity(0.07))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            VStack(spacing: UITheme.spacing2) {
+                Text("Notifications")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.white)
+                if viewModel.unreadCount > 0 {
+                    Text("\(viewModel.unreadCount) unread")
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.64))
+                }
+            }
+
+            Spacer()
+            Color.clear.frame(width: UITheme.navControlSize, height: UITheme.navControlSize)
+        }
+        .padding(.horizontal, UITheme.pagePadding)
+        .padding(.top, UITheme.spacing4)
+        .padding(.bottom, UITheme.spacing6)
+        .frame(maxWidth: .infinity)
+        .background(
+            LinearGradient(
+                colors: [Color.black, Color.black.opacity(0.96)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.white.opacity(0.08))
+                .frame(height: UITheme.spacing1)
+        }
+    }
+
+    private var filterBar: some View {
+        HStack(spacing: UITheme.spacing8) {
+            filterButton(.all)
+            filterButton(.unread)
+        }
+        .padding(.horizontal, UITheme.pagePadding)
+        .padding(.vertical, UITheme.spacing8)
+        .background(Color.black)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.white.opacity(0.08))
+                .frame(height: UITheme.spacing1)
+        }
+    }
+
+    private func filterButton(_ filter: NotificationsFilter) -> some View {
+        Button {
+            Task {
+                guard let token = appState.requireAccessToken() else { return }
+                await viewModel.selectFilter(filter, token: token)
+            }
+        } label: {
+            HStack(spacing: UITheme.spacing4) {
+                Text(filter.rawValue)
+                if filter == .unread && viewModel.unreadCount > 0 {
+                    Text("(\(viewModel.unreadCount))")
+                }
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(viewModel.selectedFilter == filter ? Color.black : Color.white.opacity(0.78))
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: UITheme.segmentHeight)
+            .background(viewModel.selectedFilter == filter ? brandGold : Color.white.opacity(0.05))
+            .clipShape(Capsule())
+            .overlay(
+                Capsule()
+                    .stroke(viewModel.selectedFilter == filter ? Color.clear : brandGold.opacity(0.22), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var content: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: UITheme.spacing10) {
+                if !viewModel.isLoading && viewModel.items.isEmpty {
+                    UnifiedEmptyStateCard(
+                        icon: "bell.slash",
+                        title: "No notifications",
+                        subtitle: viewModel.selectedFilter == .unread ? "You're all caught up!" : "You'll see notifications here",
+                        compact: true
+                    )
+                    .padding(.top, UITheme.spacing20)
+                } else {
+                    ForEach(viewModel.items) { item in
+                        notificationCard(item)
+                    }
+                }
+            }
+            .padding(.horizontal, UITheme.pagePadding)
+            .padding(.vertical, UITheme.spacing10)
+        }
+        .refreshable {
+            await reload()
+        }
+    }
+
+    private func notificationCard(_ item: AppNotificationDTO) -> some View {
+        VStack(alignment: .leading, spacing: UITheme.spacing8) {
+            HStack(alignment: .top, spacing: UITheme.spacing10) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.08))
+                        .frame(width: 40, height: 40)
+                    Image(systemName: iconName(for: item.type))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(brandGold)
+                }
+
+                VStack(alignment: .leading, spacing: UITheme.spacing4) {
+                    Text(item.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Text(item.message)
+                        .font(.footnote)
+                        .foregroundStyle(Color.white.opacity(0.68))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .lineLimit(2)
+                    Text(relativeTimeText(item.created_at))
+                        .font(.caption)
+                        .foregroundStyle(Color.white.opacity(0.50))
+                }
+            }
+
+            HStack(spacing: UITheme.spacing8) {
+                if !item.is_read {
+                    Button {
+                        Task {
+                            guard let token = appState.requireAccessToken() else { return }
+                            await viewModel.markAsRead(notificationID: item.id, token: token)
+                        }
+                    } label: {
+                        HStack(spacing: UITheme.spacing4) {
+                            Image(systemName: "checkmark")
+                            Text("Mark as read")
+                        }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 34)
+                        .background(Color.white.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: UITheme.chipCornerRadius, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Button {
+                    Task {
+                        guard let token = appState.requireAccessToken() else { return }
+                        await viewModel.deleteNotification(notificationID: item.id, token: token)
+                    }
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.red.opacity(0.86))
+                        .frame(minWidth: 52, minHeight: 34)
+                        .background(Color.red.opacity(0.10))
+                        .clipShape(RoundedRectangle(cornerRadius: UITheme.chipCornerRadius, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, UITheme.spacing2)
+        }
+        .padding(UITheme.spacing12)
+        .background(item.is_read ? Color.white.opacity(0.05) : brandGold.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner, style: .continuous))
+        .overlay(alignment: .topTrailing) {
+            if !item.is_read {
+                Circle()
+                    .fill(brandGold)
+                    .frame(width: 8, height: 8)
+                    .padding(UITheme.spacing10)
+            }
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner, style: .continuous)
+                .stroke(item.is_read ? Color.white.opacity(0.10) : brandGold.opacity(0.32), lineWidth: 1)
+        )
+        .contentShape(RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner, style: .continuous))
+        .onTapGesture {
+            Task {
+                guard let token = appState.requireAccessToken() else { return }
+                let goAppointments = await viewModel.handleTap(item, token: token)
+                if goAppointments {
+                    appState.selectedTab = .appointments
+                }
+            }
+        }
+    }
+
+    private func iconName(for type: String) -> String {
+        switch type {
+        case "appointment_created", "appointment_confirmed", "appointment_completed":
+            return "calendar"
+        case "appointment_reminder":
+            return "clock"
+        default:
+            return "bell"
+        }
+    }
+
+    private func relativeTimeText(_ raw: String) -> String {
+        guard let date = parseServerDate(raw) else { return raw }
+        let diff = max(0, Date().timeIntervalSince(date))
+        let minutes = Int(diff / 60)
+        let hours = Int(diff / 3600)
+        let days = Int(diff / 86_400)
+
+        if minutes < 1 { return "Just now" }
+        if minutes < 60 { return "\(minutes)m ago" }
+        if hours < 24 { return "\(hours)h ago" }
+        if days < 7 { return "\(days)d ago" }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "MMM d"
+        return formatter.string(from: date)
+    }
+
+    private func parseServerDate(_ raw: String) -> Date? {
+        let isoFractional = ISO8601DateFormatter()
+        isoFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = isoFractional.date(from: raw) {
+            return date
+        }
+
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime]
+        if let date = iso.date(from: raw) {
+            return date
+        }
+
+        let parser = DateFormatter()
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.timeZone = TimeZone(secondsFromGMT: 0)
+        parser.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+        if let date = parser.date(from: raw) {
+            return date
+        }
+        parser.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        if let date = parser.date(from: raw) {
+            return date
+        }
+        return nil
     }
 }
 
@@ -826,59 +1881,68 @@ private struct HomeFeedView: View {
     @State private var showAlert: Bool = false
     private let brandGold = UITheme.brandGold
 
-    private let columns = [
-        GridItem(.flexible(), spacing: UITheme.spacing12),
-        GridItem(.flexible(), spacing: UITheme.spacing12),
-    ]
+    private let columnSpacing: CGFloat = 10
+    private let cardSpacing: CGFloat = 16
+    private func gridColumns(itemWidth: CGFloat) -> [GridItem] {
+        [
+            GridItem(.fixed(itemWidth), spacing: columnSpacing, alignment: .top),
+            GridItem(.fixed(itemWidth), spacing: 0, alignment: .top),
+        ]
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             headerSearchArea
 
-            ScrollView {
-                if let error = viewModel.errorMessage, !error.isEmpty {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(.red.opacity(0.9))
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, UITheme.pagePadding)
-                        .padding(.top, UITheme.spacing8)
-                }
+            GeometryReader { proxy in
+                let availableWidth = max(proxy.size.width - (UITheme.pagePadding * 2) - columnSpacing, 0)
+                let itemWidth = max(floor(availableWidth / 2), 120)
 
-                LazyVGrid(columns: columns, spacing: UITheme.spacing10) {
-                    ForEach(Array(viewModel.pins.enumerated()), id: \.element.id) { index, pin in
-                        NavigationLink {
-                            HomeFeedPinDetailView(pin: pin)
-                        } label: {
-                            pinCard(pin, index: index)
-                        }
-                        .buttonStyle(.plain)
-                        .onAppear {
-                            Task { await viewModel.loadMoreIfNeeded(current: pin) }
+                ScrollView {
+                    if let error = viewModel.errorMessage, !error.isEmpty {
+                        Text(error)
+                            .font(.footnote)
+                            .foregroundStyle(.red.opacity(0.9))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, UITheme.pagePadding)
+                            .padding(.top, UITheme.spacing8)
+                    }
+
+                    LazyVGrid(columns: gridColumns(itemWidth: itemWidth), alignment: .center, spacing: cardSpacing) {
+                        ForEach(viewModel.pins) { pin in
+                            NavigationLink {
+                                HomeFeedPinDetailView(pin: pin)
+                            } label: {
+                                pinCard(pin, itemWidth: itemWidth)
+                            }
+                            .buttonStyle(.plain)
+                            .onAppear {
+                                Task { await viewModel.loadMoreIfNeeded(current: pin) }
+                            }
                         }
                     }
-                }
-                .padding(.horizontal, UITheme.pagePadding)
-                .padding(.top, UITheme.spacing8)
-                .padding(.bottom, UITheme.spacing16)
-
-                if !viewModel.isLoading && viewModel.pins.isEmpty {
-                    UnifiedEmptyStateCard(
-                        icon: "photo.on.rectangle.angled",
-                        title: viewModel.searchQuery.isEmpty ? "No images yet" : "No images found",
-                        subtitle: viewModel.searchQuery.isEmpty
-                            ? "New inspiration will appear here."
-                            : "Try another search keyword.",
-                        compact: true
-                    )
                     .padding(.horizontal, UITheme.pagePadding)
-                    .padding(.bottom, UITheme.spacing8)
-                }
+                    .padding(.top, UITheme.spacing8)
+                    .padding(.bottom, UITheme.spacing16)
 
-                if viewModel.isLoadingMore {
-                    ProgressView()
-                        .tint(brandGold)
-                        .padding(.vertical, UITheme.spacing14)
+                    if !viewModel.isLoading && viewModel.pins.isEmpty {
+                        UnifiedEmptyStateCard(
+                            icon: "photo.on.rectangle.angled",
+                            title: viewModel.searchQuery.isEmpty ? "No images yet" : "No images found",
+                            subtitle: viewModel.searchQuery.isEmpty
+                                ? "New inspiration will appear here."
+                                : "Try another search keyword.",
+                            compact: true
+                        )
+                        .padding(.horizontal, UITheme.pagePadding)
+                        .padding(.bottom, UITheme.spacing8)
+                    }
+
+                    if viewModel.isLoadingMore {
+                        ProgressView()
+                            .tint(brandGold)
+                            .padding(.vertical, UITheme.spacing14)
+                    }
                 }
             }
         }
@@ -994,45 +2058,33 @@ private struct HomeFeedView: View {
         }
     }
 
-    private func pinCard(_ pin: HomeFeedPinDTO, index: Int) -> some View {
+    private func pinCard(_ pin: HomeFeedPinDTO, itemWidth: CGFloat) -> some View {
         AsyncImage(url: pin.imageURL) { phase in
             switch phase {
             case .empty:
-                ProgressView()
-                    .tint(brandGold)
-                    .frame(maxWidth: .infinity, minHeight: pinCardHeight(index), maxHeight: pinCardHeight(index))
-                    .background(Color.gray.opacity(0.14))
+                ZStack {
+                    Color.gray.opacity(0.14)
+                    ProgressView().tint(brandGold)
+                }
             case .success(let image):
                 image
                     .resizable()
                     .scaledToFill()
-                    .frame(maxWidth: .infinity, minHeight: pinCardHeight(index), maxHeight: pinCardHeight(index))
-                    .clipped()
             case .failure:
                 Color.gray.opacity(0.2)
-                    .frame(maxWidth: .infinity, minHeight: pinCardHeight(index), maxHeight: pinCardHeight(index))
                     .overlay(Text("Image unavailable").font(.caption).foregroundStyle(.secondary))
             @unknown default:
                 Color.gray.opacity(0.2)
-                    .frame(maxWidth: .infinity, minHeight: pinCardHeight(index), maxHeight: pinCardHeight(index))
             }
         }
+        .frame(width: itemWidth, height: itemWidth * (4.0 / 3.0))
+        .background(Color.gray.opacity(0.08))
+        .clipped()
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(Color.white.opacity(0.06), lineWidth: 1)
         )
-    }
-
-    private func pinCardHeight(_ index: Int) -> CGFloat {
-        switch index % 3 {
-        case 0:
-            return 248
-        case 1:
-            return 292
-        default:
-            return 262
-        }
     }
 }
 
@@ -1119,42 +2171,57 @@ private struct HomeFeedPinDetailView: View {
     @StateObject private var viewModel: HomeFeedPinDetailViewModel
     @State private var alertMessage: String = ""
     @State private var showAlert: Bool = false
-    @State private var showStoresList: Bool = false
     private let brandGold = UITheme.brandGold
     private let cardBG = UITheme.cardBackground
-    private let relatedColumns = [GridItem(.flexible(), spacing: UITheme.spacing12), GridItem(.flexible(), spacing: UITheme.spacing12)]
+    private var heroHeight: CGFloat {
+        let proposed = UIScreen.main.bounds.width * 1.12
+        return min(max(proposed, 360), 500)
+    }
+
+    private var topControlTopPadding: CGFloat {
+        let topInset = currentTopSafeAreaInset()
+        let hasNotch = topInset > 20
+        if hasNotch {
+            return topInset + UITheme.spacing18
+        }
+        return topInset + UITheme.spacing10
+    }
 
     init(pin: HomeFeedPinDTO) {
         _viewModel = StateObject(wrappedValue: HomeFeedPinDetailViewModel(pin: pin))
     }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
-                    heroImageSection
+        GeometryReader { proxy in
+            ZStack(alignment: .top) {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 0) {
+                        heroImageSection(containerWidth: proxy.size.width)
 
-                    VStack(alignment: .leading, spacing: UITheme.spacing14) {
-                        titleInfoSection
-                        if !viewModel.relatedPins.isEmpty {
-                            relatedSection
+                        VStack(alignment: .leading, spacing: UITheme.spacing14) {
+                            titleInfoSection
+                            if !viewModel.relatedPins.isEmpty {
+                                relatedSection(containerWidth: proxy.size.width)
+                            }
                         }
+                        .padding(.horizontal, UITheme.pagePadding)
+                        .padding(.top, UITheme.spacing12)
+                        .padding(.bottom, 108)
+                        .frame(width: proxy.size.width, alignment: .leading)
                     }
-                    .padding(.horizontal, UITheme.pagePadding)
-                    .padding(.top, -22)
-                    .padding(.bottom, 118)
+                    .frame(width: proxy.size.width, alignment: .top)
                 }
-            }
-            .background(Color.black)
+                .frame(width: proxy.size.width)
+                .background(Color.black)
 
-            topBarOverlay
+                topBarOverlay
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
         .background(Color.black.ignoresSafeArea())
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
-        .navigationDestination(isPresented: $showStoresList) {
-            StoresListView()
-        }
+        .toolbar(.hidden, for: .tabBar)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             floatingBookNowStrip
         }
@@ -1173,7 +2240,7 @@ private struct HomeFeedPinDetailView: View {
         .unifiedNoticeAlert(isPresented: $showAlert, message: alertMessage)
     }
 
-    private var heroImageSection: some View {
+    private func heroImageSection(containerWidth: CGFloat) -> some View {
         ZStack(alignment: .bottom) {
             AsyncImage(url: viewModel.pin.imageURL) { phase in
                 switch phase {
@@ -1193,8 +2260,7 @@ private struct HomeFeedPinDetailView: View {
                     Color.gray.opacity(0.2)
                 }
             }
-            .frame(height: 560)
-            .frame(maxWidth: .infinity)
+            .frame(width: containerWidth, height: heroHeight)
             .clipped()
 
             LinearGradient(
@@ -1204,116 +2270,109 @@ private struct HomeFeedPinDetailView: View {
             )
             .frame(height: 220)
         }
-        .frame(height: 560)
+        .frame(width: containerWidth, height: heroHeight)
     }
 
     private var titleInfoSection: some View {
         VStack(alignment: .leading, spacing: UITheme.spacing8) {
             Text("CHOSEN DESIGN")
-                .font(.caption.weight(.semibold))
-                .kerning(UITheme.sectionHeaderKerning)
-                .foregroundStyle(Color.white.opacity(0.58))
+                .font(.caption.weight(.medium))
+                .kerning(2.6)
+                .foregroundStyle(Color.white.opacity(0.50))
             Text(viewModel.pin.title)
-                .font(.system(size: 46, weight: .bold, design: .rounded))
+                .font(.system(size: 24, weight: .bold))
                 .foregroundStyle(.white)
+                .lineLimit(3)
+                .minimumScaleFactor(0.78)
                 .fixedSize(horizontal: false, vertical: true)
-            if let description = viewModel.pin.description, !description.isEmpty {
-                Text(description)
-                    .font(.subheadline)
-                    .foregroundStyle(Color.white.opacity(0.72))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
         }
-        .padding(UITheme.spacing16)
-        .background(cardBG.opacity(0.96))
-        .clipShape(RoundedRectangle(cornerRadius: UITheme.panelCornerRadius, style: .continuous))
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(brandGold.opacity(0.36))
-                .frame(height: UITheme.spacing1)
-                .clipShape(RoundedRectangle(cornerRadius: UITheme.panelCornerRadius, style: .continuous))
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: UITheme.panelCornerRadius, style: .continuous)
-                .stroke(brandGold.opacity(0.22), lineWidth: 1)
-        )
+        .padding(.horizontal, UITheme.spacing2)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var floatingBookNowStrip: some View {
-        HStack(alignment: .center, spacing: UITheme.spacing12) {
-            VStack(alignment: .leading, spacing: UITheme.spacing2) {
-                Text("BOOK THIS LOOK")
-                    .font(.caption.weight(.bold))
-                    .kerning(UITheme.sectionHeaderKerning)
-                    .foregroundStyle(Color.white.opacity(0.45))
-                Text("Find salons near you")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.white)
-            }
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(Color.white.opacity(0.10))
+                .frame(height: UITheme.spacing1)
+            HStack(alignment: .center, spacing: UITheme.spacing12) {
+                VStack(alignment: .leading, spacing: UITheme.spacing2) {
+                    Text("BOOK THIS LOOK")
+                        .font(.system(size: 12, weight: .medium))
+                        .kerning(2.2)
+                        .foregroundStyle(Color.white.opacity(0.50))
+                        .lineLimit(1)
+                    Text("Find salons near you")
+                        .font(.system(size: 14, weight: .regular))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.9)
+                        .allowsTightening(true)
+                }
+                .layoutPriority(1)
 
-            Spacer(minLength: UITheme.spacing8)
+                Spacer(minLength: UITheme.spacing8)
 
-            Button {
-                showStoresList = true
-            } label: {
-                Text("Choose a salon")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, UITheme.spacing18)
-                    .frame(minHeight: UITheme.ctaHeight + 2)
-                    .background(brandGold)
-                    .clipShape(Capsule())
+                Button {
+                    let styleReference = BookingStyleReference(
+                        pinID: viewModel.pin.id,
+                        title: viewModel.pin.title,
+                        imageURL: viewModel.pin.imageURL?.absoluteString,
+                        tags: viewModel.pin.tags
+                    )
+                    appState.openBookFlow(with: styleReference)
+                } label: {
+                    Text("Choose a salon")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.black)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                        .allowsTightening(true)
+                        .padding(.horizontal, 24)
+                        .frame(minHeight: UITheme.ctaHeight + 2)
+                        .background(brandGold)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, UITheme.spacing20)
+            .padding(.top, UITheme.spacing12)
+            .padding(.bottom, UITheme.spacing12)
         }
-        .padding(.horizontal, UITheme.spacing16)
-        .padding(.vertical, UITheme.spacing14)
-        .background(cardBG.opacity(0.95))
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(brandGold.opacity(0.16), lineWidth: 1)
-        )
-        .padding(.horizontal, UITheme.pagePadding)
-        .padding(.bottom, UITheme.spacing8)
-        .background(Color.black.opacity(0.001))
+        .background(Color.black.opacity(0.96))
     }
 
-    private var relatedSection: some View {
-        VStack(alignment: .leading, spacing: UITheme.spacing10) {
-            Text("SIMILAR IDEAS")
-                .font(.caption.weight(.semibold))
-                .kerning(UITheme.sectionHeaderKerning)
-                .foregroundStyle(Color.white.opacity(0.58))
+    private func relatedSection(containerWidth: CGFloat) -> some View {
+        let spacing = UITheme.spacing12
+        let contentWidth = max(containerWidth - (UITheme.pagePadding * 2), 0)
+        let itemWidth = max(floor((contentWidth - spacing) / 2), 120)
+        let itemHeight = itemWidth * (4.0 / 3.0)
+        let columns = [
+            GridItem(.fixed(itemWidth), spacing: spacing, alignment: .top),
+            GridItem(.fixed(itemWidth), spacing: 0, alignment: .top),
+        ]
+        return VStack(alignment: .leading, spacing: UITheme.spacing10) {
+            Text("Similar ideas")
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(.white)
 
-            LazyVGrid(columns: relatedColumns, spacing: UITheme.spacing12) {
+            LazyVGrid(columns: columns, spacing: spacing) {
                 ForEach(Array(viewModel.relatedPins.prefix(6))) { related in
                     NavigationLink {
                         HomeFeedPinDetailView(pin: related)
                             .environmentObject(appState)
                     } label: {
-                        relatedPinCard(related)
+                        relatedPinCard(related, itemWidth: itemWidth, itemHeight: itemHeight)
                     }
                     .buttonStyle(.plain)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(UITheme.spacing16)
-        .background(cardBG.opacity(0.96))
-        .clipShape(RoundedRectangle(cornerRadius: UITheme.panelCornerRadius, style: .continuous))
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(brandGold.opacity(0.30))
-                .frame(height: UITheme.spacing1)
-                .clipShape(RoundedRectangle(cornerRadius: UITheme.panelCornerRadius, style: .continuous))
-        }
-        .overlay(
-            RoundedRectangle(cornerRadius: UITheme.panelCornerRadius, style: .continuous)
-                .stroke(brandGold.opacity(0.18), lineWidth: 1)
-        )
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func relatedPinCard(_ pin: HomeFeedPinDTO) -> some View {
+    private func relatedPinCard(_ pin: HomeFeedPinDTO, itemWidth: CGFloat, itemHeight: CGFloat) -> some View {
         AsyncImage(url: pin.imageURL) { phase in
             switch phase {
             case .empty:
@@ -1331,25 +2390,8 @@ private struct HomeFeedPinDetailView: View {
                 Color.gray.opacity(0.22)
             }
         }
-        .frame(height: 208)
-        .frame(maxWidth: .infinity)
+        .frame(width: itemWidth, height: itemHeight)
         .clipped()
-        .overlay(alignment: .bottomLeading) {
-            LinearGradient(
-                colors: [.clear, Color.black.opacity(0.65)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(height: 90)
-            .overlay(alignment: .bottomLeading) {
-                Text(pin.title)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-                    .padding(.horizontal, UITheme.spacing10)
-                    .padding(.bottom, UITheme.spacing10)
-            }
-        }
         .clipShape(RoundedRectangle(cornerRadius: UITheme.cardCornerRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: UITheme.cardCornerRadius, style: .continuous)
@@ -1386,9 +2428,23 @@ private struct HomeFeedPinDetailView: View {
                 }
             }
             .padding(.horizontal, UITheme.pagePadding)
-            .padding(.top, UITheme.spacing52)
+            .padding(.top, topControlTopPadding)
         }
         .ignoresSafeArea(edges: .top)
+    }
+
+    private func currentTopSafeAreaInset() -> CGFloat {
+        let scenes = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .filter { $0.activationState == .foregroundActive }
+
+        guard let scene = scenes.first,
+              let window = scene.windows.first(where: \.isKeyWindow) ?? scene.windows.first
+        else {
+            return 20
+        }
+
+        return window.safeAreaInsets.top
     }
 
     private var shareButton: some View {
@@ -1470,7 +2526,7 @@ private struct DealsService {
     }
 
     func getStores() async throws -> [StoreDTO] {
-        try await APIClient.shared.request(path: "/stores?skip=0&limit=200")
+        try await APIClient.shared.request(path: "/stores?skip=0&limit=100")
     }
 }
 
@@ -1783,7 +2839,7 @@ private struct DealsView: View {
                     .buttonStyle(.plain)
                 } else {
                     NavigationLink {
-                        StoresListView()
+                        StoresListView(hideTabBar: true)
                     } label: {
                         HStack(spacing: UITheme.spacing6) {
                             Text("Browse Stores")
@@ -1941,6 +2997,73 @@ private struct GiftCardDTO: Decodable, Identifiable {
     let updated_at: String
 }
 
+private struct UserReviewDTO: Decodable, Identifiable {
+    let id: Int
+    let user_id: Int?
+    let store_id: Int?
+    let appointment_id: Int?
+    let rating: Double?
+    let comment: String?
+    let images: [String]?
+    let created_at: String?
+    let updated_at: String?
+    let store_name: String?
+}
+
+private struct ReviewUpsertRequest: Encodable {
+    let appointment_id: Int
+    let rating: Double
+    let comment: String?
+    let images: [String]?
+}
+
+private struct CountDTO: Decodable {
+    let count: Int
+}
+
+private struct VipLevelDTO: Decodable {
+    let level: Int
+    let min_spend: Double
+    let min_visits: Int
+    let benefit: String
+}
+
+private struct VipProgressDTO: Decodable {
+    let current: Double
+    let required: Double
+    let percent: Double
+}
+
+private struct VipStatusDTO: Decodable {
+    let current_level: VipLevelDTO
+    let total_spend: Double
+    let total_visits: Int
+    let spend_progress: VipProgressDTO
+    let visits_progress: VipProgressDTO
+    let next_level: VipLevelDTO?
+}
+
+private struct ReferralCodeDTO: Decodable {
+    let referral_code: String
+}
+
+private struct ReferralStatsDTO: Decodable {
+    let total_referrals: Int
+    let successful_referrals: Int
+    let pending_referrals: Int
+    let total_rewards_earned: Int
+}
+
+private struct ReferralListItemDTO: Decodable, Identifiable {
+    let id: Int
+    let referee_name: String
+    let referee_phone: String
+    let status: String
+    let created_at: String
+    let rewarded_at: String?
+    let referrer_reward_given: Bool
+}
+
 private struct ProfileRewardsService {
     func getPointsBalance(token: String) async throws -> PointsBalanceDTO {
         try await APIClient.shared.request(path: "/points/balance", token: token)
@@ -1959,12 +3082,80 @@ private struct ProfileRewardsService {
         try await APIClient.shared.request(path: "/gift-cards/my-cards?skip=0&limit=\(limit)", token: token)
     }
 
+    func getMyReviews(token: String, limit: Int = 100) async throws -> [UserReviewDTO] {
+        try await APIClient.shared.request(path: "/reviews/my-reviews?skip=0&limit=\(limit)", token: token)
+    }
+
+    func updateReview(
+        token: String,
+        reviewID: Int,
+        appointmentID: Int,
+        rating: Double,
+        comment: String?,
+        images: [String]?
+    ) async throws -> UserReviewDTO {
+        let trimmed = comment?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let payload = ReviewUpsertRequest(
+            appointment_id: appointmentID,
+            rating: min(max(rating, 1), 5),
+            comment: (trimmed?.isEmpty ?? true) ? nil : trimmed,
+            images: images
+        )
+        return try await APIClient.shared.request(
+            path: "/reviews/\(reviewID)",
+            method: "PUT",
+            token: token,
+            body: payload
+        )
+    }
+
+    func deleteReview(token: String, reviewID: Int) async throws {
+        let _: EmptyResponse = try await APIClient.shared.request(path: "/reviews/\(reviewID)", method: "DELETE", token: token)
+    }
+
+    func getMyFavoritePinsCount(token: String) async throws -> Int {
+        let row: CountDTO = try await APIClient.shared.request(path: "/pins/favorites/count", token: token)
+        return row.count
+    }
+
+    func getMyFavoritePins(token: String, limit: Int = 100) async throws -> [HomeFeedPinDTO] {
+        try await APIClient.shared.request(path: "/pins/favorites/my-favorites?skip=0&limit=\(limit)", token: token)
+    }
+
+    func getMyFavoriteStores(token: String, limit: Int = 100) async throws -> [StoreDTO] {
+        try await APIClient.shared.request(path: "/stores/favorites/my-favorites?skip=0&limit=\(limit)", token: token)
+    }
+
+    func removeFavoritePin(token: String, pinID: Int) async throws {
+        let _: EmptyResponse = try await APIClient.shared.request(path: "/pins/\(pinID)/favorite", method: "DELETE", token: token)
+    }
+
+    func removeFavoriteStore(token: String, storeID: Int) async throws {
+        let _: EmptyResponse = try await APIClient.shared.request(path: "/stores/\(storeID)/favorite", method: "DELETE", token: token)
+    }
+
+    func getVipStatus(token: String) async throws -> VipStatusDTO {
+        try await APIClient.shared.request(path: "/vip/status", token: token)
+    }
+
     func getExchangeableCoupons(token: String) async throws -> [CouponTemplateDTO] {
         try await APIClient.shared.request(path: "/coupons/exchangeable", token: token)
     }
 
     func exchangeCoupon(token: String, couponID: Int) async throws -> UserCouponDTO {
         try await APIClient.shared.request(path: "/coupons/exchange/\(couponID)", method: "POST", token: token)
+    }
+
+    func getReferralCode(token: String) async throws -> ReferralCodeDTO {
+        try await APIClient.shared.request(path: "/referrals/my-code", token: token)
+    }
+
+    func getReferralStats(token: String) async throws -> ReferralStatsDTO {
+        try await APIClient.shared.request(path: "/referrals/stats", token: token)
+    }
+
+    func getReferralList(token: String, limit: Int = 100) async throws -> [ReferralListItemDTO] {
+        try await APIClient.shared.request(path: "/referrals/list?skip=0&limit=\(limit)", token: token)
     }
 }
 
@@ -2049,6 +3240,183 @@ private final class GiftCardsViewModel: ObservableObject {
         defer { isLoading = false }
         do {
             cards = try await service.getMyGiftCards(token: token, limit: 100)
+            errorMessage = nil
+        } catch let err as APIError {
+            errorMessage = mapError(err)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+@MainActor
+private final class OrderHistoryViewModel: ObservableObject {
+    @Published var items: [AppointmentDTO] = []
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+
+    private let appointmentsService: AppointmentsServiceProtocol
+
+    init(appointmentsService: AppointmentsServiceProtocol = AppointmentsService()) {
+        self.appointmentsService = appointmentsService
+    }
+
+    func load(token: String) async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let rows = try await appointmentsService.getMyAppointments(token: token, limit: 100)
+            items = rows
+                .filter { $0.status.lowercased() == "completed" }
+                .sorted { lhs, rhs in
+                    appointmentDateTime(lhs) > appointmentDateTime(rhs)
+                }
+            errorMessage = nil
+        } catch let err as APIError {
+            errorMessage = mapError(err)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func appointmentDateTime(_ item: AppointmentDTO) -> Date {
+        let dateTime = "\(item.appointment_date)T\(item.appointment_time)"
+        let parser = DateFormatter()
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.timeZone = TimeZone(identifier: "America/New_York")
+        parser.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        if let date = parser.date(from: dateTime) {
+            return date
+        }
+        parser.dateFormat = "yyyy-MM-dd'T'HH:mm"
+        if let date = parser.date(from: dateTime) {
+            return date
+        }
+        return .distantPast
+    }
+}
+
+@MainActor
+private final class MyReviewsViewModel: ObservableObject {
+    @Published var items: [UserReviewDTO] = []
+    @Published var deletingReviewID: Int?
+    @Published var updatingReviewID: Int?
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+    @Published var actionMessage: String?
+
+    private let service = ProfileRewardsService()
+
+    func load(token: String) async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            items = try await service.getMyReviews(token: token, limit: 100)
+            errorMessage = nil
+        } catch let err as APIError {
+            errorMessage = mapError(err)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func updateReview(
+        token: String,
+        reviewID: Int,
+        appointmentID: Int,
+        rating: Double,
+        comment: String?,
+        images: [String]?
+    ) async {
+        updatingReviewID = reviewID
+        defer { updatingReviewID = nil }
+        do {
+            let updated = try await service.updateReview(
+                token: token,
+                reviewID: reviewID,
+                appointmentID: appointmentID,
+                rating: rating,
+                comment: comment,
+                images: images
+            )
+            if let index = items.firstIndex(where: { $0.id == reviewID }) {
+                items[index] = updated
+            }
+            actionMessage = "Review updated."
+            errorMessage = nil
+        } catch let err as APIError {
+            errorMessage = mapError(err)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteReview(token: String, reviewID: Int) async {
+        deletingReviewID = reviewID
+        defer { deletingReviewID = nil }
+        do {
+            try await service.deleteReview(token: token, reviewID: reviewID)
+            items.removeAll { $0.id == reviewID }
+            actionMessage = "Review deleted."
+            errorMessage = nil
+        } catch let err as APIError {
+            errorMessage = mapError(err)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+}
+
+@MainActor
+private final class MyFavoritesViewModel: ObservableObject {
+    @Published var favoritePins: [HomeFeedPinDTO] = []
+    @Published var favoriteStores: [StoreDTO] = []
+    @Published var deletingPinID: Int?
+    @Published var deletingStoreID: Int?
+    @Published var isLoading = false
+    @Published var errorMessage: String?
+    @Published var actionMessage: String?
+
+    private let service = ProfileRewardsService()
+
+    func load(token: String) async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            async let pinsTask = service.getMyFavoritePins(token: token, limit: 100)
+            async let storesTask = service.getMyFavoriteStores(token: token, limit: 100)
+            favoritePins = try await pinsTask
+            favoriteStores = try await storesTask
+            errorMessage = nil
+        } catch let err as APIError {
+            errorMessage = mapError(err)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func removePin(token: String, pinID: Int) async {
+        deletingPinID = pinID
+        defer { deletingPinID = nil }
+        do {
+            try await service.removeFavoritePin(token: token, pinID: pinID)
+            favoritePins.removeAll { $0.id == pinID }
+            actionMessage = "Removed from favorites."
+            errorMessage = nil
+        } catch let err as APIError {
+            errorMessage = mapError(err)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func removeStore(token: String, storeID: Int) async {
+        deletingStoreID = storeID
+        defer { deletingStoreID = nil }
+        do {
+            try await service.removeFavoriteStore(token: token, storeID: storeID)
+            favoriteStores.removeAll { $0.id == storeID }
+            actionMessage = "Removed from favorites."
             errorMessage = nil
         } catch let err as APIError {
             errorMessage = mapError(err)
@@ -2335,6 +3703,7 @@ private struct PointsView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
         .tint(brandGold)
         .background(Color.black)
         .task { await reload() }
@@ -2681,6 +4050,7 @@ private struct CouponsView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
         .tint(brandGold)
         .background(Color.black)
         .task { await reload() }
@@ -2950,6 +4320,7 @@ private struct GiftCardsView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
         .tint(brandGold)
         .background(Color.black)
         .task { await reload() }
@@ -3235,6 +4606,775 @@ private struct GiftCardsView: View {
         let digits = raw.filter { $0.isNumber }
         guard digits.count > 4 else { return raw }
         return "***\(digits.suffix(4))"
+    }
+}
+
+private struct OrderHistoryView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
+    @StateObject private var viewModel = OrderHistoryViewModel()
+    @State private var alertMessage: String = ""
+    @State private var showAlert: Bool = false
+    private let brandGold = UITheme.brandGold
+    private let cardBG = UITheme.cardBackground
+
+    var body: some View {
+        VStack(spacing: 0) {
+            RewardsTopBar(title: "Transaction History") {
+                dismiss()
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: UITheme.spacing12) {
+                    summaryCard
+
+                    UnifiedSectionHeader(
+                        title: "RECENT ACTIVITY",
+                        trailing: !viewModel.items.isEmpty ? "\(viewModel.items.count) completed" : nil,
+                        showsDivider: true
+                    )
+
+                    if !viewModel.isLoading && viewModel.items.isEmpty {
+                        UnifiedEmptyStateCard(
+                            icon: "clock.arrow.circlepath",
+                            title: "No transactions yet",
+                            subtitle: "Completed orders will appear here."
+                        )
+                    } else {
+                        VStack(spacing: UITheme.spacing10) {
+                            ForEach(viewModel.items) { item in
+                                historyItem(item)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, UITheme.pagePadding)
+                .padding(.top, UITheme.spacing8)
+                .padding(.bottom, UITheme.spacing24)
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
+        .tint(brandGold)
+        .background(Color.black)
+        .task { await reload() }
+        .refreshable { await reload() }
+        .onChange(of: viewModel.errorMessage) { value in
+            guard let value, !value.isEmpty else { return }
+            alertMessage = value
+            showAlert = true
+        }
+        .unifiedNoticeAlert(isPresented: $showAlert, message: alertMessage)
+        .overlay {
+            UnifiedLoadingOverlay(isLoading: viewModel.isLoading)
+        }
+    }
+
+    private func reload() async {
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.load(token: token)
+    }
+
+    private var totalSpend: Double {
+        viewModel.items.reduce(0) { partialResult, item in
+            partialResult + max(item.service_price ?? 0, 0)
+        }
+    }
+
+    private var summaryCard: some View {
+        HStack(spacing: UITheme.spacing10) {
+            summaryMetric(title: "Total Spend", value: "$\(String(format: "%.2f", totalSpend))", icon: "dollarsign.circle.fill", highlighted: true)
+            summaryMetric(title: "Total Visits", value: "\(viewModel.items.count)", icon: "calendar.badge.checkmark", highlighted: false)
+        }
+    }
+
+    private func summaryMetric(title: String, value: String, icon: String, highlighted: Bool) -> some View {
+        VStack(alignment: .leading, spacing: UITheme.spacing6) {
+            Text(title.uppercased())
+                .font(.caption.weight(.bold))
+                .kerning(1.6)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.title2.weight(.black))
+                .foregroundStyle(highlighted ? brandGold : .white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            HStack(spacing: UITheme.spacing5) {
+                Image(systemName: icon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(brandGold)
+                Text("Completed orders")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(UITheme.spacing14)
+        .background(cardBG)
+        .clipShape(RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner))
+        .overlay(
+            RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner)
+                .stroke(brandGold.opacity(0.18), lineWidth: 1)
+        )
+    }
+
+    private func historyItem(_ item: AppointmentDTO) -> some View {
+        VStack(alignment: .leading, spacing: UITheme.spacing10) {
+            HStack(alignment: .top, spacing: UITheme.spacing10) {
+                VStack(alignment: .leading, spacing: UITheme.spacing4) {
+                    Text(item.store_name ?? "Salon")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    if let order = item.order_number, !order.isEmpty {
+                        Text("Order \(order)")
+                            .font(.caption2.weight(.semibold))
+                            .kerning(1.1)
+                            .foregroundStyle(Color.white.opacity(0.55))
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer(minLength: UITheme.spacing8)
+
+                Text("$\(String(format: "%.2f", max(item.service_price ?? 0, 0)))")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(brandGold)
+            }
+
+            Rectangle()
+                .fill(Color.white.opacity(0.08))
+                .frame(height: UITheme.spacing1)
+
+            HStack(spacing: UITheme.spacing8) {
+                Text(item.service_name ?? "Service")
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(Color.white.opacity(0.88))
+                    .lineLimit(1)
+
+                Spacer(minLength: UITheme.spacing8)
+
+                Text(formattedAppointmentDate(item))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .padding(UITheme.spacing14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBG)
+        .clipShape(RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner))
+        .overlay(
+            RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner)
+                .stroke(brandGold.opacity(0.16), lineWidth: 1)
+        )
+    }
+
+    private func formattedAppointmentDate(_ item: AppointmentDTO) -> String {
+        let dateText = formattedDate(item.appointment_date)
+        let timeText = formattedTime(item.appointment_time)
+        return "\(dateText) · \(timeText)"
+    }
+
+    private func formattedDate(_ raw: String) -> String {
+        let parser = DateFormatter()
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.timeZone = TimeZone(identifier: "America/New_York")
+        parser.dateFormat = "yyyy-MM-dd"
+        guard let date = parser.date(from: raw) else { return raw }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "America/New_York")
+        formatter.dateFormat = "MMM d, yyyy"
+        return formatter.string(from: date)
+    }
+
+    private func formattedTime(_ raw: String) -> String {
+        let parser = DateFormatter()
+        parser.locale = Locale(identifier: "en_US_POSIX")
+        parser.timeZone = TimeZone(identifier: "America/New_York")
+        parser.dateFormat = "HH:mm:ss"
+        var parsed = parser.date(from: raw)
+        if parsed == nil {
+            parser.dateFormat = "HH:mm"
+            parsed = parser.date(from: raw)
+        }
+        guard let date = parsed else { return raw }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "America/New_York")
+        formatter.dateFormat = "h:mm a"
+        return formatter.string(from: date)
+    }
+}
+
+private struct MyReviewsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
+    @StateObject private var viewModel = MyReviewsViewModel()
+    @State private var alertMessage: String = ""
+    @State private var showAlert: Bool = false
+    @State private var showEditSheet: Bool = false
+    @State private var editingReview: UserReviewDTO?
+    @State private var editRating: Int = 5
+    @State private var editComment: String = ""
+    private let brandGold = UITheme.brandGold
+    private let cardBG = UITheme.cardBackground
+
+    var body: some View {
+        VStack(spacing: 0) {
+            RewardsTopBar(title: "My Reviews") {
+                dismiss()
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: UITheme.spacing10) {
+                    if !viewModel.isLoading && viewModel.items.isEmpty {
+                        UnifiedEmptyStateCard(
+                            icon: "star",
+                            title: "No reviews yet",
+                            subtitle: "Complete an appointment and share your experience."
+                        )
+                        .padding(.top, UITheme.spacing20)
+                    } else {
+                        ForEach(viewModel.items) { item in
+                            reviewItem(item)
+                        }
+                    }
+                }
+                .padding(.horizontal, UITheme.pagePadding)
+                .padding(.top, UITheme.spacing8)
+                .padding(.bottom, UITheme.spacing24)
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
+        .tint(brandGold)
+        .background(Color.black)
+        .task { await reload() }
+        .refreshable { await reload() }
+        .onChange(of: viewModel.errorMessage) { value in
+            guard let value, !value.isEmpty else { return }
+            alertMessage = value
+            showAlert = true
+        }
+        .onChange(of: viewModel.actionMessage) { value in
+            guard let value, !value.isEmpty else { return }
+            alertMessage = value
+            showAlert = true
+        }
+        .unifiedNoticeAlert(isPresented: $showAlert, message: alertMessage)
+        .sheet(isPresented: $showEditSheet) {
+            reviewEditSheet
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
+        .overlay {
+            UnifiedLoadingOverlay(isLoading: viewModel.isLoading)
+        }
+    }
+
+    private func reload() async {
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.load(token: token)
+    }
+
+    private func reviewItem(_ item: UserReviewDTO) -> some View {
+        VStack(alignment: .leading, spacing: UITheme.spacing10) {
+            HStack(alignment: .top, spacing: UITheme.spacing8) {
+                VStack(alignment: .leading, spacing: UITheme.spacing4) {
+                    Text(reviewStoreName(item))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                    HStack(spacing: UITheme.spacing4) {
+                        reviewStars(item.rating ?? 0)
+                        Text(String(format: "%.1f", item.rating ?? 0))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.white.opacity(0.68))
+                    }
+                }
+
+                Spacer(minLength: UITheme.spacing8)
+
+                Text(displayDateOnly(item.created_at ?? ""))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            if let comment = item.comment?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !comment.isEmpty {
+                Text(comment)
+                    .font(.footnote)
+                    .foregroundStyle(Color.white.opacity(0.82))
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("No written comment")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: UITheme.spacing8) {
+                Button {
+                    startEdit(item)
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                        .font(.caption.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: UITheme.ctaHeight - 6)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Color.white.opacity(0.92))
+                .background(Color.white.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+                .disabled(item.appointment_id == nil)
+                .opacity(item.appointment_id == nil ? 0.45 : 1)
+
+                Button(role: .destructive) {
+                    guard let token = appState.requireAccessToken() else { return }
+                    Task { await viewModel.deleteReview(token: token, reviewID: item.id) }
+                } label: {
+                    if viewModel.deletingReviewID == item.id {
+                        ProgressView()
+                            .tint(.red)
+                            .frame(maxWidth: .infinity, minHeight: UITheme.ctaHeight - 6)
+                    } else {
+                        Label("Delete", systemImage: "trash")
+                            .font(.caption.weight(.semibold))
+                            .frame(maxWidth: .infinity, minHeight: UITheme.ctaHeight - 6)
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red.opacity(0.9))
+                .background(Color.red.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous)
+                        .stroke(Color.red.opacity(0.28), lineWidth: 1)
+                )
+            }
+        }
+        .padding(UITheme.spacing14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBG)
+        .clipShape(RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner))
+        .overlay(
+            RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner)
+                .stroke(brandGold.opacity(0.16), lineWidth: 1)
+        )
+    }
+
+    private func reviewStoreName(_ item: UserReviewDTO) -> String {
+        if let storeName = item.store_name?.trimmingCharacters(in: .whitespacesAndNewlines), !storeName.isEmpty {
+            return storeName
+        }
+        if let storeID = item.store_id {
+            return "Store #\(storeID)"
+        }
+        return "Salon"
+    }
+
+    private func reviewStars(_ rating: Double) -> some View {
+        let normalized = Int(max(min(round(rating), 5), 0))
+        return HStack(spacing: 2) {
+            ForEach(0 ..< 5, id: \.self) { index in
+                Image(systemName: index < normalized ? "star.fill" : "star")
+                    .font(.caption2)
+                    .foregroundStyle(index < normalized ? brandGold : Color.white.opacity(0.28))
+            }
+        }
+    }
+
+    private func startEdit(_ item: UserReviewDTO) {
+        guard item.appointment_id != nil else {
+            alertMessage = "This review cannot be edited right now."
+            showAlert = true
+            return
+        }
+        editingReview = item
+        editComment = item.comment ?? ""
+        editRating = Int(max(min(round(item.rating ?? 5), 5), 1))
+        showEditSheet = true
+    }
+
+    @ViewBuilder
+    private var reviewEditSheet: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: UITheme.spacing14) {
+                HStack {
+                    Text("Edit Review")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Button("Close") {
+                        showEditSheet = false
+                        editingReview = nil
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.74))
+                }
+
+                VStack(alignment: .leading, spacing: UITheme.spacing8) {
+                    Text("Rating")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.62))
+                    HStack(spacing: UITheme.spacing8) {
+                        ForEach(1 ... 5, id: \.self) { star in
+                            Button {
+                                editRating = star
+                            } label: {
+                                Image(systemName: star <= editRating ? "star.fill" : "star")
+                                    .font(.title3)
+                                    .foregroundStyle(star <= editRating ? brandGold : Color.white.opacity(0.34))
+                                    .frame(width: UITheme.iconControlSize, height: UITheme.iconControlSize)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: UITheme.spacing8) {
+                    Text("Comment")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.62))
+                    TextEditor(text: $editComment)
+                        .font(.body)
+                        .foregroundStyle(.white)
+                        .scrollContentBackground(.hidden)
+                        .padding(UITheme.spacing8)
+                        .frame(minHeight: 120, maxHeight: 180)
+                        .background(cardBG)
+                        .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        )
+                }
+
+                HStack(spacing: UITheme.spacing8) {
+                    Button("Cancel") {
+                        showEditSheet = false
+                        editingReview = nil
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.8))
+                    .frame(maxWidth: .infinity, minHeight: UITheme.ctaHeight)
+                    .background(Color.white.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous))
+
+                    Button {
+                        saveEditedReview()
+                    } label: {
+                        if let reviewID = editingReview?.id, viewModel.updatingReviewID == reviewID {
+                            ProgressView()
+                                .tint(Color.black.opacity(0.85))
+                                .frame(maxWidth: .infinity, minHeight: UITheme.ctaHeight)
+                        } else {
+                            Text("Update")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(Color.black.opacity(0.88))
+                                .frame(maxWidth: .infinity, minHeight: UITheme.ctaHeight)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .background(brandGold)
+                    .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous))
+                }
+            }
+            .padding(.horizontal, UITheme.pagePadding)
+            .padding(.top, UITheme.spacing18)
+            .padding(.bottom, UITheme.spacing12)
+        }
+    }
+
+    private func saveEditedReview() {
+        guard let review = editingReview, let appointmentID = review.appointment_id else {
+            alertMessage = "This review cannot be edited right now."
+            showAlert = true
+            return
+        }
+        guard let token = appState.requireAccessToken() else { return }
+
+        Task {
+            await viewModel.updateReview(
+                token: token,
+                reviewID: review.id,
+                appointmentID: appointmentID,
+                rating: Double(editRating),
+                comment: editComment,
+                images: review.images
+            )
+            if viewModel.errorMessage == nil {
+                showEditSheet = false
+                editingReview = nil
+            }
+        }
+    }
+}
+
+private struct MyFavoritesView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var appState: AppState
+    @StateObject private var viewModel = MyFavoritesViewModel()
+    @State private var alertMessage: String = ""
+    @State private var showAlert: Bool = false
+    private let brandGold = UITheme.brandGold
+    private let cardBG = UITheme.cardBackground
+    private let columns = [GridItem(.flexible(), spacing: UITheme.spacing10), GridItem(.flexible(), spacing: UITheme.spacing10)]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            RewardsTopBar(title: "My Favorites") {
+                dismiss()
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: UITheme.spacing14) {
+                    Text("\(viewModel.favoriteStores.count) salons · \(viewModel.favoritePins.count) designs")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    if !viewModel.isLoading && viewModel.favoriteStores.isEmpty && viewModel.favoritePins.isEmpty {
+                        UnifiedEmptyStateCard(
+                            icon: "heart",
+                            title: "No favorites yet",
+                            subtitle: "Save salons and designs to revisit them quickly."
+                        )
+
+                        NavigationLink {
+                            StoresListView(hideTabBar: true)
+                        } label: {
+                            Text("Browse Salons")
+                                .font(.subheadline.weight(.bold))
+                                .frame(maxWidth: .infinity, minHeight: UITheme.ctaHeight)
+                                .background(brandGold)
+                                .foregroundStyle(.black)
+                                .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius))
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        if !viewModel.favoritePins.isEmpty {
+                            VStack(alignment: .leading, spacing: UITheme.spacing10) {
+                                UnifiedSectionHeader(title: "FAVORITE DESIGNS")
+                                LazyVGrid(columns: columns, spacing: UITheme.spacing10) {
+                                    ForEach(viewModel.favoritePins) { pin in
+                                        favoritePinCard(pin)
+                                    }
+                                }
+                            }
+                        }
+
+                        if !viewModel.favoriteStores.isEmpty {
+                            VStack(alignment: .leading, spacing: UITheme.spacing10) {
+                                UnifiedSectionHeader(title: "FAVORITE SALONS")
+                                VStack(spacing: UITheme.spacing10) {
+                                    ForEach(viewModel.favoriteStores) { store in
+                                        favoriteStoreCard(store)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, UITheme.pagePadding)
+                .padding(.top, UITheme.spacing8)
+                .padding(.bottom, UITheme.spacing24)
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
+        .tint(brandGold)
+        .background(Color.black)
+        .task { await reload() }
+        .refreshable { await reload() }
+        .onChange(of: viewModel.errorMessage) { value in
+            guard let value, !value.isEmpty else { return }
+            alertMessage = value
+            showAlert = true
+        }
+        .onChange(of: viewModel.actionMessage) { value in
+            guard let value, !value.isEmpty else { return }
+            alertMessage = value
+            showAlert = true
+        }
+        .unifiedNoticeAlert(isPresented: $showAlert, message: alertMessage)
+        .overlay {
+            UnifiedLoadingOverlay(isLoading: viewModel.isLoading)
+        }
+    }
+
+    private func reload() async {
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.load(token: token)
+    }
+
+    private func favoritePinCard(_ pin: HomeFeedPinDTO) -> some View {
+        ZStack(alignment: .topTrailing) {
+            NavigationLink {
+                HomeFeedPinDetailView(pin: pin)
+                    .environmentObject(appState)
+            } label: {
+                VStack(alignment: .leading, spacing: UITheme.spacing6) {
+                    AsyncImage(url: pin.imageURL) { phase in
+                        switch phase {
+                        case .empty:
+                            ZStack {
+                                Color.gray.opacity(0.14)
+                                ProgressView().tint(brandGold)
+                            }
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                        case .failure:
+                            Color.gray.opacity(0.22)
+                        @unknown default:
+                            Color.gray.opacity(0.22)
+                        }
+                    }
+                    .frame(height: 186)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: UITheme.cardCornerRadius, style: .continuous))
+
+                    Text(pin.title)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                }
+                .padding(UITheme.spacing8)
+                .background(cardBG)
+                .clipShape(RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner))
+                .overlay(
+                    RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner)
+                        .stroke(brandGold.opacity(0.16), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                guard let token = appState.requireAccessToken() else { return }
+                Task { await viewModel.removePin(token: token, pinID: pin.id) }
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color.black.opacity(0.66))
+                    if viewModel.deletingPinID == pin.id {
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(0.85)
+                    } else {
+                        Image(systemName: "heart.fill")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(brandGold)
+                    }
+                }
+                .frame(width: 30, height: 30)
+            }
+            .buttonStyle(.plain)
+            .padding(UITheme.spacing12)
+        }
+    }
+
+    private func favoriteStoreCard(_ store: StoreDTO) -> some View {
+        HStack(spacing: UITheme.spacing10) {
+            NavigationLink {
+                StoreDetailView(storeID: store.id)
+            } label: {
+                HStack(spacing: UITheme.spacing10) {
+                    AsyncImage(url: storeImageURL(store)) { phase in
+                        switch phase {
+                        case .empty:
+                            ZStack {
+                                Color.gray.opacity(0.18)
+                                ProgressView().tint(brandGold)
+                            }
+                        case .success(let image):
+                            image.resizable().scaledToFill()
+                        case .failure:
+                            Color.gray.opacity(0.2)
+                        @unknown default:
+                            Color.gray.opacity(0.2)
+                        }
+                    }
+                    .frame(width: 84, height: 84)
+                    .clipShape(RoundedRectangle(cornerRadius: UITheme.chipCornerRadius))
+
+                    VStack(alignment: .leading, spacing: UITheme.spacing4) {
+                        Text(store.name)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                        HStack(spacing: UITheme.spacing4) {
+                            Image(systemName: "mappin.and.ellipse")
+                                .font(.caption2)
+                                .foregroundStyle(brandGold)
+                            Text(store.formattedAddress)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                        }
+                        HStack(spacing: UITheme.spacing4) {
+                            Image(systemName: "star.fill")
+                                .font(.caption2)
+                                .foregroundStyle(brandGold)
+                            Text(String(format: "%.1f", store.rating))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(Color.white.opacity(0.75))
+                            Text("(\(store.review_count) reviews)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                guard let token = appState.requireAccessToken() else { return }
+                Task { await viewModel.removeStore(token: token, storeID: store.id) }
+            } label: {
+                if viewModel.deletingStoreID == store.id {
+                    ProgressView()
+                        .tint(.white)
+                        .frame(width: UITheme.iconControlSize, height: UITheme.iconControlSize)
+                } else {
+                    Image(systemName: "heart.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(brandGold)
+                        .frame(width: UITheme.iconControlSize, height: UITheme.iconControlSize)
+                }
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(UITheme.spacing10)
+        .background(cardBG)
+        .clipShape(RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner))
+        .overlay(
+            RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner)
+                .stroke(brandGold.opacity(0.16), lineWidth: 1)
+        )
+    }
+
+    private func storeImageURL(_ store: StoreDTO) -> URL? {
+        guard let raw = store.image_url?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !raw.isEmpty
+        else {
+            return nil
+        }
+        if raw.lowercased().hasPrefix("http") {
+            return URL(string: raw)
+        }
+        let base = APIClient.shared.baseURL.replacingOccurrences(of: "/api/v1", with: "")
+        return URL(string: "\(base)\(raw)")
     }
 }
 
