@@ -10,6 +10,7 @@ struct StoreImageDTO: Decodable, Identifiable {
 struct StoreDTO: Decodable, Identifiable {
     let id: Int
     let name: String
+    let image_url: String?
     let address: String
     let city: String
     let state: String
@@ -57,4 +58,36 @@ struct StoreDetailDTO: Decodable {
         }
         return "\(address), \(city), \(state) \(zip)"
     }
+}
+
+struct StoreReviewReplyDTO: Decodable {
+    let id: Int
+    let content: String?
+    let admin_name: String?
+    let created_at: String?
+    let updated_at: String?
+}
+
+struct StoreReviewDTO: Decodable, Identifiable {
+    let id: Int
+    let user_id: Int
+    let store_id: Int
+    let appointment_id: Int
+    let rating: Double
+    let comment: String?
+    let images: [String]?
+    let created_at: String
+    let updated_at: String
+    let user_name: String?
+    let user_avatar: String?
+    let reply: StoreReviewReplyDTO?
+}
+
+struct StoreHourDTO: Decodable, Identifiable {
+    let id: Int
+    let store_id: Int
+    let day_of_week: Int // 0=Mon ... 6=Sun
+    let open_time: String?
+    let close_time: String?
+    let is_closed: Bool
 }

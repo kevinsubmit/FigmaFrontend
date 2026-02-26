@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 
 from app.models.appointment import Appointment
 from app.models.risk import RiskEvent, UserRiskState
+from app.models.user import User
+from app.core.config import settings
 
 
 RATE_LIMIT_USER_PER_MINUTE = 2
@@ -111,26 +113,31 @@ def evaluate_booking_request(
 
     one_minute_ago = now - timedelta(minutes=1)
     one_hour_ago = now - timedelta(hours=1)
-    user_1m = _count_risk_events(db, event_type="appointment_created", since=one_minute_ago, user_id=user_id)
-    user_1h = _count_risk_events(db, event_type="appointment_created", since=one_hour_ago, user_id=user_id)
-    if user_1m >= RATE_LIMIT_USER_PER_MINUTE or user_1h >= RATE_LIMIT_USER_PER_HOUR:
-        return RiskDecision(
-            allowed=False,
-            status_code=429,
-            error_code="BOOK_RATE_LIMITED",
-            message="Too many booking requests. Please try again in a few minutes.",
-        )
+    user_phone = (db.query(User.phone).filter(User.id == user_id).scalar() or "").strip()
+    whitelist_set = set(settings.booking_rate_limit_phone_whitelist_list)
+    is_rate_limit_whitelisted = user_phone in whitelist_set
 
-    if ip_address:
-        ip_1m = _count_risk_events(db, event_type="appointment_created", since=one_minute_ago, ip_address=ip_address)
-        ip_1h = _count_risk_events(db, event_type="appointment_created", since=one_hour_ago, ip_address=ip_address)
-        if ip_1m >= RATE_LIMIT_IP_PER_MINUTE or ip_1h >= RATE_LIMIT_IP_PER_HOUR:
+    if not is_rate_limit_whitelisted:
+        user_1m = _count_risk_events(db, event_type="appointment_created", since=one_minute_ago, user_id=user_id)
+        user_1h = _count_risk_events(db, event_type="appointment_created", since=one_hour_ago, user_id=user_id)
+        if user_1m >= RATE_LIMIT_USER_PER_MINUTE or user_1h >= RATE_LIMIT_USER_PER_HOUR:
             return RiskDecision(
                 allowed=False,
                 status_code=429,
                 error_code="BOOK_RATE_LIMITED",
-                message="Too many requests from this network. Please retry later.",
+                message="Too many booking requests. Please try again in a few minutes.",
             )
+
+        if ip_address:
+            ip_1m = _count_risk_events(db, event_type="appointment_created", since=one_minute_ago, ip_address=ip_address)
+            ip_1h = _count_risk_events(db, event_type="appointment_created", since=one_hour_ago, ip_address=ip_address)
+            if ip_1m >= RATE_LIMIT_IP_PER_MINUTE or ip_1h >= RATE_LIMIT_IP_PER_HOUR:
+                return RiskDecision(
+                    allowed=False,
+                    status_code=429,
+                    error_code="BOOK_RATE_LIMITED",
+                    message="Too many requests from this network. Please retry later.",
+                )
 
     same_day_count = _count_user_appointments_on_date(db, user_id=user_id, appointment_date=appointment_date)
     if same_day_count >= DAILY_BOOKING_LIMIT:

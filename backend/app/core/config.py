@@ -94,6 +94,11 @@ class Settings(BaseSettings):
     ADMIN_COUPON_GRANT_DAILY_TOTAL_FACE_VALUE: float = 5000.0
     ADMIN_GIFTCARD_ISSUE_MAX_AMOUNT: float = 500.0
     ADMIN_GIFTCARD_ISSUE_DAILY_TOTAL_AMOUNT: float = 5000.0
+    BOOKING_RATE_LIMIT_PHONE_WHITELIST: str = ""
+
+    @property
+    def booking_rate_limit_phone_whitelist_list(self) -> List[str]:
+        return [phone.strip() for phone in self.BOOKING_RATE_LIMIT_PHONE_WHITELIST.split(",") if phone.strip()]
     
     class Config:
         env_file = ".env"

@@ -17,6 +17,11 @@ struct AuthUser: Decodable {
     let phone: String
     let username: String
     let full_name: String?
+    let email: String?
+    let avatar_url: String?
+    let gender: String?
+    let date_of_birth: String?
+    let phone_verified: Bool?
     let is_admin: Bool
     let store_id: Int?
 }

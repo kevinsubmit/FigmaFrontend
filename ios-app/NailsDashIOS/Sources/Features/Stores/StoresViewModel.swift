@@ -3,8 +3,10 @@ import Foundation
 @MainActor
 final class StoresViewModel: ObservableObject {
     @Published var stores: [StoreDTO] = []
+    @Published var storeImages: [Int: [StoreImageDTO]] = [:]
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
+    private var loadingStoreImageIDs: Set<Int> = []
 
     private let service: StoresServiceProtocol
 
@@ -26,6 +28,31 @@ final class StoresViewModel: ObservableObject {
         }
     }
 
+    func loadStoreImagesIfNeeded(storeID: Int) async {
+        if storeImages[storeID] != nil || loadingStoreImageIDs.contains(storeID) {
+            return
+        }
+
+        loadingStoreImageIDs.insert(storeID)
+        defer { loadingStoreImageIDs.remove(storeID) }
+
+        do {
+            let rows = try await service.fetchStoreImages(storeID: storeID)
+            let sortedRows = rows.sorted { lhs, rhs in
+                let leftOrder = lhs.display_order ?? Int.max
+                let rightOrder = rhs.display_order ?? Int.max
+                if leftOrder == rightOrder {
+                    return lhs.id < rhs.id
+                }
+                return leftOrder < rightOrder
+            }
+            storeImages[storeID] = sortedRows
+        } catch {
+            // Keep list page stable even if one store's images fail to load.
+            storeImages[storeID] = []
+        }
+    }
+
     private func mapError(_ error: APIError) -> String {
         switch error {
         case .unauthorized:
@@ -43,6 +70,9 @@ final class StoresViewModel: ObservableObject {
 @MainActor
 final class StoreDetailViewModel: ObservableObject {
     @Published var store: StoreDetailDTO?
+    @Published var services: [ServiceDTO] = []
+    @Published var reviews: [StoreReviewDTO] = []
+    @Published var storeHours: [StoreHourDTO] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
 
@@ -57,7 +87,14 @@ final class StoreDetailViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            store = try await service.fetchStoreDetail(storeID: storeID)
+            async let detailTask = service.fetchStoreDetail(storeID: storeID)
+            async let serviceTask = service.fetchStoreServices(storeID: storeID)
+            async let reviewTask = service.fetchStoreReviews(storeID: storeID, skip: 0, limit: 20)
+            async let hoursTask = service.fetchStoreHours(storeID: storeID)
+            store = try await detailTask
+            services = try await serviceTask.filter { $0.is_active == 1 }
+            reviews = (try? await reviewTask) ?? []
+            storeHours = (try? await hoursTask) ?? []
             errorMessage = nil
         } catch let error as APIError {
             errorMessage = mapError(error)
@@ -73,9 +110,9 @@ final class StoreDetailViewModel: ObservableObject {
         case .forbidden(let detail), .validation(let detail), .server(let detail), .network(let detail):
             return detail
         case .invalidURL:
-            return "Invalid API URL"
+            return "Invalid API endpoint."
         case .decoding:
-            return "Failed to parse store detail response"
+            return "Failed to parse store detail response."
         }
     }
 }

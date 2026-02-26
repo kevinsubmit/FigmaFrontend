@@ -2,7 +2,11 @@ import Foundation
 
 @MainActor
 final class BookAppointmentViewModel: ObservableObject {
+    private static let salonClosedHintMessage = "The salon is closed on this date."
+
+    @Published var storeDetail: StoreDetailDTO?
     @Published var services: [ServiceDTO] = []
+    @Published var storeHours: [StoreHourDTO] = []
     @Published var technicians: [TechnicianDTO] = []
     @Published var selectedServiceID: Int?
     @Published var selectedTechnicianID: Int?
@@ -30,10 +34,14 @@ final class BookAppointmentViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         do {
+            async let storeTask = service.getStoreDetail(storeID: storeID)
             async let servicesTask = service.getStoreServices(storeID: storeID)
             async let techTask = service.getStoreTechnicians(storeID: storeID)
+            async let hoursTask = service.getStoreHours(storeID: storeID)
+            storeDetail = try await storeTask
             let loadedServices = try await servicesTask.filter { $0.is_active == 1 }
             let loadedTechs = try await techTask.filter { $0.is_active == 1 }
+            storeHours = (try? await hoursTask) ?? []
             services = loadedServices
             technicians = loadedTechs
             if selectedServiceID == nil {
@@ -54,8 +62,13 @@ final class BookAppointmentViewModel: ObservableObject {
             return false
         }
         guard let slot = selectedSlot ?? availableSlots.first else {
-            slotHintMessage = "No available times for this date."
-            errorMessage = "No available times for this date."
+            if isStoreClosed(on: selectedDate) {
+                slotHintMessage = Self.salonClosedHintMessage
+                errorMessage = Self.salonClosedHintMessage
+            } else {
+                slotHintMessage = "No available times for this date."
+                errorMessage = "No available times for this date."
+            }
             return false
         }
         let selectedDateTime = slotToDate(slot)
@@ -96,6 +109,75 @@ final class BookAppointmentViewModel: ObservableObject {
         }
     }
 
+    func submitGroup(token: String, guestServiceIDs: [Int]) async -> Bool {
+        guard let hostServiceID = selectedServiceID else {
+            errorMessage = "Please select a service."
+            return false
+        }
+        guard !guestServiceIDs.isEmpty else {
+            errorMessage = "Please add at least one guest service for group booking."
+            return false
+        }
+        guard let slot = selectedSlot ?? availableSlots.first else {
+            if isStoreClosed(on: selectedDate) {
+                slotHintMessage = Self.salonClosedHintMessage
+                errorMessage = Self.salonClosedHintMessage
+            } else {
+                slotHintMessage = "No available times for this date."
+                errorMessage = "No available times for this date."
+            }
+            return false
+        }
+        let selectedDateTime = slotToDate(slot)
+        if selectedDateTime <= Date() {
+            slotHintMessage = "Past time cannot be booked. Please choose a future time."
+            errorMessage = "Past time cannot be booked. Please choose a future time."
+            return false
+        }
+
+        isSubmitting = true
+        defer { isSubmitting = false }
+
+        let hostNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes
+        let guests = guestServiceIDs.map { serviceID in
+            AppointmentGroupGuestCreateRequest(
+                service_id: serviceID,
+                technician_id: nil,
+                notes: nil,
+                guest_name: nil,
+                guest_phone: nil
+            )
+        }
+        let request = AppointmentGroupCreateRequest(
+            store_id: storeID,
+            appointment_date: Self.dateFormatter.string(from: selectedDate),
+            appointment_time: slotToRequestTime(slot),
+            host_service_id: hostServiceID,
+            host_technician_id: selectedTechnicianID,
+            host_notes: hostNotes,
+            guests: guests
+        )
+
+        do {
+            let createdGroup = try await service.createAppointmentGroup(token: token, request: request)
+            let host = createdGroup.host_appointment
+            successMessage = "Group booking created: #\(host.order_number ?? String(host.id))"
+            errorMessage = nil
+            slotHintMessage = nil
+            return true
+        } catch let err as APIError {
+            successMessage = nil
+            errorMessage = mapError(err)
+            slotHintMessage = slotHint(from: errorMessage)
+            return false
+        } catch {
+            successMessage = nil
+            errorMessage = error.localizedDescription
+            slotHintMessage = slotHint(from: errorMessage)
+            return false
+        }
+    }
+
     func reloadAvailableSlots() async {
         guard let serviceID = selectedServiceID else {
             availableSlots = []
@@ -107,6 +189,14 @@ final class BookAppointmentViewModel: ObservableObject {
         isLoadingSlots = true
         defer { isLoadingSlots = false }
         slotHintMessage = nil
+
+        if isStoreClosed(on: selectedDate) {
+            availableSlots = []
+            selectedSlot = nil
+            errorMessage = nil
+            slotHintMessage = Self.salonClosedHintMessage
+            return
+        }
 
         do {
             let slotRows: [TechnicianAvailableSlotDTO]
@@ -194,6 +284,12 @@ final class BookAppointmentViewModel: ObservableObject {
     private func slotHint(from message: String?) -> String? {
         guard let message, !message.isEmpty else { return nil }
         let normalized = message.lowercased()
+        if normalized.contains("store is closed")
+            || normalized.contains("salon is closed")
+            || normalized.contains("closed on this date")
+        {
+            return Self.salonClosedHintMessage
+        }
         if normalized.contains("blocked") {
             return "This time slot is blocked by the store. Please choose another time."
         }
@@ -204,6 +300,25 @@ final class BookAppointmentViewModel: ObservableObject {
             return "No available times for this date."
         }
         return nil
+    }
+
+    private func isStoreClosed(on date: Date) -> Bool {
+        guard !storeHours.isEmpty else { return false }
+        let dayIndex = dayIndexForStoreHours(date)
+        guard let hours = storeHours.first(where: { $0.day_of_week == dayIndex }) else {
+            return false
+        }
+        if hours.is_closed { return true }
+        let open = (hours.open_time ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let close = (hours.close_time ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return open.isEmpty || close.isEmpty
+    }
+
+    private func dayIndexForStoreHours(_ date: Date) -> Int {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        let weekday = calendar.component(.weekday, from: date) // 1=Sun...7=Sat
+        return weekday == 1 ? 6 : weekday - 2 // 0=Mon...6=Sun
     }
 
     private static let dateFormatter: DateFormatter = {

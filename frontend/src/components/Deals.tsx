@@ -125,9 +125,6 @@ export function Deals({ onBack, onSelectSalon }: DealsProps) {
     <div className="min-h-screen bg-black text-white">
       <header className="sticky top-0 z-30 bg-black/80 backdrop-blur-lg border-b border-[#D4AF37]/10 px-6 py-5">
         <div className="flex flex-col">
-          <h1 className="text-2xl font-light tracking-widest text-[#D4AF37]">
-            DEALS
-          </h1>
           <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 mt-1">
             Limited-time offers
           </p>

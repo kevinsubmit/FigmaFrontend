@@ -43,6 +43,16 @@ export interface StoreSearchParams {
   state?: string;
 }
 
+export interface StoreBlockedSlot {
+  id: number;
+  store_id: number;
+  blocked_date: string;
+  start_time: string;
+  end_time: string;
+  reason?: string | null;
+  status?: string;
+}
+
 /**
  * 获取店铺列表
  */
@@ -64,5 +74,10 @@ export const getStoreById = async (storeId: number): Promise<Store> => {
  */
 export const searchStores = async (params: StoreSearchParams): Promise<Store[]> => {
   const response = await apiClient.get('/stores/search', { params });
+  return response.data;
+};
+
+export const getStoreBlockedSlotsPublic = async (storeId: number, date: string): Promise<StoreBlockedSlot[]> => {
+  const response = await apiClient.get(`/stores/${storeId}/blocked-slots/public`, { params: { date } });
   return response.data;
 };

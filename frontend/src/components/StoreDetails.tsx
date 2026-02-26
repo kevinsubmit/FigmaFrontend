@@ -898,8 +898,36 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
     return hours * 60 + minutes;
   };
 
+  const mapSlotsLoadErrorMessage = (error: unknown) => {
+    const raw = error instanceof Error ? error.message : '';
+    const normalized = raw.toLowerCase();
+    if (
+      normalized.includes('store is closed')
+      || normalized.includes('salon is closed')
+      || normalized.includes('closed on this date')
+    ) {
+      return 'The salon is closed on this date.';
+    }
+    return 'Unable to load available times. Please try again.';
+  };
+
+  const parseDateKeyAsLocalDate = (dateKey: string): Date | null => {
+    const [yearStr, monthStr, dayStr] = dateKey.split('-');
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    const day = Number(dayStr);
+    if (!year || !month || !day) {
+      return null;
+    }
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
+  };
+
   const getStoreHoursForDate = (dateKey: string) => {
-    const selectedDay = new Date(dateKey).getDay();
+    const localDate = parseDateKeyAsLocalDate(dateKey);
+    if (!localDate) {
+      return null;
+    }
+    const selectedDay = localDate.getDay();
     const dayOfWeek = selectedDay === 0 ? 6 : selectedDay - 1;
     return effectiveStoreHours.find((hour) => hour.day_of_week === dayOfWeek) || null;
   };
@@ -914,10 +942,15 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
     const [closeHour, closeMinute] = hoursForDay.close_time.split(':').map(Number);
     const slotInterval = 30;
 
-    const startTime = new Date(dateKey);
+    const baseDate = parseDateKeyAsLocalDate(dateKey);
+    if (!baseDate) {
+      return [];
+    }
+
+    const startTime = new Date(baseDate);
     startTime.setHours(openHour, openMinute, 0, 0);
 
-    const endTime = new Date(dateKey);
+    const endTime = new Date(baseDate);
     endTime.setHours(closeHour, closeMinute, 0, 0);
 
     const durationMs = durationMinutes * 60 * 1000;
@@ -992,23 +1025,31 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
     const loadAvailableSlots = async () => {
       if (!formattedSelectedDate || !selectedServiceId) {
         setAvailableSlots([]);
+        setSlotsError(null);
+        setIsSlotsLoading(false);
         return;
       }
 
-      if (!isStoreHoursLoading) {
-        const hoursForDay = getStoreHoursForDate(formattedSelectedDate);
+      if (isStoreHoursLoading) {
+        setSlotsError(null);
+        setIsSlotsLoading(true);
+        return;
+      }
 
-        if (!hoursForDay) {
-          setAvailableSlots([]);
-          setSlotsError('Store hours are not configured for this date.');
-          return;
-        }
+      const hoursForDay = getStoreHoursForDate(formattedSelectedDate);
 
-        if (hoursForDay.is_closed) {
-          setAvailableSlots([]);
-          setSlotsError('Store is closed on this date.');
-          return;
-        }
+      if (!hoursForDay) {
+        setAvailableSlots([]);
+        setSlotsError('Store hours are not configured for this date.');
+        setIsSlotsLoading(false);
+        return;
+      }
+
+      if (hoursForDay.is_closed) {
+        setAvailableSlots([]);
+        setSlotsError('The salon is closed on this date.');
+        setIsSlotsLoading(false);
+        return;
       }
 
       setIsSlotsLoading(true);
@@ -1059,7 +1100,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
       } catch (error) {
         console.error('Failed to load available slots:', error);
         setAvailableSlots([]);
-        setSlotsError('Unable to load available times. Please try again.');
+        setSlotsError(mapSlotsLoadErrorMessage(error));
       } finally {
         setIsSlotsLoading(false);
       }
@@ -1631,25 +1672,32 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                                         <p className="text-[#D4AF37] text-[10px] font-bold uppercase tracking-widest">Service Selection</p>
                                         <div className="px-2 py-0.5 bg-[#D4AF37] text-black rounded text-[9px] font-black uppercase shadow-[0_0_10px_rgba(212,175,55,0.3)] animate-pulse">No Deposit Needed</div>
                                     </div>
-                                    <DrawerTitle className="text-2xl font-bold">
-                                      {selectedServices.length > 1 
-                                        ? `${selectedServices[0].name} +${selectedServices.length - 1}` 
-                                        : selectedServices[0]?.name}
-                                    </DrawerTitle>
                                     <DrawerDescription className="sr-only">
                                       Confirm your appointment details for the selected services.
                                     </DrawerDescription>
-                                    <div className="mt-1 flex flex-wrap gap-1">
-                                      {selectedServices.map(s => (
-                                        <span key={s.id} className="text-[10px] bg-[#1a1a1a] text-gray-400 px-1.5 py-0.5 rounded border border-[#333]">
-                                          {s.name}
-                                        </span>
-                                      ))}
+                                    <DrawerTitle className="sr-only">
+                                      Selected service summary
+                                    </DrawerTitle>
+                                    <div className="mt-1 flex items-center gap-3">
+                                      <div className="flex-1 min-w-0 overflow-x-auto no-scrollbar">
+                                        <div className="flex w-max items-center gap-1.5 whitespace-nowrap">
+                                          {selectedServices.map((s) => (
+                                            <span
+                                              key={s.id}
+                                              className="text-[12px] font-semibold text-gray-200 px-2.5 py-1 rounded-lg border border-white/25"
+                                            >
+                                              {s.name}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                      <span className="text-[12px] font-semibold text-gray-400 whitespace-nowrap">
+                                        {calculateTotals().durationStr}
+                                      </span>
                                     </div>
                                 </div>
                                 <div className="text-right">
                                     <div className="text-xl font-bold text-white">${calculateTotals().totalPrice.toFixed(2)}</div>
-                                    <div className="text-xs text-gray-500">{calculateTotals().durationStr}</div>
                                 </div>
                             </div>
                         </DrawerHeader>

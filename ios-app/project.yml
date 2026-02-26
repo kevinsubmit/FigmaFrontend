@@ -17,6 +17,7 @@ targets:
     platform: iOS
     sources:
       - path: NailsDashIOS/Sources
+      - path: NailsDashIOS/Sources/Features/Appointments/MyAppointmentsView.swift
       - path: NailsDashIOS/Resources
     settings:
       base:

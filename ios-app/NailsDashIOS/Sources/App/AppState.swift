@@ -1,5 +1,26 @@
 import Foundation
 
+enum AppTab: Hashable {
+    case home
+    case book
+    case appointments
+    case deals
+    case profile
+}
+
+struct BookingStyleReference: Identifiable, Equatable {
+    let pinID: Int
+    let title: String
+    let imageURL: String?
+    let tags: [String]
+
+    var id: Int { pinID }
+
+    var noteText: String {
+        "Reference look: \(title) (Pin #\(pinID))"
+    }
+}
+
 @MainActor
 final class AppState: ObservableObject {
     nonisolated static let sessionExpiredMessage = "Session expired, please sign in again."
@@ -7,6 +28,10 @@ final class AppState: ObservableObject {
     @Published var authMessage: String? = nil
     @Published var isLoadingAuth: Bool = false
     @Published var currentUser: AuthUser? = nil
+    @Published var selectedTab: AppTab = .home
+    @Published var bookingStyleReference: BookingStyleReference? = nil
+    @Published var bookOpenedFromStyleReference: Bool = false
+    @Published var bookTabResetID = UUID()
     private var unauthorizedObserver: NSObjectProtocol?
 
     init() {
@@ -98,6 +123,21 @@ final class AppState: ObservableObject {
         isLoggedIn = false
         currentUser = nil
         authMessage = message
+        selectedTab = .home
+        bookingStyleReference = nil
+        bookOpenedFromStyleReference = false
+        bookTabResetID = UUID()
+    }
+
+    func openBookFlow(with styleReference: BookingStyleReference) {
+        bookingStyleReference = styleReference
+        bookOpenedFromStyleReference = true
+        bookTabResetID = UUID()
+        selectedTab = .book
+    }
+
+    func resetBookFlowSource() {
+        bookOpenedFromStyleReference = false
     }
 
     private func handleAuthError(_ error: APIError) {

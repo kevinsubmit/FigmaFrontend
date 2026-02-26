@@ -6,30 +6,39 @@ struct LoginView: View {
     @State private var phone: String = ""
     @State private var password: String = ""
     @State private var showPassword: Bool = false
+    private let brandGold = UITheme.brandGold
+    private let cardBG = UITheme.cardBackground
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                Spacer(minLength: 24)
+            VStack(spacing: UITheme.spacing20) {
+                Spacer(minLength: UITheme.spacing24)
 
-                VStack(spacing: 8) {
+                VStack(spacing: UITheme.spacing8) {
                     Text("NailsDash")
                         .font(.system(size: 32, weight: .bold))
+                        .foregroundStyle(.white)
                     Text("Sign in to continue")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
 
-                VStack(spacing: 12) {
+                VStack(spacing: UITheme.spacing12) {
                     TextField("Phone (US)", text: $phone)
                         .keyboardType(.numberPad)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                        .padding()
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, UITheme.cardPadding)
+                        .frame(minHeight: UITheme.controlHeight)
+                        .background(cardBG)
+                        .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: UITheme.controlCornerRadius)
+                                .stroke(brandGold.opacity(UITheme.cardStrokeOpacity), lineWidth: 1)
+                        )
 
-                    HStack(spacing: 8) {
+                    HStack(spacing: UITheme.spacing8) {
                         Group {
                             if showPassword {
                                 TextField("Password", text: $password)
@@ -39,15 +48,22 @@ struct LoginView: View {
                         }
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                        .foregroundStyle(.white)
 
                         Button(showPassword ? "Hide" : "Show") {
                             showPassword.toggle()
                         }
                         .font(.footnote.weight(.semibold))
+                        .foregroundStyle(brandGold)
                     }
-                    .padding()
-                    .background(Color(.secondarySystemBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal, UITheme.cardPadding)
+                    .frame(minHeight: UITheme.controlHeight)
+                    .background(cardBG)
+                    .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: UITheme.controlCornerRadius)
+                            .stroke(brandGold.opacity(UITheme.cardStrokeOpacity), lineWidth: 1)
+                    )
                 }
 
                 if let msg = appState.authMessage, !msg.isEmpty {
@@ -64,15 +80,18 @@ struct LoginView: View {
                         if appState.isLoadingAuth {
                             ProgressView()
                                 .progressViewStyle(.circular)
-                                .tint(.white)
+                                .tint(.black)
                         }
                         Text(appState.isLoadingAuth ? "Signing in..." : "Sign In")
                             .font(.headline)
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
+                    .frame(minHeight: UITheme.ctaHeight)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.plain)
+                .foregroundStyle(.black)
+                .background((appState.isLoadingAuth || phone.isEmpty || password.isEmpty) ? Color.white.opacity(0.18) : brandGold)
+                .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius))
                 .disabled(appState.isLoadingAuth || phone.isEmpty || password.isEmpty)
 
                 Spacer()
@@ -82,8 +101,10 @@ struct LoginView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
-            .padding(.horizontal, 20)
+            .padding(.horizontal, UITheme.spacing20)
+            .background(Color.black.ignoresSafeArea())
             .navigationTitle("Login")
+            .toolbarColorScheme(.dark, for: .navigationBar)
         }
     }
 }

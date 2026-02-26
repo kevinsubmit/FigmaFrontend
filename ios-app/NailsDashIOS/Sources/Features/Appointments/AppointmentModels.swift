@@ -9,6 +9,31 @@ struct AppointmentCreateRequest: Encodable {
     let notes: String?
 }
 
+struct AppointmentGroupGuestCreateRequest: Encodable {
+    let service_id: Int
+    let technician_id: Int?
+    let notes: String?
+    let guest_name: String?
+    let guest_phone: String?
+}
+
+struct AppointmentGroupCreateRequest: Encodable {
+    let store_id: Int
+    let appointment_date: String
+    let appointment_time: String
+    let host_service_id: Int
+    let host_technician_id: Int?
+    let host_notes: String?
+    let guests: [AppointmentGroupGuestCreateRequest]
+}
+
+struct AppointmentGroupResponseDTO: Decodable {
+    let group_id: Int
+    let group_code: String?
+    let host_appointment: AppointmentDTO
+    let guest_appointments: [AppointmentDTO]
+}
+
 struct AppointmentCancelRequest: Encodable {
     let cancel_reason: String?
 }
