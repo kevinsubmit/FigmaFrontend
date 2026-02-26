@@ -13,6 +13,7 @@ export interface Promotion {
   store_id?: number | null;
   title: string;
   type: string;
+  image_url?: string | null;
   discount_type: 'fixed_amount' | 'percentage';
   discount_value: number;
   rules?: string | null;

@@ -294,6 +294,8 @@ private struct ProfileCenterView: View {
     private var vipAccessCard: some View {
         let currentLevel = viewModel.vipStatus?.current_level.level ?? (viewModel.completedOrders >= 10 ? 2 : 1)
         let nextLevel = viewModel.vipStatus?.next_level?.level ?? (currentLevel + 1)
+        let vipBenefit = viewModel.vipStatus?.current_level.benefit.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let vipBenefitTitle = vipBenefit.isEmpty ? "Member Access" : vipBenefit
 
         let spendCurrent = max(viewModel.vipStatus?.spend_progress.current ?? viewModel.vipStatus?.total_spend ?? 0, 0)
         let spendRequiredRaw = viewModel.vipStatus?.spend_progress.required ?? 1000
@@ -329,7 +331,7 @@ private struct ProfileCenterView: View {
                 RotatingCrownIcon(size: 40)
             }
 
-            Text("Member Access")
+            Text(vipBenefitTitle)
                 .font(.system(size: 24, weight: .semibold))
                 .foregroundStyle(brandGold)
 
@@ -4053,6 +4055,7 @@ private struct PromotionDTO: Decodable, Identifiable {
     let store_id: Int?
     let title: String
     let type: String
+    let image_url: String?
     let discount_type: String
     let discount_value: Double
     let rules: String?
@@ -4246,7 +4249,7 @@ private struct DealsView: View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topLeading) {
                 Group {
-                    if let store, let coverURL = storeCoverURL(store) {
+                    if let coverURL = promotionCoverURL(promotion: promotion, store: store) {
                         AsyncImage(url: coverURL) { phase in
                             switch phase {
                             case .empty:
@@ -4431,16 +4434,29 @@ private struct DealsView: View {
         )
     }
 
-    private func storeCoverURL(_ store: StoreDTO) -> URL? {
-        guard let raw = store.image_url?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !raw.isEmpty else {
+    private func promotionCoverURL(promotion: PromotionDTO, store: StoreDTO?) -> URL? {
+        if let promotionImage = promotion.image_url,
+           let promotionURL = resolveMediaURL(promotionImage) {
+            return promotionURL
+        }
+        guard let store,
+              let storeImage = store.image_url,
+              let storeURL = resolveMediaURL(storeImage) else {
+            return nil
+        }
+        return storeURL
+    }
+
+    private func resolveMediaURL(_ rawValue: String) -> URL? {
+        let raw = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else {
             return nil
         }
         if raw.lowercased().hasPrefix("http") {
             return URL(string: raw)
         }
         let base = APIClient.shared.baseURL.replacingOccurrences(of: "/api/v1", with: "")
-        return URL(string: "\(base)\(raw)")
+        return URL(string: "\(base)\(raw.starts(with: "/") ? "" : "/")\(raw)")
     }
 
     private func formatOffer(_ promotion: PromotionDTO) -> String {

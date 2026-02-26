@@ -32,6 +32,7 @@ class PromotionBase(BaseModel):
     store_id: Optional[int] = None
     title: str
     type: str  # activity type label
+    image_url: Optional[str] = None
     discount_type: str  # "fixed_amount" or "percentage"
     discount_value: float
     rules: Optional[str] = None
@@ -51,6 +52,7 @@ class PromotionUpdate(BaseModel):
     store_id: Optional[int] = None
     title: Optional[str] = None
     type: Optional[str] = None
+    image_url: Optional[str] = None
     discount_type: Optional[str] = None
     discount_value: Optional[float] = None
     rules: Optional[str] = None

@@ -28,6 +28,7 @@ class Promotion(Base):
     store_id = Column(Integer, ForeignKey("stores.id"), nullable=True, index=True)
     title = Column(String(200), nullable=False)
     type = Column(String(50), nullable=False, index=True)
+    image_url = Column(String(512), nullable=True)
     discount_type = Column(Enum(PromotionDiscountType), nullable=False)
     discount_value = Column(Float, nullable=False)
     rules = Column(String(500), nullable=True)

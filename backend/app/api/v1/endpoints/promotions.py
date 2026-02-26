@@ -15,6 +15,24 @@ from app.models.user import User
 router = APIRouter()
 
 
+def _sanitize_promotion_image_url(image_url: Optional[str]) -> Optional[str]:
+    if image_url is None:
+        return None
+    normalized = image_url.strip()
+    if not normalized:
+        return None
+    lowered = normalized.lower()
+    if lowered.startswith(("javascript:", "data:", "vbscript:")):
+        raise HTTPException(status_code=400, detail="Invalid image_url scheme")
+    if not (
+        normalized.startswith("/uploads/")
+        or lowered.startswith("http://")
+        or lowered.startswith("https://")
+    ):
+        raise HTTPException(status_code=400, detail="image_url must be /uploads/* or http(s) URL")
+    return normalized
+
+
 @router.get("/", response_model=List[PromotionResponse])
 def list_promotions(
     skip: int = Query(0, ge=0),
@@ -72,6 +90,7 @@ def create_promotion(
         raise HTTPException(status_code=400, detail=str(exc))
 
     promotion_data = payload.dict(exclude={"service_rules"})
+    promotion_data["image_url"] = _sanitize_promotion_image_url(promotion_data.get("image_url"))
     promotion = crud_promotion.create_promotion(db, promotion_data, service_rules=service_rules)
     return promotion
 
@@ -88,6 +107,8 @@ def update_promotion(
         raise HTTPException(status_code=404, detail="Promotion not found")
 
     update_data = payload.dict(exclude_unset=True, exclude={"service_rules"})
+    if "image_url" in update_data:
+        update_data["image_url"] = _sanitize_promotion_image_url(update_data.get("image_url"))
     if "start_at" in update_data and "end_at" in update_data:
         if update_data["end_at"] <= update_data["start_at"]:
             raise HTTPException(status_code=400, detail="end_at must be after start_at")

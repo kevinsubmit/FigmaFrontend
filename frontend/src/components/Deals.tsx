@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { getPromotions, Promotion } from '../api/promotions';
 import { Store, getStoreImages, StoreImage } from '../api/stores';
 import { apiClient } from '../api/client';
+import { resolveAssetUrl } from '../utils/assetUrl';
 
 interface DealsProps {
   onBack: () => void;
@@ -122,56 +123,72 @@ export function Deals({ onBack, onSelectSalon }: DealsProps) {
   }, [activeTab, promotions]);
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <header className="sticky top-0 z-30 bg-black/80 backdrop-blur-lg border-b border-[#D4AF37]/10 px-6 py-5">
-        <div className="flex flex-col">
-          <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 mt-1">
+    <div className="min-h-screen bg-black text-white pb-24">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-black/90 backdrop-blur-lg">
+        <div className="px-5 pt-4 pb-4">
+          <h1 className="text-[38px] leading-[1.05] font-bold tracking-tight text-white">
             Limited-time offers
-          </p>
+          </h1>
+          <div className="mt-4 rounded-2xl border border-[#D4AF37]/16 bg-white/[0.04] p-1.5">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setActiveTab('store')}
+                className={`h-11 flex-1 rounded-xl text-sm font-semibold transition-all ${
+                  activeTab === 'store'
+                    ? 'bg-[#D4AF37] text-black'
+                    : 'border border-[#D4AF37]/25 bg-transparent text-white/80'
+                }`}
+              >
+                Store Deals
+              </button>
+              <button
+                onClick={() => setActiveTab('platform')}
+                className={`h-11 flex-1 rounded-xl text-sm font-semibold transition-all ${
+                  activeTab === 'platform'
+                    ? 'bg-[#D4AF37] text-black'
+                    : 'border border-[#D4AF37]/25 bg-transparent text-white/80'
+                }`}
+              >
+                Platform Deals
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
-      <div className="p-6 space-y-6">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setActiveTab('store')}
-            className={`px-4 py-2 rounded-full text-xs tracking-[0.2em] uppercase border ${
-              activeTab === 'store'
-                ? 'bg-[#D4AF37] text-black border-[#D4AF37]'
-                : 'bg-transparent text-gray-400 border-gray-800'
-            }`}
-          >
-            Store Deals
-          </button>
-          <button
-            onClick={() => setActiveTab('platform')}
-            className={`px-4 py-2 rounded-full text-xs tracking-[0.2em] uppercase border ${
-              activeTab === 'platform'
-                ? 'bg-[#D4AF37] text-black border-[#D4AF37]'
-                : 'bg-transparent text-gray-400 border-gray-800'
-            }`}
-          >
-            Platform Deals
-          </button>
-        </div>
-
+      <div className="px-5 pt-5 space-y-5">
         {loading && (
-          <div className="text-sm text-gray-500">Loading deals...</div>
+          <div className="rounded-3xl border border-[#D4AF37]/20 bg-[#141414] px-5 py-6 text-sm text-gray-400">
+            Loading deals...
+          </div>
         )}
 
         {!loading && error && (
-          <div className="text-sm text-red-400">{error}</div>
+          <div className="rounded-3xl border border-red-500/35 bg-red-500/10 px-5 py-6 text-sm text-red-300">
+            {error}
+          </div>
         )}
 
         {!loading && !error && filteredPromotions.length === 0 && (
-          <div className="text-sm text-gray-500">No deals available.</div>
+          <div className="rounded-3xl border border-[#D4AF37]/20 bg-[#141414] px-5 py-9 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-[#D4AF37]/35 bg-[#D4AF37]/10">
+              <Tag className="h-7 w-7 text-[#D4AF37]" />
+            </div>
+            <p className="text-xl font-semibold text-white/90">No active deals right now</p>
+            <p className="mt-2 text-sm text-gray-400">Check back soon for new offers.</p>
+          </div>
         )}
 
-        <div className="space-y-8">
+        <div className="space-y-5">
           {filteredPromotions.map((promotion) => {
             const store = promotion.store_id ? stores[promotion.store_id] : undefined;
             const hasStore = !!store;
-            const coverImage = (store?.id ? storeImages[store.id] : undefined) || store?.image_url || '';
+            const coverImage =
+              promotion.image_url ||
+              (store?.id ? storeImages[store.id] : undefined) ||
+              store?.image_url ||
+              '';
+            const coverImageUrl = resolveAssetUrl(coverImage);
             const priceRange = promotion.service_rules[0]
               ? formatPriceRange(
                   promotion.service_rules[0].min_price,
@@ -192,81 +209,96 @@ export function Deals({ onBack, onSelectSalon }: DealsProps) {
                     onSelectSalon(store);
                   }
                 }}
-                className={`group relative bg-[#111] rounded-3xl overflow-hidden border border-[#D4AF37]/10 transition-all ${
+                className={`group relative overflow-hidden rounded-[26px] border border-[#D4AF37]/18 bg-[#141414] shadow-[0_8px_28px_rgba(0,0,0,0.32)] transition-all ${
                   hasStore ? 'cursor-pointer hover:border-[#D4AF37]/30 active:scale-[0.98]' : ''
                 }`}
               >
-                <div className="relative h-56 w-full overflow-hidden">
-                  {coverImage ? (
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[#D4AF37]/45" />
+
+                <div className="relative w-full overflow-hidden" style={{ height: '168px' }}>
+                  {coverImageUrl ? (
                     <img
-                      src={coverImage}
+                      src={coverImageUrl}
                       alt={promotion.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-[#1a1a1a] via-[#0c0c0c] to-black" />
+                    <div className="h-full w-full bg-gradient-to-br from-[#2d220a] via-[#161616] to-black" />
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/20 to-transparent" />
 
-                  <div className="absolute top-4 left-4 bg-[#D4AF37] text-black px-3 py-1.5 rounded-full text-xs font-bold shadow-lg flex items-center gap-1.5">
+                  <div className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-[#D4AF37] px-3 py-1.5 text-xs font-bold text-black shadow-lg">
                     <Tag className="w-3.5 h-3.5" />
                     {formatOffer(promotion)}
                   </div>
 
-                  <div className="absolute bottom-4 left-4 flex items-center gap-1 text-white/90 text-sm">
-                    <MapPin className="w-4 h-4 text-[#D4AF37]" />
-                    {location}
-                  </div>
+                  {rating != null && (
+                    <div className="absolute right-4 top-4 flex items-center gap-1 rounded-xl border border-white/10 bg-black/45 px-2.5 py-1.5">
+                      <Star className="h-3.5 w-3.5 fill-[#D4AF37] text-[#D4AF37]" />
+                      <span className="text-sm font-semibold text-white">{rating.toFixed(1)}</span>
+                    </div>
+                  )}
                 </div>
 
-                <div className="p-5">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className="text-lg font-medium group-hover:text-[#D4AF37] transition-colors">
+                <div className="space-y-4 p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="line-clamp-2 text-xl font-bold text-white transition-colors group-hover:text-[#D4AF37]">
                         {promotion.title}
                       </h3>
-                      <p className="text-sm text-gray-400">
+                      <p className="mt-1 truncate text-sm font-medium text-white/75">
                         {hasStore ? store?.name : 'Platform Offer'}
                       </p>
                     </div>
-                    {rating != null && (
-                      <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-lg">
-                        <Star className="w-4 h-4 text-[#D4AF37] fill-[#D4AF37]" />
-                        <span className="text-sm font-medium">{rating.toFixed(1)}</span>
-                      </div>
-                    )}
+                    <span className="rounded-full border border-white/12 bg-white/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-white/70">
+                      {hasStore ? 'STORE DEAL' : 'PLATFORM DEAL'}
+                    </span>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 mt-4">
-                    <span className="text-[10px] uppercase tracking-wider text-gray-500 border border-gray-800 px-2 py-0.5 rounded-md">
-                      {promotion.type}
-                    </span>
-                    <span className="text-[10px] uppercase tracking-wider text-gray-500 border border-gray-800 px-2 py-0.5 rounded-md">
+                  <div className="flex items-center gap-1.5 rounded-full bg-white/[0.04] px-3 py-1.5 text-xs text-white/75">
+                    <Clock className="h-3.5 w-3.5 text-[#D4AF37]" />
+                    {formatExpiry(promotion.end_at)}
+                  </div>
+
+                  {hasStore && (
+                    <div className="flex items-start gap-1.5 text-sm text-white/70">
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#D4AF37]" />
+                      <span className="whitespace-normal break-words">{location}</span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-white/72">
                       {priceRange}
                     </span>
+                    <span className="rounded-full bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-white/65">
+                      {promotion.type}
+                    </span>
                     {promotion.scope === 'platform' && (
-                      <span className="text-[10px] uppercase tracking-wider text-gray-500 border border-gray-800 px-2 py-0.5 rounded-md">
+                      <span className="rounded-full bg-white/[0.04] px-2.5 py-1 text-[11px] font-semibold text-white/65">
                         Platform
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between mt-4">
-                    <div className="flex items-center gap-1 text-[11px] text-[#D4AF37]/80">
-                      <Clock className="w-3.5 h-3.5" />
-                      {formatExpiry(promotion.end_at)}
-                    </div>
-                  </div>
+                  {promotion.rules && promotion.rules.trim() && (
+                    <p className="line-clamp-3 text-sm text-white/62">{promotion.rules}</p>
+                  )}
 
                   <button
                     disabled={!hasStore}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (!hasStore || !store) return;
+                      onSelectSalon(store);
+                    }}
                     className={`w-full mt-6 py-3 rounded-2xl text-sm font-medium transition-all duration-300 border ${
                       hasStore
-                        ? 'bg-white/5 group-hover:bg-[#D4AF37] group-hover:text-black border-white/10 group-hover:border-[#D4AF37]'
-                        : 'bg-white/5 text-gray-500 border-white/10 cursor-not-allowed'
+                        ? 'border-[#D4AF37] bg-[#D4AF37] text-black hover:brightness-105'
+                        : 'cursor-not-allowed border-[#D4AF37]/30 bg-white/[0.04] text-[#D4AF37]/55'
                     }`}
                   >
-                    {hasStore ? 'Claim Offer & Book' : 'Platform Offer'}
+                    {hasStore ? 'Book Now' : 'Browse Stores'}
                   </button>
                 </div>
               </motion.div>
