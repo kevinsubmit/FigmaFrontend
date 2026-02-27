@@ -47,6 +47,7 @@ struct StoresListView: View {
                         ForEach(displayStores) { store in
                             NavigationLink {
                                 StoreDetailView(storeID: store.id)
+                                    .toolbar(.hidden, for: .tabBar)
                             } label: {
                                 storeCard(store)
                             }
@@ -64,7 +65,7 @@ struct StoresListView: View {
         }
         .background(Color.black)
         .toolbar(.hidden, for: .navigationBar)
-        .toolbar(effectiveHideTabBar ? .hidden : .visible, for: .tabBar)
+        .toolbar(effectiveHideTabBar ? .hidden : .automatic, for: .tabBar)
         .tint(brandGold)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let styleReference = appState.bookingStyleReference {
