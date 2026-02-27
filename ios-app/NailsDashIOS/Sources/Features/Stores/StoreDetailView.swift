@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 private enum StoreDetailTab: String, CaseIterable, Identifiable {
     case services = "SERVICES"
@@ -23,7 +22,6 @@ struct StoreDetailView: View {
     @State private var reviewGalleryIndex: Int = 0
     @State private var showReviewGallery: Bool = false
     @State private var showFullHours: Bool = false
-    @State private var previousSystemTabBarHidden: Bool?
     @State private var showBookServicesSheet: Bool = false
 
     private let brandGold = UITheme.brandGold
@@ -68,12 +66,6 @@ struct StoreDetailView: View {
         }
         .task {
             await viewModel.loadStore(storeID: storeID)
-        }
-        .onAppear {
-            captureAndHideSystemTabBar()
-        }
-        .onDisappear {
-            restoreSystemTabBarVisibility()
         }
         .onChange(of: viewModel.errorMessage) { value in
             guard let value, !value.isEmpty else { return }
@@ -992,64 +984,6 @@ struct StoreDetailView: View {
             return "\(hours)h \(mins)m"
         }
         return "\(mins)m"
-    }
-
-    private func currentBottomSafeAreaInset() -> CGFloat {
-        let scenes = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .filter { $0.activationState == .foregroundActive }
-
-        guard let scene = scenes.first,
-              let window = scene.windows.first(where: \.isKeyWindow) ?? scene.windows.first
-        else {
-            return 0
-        }
-
-        return window.safeAreaInsets.bottom
-    }
-
-    private func captureAndHideSystemTabBar() {
-        guard let tabBar = currentSystemTabBar() else { return }
-        if previousSystemTabBarHidden == nil {
-            previousSystemTabBarHidden = tabBar.isHidden
-        }
-        tabBar.isHidden = true
-    }
-
-    private func restoreSystemTabBarVisibility() {
-        guard let previous = previousSystemTabBarHidden,
-              let tabBar = currentSystemTabBar()
-        else { return }
-        tabBar.isHidden = previous
-        previousSystemTabBarHidden = nil
-    }
-
-    private func currentSystemTabBar() -> UITabBar? {
-        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
-        for scene in scenes where scene.activationState == .foregroundActive {
-            for window in scene.windows {
-                if let tabBar = findTabBar(in: window.rootViewController)?.tabBar {
-                    return tabBar
-                }
-            }
-        }
-        return nil
-    }
-
-    private func findTabBar(in root: UIViewController?) -> UITabBarController? {
-        guard let root else { return nil }
-        if let tab = root as? UITabBarController {
-            return tab
-        }
-        for child in root.children {
-            if let found = findTabBar(in: child) {
-                return found
-            }
-        }
-        if let presented = root.presentedViewController {
-            return findTabBar(in: presented)
-        }
-        return nil
     }
 
     private func imageURL(from raw: String) -> URL? {
