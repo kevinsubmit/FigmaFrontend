@@ -1132,11 +1132,7 @@ struct BookAppointmentView: View {
     }
 
     private func imageURL(from raw: String) -> URL? {
-        if raw.lowercased().hasPrefix("http") {
-            return URL(string: raw)
-        }
-        let base = APIClient.shared.baseURL.replacingOccurrences(of: "/api/v1", with: "")
-        return URL(string: "\(base)\(raw)")
+        AssetURLResolver.resolveURL(from: raw)
     }
 
     private var selectedService: ServiceDTO? {

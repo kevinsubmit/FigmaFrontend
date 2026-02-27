@@ -576,14 +576,7 @@ private struct ProfileCenterView: View {
     }
 
     private func avatarURLString(_ raw: String?) -> String? {
-        guard let raw, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return nil
-        }
-        if raw.lowercased().hasPrefix("http") {
-            return raw
-        }
-        let base = APIClient.shared.baseURL.replacingOccurrences(of: "/api/v1", with: "")
-        return "\(base)\(raw)"
+        AssetURLResolver.resolveString(from: raw)
     }
 }
 
@@ -974,7 +967,7 @@ private final class ReferAFriendViewModel: ObservableObject {
 
     private func referralURL(code: String) -> URL? {
         let overrideBase = ProcessInfo.processInfo.environment["NAILSDASH_WEB_BASE_URL"]?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let defaultBase = APIClient.shared.baseURL.replacingOccurrences(of: "/api/v1", with: "")
+        let defaultBase = APIClient.shared.assetBaseURL
         let base = (overrideBase?.isEmpty == false ? overrideBase! : defaultBase).trimmingCharacters(in: .whitespacesAndNewlines)
         let normalizedBase = base.hasSuffix("/") ? String(base.dropLast()) : base
         return URL(string: "\(normalizedBase)/register?ref=\(code)")
@@ -1208,7 +1201,7 @@ private struct ReferAFriendView: View {
                     .kerning(1.8)
                     .foregroundStyle(Color.white.opacity(0.52))
 
-                VStack(spacing: UITheme.spacing8) {
+                LazyVStack(spacing: UITheme.spacing8) {
                     ForEach(viewModel.referralList) { item in
                         historyRow(item)
                     }
@@ -1263,34 +1256,10 @@ private struct ReferAFriendView: View {
     }
 
     private func formatJoinedDate(_ raw: String) -> String {
-        let parse = ISO8601DateFormatter()
-        if let date = parse.date(from: raw) {
-            let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "en_US_POSIX")
-            formatter.dateStyle = .medium
-            formatter.timeStyle = .none
-            return formatter.string(from: date)
-        }
-        if let date = parseServerDateFallback(raw) {
-            let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "en_US_POSIX")
-            formatter.dateStyle = .medium
-            formatter.timeStyle = .none
-            return formatter.string(from: date)
+        if let formatted = HomeDateFormatterCache.formatJoinedDate(raw) {
+            return formatted
         }
         return raw
-    }
-
-    private func parseServerDateFallback(_ raw: String) -> Date? {
-        let parser = DateFormatter()
-        parser.locale = Locale(identifier: "en_US_POSIX")
-        parser.timeZone = TimeZone(secondsFromGMT: 0)
-        parser.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
-        if let date = parser.date(from: raw) {
-            return date
-        }
-        parser.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        return parser.date(from: raw)
     }
 }
 
@@ -1585,8 +1554,10 @@ private struct NotificationsView: View {
                     )
                     .padding(.top, UITheme.spacing20)
                 } else {
-                    ForEach(viewModel.items) { item in
-                        notificationCard(item)
+                    LazyVStack(alignment: .leading, spacing: UITheme.spacing10) {
+                        ForEach(viewModel.items) { item in
+                            notificationCard(item)
+                        }
                     }
                 }
             }
@@ -1704,7 +1675,7 @@ private struct NotificationsView: View {
     }
 
     private func relativeTimeText(_ raw: String) -> String {
-        guard let date = parseServerDate(raw) else { return raw }
+        guard let date = HomeDateFormatterCache.parseServerDate(raw) else { return raw }
         let diff = max(0, Date().timeIntervalSince(date))
         let minutes = Int(diff / 60)
         let hours = Int(diff / 3600)
@@ -1714,39 +1685,9 @@ private struct NotificationsView: View {
         if minutes < 60 { return "\(minutes)m ago" }
         if hours < 24 { return "\(hours)h ago" }
         if days < 7 { return "\(days)d ago" }
-
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "MMM d"
-        return formatter.string(from: date)
+        return HomeDateFormatterCache.monthDayFormatter.string(from: date)
     }
 
-    private func parseServerDate(_ raw: String) -> Date? {
-        let isoFractional = ISO8601DateFormatter()
-        isoFractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = isoFractional.date(from: raw) {
-            return date
-        }
-
-        let iso = ISO8601DateFormatter()
-        iso.formatOptions = [.withInternetDateTime]
-        if let date = iso.date(from: raw) {
-            return date
-        }
-
-        let parser = DateFormatter()
-        parser.locale = Locale(identifier: "en_US_POSIX")
-        parser.timeZone = TimeZone(secondsFromGMT: 0)
-        parser.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
-        if let date = parser.date(from: raw) {
-            return date
-        }
-        parser.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        if let date = parser.date(from: raw) {
-            return date
-        }
-        return nil
-    }
 }
 
 private struct SettingsView: View {
@@ -3248,11 +3189,7 @@ private struct HomeFeedPinDTO: Decodable, Identifiable {
     let created_at: String
 
     var imageURL: URL? {
-        if image_url.lowercased().hasPrefix("http") {
-            return URL(string: image_url)
-        }
-        let base = APIClient.shared.baseURL.replacingOccurrences(of: "/api/v1", with: "")
-        return URL(string: "\(base)\(image_url)")
+        AssetURLResolver.resolveURL(from: image_url)
     }
 }
 
@@ -4147,7 +4084,7 @@ private struct DealsView: View {
             dealsHeader
 
             ScrollView {
-                VStack(alignment: .leading, spacing: UITheme.spacing12) {
+                LazyVStack(alignment: .leading, spacing: UITheme.spacing12) {
                     if !viewModel.isLoading && viewModel.filtered.isEmpty {
                         UnifiedEmptyStateCard(
                             icon: "tag.fill",
@@ -4448,15 +4385,7 @@ private struct DealsView: View {
     }
 
     private func resolveMediaURL(_ rawValue: String) -> URL? {
-        let raw = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !raw.isEmpty else {
-            return nil
-        }
-        if raw.lowercased().hasPrefix("http") {
-            return URL(string: raw)
-        }
-        let base = APIClient.shared.baseURL.replacingOccurrences(of: "/api/v1", with: "")
-        return URL(string: "\(base)\(raw.starts(with: "/") ? "" : "/")\(raw)")
+        AssetURLResolver.resolveURL(from: rawValue)
     }
 
     private func formatOffer(_ promotion: PromotionDTO) -> String {
@@ -4475,18 +4404,14 @@ private struct DealsView: View {
     }
 
     private func formatExpiry(_ endAt: String) -> String {
-        let parser = ISO8601DateFormatter()
-        guard let endDate = parser.date(from: endAt) else { return "Ends soon" }
+        guard let endDate = HomeDateFormatterCache.parseServerDate(endAt) else { return "Ends soon" }
         let now = Date()
         let diff = endDate.timeIntervalSince(now)
         if diff <= 0 { return "Expired" }
         let days = Int(ceil(diff / 86400))
         if days == 1 { return "Ends today" }
         if days < 7 { return "Ends in \(days) days" }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US")
-        formatter.dateFormat = "MMM d"
-        return "Ends on \(formatter.string(from: endDate))"
+        return "Ends on \(HomeDateFormatterCache.monthDayFormatter.string(from: endDate))"
     }
 }
 
@@ -4836,19 +4761,7 @@ private final class OrderHistoryViewModel: ObservableObject {
     }
 
     private func appointmentDateTime(_ item: AppointmentDTO) -> Date {
-        let dateTime = "\(item.appointment_date)T\(item.appointment_time)"
-        let parser = DateFormatter()
-        parser.locale = Locale(identifier: "en_US_POSIX")
-        parser.timeZone = TimeZone(identifier: "America/New_York")
-        parser.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        if let date = parser.date(from: dateTime) {
-            return date
-        }
-        parser.dateFormat = "yyyy-MM-dd'T'HH:mm"
-        if let date = parser.date(from: dateTime) {
-            return date
-        }
-        return .distantPast
+        HomeDateFormatterCache.appointmentDateTime(item)
     }
 }
 
@@ -5211,7 +5124,7 @@ private struct PointsView: View {
                                 compact: true
                             )
                         } else {
-                            VStack(spacing: UITheme.spacing10) {
+                            LazyVStack(spacing: UITheme.spacing10) {
                                 ForEach(viewModel.exchangeables, id: \.id) { coupon in
                                     exchangeCouponCard(coupon)
                                 }
@@ -5230,7 +5143,7 @@ private struct PointsView: View {
                                 compact: true
                             )
                         } else {
-                            VStack(spacing: 0) {
+                            LazyVStack(spacing: 0) {
                                 ForEach(Array(viewModel.transactions.enumerated()), id: \.element.id) { index, item in
                                     historyRow(item: item, isLast: index == viewModel.transactions.count - 1)
                                 }
@@ -5592,7 +5505,7 @@ private struct CouponsView: View {
                         .padding(.top, UITheme.spacing18)
                         .padding(.bottom, UITheme.spacing10)
                     } else {
-                        VStack(spacing: UITheme.spacing14) {
+                        LazyVStack(spacing: UITheme.spacing14) {
                             ForEach(viewModel.coupons) { item in
                                 couponTicketCard(item)
                             }
@@ -5861,7 +5774,7 @@ private struct GiftCardsView: View {
                         .padding(.top, UITheme.spacing16)
                         .padding(.bottom, UITheme.spacing8)
                     } else {
-                        VStack(spacing: UITheme.spacing10) {
+                        LazyVStack(spacing: UITheme.spacing10) {
                             ForEach(sortedCards) { card in
                                 giftCardItem(card)
                             }
@@ -6197,7 +6110,7 @@ private struct OrderHistoryView: View {
                             subtitle: "Completed orders will appear here."
                         )
                     } else {
-                        VStack(spacing: UITheme.spacing10) {
+                        LazyVStack(spacing: UITheme.spacing10) {
                             ForEach(viewModel.items) { item in
                                 historyItem(item)
                             }
@@ -6333,34 +6246,11 @@ private struct OrderHistoryView: View {
     }
 
     private func formattedDate(_ raw: String) -> String {
-        let parser = DateFormatter()
-        parser.locale = Locale(identifier: "en_US_POSIX")
-        parser.timeZone = TimeZone(identifier: "America/New_York")
-        parser.dateFormat = "yyyy-MM-dd"
-        guard let date = parser.date(from: raw) else { return raw }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(identifier: "America/New_York")
-        formatter.dateFormat = "MMM d, yyyy"
-        return formatter.string(from: date)
+        HomeDateFormatterCache.formattedNYDate(raw) ?? raw
     }
 
     private func formattedTime(_ raw: String) -> String {
-        let parser = DateFormatter()
-        parser.locale = Locale(identifier: "en_US_POSIX")
-        parser.timeZone = TimeZone(identifier: "America/New_York")
-        parser.dateFormat = "HH:mm:ss"
-        var parsed = parser.date(from: raw)
-        if parsed == nil {
-            parser.dateFormat = "HH:mm"
-            parsed = parser.date(from: raw)
-        }
-        guard let date = parsed else { return raw }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(identifier: "America/New_York")
-        formatter.dateFormat = "h:mm a"
-        return formatter.string(from: date)
+        HomeDateFormatterCache.formattedNYTime(raw) ?? raw
     }
 }
 
@@ -6384,7 +6274,7 @@ private struct MyReviewsView: View {
             }
 
             ScrollView {
-                VStack(alignment: .leading, spacing: UITheme.spacing10) {
+                LazyVStack(alignment: .leading, spacing: UITheme.spacing10) {
                     if !viewModel.isLoading && viewModel.items.isEmpty {
                         UnifiedEmptyStateCard(
                             icon: "star",
@@ -6728,7 +6618,7 @@ private struct MyFavoritesView: View {
                         if !viewModel.favoriteStores.isEmpty {
                             VStack(alignment: .leading, spacing: UITheme.spacing10) {
                                 UnifiedSectionHeader(title: "FAVORITE SALONS")
-                                VStack(spacing: UITheme.spacing10) {
+                                LazyVStack(spacing: UITheme.spacing10) {
                                     ForEach(viewModel.favoriteStores) { store in
                                         favoriteStoreCard(store)
                                     }
@@ -6921,41 +6811,189 @@ private struct MyFavoritesView: View {
     }
 
     private func storeImageURL(_ store: StoreDTO) -> URL? {
-        guard let raw = store.image_url?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !raw.isEmpty
-        else {
-            return nil
-        }
-        if raw.lowercased().hasPrefix("http") {
-            return URL(string: raw)
-        }
-        let base = APIClient.shared.baseURL.replacingOccurrences(of: "/api/v1", with: "")
-        return URL(string: "\(base)\(raw)")
+        AssetURLResolver.resolveURL(from: store.image_url)
     }
 }
 
-private func displayDate(_ raw: String) -> String {
-    let parser = ISO8601DateFormatter()
-    if let date = parser.date(from: raw) {
+private enum HomeDateFormatterCache {
+    private static let posixLocale = Locale(identifier: "en_US_POSIX")
+    private static let utcTimeZone = TimeZone(secondsFromGMT: 0)
+    private static let newYorkTimeZone = TimeZone(identifier: "America/New_York")
+
+    private static let isoParserWithFraction: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let isoParser: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    private static let serverMicrosecondParser: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = posixLocale
+        formatter.timeZone = utcTimeZone
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+        return formatter
+    }()
+
+    private static let serverSecondParser: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = posixLocale
+        formatter.timeZone = utcTimeZone
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return formatter
+    }()
+
+    private static let joinedDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = posixLocale
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter
+    }()
+
+    static let monthDayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.dateFormat = "MMM d"
+        return formatter
+    }()
+
+    private static let displayDateTimeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale.current
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
-        return formatter.string(from: date)
+        return formatter
+    }()
+
+    private static let displayDateOnlyFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = posixLocale
+        formatter.dateStyle = .short
+        formatter.timeStyle = .none
+        return formatter
+    }()
+
+    private static let nyDateTimeSecondParser: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = posixLocale
+        formatter.timeZone = newYorkTimeZone
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return formatter
+    }()
+
+    private static let nyDateTimeMinuteParser: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = posixLocale
+        formatter.timeZone = newYorkTimeZone
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm"
+        return formatter
+    }()
+
+    private static let nyDateParser: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = posixLocale
+        formatter.timeZone = newYorkTimeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
+
+    private static let nyDateDisplayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = posixLocale
+        formatter.timeZone = newYorkTimeZone
+        formatter.dateFormat = "MMM d, yyyy"
+        return formatter
+    }()
+
+    private static let nyTimeSecondParser: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = posixLocale
+        formatter.timeZone = newYorkTimeZone
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter
+    }()
+
+    private static let nyTimeMinuteParser: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = posixLocale
+        formatter.timeZone = newYorkTimeZone
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
+
+    private static let nyTimeDisplayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = posixLocale
+        formatter.timeZone = newYorkTimeZone
+        formatter.dateFormat = "h:mm a"
+        return formatter
+    }()
+
+    static func parseServerDate(_ raw: String) -> Date? {
+        if let date = isoParserWithFraction.date(from: raw) {
+            return date
+        }
+        if let date = isoParser.date(from: raw) {
+            return date
+        }
+        if let date = serverMicrosecondParser.date(from: raw) {
+            return date
+        }
+        return serverSecondParser.date(from: raw)
     }
-    return raw
+
+    static func formatJoinedDate(_ raw: String) -> String? {
+        guard let date = parseServerDate(raw) else { return nil }
+        return joinedDateFormatter.string(from: date)
+    }
+
+    static func appointmentDateTime(_ item: AppointmentDTO) -> Date {
+        let dateTime = "\(item.appointment_date)T\(item.appointment_time)"
+        if let date = nyDateTimeSecondParser.date(from: dateTime) {
+            return date
+        }
+        if let date = nyDateTimeMinuteParser.date(from: dateTime) {
+            return date
+        }
+        return .distantPast
+    }
+
+    static func formattedNYDate(_ raw: String) -> String? {
+        guard let date = nyDateParser.date(from: raw) else { return nil }
+        return nyDateDisplayFormatter.string(from: date)
+    }
+
+    static func formattedNYTime(_ raw: String) -> String? {
+        if let date = nyTimeSecondParser.date(from: raw) {
+            return nyTimeDisplayFormatter.string(from: date)
+        }
+        guard let date = nyTimeMinuteParser.date(from: raw) else { return nil }
+        return nyTimeDisplayFormatter.string(from: date)
+    }
+
+    static func formatDisplayDateTime(_ raw: String) -> String? {
+        guard let date = parseServerDate(raw) else { return nil }
+        return displayDateTimeFormatter.string(from: date)
+    }
+
+    static func formatDisplayDateOnly(_ raw: String) -> String? {
+        guard let date = parseServerDate(raw) else { return nil }
+        return displayDateOnlyFormatter.string(from: date)
+    }
+}
+
+private func displayDate(_ raw: String) -> String {
+    HomeDateFormatterCache.formatDisplayDateTime(raw) ?? raw
 }
 
 private func displayDateOnly(_ raw: String) -> String {
-    let parser = ISO8601DateFormatter()
-    if let date = parser.date(from: raw) {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateStyle = .short
-        formatter.timeStyle = .none
-        return formatter.string(from: date)
-    }
-    return raw
+    HomeDateFormatterCache.formatDisplayDateOnly(raw) ?? raw
 }
 
 private func couponSummary(_ coupon: CouponTemplateDTO) -> String {

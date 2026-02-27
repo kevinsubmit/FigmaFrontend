@@ -376,7 +376,7 @@ struct StoreDetailView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             } else {
-                VStack(spacing: UITheme.spacing12) {
+                LazyVStack(spacing: UITheme.spacing12) {
                     ForEach(viewModel.reviews) { review in
                         reviewRow(review)
                     }
@@ -885,14 +885,8 @@ struct StoreDetailView: View {
         guard let raw, !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return "-"
         }
-        let parser = DateFormatter()
-        parser.locale = Locale(identifier: "en_US_POSIX")
-        parser.dateFormat = "HH:mm:ss"
-        if let date = parser.date(from: raw) {
-            let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "en_US_POSIX")
-            formatter.dateFormat = "h:mm a"
-            return formatter.string(from: date)
+        if let value = StoreDetailDateFormatter.formatTime(raw) {
+            return value
         }
         return raw
     }
@@ -1059,37 +1053,14 @@ struct StoreDetailView: View {
     }
 
     private func imageURL(from raw: String) -> URL? {
-        if raw.lowercased().hasPrefix("http") {
-            return URL(string: raw)
-        }
-        let base = APIClient.shared.baseURL.replacingOccurrences(of: "/api/v1", with: "")
-        return URL(string: "\(base)\(raw)")
+        AssetURLResolver.resolveURL(from: raw)
     }
 
     private func formatReviewDate(_ raw: String) -> String {
-        if let date = parseISODate(raw) {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "MMM d, yyyy"
-            return formatter.string(from: date)
+        if let date = StoreDetailDateFormatter.parseServerDate(raw) {
+            return StoreDetailDateFormatter.reviewDateFormatter.string(from: date)
         }
         return raw
-    }
-
-    private func parseISODate(_ raw: String) -> Date? {
-        let parserWithFraction = ISO8601DateFormatter()
-        parserWithFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = parserWithFraction.date(from: raw) {
-            return date
-        }
-        let parser = ISO8601DateFormatter()
-        parser.formatOptions = [.withInternetDateTime]
-        if let date = parser.date(from: raw) {
-            return date
-        }
-        let fallback = DateFormatter()
-        fallback.locale = Locale(identifier: "en_US_POSIX")
-        fallback.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        return fallback.date(from: raw)
     }
 
     private func mapsURL(_ address: String) -> URL? {
@@ -1164,6 +1135,65 @@ struct StoreDetailView: View {
             .padding(.trailing, UITheme.pagePadding)
         }
         .tint(.white)
+    }
+}
+
+private enum StoreDetailDateFormatter {
+    private static let hmsParser: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter
+    }()
+
+    private static let displayTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "h:mm a"
+        return formatter
+    }()
+
+    static let reviewDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.dateFormat = "MMM d, yyyy"
+        return formatter
+    }()
+
+    private static let isoFractionalParser: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let isoParser: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    private static let fallbackParser: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        return formatter
+    }()
+
+    static func formatTime(_ raw: String) -> String? {
+        guard let date = hmsParser.date(from: raw) else {
+            return nil
+        }
+        return displayTimeFormatter.string(from: date)
+    }
+
+    static func parseServerDate(_ raw: String) -> Date? {
+        if let date = isoFractionalParser.date(from: raw) {
+            return date
+        }
+        if let date = isoParser.date(from: raw) {
+            return date
+        }
+        return fallbackParser.date(from: raw)
     }
 }
 

@@ -31,7 +31,7 @@ struct StoresListView: View {
             sortHeaderArea
 
             ScrollView {
-                VStack(alignment: .leading, spacing: UITheme.spacing14) {
+                LazyVStack(alignment: .leading, spacing: UITheme.spacing14) {
                     if !viewModel.isLoading && displayStores.isEmpty {
                         Text("No stores available right now.")
                             .foregroundStyle(.secondary)
@@ -409,15 +409,7 @@ struct StoresListView: View {
     }
 
     private func storeImageURL(_ store: StoreDTO) -> URL? {
-        guard let raw = store.image_url?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !raw.isEmpty else {
-            return nil
-        }
-        if raw.lowercased().hasPrefix("http") {
-            return URL(string: raw)
-        }
-        let base = APIClient.shared.baseURL.replacingOccurrences(of: "/api/v1", with: "")
-        return URL(string: "\(base)\(raw)")
+        AssetURLResolver.resolveURL(from: store.image_url)
     }
 
     private func storeCardImageURLs(for store: StoreDTO) -> [URL] {
@@ -438,25 +430,11 @@ struct StoresListView: View {
     }
 
     private func storeImageURL(from raw: String) -> URL? {
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        if trimmed.lowercased().hasPrefix("http") {
-            return URL(string: trimmed)
-        }
-        let base = APIClient.shared.baseURL.replacingOccurrences(of: "/api/v1", with: "")
-        return URL(string: "\(base)\(trimmed)")
+        AssetURLResolver.resolveURL(from: raw)
     }
 
     private func styleReferenceImageURL(_ styleReference: BookingStyleReference) -> URL? {
-        guard let raw = styleReference.imageURL?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !raw.isEmpty else {
-            return nil
-        }
-        if raw.lowercased().hasPrefix("http") {
-            return URL(string: raw)
-        }
-        let base = APIClient.shared.baseURL.replacingOccurrences(of: "/api/v1", with: "")
-        return URL(string: "\(base)\(raw)")
+        AssetURLResolver.resolveURL(from: styleReference.imageURL)
     }
 }
 
