@@ -8,7 +8,6 @@ import { resolveAssetUrl } from '../utils/assetUrl';
 
 export function MyFavorites() {
   const navigate = useNavigate();
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [favoritePins, setFavoritePins] = useState<Pin[]>([]);
@@ -157,6 +156,7 @@ export function MyFavorites() {
                     <div
                       key={pin.id}
                       className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5"
+                      style={{ contentVisibility: 'auto', containIntrinsicSize: '260px' }}
                     >
                       <button
                         onClick={() => navigate(`/pin-detail?id=${pin.id}`)}
@@ -164,8 +164,10 @@ export function MyFavorites() {
                       >
                         <div className="aspect-[3/4] overflow-hidden">
                           <img
-                            src={pin.image_url.startsWith('http') ? pin.image_url : `${apiBaseUrl}${pin.image_url}`}
+                            src={resolveAssetUrl(pin.image_url)}
                             alt={pin.title}
+                            loading="lazy"
+                            decoding="async"
                             className="h-full w-full object-cover"
                           />
                         </div>
@@ -192,6 +194,7 @@ export function MyFavorites() {
                   <div
                     key={store.id}
                     className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden hover:border-[#D4AF37]/50 transition-all"
+                    style={{ contentVisibility: 'auto', containIntrinsicSize: '180px' }}
                   >
                     <div className="flex gap-4 p-4">
                       {/* Store Image */}
@@ -203,6 +206,8 @@ export function MyFavorites() {
                           <img
                             src={resolveStoreImage(store)}
                             alt={store.name}
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover"
                           />
                         ) : (

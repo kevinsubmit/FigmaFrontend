@@ -15,6 +15,7 @@ import usersService from '../services/users.service';
 import { Loader } from './ui/Loader';
 import { Progress } from "./ui/progress";
 import { useAuth } from '../contexts/AuthContext';
+import { resolveAssetUrl } from '../utils/assetUrl';
 
 interface ProfileProps {
   onNavigate?: (page: 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'notifications' | 'my-reviews' | 'my-favorites', subPage?: 'referral') => void;
@@ -107,11 +108,8 @@ export function Profile({ onNavigate }: ProfileProps) {
       return;
     }
 
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
     const nextName = user.full_name || user.username || USER_INFO.name;
-    const nextAvatar = user.avatar_url
-      ? (user.avatar_url.startsWith('http') ? user.avatar_url : `${apiBaseUrl}${user.avatar_url}`)
-      : USER_INFO.avatar;
+    const nextAvatar = resolveAssetUrl(user.avatar_url) || USER_INFO.avatar;
 
     setAvatar(nextAvatar);
     setName(nextName);
@@ -203,12 +201,7 @@ export function Profile({ onNavigate }: ProfileProps) {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const uploadedAvatar = response.data?.avatar_url
-        ? (response.data.avatar_url.startsWith('http')
-            ? response.data.avatar_url
-            : `${apiBaseUrl}${response.data.avatar_url}`)
-        : avatar;
+      const uploadedAvatar = resolveAssetUrl(response.data?.avatar_url) || avatar;
 
       setAvatar(uploadedAvatar);
       await refreshUser();

@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '../contexts/AuthContext';
 import { validateRequestPayload } from '../lib/requestValidation';
 import apiClient from '../lib/api';
+import { resolveAssetUrl } from '../utils/assetUrl';
 
 interface UserProfile {
   id: number;
@@ -166,7 +167,7 @@ const EditProfile: React.FC = () => {
               <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-800 flex items-center justify-center">
                 {profile.avatar_url ? (
                   <img
-                    src={`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${profile.avatar_url}`}
+                    src={resolveAssetUrl(profile.avatar_url)}
                     alt="Avatar"
                     className="w-full h-full object-cover"
                   />

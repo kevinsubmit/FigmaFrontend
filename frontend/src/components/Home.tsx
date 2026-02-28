@@ -1,6 +1,6 @@
 import { Heart, Search, Loader2, ArrowDown, Sparkles } from 'lucide-react';
 import Masonry from 'react-responsive-masonry';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Loader } from './ui/Loader';
 import { motion } from 'framer-motion';
@@ -289,6 +289,52 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
     sessionStorage.setItem(HOME_CACHE_KEY, JSON.stringify(cachePayload));
   }, [images, tags, activeTag, searchQuery, searchDraft, offset, hasMore, isLoading]);
 
+  const masonryCards = useMemo(
+    () =>
+      images.map((image, idx) => (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: idx % 6 * 0.08 }}
+          key={image.id}
+          className="mb-4 break-inside-avoid cursor-pointer group active:scale-[0.98] transition-transform"
+          style={{ contentVisibility: 'auto', containIntrinsicSize: '360px' }}
+          onClick={() => onPinClick?.(image)}
+        >
+          <div className="relative overflow-hidden rounded-2xl bg-[#1a1a1a] shadow-xl">
+            <img
+              src={image.image_url || FALLBACK_IMAGE}
+              onError={(event) => {
+                const target = event.currentTarget;
+                if (target.src !== FALLBACK_IMAGE) {
+                  target.src = FALLBACK_IMAGE;
+                }
+              }}
+              alt={image.title}
+              className={`w-full object-cover transition-transform duration-700 group-hover:scale-110 ${
+                idx % 3 === 0 ? 'aspect-[4/5]' : idx % 2 === 0 ? 'aspect-[2/3]' : 'aspect-[3/4]'
+              }`}
+              loading="lazy"
+              decoding="async"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            <button className="absolute right-3 top-3 h-9 w-9 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Heart className="w-4 h-4 text-[#D4AF37]" />
+            </button>
+            <div className="absolute bottom-3 left-3 right-3 text-white">
+              <p className="text-sm font-semibold">{image.title}</p>
+              <p className="text-xs text-gray-300">Curated by admin</p>
+              <div className="mt-2 flex items-center gap-2 text-[10px] text-[#D4AF37] uppercase tracking-wider">
+                <Sparkles className="w-3 h-3" />
+                {image.tags?.slice(0, 2).join(' · ')}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )),
+    [images, onPinClick]
+  );
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black pt-24">
@@ -395,46 +441,7 @@ export function Home({ onNavigate, onPinClick }: HomeProps) {
           </div>
         )}
         <Masonry columnsCount={2} gutter="10px">
-          {images.map((image, idx) => (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx % 6 * 0.1 }}
-              key={image.id}
-              className="mb-4 break-inside-avoid cursor-pointer group active:scale-[0.98] transition-transform"
-              onClick={() => onPinClick?.(image)}
-            >
-              {/* Image Card */}
-              <div className="relative overflow-hidden rounded-2xl bg-[#1a1a1a] shadow-xl">
-                <img
-                  src={image.image_url || FALLBACK_IMAGE}
-                  onError={(event) => {
-                    const target = event.currentTarget;
-                    if (target.src !== FALLBACK_IMAGE) {
-                      target.src = FALLBACK_IMAGE;
-                    }
-                  }}
-                  alt={image.title}
-                  className={`w-full object-cover transition-transform duration-700 group-hover:scale-110 ${
-                    idx % 3 === 0 ? 'aspect-[4/5]' : idx % 2 === 0 ? 'aspect-[2/3]' : 'aspect-[3/4]'
-                  }`}
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <button className="absolute right-3 top-3 h-9 w-9 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Heart className="w-4 h-4 text-[#D4AF37]" />
-                </button>
-                <div className="absolute bottom-3 left-3 right-3 text-white">
-                  <p className="text-sm font-semibold">{image.title}</p>
-                  <p className="text-xs text-gray-300">Curated by admin</p>
-                  <div className="mt-2 flex items-center gap-2 text-[10px] text-[#D4AF37] uppercase tracking-wider">
-                    <Sparkles className="w-3 h-3" />
-                    {image.tags?.slice(0, 2).join(' · ')}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+          {masonryCards}
         </Masonry>
 
         {searchQuery && !isLoading && (

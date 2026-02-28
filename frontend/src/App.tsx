@@ -1,32 +1,6 @@
-import { useState, useRef, useLayoutEffect, useEffect } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
-import { Home } from './components/Home';
-import { Services } from './components/Services';
-import { Appointments } from './components/Appointments';
-import { Profile } from './components/Profile';
 import { BottomNav } from './components/BottomNav';
-import { PinDetail } from './components/PinDetail';
-import { EditProfile } from './components/EditProfile';
-import { OrderHistory } from './components/OrderHistory';
-import { MyPoints } from './components/MyPoints';
-import { MyCoupons } from './components/MyCoupons';
-import { Settings } from './components/Settings';
-import { MyGiftCards } from './components/MyGiftCards';
-import { Deals } from './components/Deals';
-import { VipDescription } from './components/VipDescription';
-import { Notifications } from './components/Notifications';
-import { Login } from './components/Login';
-import { Register } from './components/Register';
-import { MyReviews } from './components/MyReviews';
-import { MyFavorites } from './components/MyFavorites';
-import ChangePassword from './components/ChangePassword';
-import PhoneManagement from './components/PhoneManagement';
-import ReferralPage from './components/ReferralPage';
-import LanguageSettings from './components/LanguageSettings';
-import FeedbackSupport from './components/FeedbackSupport';
-import PartnershipInquiry from './components/PartnershipInquiry';
-import PrivacySafety from './components/PrivacySafety';
-import AboutUs from './components/AboutUs';
 import { AuthProvider } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -34,6 +8,43 @@ import { toast } from 'react-toastify';
 import { Sparkles } from 'lucide-react';
 
 export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 'notifications' | 'pin-detail' | 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'login' | 'register' | 'my-reviews' | 'my-favorites' | 'change-password' | 'phone-management' | 'referral' | 'language' | 'feedback-support' | 'partnership' | 'privacy-safety' | 'about';
+
+const Home = lazy(() => import('./components/Home').then((m) => ({ default: m.Home })));
+const Services = lazy(() => import('./components/Services').then((m) => ({ default: m.Services })));
+const Appointments = lazy(() => import('./components/Appointments').then((m) => ({ default: m.Appointments })));
+const Profile = lazy(() => import('./components/Profile').then((m) => ({ default: m.Profile })));
+const PinDetail = lazy(() => import('./components/PinDetail').then((m) => ({ default: m.PinDetail })));
+const EditProfile = lazy(() => import('./components/EditProfile').then((m) => ({ default: m.EditProfile })));
+const OrderHistory = lazy(() => import('./components/OrderHistory').then((m) => ({ default: m.OrderHistory })));
+const MyPoints = lazy(() => import('./components/MyPoints').then((m) => ({ default: m.MyPoints })));
+const MyCoupons = lazy(() => import('./components/MyCoupons').then((m) => ({ default: m.MyCoupons })));
+const Settings = lazy(() => import('./components/Settings').then((m) => ({ default: m.Settings })));
+const MyGiftCards = lazy(() => import('./components/MyGiftCards').then((m) => ({ default: m.MyGiftCards })));
+const Deals = lazy(() => import('./components/Deals').then((m) => ({ default: m.Deals })));
+const VipDescription = lazy(() => import('./components/VipDescription').then((m) => ({ default: m.VipDescription })));
+const Notifications = lazy(() => import('./components/Notifications').then((m) => ({ default: m.Notifications })));
+const Login = lazy(() => import('./components/Login').then((m) => ({ default: m.Login })));
+const Register = lazy(() => import('./components/Register').then((m) => ({ default: m.Register })));
+const MyReviews = lazy(() => import('./components/MyReviews').then((m) => ({ default: m.MyReviews })));
+const MyFavorites = lazy(() => import('./components/MyFavorites').then((m) => ({ default: m.MyFavorites })));
+const ChangePassword = lazy(() => import('./components/ChangePassword'));
+const PhoneManagement = lazy(() => import('./components/PhoneManagement'));
+const ReferralPage = lazy(() => import('./components/ReferralPage'));
+const LanguageSettings = lazy(() => import('./components/LanguageSettings').then((m) => ({ default: m.LanguageSettings })));
+const FeedbackSupport = lazy(() => import('./components/FeedbackSupport').then((m) => ({ default: m.FeedbackSupport })));
+const PartnershipInquiry = lazy(() => import('./components/PartnershipInquiry').then((m) => ({ default: m.PartnershipInquiry })));
+const PrivacySafety = lazy(() => import('./components/PrivacySafety').then((m) => ({ default: m.PrivacySafety })));
+const AboutUs = lazy(() => import('./components/AboutUs').then((m) => ({ default: m.AboutUs })));
+
+function RouteFallback() {
+  return (
+    <div className="min-h-screen bg-black pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      <div className="flex h-[70vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#D4AF37] border-t-transparent" />
+      </div>
+    </div>
+  );
+}
 
 // Main App Router Component
 function AppRouter() {
@@ -172,6 +183,7 @@ function AppRouter() {
 
   return (
     <div className="min-h-screen bg-black pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      <Suspense fallback={<RouteFallback />}>
       <Routes>
         {/* Login Route - Public */}
         <Route path="/login" element={
@@ -427,6 +439,7 @@ function AppRouter() {
           <Navigate to={localStorage.getItem('access_token') ? '/' : '/login'} replace />
         } />
       </Routes>
+      </Suspense>
       
       {/* Hide BottomNav when in FullScreen views or login */}
       {!isFullScreenPage && (

@@ -1,5 +1,5 @@
 import { ChevronDown, Sparkles } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Loader } from './ui/Loader';
@@ -8,6 +8,7 @@ import { getStoreImages, getStores as getStoresAPI, Store, StoreImage } from '..
 import { SlidersHorizontal, X } from 'lucide-react';
 import { getPinById, Pin } from '../api/pins';
 import { getStoreRating, StoreRating } from '../api/reviews';
+import { resolveAssetUrl } from '../utils/assetUrl';
 
 type SortOption = 'recommended' | 'distance' | 'reviews';
 
@@ -161,16 +162,20 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
     fetchStores();
   }, [searchQuery, minRating, sortBy, userLocation]);
 
+  const missingStoreImageIds = useMemo(
+    () =>
+      stores
+        .map((store) => store.id)
+        .filter((storeId) => storeImageMap[storeId] === undefined),
+    [stores, storeImageMap]
+  );
+
   useEffect(() => {
-    if (stores.length === 0) return;
-    const missingStoreIds = stores
-      .map((store) => store.id)
-      .filter((storeId) => storeImageMap[storeId] === undefined);
-    if (missingStoreIds.length === 0) return;
+    if (missingStoreImageIds.length === 0) return;
 
     let isCancelled = false;
     Promise.all(
-      missingStoreIds.map(async (storeId) => {
+      missingStoreImageIds.map(async (storeId) => {
         try {
           const images = await getStoreImages(storeId);
           return [storeId, images] as const;
@@ -193,18 +198,22 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
     return () => {
       isCancelled = true;
     };
-  }, [stores, storeImageMap]);
+  }, [missingStoreImageIds]);
+
+  const missingStoreRatingIds = useMemo(
+    () =>
+      stores
+        .map((store) => store.id)
+        .filter((storeId) => storeRatingMap[storeId] === undefined),
+    [stores, storeRatingMap]
+  );
 
   useEffect(() => {
-    if (stores.length === 0) return;
-    const missingStoreIds = stores
-      .map((store) => store.id)
-      .filter((storeId) => storeRatingMap[storeId] === undefined);
-    if (missingStoreIds.length === 0) return;
+    if (missingStoreRatingIds.length === 0) return;
 
     let isCancelled = false;
     Promise.all(
-      missingStoreIds.map(async (storeId) => {
+      missingStoreRatingIds.map(async (storeId) => {
         try {
           const rating = await getStoreRating(storeId);
           return [storeId, rating] as const;
@@ -229,7 +238,7 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
     return () => {
       isCancelled = true;
     };
-  }, [stores, storeRatingMap]);
+  }, [missingStoreRatingIds]);
   
   useEffect(() => {
     if (isSortOpen) {
@@ -284,7 +293,7 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
     }
   }, [selectedStore, onStoreDetailsChange]);
 
-  const getSortedStores = () => {
+  const sortedStores = useMemo(() => {
     const storesCopy = [...stores];
     switch (sortBy) {
       case 'distance':
@@ -303,7 +312,7 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
       default:
         return storesCopy; // Recommended (default order)
     }
-  };
+  }, [stores, sortBy, storeRatingMap]);
 
   const sortOptions = [
     { id: 'recommended', label: 'Recommended first' },
@@ -325,9 +334,7 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
     if (storefrontImages.length > 0) {
       const primaryImage = storefrontImages.find(img => img.is_primary === 1);
       const imageUrl = primaryImage?.image_url || storefrontImages[0].image_url;
-      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      return `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+      return resolveAssetUrl(imageUrl);
     }
     return 'https://images.unsplash.com/photo-1619607146034-5a05296c8f9a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080';
   };
@@ -336,16 +343,11 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
   const getThumbnailImages = (store: Store): string[] => {
     const storefrontImages = storeImageMap[store.id] || [];
     if (storefrontImages.length > 1) {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
       return storefrontImages
         .filter(img => img.is_primary !== 1)
         .sort((a, b) => a.display_order - b.display_order)
         .slice(0, 4)
-        .map((img) => {
-          const imageUrl = img.image_url;
-          if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return imageUrl;
-          return `${baseUrl}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-        });
+        .map((img) => resolveAssetUrl(img.image_url));
     }
     return [];
   };
@@ -412,6 +414,8 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
             <img
               src={referencePin.image_url}
               alt={referencePin.title}
+              loading="lazy"
+              decoding="async"
               className="h-16 w-16 rounded-xl object-cover"
             />
             <div className="flex-1">
@@ -490,13 +494,20 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
 
           {/* Stores List */}
           <div className="px-4 py-6 space-y-8">
-            {getSortedStores().map((store) => (
-              <div key={store.id} onClick={() => navigate(getStoreDetailsLink(store.id))} className="group cursor-pointer">
+            {sortedStores.map((store) => (
+              <div
+                key={store.id}
+                onClick={() => navigate(getStoreDetailsLink(store.id))}
+                className="group cursor-pointer"
+                style={{ contentVisibility: 'auto', containIntrinsicSize: '480px' }}
+              >
                 {/* Main Image */}
                 <div className="relative aspect-[16/10] rounded-xl overflow-hidden mb-3 bg-gray-900 border border-[#333]">
                   <img 
                     src={getPrimaryImage(store)} 
                     alt={store.name} 
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                   
@@ -513,7 +524,7 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
                 <div className="grid grid-cols-4 gap-2 mb-3">
                     {getThumbnailImages(store).map((thumb, index) => (
                         <div key={index} className="aspect-square rounded-lg overflow-hidden bg-gray-900 border border-[#333]">
-                            <img src={thumb} alt="" className="w-full h-full object-cover" />
+                            <img src={thumb} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                         </div>
                     ))}
                 </div>

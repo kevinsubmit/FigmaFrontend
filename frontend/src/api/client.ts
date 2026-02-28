@@ -5,20 +5,29 @@
 import { forceRelogin, shouldForceRelogin } from '../utils/authGuard';
 import { getApiErrorMessage, getApiErrorMessageFromPayload } from '../utils/apiErrorMessages';
 import { hasMeaningfulValue, shouldAllowEmptyBody, validateRequestPayload } from '../lib/requestValidation';
+import { getApiBaseUrl } from '../utils/assetUrl';
 
 // API base URL from Vite env
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE_URL = getApiBaseUrl();
 
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;
   params?: Record<string, any>;
   allowEmptyBody?: boolean;
+  cacheTTL?: number;
+  skipCache?: boolean;
+  dedupe?: boolean;
+  cacheKey?: string;
 }
 
 type RequestConfig = boolean | RequestOptions;
 
 class APIClient {
   private baseURL: string;
+  private readonly getCache = new Map<string, { data: unknown; expiresAt: number }>();
+  private readonly inFlightGet = new Map<string, Promise<unknown>>();
+  private readonly defaultGetCacheTTL = 10000;
+  private readonly maxGetCacheEntries = 200;
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
@@ -36,6 +45,7 @@ class APIClient {
    */
   setToken(token: string): void {
     localStorage.setItem('access_token', token);
+    this.clearGetCache();
   }
 
   /**
@@ -44,6 +54,7 @@ class APIClient {
   removeToken(): void {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    this.clearGetCache();
   }
 
   /**
@@ -53,7 +64,17 @@ class APIClient {
     endpoint: string,
     options: RequestOptions = {}
   ): Promise<T> {
-    const { requiresAuth = false, headers = {}, params, allowEmptyBody: _allowEmptyBody, ...restOptions } = options;
+    const {
+      requiresAuth = false,
+      headers = {},
+      params,
+      allowEmptyBody: _allowEmptyBody,
+      cacheTTL = this.defaultGetCacheTTL,
+      skipCache = false,
+      dedupe = true,
+      cacheKey,
+      ...restOptions
+    } = options;
 
     const queryString = params
       ? `?${new URLSearchParams(
@@ -70,6 +91,7 @@ class APIClient {
         ...headers,
       },
     };
+    const method = (config.method || 'GET').toUpperCase();
 
     // If local token exists and caller did not provide Authorization, attach it.
     // This keeps public endpoints public while allowing backend logs to resolve operator.
@@ -85,7 +107,29 @@ class APIClient {
       throw new Error('Authentication required');
     }
 
-    try {
+    const requestCacheKey =
+      method === 'GET'
+        ? (cacheKey || this.buildGetCacheKey(endpoint, queryString, token))
+        : '';
+
+    if (method === 'GET' && !skipCache) {
+      const cached = this.getCache.get(requestCacheKey);
+      if (cached && cached.expiresAt > Date.now()) {
+        return this.cloneData(cached.data as T);
+      }
+      if (cached) {
+        this.getCache.delete(requestCacheKey);
+      }
+    }
+
+    if (method === 'GET' && dedupe) {
+      const inFlight = this.inFlightGet.get(requestCacheKey);
+      if (inFlight) {
+        return this.cloneData(await inFlight as T);
+      }
+    }
+
+    const executeRequest = async (): Promise<T> => {
       const response = await fetch(`${this.baseURL}${endpoint}${queryString}`, config);
 
       if (shouldForceRelogin(response.status)) {
@@ -94,9 +138,7 @@ class APIClient {
 
       // Handle non-OK responses
       if (!response.ok) {
-        const errorPayload = await response.json().catch(() => ({
-          detail: response.statusText,
-        }));
+        const errorPayload = await this.parseErrorPayload(response);
         if (shouldForceRelogin(response.status, errorPayload?.detail ?? errorPayload)) {
           forceRelogin();
         }
@@ -104,11 +146,109 @@ class APIClient {
         throw new Error(message);
       }
 
-      // Return JSON response
-      return await response.json();
+      return this.parseSuccessResponse<T>(response);
+    };
+
+    try {
+      if (method === 'GET' && dedupe) {
+        const pending = executeRequest();
+        this.inFlightGet.set(requestCacheKey, pending);
+        const result = await pending;
+        if (!skipCache && cacheTTL > 0) {
+          this.writeGetCache(requestCacheKey, result, cacheTTL);
+        }
+        return this.cloneData(result);
+      }
+
+      const result = await executeRequest();
+      if (method === 'GET' && !skipCache && cacheTTL > 0) {
+        this.writeGetCache(requestCacheKey, result, cacheTTL);
+      } else if (method !== 'GET') {
+        this.clearGetCache();
+      }
+      return result;
     } catch (error) {
       console.error('API Request Error:', error);
       throw new Error(getApiErrorMessage(error, 'Request failed'));
+    } finally {
+      if (method === 'GET' && dedupe) {
+        this.inFlightGet.delete(requestCacheKey);
+      }
+    }
+  }
+
+  private buildGetCacheKey(endpoint: string, queryString: string, token: string | null): string {
+    return `GET:${endpoint}${queryString}|auth:${token || 'public'}`;
+  }
+
+  private writeGetCache(key: string, data: unknown, ttlMs: number) {
+    if (this.getCache.size >= this.maxGetCacheEntries) {
+      const oldestKey = this.getCache.keys().next().value;
+      if (oldestKey) {
+        this.getCache.delete(oldestKey);
+      }
+    }
+    this.getCache.set(key, {
+      data,
+      expiresAt: Date.now() + ttlMs,
+    });
+  }
+
+  private clearGetCache() {
+    this.getCache.clear();
+  }
+
+  private async parseErrorPayload(response: Response): Promise<any> {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return response.json().catch(() => ({ detail: response.statusText }));
+    }
+    const text = await response.text().catch(() => '');
+    if (!text) {
+      return { detail: response.statusText };
+    }
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { detail: text };
+    }
+  }
+
+  private async parseSuccessResponse<T>(response: Response): Promise<T> {
+    if (response.status === 204 || response.status === 205) {
+      return {} as T;
+    }
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return response.json() as Promise<T>;
+    }
+    const text = await response.text();
+    if (!text.trim()) {
+      return {} as T;
+    }
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      return text as unknown as T;
+    }
+  }
+
+  private cloneData<T>(value: T): T {
+    if (value === null || value === undefined) return value;
+    if (typeof value !== 'object') return value;
+
+    if (typeof globalThis.structuredClone === 'function') {
+      try {
+        return globalThis.structuredClone(value);
+      } catch {
+        // Fallback below.
+      }
+    }
+
+    try {
+      return JSON.parse(JSON.stringify(value)) as T;
+    } catch {
+      return value;
     }
   }
 

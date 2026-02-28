@@ -19,6 +19,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Toaster } from './ui/sonner';
 import { toast } from 'sonner@2.0.3';
 import { addPinToFavorites, checkIfPinFavorited, getPinById, getPins, Pin, removePinFromFavorites } from '../api/pins';
+import { resolveAssetUrl } from '../utils/assetUrl';
 
 interface PinDetailProps {
   onBack: () => void;
@@ -35,7 +36,6 @@ interface PinDetailProps {
 
 export function PinDetail({ onBack, onBookNow, onPinClick, pinData }: PinDetailProps) {
   const location = useLocation();
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   const [isLoading, setIsLoading] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -56,9 +56,7 @@ export function PinDetail({ onBack, onBookNow, onPinClick, pinData }: PinDetailP
       tags: ['Minimalist', 'French'],
     };
   }, [pinData, resolvedPin]);
-  const resolvedImageUrl = data.image_url?.startsWith('http')
-    ? data.image_url
-    : `${apiBaseUrl}${data.image_url}`;
+  const resolvedImageUrl = resolveAssetUrl(data.image_url);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token') || localStorage.getItem('token');
@@ -264,6 +262,8 @@ export function PinDetail({ onBack, onBookNow, onPinClick, pinData }: PinDetailP
           <img 
             src={resolvedImageUrl} 
             alt={data.title}
+            loading="eager"
+            decoding="async"
             className="w-full h-auto object-cover max-h-[75vh]"
           />
           
@@ -315,8 +315,10 @@ export function PinDetail({ onBack, onBookNow, onPinClick, pinData }: PinDetailP
                 >
                   <div className="aspect-[3/4] overflow-hidden">
                     <img
-                      src={pin.image_url.startsWith('http') ? pin.image_url : `${apiBaseUrl}${pin.image_url}`}
+                      src={resolveAssetUrl(pin.image_url)}
                       alt={pin.title}
+                      loading="lazy"
+                      decoding="async"
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   </div>
@@ -371,6 +373,8 @@ export function PinDetail({ onBack, onBookNow, onPinClick, pinData }: PinDetailP
                      <img 
                       src={resolvedImageUrl} 
                       alt={data.title}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
                   </div>

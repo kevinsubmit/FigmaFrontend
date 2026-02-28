@@ -65,6 +65,7 @@ import {
   StoreHours,
   StoreImage,
 } from '../api/stores';
+import { resolveAssetUrl } from '../utils/assetUrl';
 
 const formatLocalDateYYYYMMDD = (date: Date) => {
   const year = date.getFullYear();
@@ -178,7 +179,6 @@ interface StoreDetailsProps {
 }
 
 export function StoreDetails({ store, onBack, onBookingComplete, referencePin, showDistance = false }: StoreDetailsProps) {
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [bookingMode, setBookingMode] = useState<'single' | 'group'>('single');
   const [guestRows, setGuestRows] = useState<Array<{ service_id: string }>>([]);
@@ -235,9 +235,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
   const observerTarget = useRef(null);
 
   const resolveStoreImageUrl = (url?: string | null): string => {
-    if (!url) return '';
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    return `${apiBaseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+    return resolveAssetUrl(url);
   };
 
   // Combine cover image and thumbnails for the gallery (match Services cards)
@@ -1155,6 +1153,8 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                   <img 
                     src={src} 
                     alt={`${store.name} image ${index + 1}`} 
+                    loading={index === 0 ? 'eager' : 'lazy'}
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
@@ -1309,8 +1309,10 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                         {portfolioItems.map((item, index) => (
                             <div key={item.id} className="relative group cursor-pointer overflow-hidden rounded-xl bg-gray-900 border border-[#333]">
                                 <img 
-                                    src={item.image_url.startsWith('http') ? item.image_url : `${apiBaseUrl}${item.image_url}`} 
+                                    src={resolveAssetUrl(item.image_url)} 
                                     alt={item.title || `Portfolio ${index + 1}`} 
+                                    loading="lazy"
+                                    decoding="async"
                                     className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500"
                                 />
                                 {item.title && (
@@ -1356,6 +1358,8 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                         <img 
                             src="https://images.unsplash.com/photo-1664044056437-6330bcf8e2fe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaXR5JTIwc3RyZWV0JTIwbWFwJTIwZ3JhcGhpYyUyMHRvcCUyMHZpZXd8ZW58MXx8fHwxNzY1OTM3MzkzfDA&ixlib=rb-4.1.0&q=80&w=1080" 
                             className="w-full h-full object-cover opacity-80" 
+                            loading="lazy"
+                            decoding="async"
                             alt="Map View"
                         />
                         {/* Center Pin */}
@@ -1369,7 +1373,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                     <div className="absolute bottom-4 left-4 right-4 bg-[#101010]/95 backdrop-blur-md border border-[#333] p-4 rounded-2xl shadow-2xl flex flex-col gap-3">
                           <div className="flex items-center gap-3">
                               <div className="w-12 h-12 rounded-full border border-[#333] overflow-hidden flex-shrink-0 bg-black">
-                                  <img src={getPrimaryImage()} className="w-full h-full object-cover" alt="Store Logo" />
+                                  <img src={getPrimaryImage()} className="w-full h-full object-cover" alt="Store Logo" loading="lazy" decoding="async" />
                              </div>
                              <div className="flex-1 min-w-0">
                                  <h3 className="font-bold text-white text-sm truncate">{store.name}</h3>
@@ -1565,7 +1569,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                 >
                     <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
-                            <img src="https://www.google.com/images/branding/product/ico/maps15_64dp.ico" className="w-6 h-6" alt="Google Maps" />
+                            <img src="https://www.google.com/images/branding/product/ico/maps15_64dp.ico" className="w-6 h-6" alt="Google Maps" loading="lazy" decoding="async" />
                         </div>
                         <span className="font-bold text-lg">Google Maps</span>
                     </div>

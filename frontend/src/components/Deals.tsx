@@ -76,8 +76,19 @@ export function Deals({ onBack, onSelectSalon }: DealsProps) {
         });
         setStores(storeMap);
 
+        const storesNeedingImageFetch = storeIds.filter((id) => {
+          const hasPromotionImage = data.some((promotion) => promotion.store_id === id && !!promotion.image_url);
+          const hasStoreImage = !!storeMap[id]?.image_url;
+          return !hasPromotionImage && !hasStoreImage;
+        });
+
+        if (storesNeedingImageFetch.length === 0) {
+          setStoreImages({});
+          return;
+        }
+
         const imagePairs = await Promise.all(
-          storeIds.map(async (id) => {
+          storesNeedingImageFetch.map(async (id) => {
             try {
               const images = await getStoreImages(id);
               if (!images.length) return [id, null] as const;
@@ -212,6 +223,10 @@ export function Deals({ onBack, onSelectSalon }: DealsProps) {
                 className={`group relative overflow-hidden rounded-[26px] border border-[#D4AF37]/18 bg-[#141414] shadow-[0_8px_28px_rgba(0,0,0,0.32)] transition-all ${
                   hasStore ? 'cursor-pointer hover:border-[#D4AF37]/30 active:scale-[0.98]' : ''
                 }`}
+                style={{
+                  contentVisibility: 'auto',
+                  containIntrinsicSize: '420px',
+                }}
               >
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[#D4AF37]/45" />
 
@@ -220,6 +235,8 @@ export function Deals({ onBack, onSelectSalon }: DealsProps) {
                     <img
                       src={coverImageUrl}
                       alt={promotion.title}
+                      loading="lazy"
+                      decoding="async"
                       className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                   ) : (
