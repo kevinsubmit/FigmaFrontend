@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Camera, User, Mail, Phone, Calendar, Users } from 'lucide-react';
 import { toast } from 'react-toastify';
-import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
-
-const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/v1`;
+import { validateRequestPayload } from '../lib/requestValidation';
+import apiClient from '../lib/api';
 
 interface UserProfile {
   id: number;
@@ -38,10 +37,7 @@ const EditProfile: React.FC = () => {
 
   const fetchProfile = async () => {
     try {
-      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
-      const response = await axios.get(`${API_BASE_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await apiClient.get('/auth/me');
       
       setProfile(response.data);
       setFormData({
@@ -75,13 +71,12 @@ const EditProfile: React.FC = () => {
 
     setUploading(true);
     try {
-      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
       const formData = new FormData();
       formData.append('file', file);
+      validateRequestPayload(formData, { context: 'Avatar upload' });
 
-      const response = await axios.post(`${API_BASE_URL}/auth/me/avatar`, formData, {
+      const response = await apiClient.post('/auth/me/avatar', formData, {
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
         }
       });
@@ -102,8 +97,6 @@ const EditProfile: React.FC = () => {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
-      
       // Prepare update data (only include non-empty fields)
       const updateData: any = {};
       if (formData.full_name) updateData.full_name = formData.full_name;
@@ -111,9 +104,14 @@ const EditProfile: React.FC = () => {
       if (!isGenderSet && formData.gender) updateData.gender = formData.gender;
       if (!isDateOfBirthSet && formData.date_of_birth) updateData.birthday = formData.date_of_birth;
 
-      await axios.put(`${API_BASE_URL}/users/profile`, updateData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      if (Object.keys(updateData).length === 0) {
+        toast.error('No valid fields to update');
+        return;
+      }
+
+      validateRequestPayload(updateData, { context: 'Update profile' });
+
+      await apiClient.put('/users/profile', updateData);
 
       await refreshUser();
       toast.success('Profile updated successfully!', { autoClose: 1200 });

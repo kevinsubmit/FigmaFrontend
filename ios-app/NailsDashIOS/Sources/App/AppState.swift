@@ -83,6 +83,86 @@ final class AppState: ObservableObject {
             authMessage = nil
             await refreshSession()
         } catch let error as APIError {
+            switch error {
+            case .unauthorized:
+                authMessage = "Incorrect phone number or password."
+            default:
+                handleAuthError(error)
+            }
+        } catch {
+            authMessage = error.localizedDescription
+        }
+    }
+
+    func sendVerificationCode(phone: String, purpose: VerificationPurpose) async throws -> SendVerificationCodeResponse {
+        let normalizedPhone = PhoneFormatter.normalizeUSPhone(phone)
+        guard !normalizedPhone.isEmpty else {
+            throw APIError.validation("Please enter a valid US phone number.")
+        }
+        let payload = SendVerificationCodeRequest(phone: normalizedPhone, purpose: purpose)
+        let result: SendVerificationCodeResponse = try await APIClient.shared.request(
+            path: "/auth/send-verification-code",
+            method: "POST",
+            body: payload
+        )
+        return result
+    }
+
+    func verifyCode(phone: String, code: String, purpose: VerificationPurpose) async throws -> VerifyCodeResponse {
+        let normalizedPhone = PhoneFormatter.normalizeUSPhone(phone)
+        let trimmedCode = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        let payload = VerifyCodeRequest(phone: normalizedPhone, code: trimmedCode, purpose: purpose)
+        let result: VerifyCodeResponse = try await APIClient.shared.request(
+            path: "/auth/verify-code",
+            method: "POST",
+            body: payload
+        )
+        return result
+    }
+
+    func register(
+        phone: String,
+        verificationCode: String,
+        username: String,
+        password: String,
+        fullName: String?,
+        referralCode: String?
+    ) async {
+        let normalizedPhone = PhoneFormatter.normalizeUSPhone(phone)
+        let trimmedUsername = username.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedFullName = fullName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedReferralCode = referralCode?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !normalizedPhone.isEmpty,
+              !verificationCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !trimmedUsername.isEmpty,
+              !trimmedPassword.isEmpty else {
+            authMessage = "Please fill all required fields."
+            return
+        }
+
+        isLoadingAuth = true
+        defer { isLoadingAuth = false }
+
+        let payload = RegisterRequest(
+            phone: normalizedPhone,
+            verification_code: verificationCode.trimmingCharacters(in: .whitespacesAndNewlines),
+            username: trimmedUsername,
+            password: trimmedPassword,
+            full_name: trimmedFullName?.isEmpty == false ? trimmedFullName : nil,
+            referral_code: trimmedReferralCode?.isEmpty == false ? trimmedReferralCode : nil
+        )
+
+        do {
+            let _: AuthUser = try await APIClient.shared.request(
+                path: "/auth/register",
+                method: "POST",
+                body: payload
+            )
+            authMessage = nil
+            await login(phone: normalizedPhone, password: trimmedPassword)
+        } catch let error as APIError {
             handleAuthError(error)
         } catch {
             authMessage = error.localizedDescription

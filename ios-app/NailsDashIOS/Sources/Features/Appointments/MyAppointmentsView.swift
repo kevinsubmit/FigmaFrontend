@@ -15,7 +15,7 @@ struct MyAppointmentsView: View {
             pageHeader
 
             ScrollView {
-                VStack(alignment: .leading, spacing: UITheme.spacing12) {
+                LazyVStack(alignment: .leading, spacing: UITheme.spacing12) {
                     if let error = viewModel.errorMessage, !error.isEmpty {
                         Text(error)
                             .font(.footnote)
@@ -38,6 +38,7 @@ struct MyAppointmentsView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.visible, for: .tabBar)
         .tint(brandGold)
         .background(Color.black)
         .task {
@@ -1266,13 +1267,8 @@ private struct AppointmentDetailView: View {
 
     private func formatDateTime(_ raw: String?) -> String {
         guard let raw, !raw.isEmpty else { return "-" }
-        let parser = ISO8601DateFormatter()
-        if let date = parser.date(from: raw) {
-            let formatter = DateFormatter()
-            formatter.locale = Locale.current
-            formatter.dateStyle = .medium
-            formatter.timeStyle = .short
-            return formatter.string(from: date)
+        if let date = AppointmentDetailDateFormatter.parse(raw) {
+            return AppointmentDetailDateFormatter.outputFormatter.string(from: date)
         }
         return raw
     }
@@ -1316,6 +1312,35 @@ private struct AppointmentDetailView: View {
         formatter.dateFormat = "MMM d 'at' h:mm a"
         return formatter
     }()
+}
+
+private enum AppointmentDetailDateFormatter {
+    private static let iso8601FractionalParser: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let iso8601Parser: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    static let outputFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
+
+    static func parse(_ raw: String) -> Date? {
+        if let date = iso8601FractionalParser.date(from: raw) {
+            return date
+        }
+        return iso8601Parser.date(from: raw)
+    }
 }
 
 private struct AppointmentDetailCard: ViewModifier {

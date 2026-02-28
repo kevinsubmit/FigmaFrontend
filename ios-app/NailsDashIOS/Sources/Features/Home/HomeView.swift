@@ -259,7 +259,7 @@ private struct ProfileCenterView: View {
     private var profileAvatar: some View {
         let avatarURL = avatarURLString(appState.currentUser?.avatar_url)
         if let avatarURL, let url = URL(string: avatarURL) {
-            AsyncImage(url: url) { phase in
+            CachedAsyncImage(url: url) { phase in
                 switch phase {
                 case .empty:
                     ProgressView()
@@ -3542,7 +3542,7 @@ private struct HomeFeedView: View {
     }
 
     private func pinCard(_ pin: HomeFeedPinDTO, itemWidth: CGFloat) -> some View {
-        AsyncImage(url: pin.imageURL) { phase in
+        CachedAsyncImage(url: pin.imageURL) { phase in
             switch phase {
             case .empty:
                 ZStack {
@@ -3725,7 +3725,7 @@ private struct HomeFeedPinDetailView: View {
 
     private func heroImageSection(containerWidth: CGFloat) -> some View {
         ZStack(alignment: .bottom) {
-            AsyncImage(url: viewModel.pin.imageURL) { phase in
+            CachedAsyncImage(url: viewModel.pin.imageURL) { phase in
                 switch phase {
                 case .empty:
                     ZStack {
@@ -3856,7 +3856,7 @@ private struct HomeFeedPinDetailView: View {
     }
 
     private func relatedPinCard(_ pin: HomeFeedPinDTO, itemWidth: CGFloat, itemHeight: CGFloat) -> some View {
-        AsyncImage(url: pin.imageURL) { phase in
+        CachedAsyncImage(url: pin.imageURL) { phase in
             switch phase {
             case .empty:
                 ZStack {
@@ -4187,7 +4187,7 @@ private struct DealsView: View {
             ZStack(alignment: .topLeading) {
                 Group {
                     if let coverURL = promotionCoverURL(promotion: promotion, store: store) {
-                        AsyncImage(url: coverURL) { phase in
+                        CachedAsyncImage(url: coverURL) { phase in
                             switch phase {
                             case .empty:
                                 ZStack {
@@ -4607,6 +4607,10 @@ private struct ProfileRewardsService {
         try await APIClient.shared.request(path: "/stores/favorites/my-favorites?skip=0&limit=\(limit)", token: token)
     }
 
+    func getStoreImages(storeID: Int) async throws -> [StoreImageDTO] {
+        try await APIClient.shared.request(path: "/stores/\(storeID)/images")
+    }
+
     func removeFavoritePin(token: String, pinID: Int) async throws {
         let _: EmptyResponse = try await APIClient.shared.request(path: "/pins/\(pinID)/favorite", method: "DELETE", token: token)
     }
@@ -4840,6 +4844,7 @@ private final class MyReviewsViewModel: ObservableObject {
 private final class MyFavoritesViewModel: ObservableObject {
     @Published var favoritePins: [HomeFeedPinDTO] = []
     @Published var favoriteStores: [StoreDTO] = []
+    @Published var favoriteStoreImageURLByID: [Int: String] = [:]
     @Published var deletingPinID: Int?
     @Published var deletingStoreID: Int?
     @Published var isLoading = false
@@ -4855,7 +4860,9 @@ private final class MyFavoritesViewModel: ObservableObject {
             async let pinsTask = service.getMyFavoritePins(token: token, limit: 100)
             async let storesTask = service.getMyFavoriteStores(token: token, limit: 100)
             favoritePins = try await pinsTask
-            favoriteStores = try await storesTask
+            let stores = try await storesTask
+            favoriteStores = stores
+            favoriteStoreImageURLByID = await resolveFavoriteStoreImageURLs(stores: stores)
             errorMessage = nil
         } catch let err as APIError {
             errorMessage = mapError(err)
@@ -4885,6 +4892,7 @@ private final class MyFavoritesViewModel: ObservableObject {
         do {
             try await service.removeFavoriteStore(token: token, storeID: storeID)
             favoriteStores.removeAll { $0.id == storeID }
+            favoriteStoreImageURLByID.removeValue(forKey: storeID)
             actionMessage = "Removed from favorites."
             errorMessage = nil
         } catch let err as APIError {
@@ -4892,6 +4900,54 @@ private final class MyFavoritesViewModel: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func resolveFavoriteStoreImageURLs(stores: [StoreDTO]) async -> [Int: String] {
+        if stores.isEmpty {
+            return [:]
+        }
+
+        return await withTaskGroup(of: (Int, String?).self, returning: [Int: String].self) { group in
+            for store in stores {
+                group.addTask { [service] in
+                    do {
+                        let images = try await service.getStoreImages(storeID: store.id)
+                        let preferred = Self.pickPrimaryStoreImageURL(from: images)
+                        return (store.id, preferred)
+                    } catch {
+                        return (store.id, nil)
+                    }
+                }
+            }
+
+            var resolved: [Int: String] = [:]
+            for await (storeID, imageURL) in group {
+                guard let imageURL,
+                      !imageURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                    continue
+                }
+                resolved[storeID] = imageURL
+            }
+            return resolved
+        }
+    }
+
+    nonisolated private static func pickPrimaryStoreImageURL(from images: [StoreImageDTO]) -> String? {
+        guard !images.isEmpty else { return nil }
+
+        let sorted = images.sorted { lhs, rhs in
+            let lhsPrimary = lhs.is_primary ?? 0
+            let rhsPrimary = rhs.is_primary ?? 0
+            if lhsPrimary != rhsPrimary { return lhsPrimary > rhsPrimary }
+
+            let lhsOrder = lhs.display_order ?? Int.max
+            let rhsOrder = rhs.display_order ?? Int.max
+            if lhsOrder != rhsOrder { return lhsOrder < rhsOrder }
+
+            return lhs.id < rhs.id
+        }
+
+        return sorted.first?.image_url
     }
 }
 
@@ -6666,7 +6722,7 @@ private struct MyFavoritesView: View {
                     .environmentObject(appState)
             } label: {
                 VStack(alignment: .leading, spacing: UITheme.spacing6) {
-                    AsyncImage(url: pin.imageURL) { phase in
+                    CachedAsyncImage(url: pin.imageURL) { phase in
                         switch phase {
                         case .empty:
                             ZStack {
@@ -6734,7 +6790,7 @@ private struct MyFavoritesView: View {
                 StoreDetailView(storeID: store.id)
             } label: {
                 HStack(spacing: UITheme.spacing10) {
-                    AsyncImage(url: storeImageURL(store)) { phase in
+                    CachedAsyncImage(url: storeImageURL(store)) { phase in
                         switch phase {
                         case .empty:
                             ZStack {
@@ -6811,7 +6867,10 @@ private struct MyFavoritesView: View {
     }
 
     private func storeImageURL(_ store: StoreDTO) -> URL? {
-        AssetURLResolver.resolveURL(from: store.image_url)
+        if let preferred = viewModel.favoriteStoreImageURLByID[store.id] {
+            return AssetURLResolver.resolveURL(from: preferred)
+        }
+        return AssetURLResolver.resolveURL(from: store.image_url)
     }
 }
 

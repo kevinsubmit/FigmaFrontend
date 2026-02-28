@@ -75,10 +75,12 @@ export const cancelAppointment = async (
   appointmentId: number,
   cancelReason?: string
 ): Promise<Appointment> => {
+  const reason = cancelReason?.trim();
+  const payload = reason ? { cancel_reason: reason } : undefined;
   return apiClient.post(
     `/api/v1/appointments/${appointmentId}/cancel`,
-    { cancel_reason: cancelReason },
-    true
+    payload,
+    { requiresAuth: true, allowEmptyBody: !payload }
   );
 };
 

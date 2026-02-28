@@ -3,6 +3,8 @@
  * Handles all HTTP requests to the backend API
  */
 import { forceRelogin, shouldForceRelogin } from '../utils/authGuard';
+import { getApiErrorMessage, getApiErrorMessageFromPayload } from '../utils/apiErrorMessages';
+import { hasMeaningfulValue, shouldAllowEmptyBody, validateRequestPayload } from '../lib/requestValidation';
 
 // API base URL from Vite env
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -10,6 +12,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;
   params?: Record<string, any>;
+  allowEmptyBody?: boolean;
 }
 
 type RequestConfig = boolean | RequestOptions;
@@ -48,10 +51,9 @@ class APIClient {
    */
   private async request<T>(
     endpoint: string,
-    options: RequestOptions = {},
-    allowRetry: boolean = true
+    options: RequestOptions = {}
   ): Promise<T> {
-    const { requiresAuth = false, headers = {}, params, ...restOptions } = options;
+    const { requiresAuth = false, headers = {}, params, allowEmptyBody: _allowEmptyBody, ...restOptions } = options;
 
     const queryString = params
       ? `?${new URLSearchParams(
@@ -79,75 +81,40 @@ class APIClient {
 
     // For explicitly protected routes, no token means request should fail as before.
     if (requiresAuth && !token) {
+      forceRelogin();
       throw new Error('Authentication required');
     }
 
     try {
       const response = await fetch(`${this.baseURL}${endpoint}${queryString}`, config);
 
-      if (response.status === 401 && requiresAuth && allowRetry) {
-        const refreshed = await this.refreshToken();
-        if (refreshed) {
-          (config.headers as Record<string, string>)['Authorization'] = `Bearer ${refreshed}`;
-          return this.request<T>(endpoint, options, false);
-        }
+      if (shouldForceRelogin(response.status)) {
         forceRelogin();
       }
 
       // Handle non-OK responses
       if (!response.ok) {
-        const error = await response.json().catch(() => ({
+        const errorPayload = await response.json().catch(() => ({
           detail: response.statusText,
         }));
-        if (shouldForceRelogin(response.status, error?.detail ?? error)) {
+        if (shouldForceRelogin(response.status, errorPayload?.detail ?? errorPayload)) {
           forceRelogin();
         }
-        throw new Error(error.detail || 'Request failed');
+        const message = getApiErrorMessageFromPayload(errorPayload, response.status, 'Request failed');
+        throw new Error(message);
       }
 
       // Return JSON response
       return await response.json();
     } catch (error) {
       console.error('API Request Error:', error);
-      throw error;
+      throw new Error(getApiErrorMessage(error, 'Request failed'));
     }
   }
 
   /**
    * Refresh access token
    */
-  private async refreshToken(): Promise<string | null> {
-    const refreshToken = localStorage.getItem('refresh_token');
-    if (!refreshToken) {
-      return null;
-    }
-
-    try {
-      const response = await fetch(`${this.baseURL}/api/v1/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
-
-      if (!response.ok) {
-        return null;
-      }
-
-      const data = await response.json();
-      if (data.access_token) {
-        localStorage.setItem('access_token', data.access_token);
-        if (data.refresh_token) {
-          localStorage.setItem('refresh_token', data.refresh_token);
-        }
-        return data.access_token as string;
-      }
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-    }
-
-    return null;
-  }
-
   /**
    * GET request
    */
@@ -168,11 +135,26 @@ class APIClient {
     config: RequestConfig = false
   ): Promise<T> {
     const normalized: RequestOptions = typeof config === 'boolean' ? { requiresAuth: config } : config;
-    return this.request<T>(endpoint, {
+    const allowEmptyBody = Boolean(normalized.allowEmptyBody)
+      || shouldAllowEmptyBody('POST', endpoint)
+      || ((data === undefined || data === null) && hasMeaningfulValue(normalized.params));
+    validateRequestPayload(data, {
+      context: `POST ${endpoint}`,
+      allowEmptyBody,
       method: 'POST',
-      body: JSON.stringify(data),
-      ...normalized,
+      path: endpoint,
     });
+
+    const requestOptions: RequestOptions = {
+      method: 'POST',
+      ...normalized,
+    };
+
+    if (data !== undefined && data !== null) {
+      requestOptions.body = JSON.stringify(data);
+    }
+
+    return this.request<T>(endpoint, requestOptions);
   }
 
   /**
@@ -184,11 +166,26 @@ class APIClient {
     config: RequestConfig = false
   ): Promise<T> {
     const normalized: RequestOptions = typeof config === 'boolean' ? { requiresAuth: config } : config;
-    return this.request<T>(endpoint, {
+    const allowEmptyBody = Boolean(normalized.allowEmptyBody)
+      || shouldAllowEmptyBody('PUT', endpoint)
+      || ((data === undefined || data === null) && hasMeaningfulValue(normalized.params));
+    validateRequestPayload(data, {
+      context: `PUT ${endpoint}`,
+      allowEmptyBody,
       method: 'PUT',
-      body: JSON.stringify(data),
-      ...normalized,
+      path: endpoint,
     });
+
+    const requestOptions: RequestOptions = {
+      method: 'PUT',
+      ...normalized,
+    };
+
+    if (data !== undefined && data !== null) {
+      requestOptions.body = JSON.stringify(data);
+    }
+
+    return this.request<T>(endpoint, requestOptions);
   }
 
   /**
@@ -200,11 +197,26 @@ class APIClient {
     config: RequestConfig = false
   ): Promise<T> {
     const normalized: RequestOptions = typeof config === 'boolean' ? { requiresAuth: config } : config;
-    return this.request<T>(endpoint, {
+    const allowEmptyBody = Boolean(normalized.allowEmptyBody)
+      || shouldAllowEmptyBody('PATCH', endpoint)
+      || ((data === undefined || data === null) && hasMeaningfulValue(normalized.params));
+    validateRequestPayload(data, {
+      context: `PATCH ${endpoint}`,
+      allowEmptyBody,
       method: 'PATCH',
-      body: JSON.stringify(data),
-      ...normalized,
+      path: endpoint,
     });
+
+    const requestOptions: RequestOptions = {
+      method: 'PATCH',
+      ...normalized,
+    };
+
+    if (data !== undefined && data !== null) {
+      requestOptions.body = JSON.stringify(data);
+    }
+
+    return this.request<T>(endpoint, requestOptions);
   }
 
   /**

@@ -23,6 +23,7 @@ struct StoreDetailView: View {
     @State private var showReviewGallery: Bool = false
     @State private var showFullHours: Bool = false
     @State private var showBookServicesSheet: Bool = false
+    @State private var toast: StoreDetailToastPayload?
 
     private let brandGold = UITheme.brandGold
     private let cardBG = UITheme.cardBackground
@@ -66,6 +67,10 @@ struct StoreDetailView: View {
         }
         .task {
             await viewModel.loadStore(storeID: storeID)
+            await viewModel.loadFavoriteState(
+                storeID: storeID,
+                token: TokenStore.shared.read(key: TokenStore.Keys.accessToken)
+            )
         }
         .onChange(of: viewModel.errorMessage) { value in
             guard let value, !value.isEmpty else { return }
@@ -85,6 +90,14 @@ struct StoreDetailView: View {
                     .clipShape(RoundedRectangle(cornerRadius: UITheme.overlayCornerRadius))
             }
         }
+        .overlay(alignment: .top) {
+            if let toast {
+                StoreDetailToastView(payload: toast)
+                    .padding(.top, UITheme.spacing56)
+                    .padding(.horizontal, UITheme.pagePadding)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
         .fullScreenCover(isPresented: $showReviewGallery) {
             reviewImageViewer
         }
@@ -102,6 +115,7 @@ struct StoreDetailView: View {
                 .h5BottomSheetStyle()
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: toast?.id)
     }
 
     private var topBar: some View {
@@ -148,10 +162,10 @@ struct StoreDetailView: View {
     @ViewBuilder
     private func heroCarousel(_ store: StoreDetailDTO) -> some View {
         if !store.images.isEmpty {
-            ZStack(alignment: .bottomTrailing) {
+            ZStack {
                 TabView(selection: $heroPageIndex) {
                     ForEach(Array(store.images.enumerated()), id: \.element.id) { idx, image in
-                        AsyncImage(url: imageURL(from: image.image_url)) { phase in
+                        CachedAsyncImage(url: imageURL(from: image.image_url)) { phase in
                             switch phase {
                             case .empty:
                                 ProgressView()
@@ -183,6 +197,16 @@ struct StoreDetailView: View {
                 .frame(height: UITheme.storeHeroHeight)
                 .tabViewStyle(.page(indexDisplayMode: .never))
 
+                VStack {
+                    HStack {
+                        Spacer()
+                        heroFavoriteButton(storeID: store.id)
+                    }
+                    Spacer()
+                }
+                .padding(.top, UITheme.spacing10)
+                .padding(.trailing, UITheme.spacing10)
+
                 HStack(spacing: UITheme.spacing6) {
                     ForEach(0..<store.images.count, id: \.self) { idx in
                         Capsule()
@@ -190,12 +214,49 @@ struct StoreDetailView: View {
                             .frame(width: idx == heroPageIndex ? 14 : 6, height: 6)
                     }
                 }
-                .padding(.trailing, UITheme.spacing10)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                 .padding(.bottom, UITheme.spacing10)
             }
             .frame(maxWidth: .infinity)
             .clipped()
         }
+    }
+
+    private func heroFavoriteButton(storeID: Int) -> some View {
+        Button {
+            guard let token = TokenStore.shared.read(key: TokenStore.Keys.accessToken) else {
+                alertMessage = "Please sign in to save favorites."
+                showAlert = true
+                return
+            }
+            Task {
+                let wasFavorited = viewModel.isFavorited
+                await viewModel.toggleFavorite(storeID: storeID, token: token)
+                guard viewModel.errorMessage == nil, viewModel.isFavorited != wasFavorited else { return }
+                showToast(
+                    message: viewModel.isFavorited ? "Added to favorites." : "Removed from favorites.",
+                    isError: false
+                )
+            }
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(Color.black.opacity(0.62))
+                if viewModel.isFavoriteLoading {
+                    ProgressView()
+                        .tint(.white)
+                        .scaleEffect(0.85)
+                } else {
+                    Image(systemName: viewModel.isFavorited ? "heart.fill" : "heart")
+                        .font(.system(size: UITheme.navIconSize, weight: .semibold))
+                        .foregroundStyle(viewModel.isFavorited ? brandGold : .white)
+                }
+            }
+            .frame(width: UITheme.floatingControlSize, height: UITheme.floatingControlSize)
+        }
+        .buttonStyle(.plain)
+        .disabled(viewModel.isFavoriteLoading)
+        .accessibilityLabel("Toggle favorite salon")
     }
 
     private func storeIdentitySection(_ store: StoreDetailDTO) -> some View {
@@ -391,7 +452,7 @@ struct StoreDetailView: View {
                 Group {
                     if let rawAvatar = review.user_avatar,
                        let avatarURL = imageURL(from: rawAvatar) {
-                        AsyncImage(url: avatarURL) { phase in
+                        CachedAsyncImage(url: avatarURL) { phase in
                             switch phase {
                             case .success(let image):
                                 image.resizable().scaledToFill()
@@ -448,7 +509,7 @@ struct StoreDetailView: View {
                                     reviewGalleryIndex = idx
                                     showReviewGallery = true
                                 } label: {
-                                    AsyncImage(url: url) { phase in
+                                    CachedAsyncImage(url: url) { phase in
                                         switch phase {
                                         case .empty:
                                             ProgressView()
@@ -517,7 +578,7 @@ struct StoreDetailView: View {
                 let fixedCardHeight: CGFloat = 214
                 LazyVGrid(columns: portfolioColumns, spacing: UITheme.spacing8) {
                     ForEach(store.images, id: \.id) { image in
-                        AsyncImage(url: imageURL(from: image.image_url)) { phase in
+                        CachedAsyncImage(url: imageURL(from: image.image_url)) { phase in
                             switch phase {
                             case .empty:
                                 ProgressView()
@@ -615,7 +676,7 @@ struct StoreDetailView: View {
         ZStack(alignment: .bottom) {
             Group {
                 if let mapImageURL = h5DetailsMapBackgroundURL {
-                    AsyncImage(url: mapImageURL) { phase in
+                    CachedAsyncImage(url: mapImageURL) { phase in
                         switch phase {
                         case .empty:
                             ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -649,7 +710,7 @@ struct StoreDetailView: View {
                     Group {
                         if let raw = store.images.first?.image_url,
                            let url = imageURL(from: raw) {
-                            AsyncImage(url: url) { phase in
+                            CachedAsyncImage(url: url) { phase in
                                 switch phase {
                                 case .success(let image):
                                     image.resizable().scaledToFill()
@@ -1004,6 +1065,16 @@ struct StoreDetailView: View {
         return URL(string: "https://www.google.com/maps/search/?api=1&query=\(encoded)")
     }
 
+    private func showToast(message: String, isError: Bool) {
+        let payload = StoreDetailToastPayload(message: message, isError: isError)
+        toast = payload
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
+            if toast?.id == payload.id {
+                toast = nil
+            }
+        }
+    }
+
     private var h5DetailsMapBackgroundURL: URL? {
         URL(string: "https://images.unsplash.com/photo-1664044056437-6330bcf8e2fe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaXR5JTIwc3RyZWV0JTIwbWFwJTIwZ3JhcGhpYyUyMHRvcCUyMHZpZXd8ZW58MXx8fHwxNzY1OTM3MzkzfDA&ixlib=rb-4.1.0&q=80&w=1080")
     }
@@ -1014,7 +1085,7 @@ struct StoreDetailView: View {
 
             TabView(selection: $reviewGalleryIndex) {
                 ForEach(Array(reviewGalleryImages.enumerated()), id: \.offset) { idx, url in
-                    AsyncImage(url: url) { phase in
+                    CachedAsyncImage(url: url) { phase in
                         switch phase {
                         case .empty:
                             ProgressView()
@@ -1128,6 +1199,33 @@ private enum StoreDetailDateFormatter {
             return date
         }
         return fallbackParser.date(from: raw)
+    }
+}
+
+private struct StoreDetailToastPayload: Identifiable, Equatable {
+    let id = UUID()
+    let message: String
+    let isError: Bool
+}
+
+private struct StoreDetailToastView: View {
+    let payload: StoreDetailToastPayload
+
+    var body: some View {
+        HStack(spacing: UITheme.spacing10) {
+            Image(systemName: payload.isError ? "xmark.circle.fill" : "checkmark.circle.fill")
+                .foregroundStyle(.white)
+            Text(payload.message)
+                .font(.subheadline)
+                .foregroundStyle(.white)
+                .lineLimit(2)
+        }
+        .padding(.vertical, UITheme.pillVerticalPadding * 2)
+        .padding(.horizontal, UITheme.cardPadding)
+        .frame(maxWidth: .infinity)
+        .background(payload.isError ? Color.red.opacity(0.9) : Color.green.opacity(0.9))
+        .clipShape(RoundedRectangle(cornerRadius: UITheme.overlayCornerRadius, style: .continuous))
+        .shadow(color: .black.opacity(0.15), radius: 8, y: 3)
     }
 }
 

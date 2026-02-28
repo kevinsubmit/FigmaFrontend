@@ -1,5 +1,12 @@
 import axios from 'axios';
 import { forceRelogin, shouldForceRelogin } from '../utils/authGuard';
+import { getApiErrorMessage } from '../utils/apiErrorMessages';
+import {
+  hasMeaningfulValue,
+  isBodyMethod,
+  shouldAllowEmptyBody,
+  validateRequestPayload,
+} from './requestValidation';
 
 // API Base URL - 根据环境变量配置
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
@@ -20,6 +27,20 @@ apiClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    const method = (config.method || 'GET').toUpperCase();
+    if (isBodyMethod(method)) {
+      const allowEmptyByRoute = shouldAllowEmptyBody(method, config.url);
+      const allowEmptyBody = allowEmptyByRoute
+        || ((config.data === undefined || config.data === null) && hasMeaningfulValue(config.params));
+      validateRequestPayload(config.data, {
+        context: `${method} ${config.url || ''}`.trim(),
+        allowEmptyBody,
+        method,
+        path: config.url,
+      });
+    }
+
     return config;
   },
   (error) => {
@@ -30,8 +51,7 @@ apiClient.interceptors.request.use(
 // 响应拦截器 - 处理Token过期
 apiClient.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+  (error) => {
     const status = error?.response?.status;
     const detail = error?.response?.data?.detail ?? error?.response?.data;
 
@@ -40,34 +60,14 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // 如果是401错误且不是refresh请求，尝试刷新Token
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        if (refreshToken) {
-          const response = await axios.post(
-            `${API_BASE_URL}/api/v1/auth/refresh`,
-            { refresh_token: refreshToken }
-          );
-
-          const { access_token, refresh_token: new_refresh_token } = response.data;
-          
-          // 更新Token
-          localStorage.setItem('access_token', access_token);
-          localStorage.setItem('refresh_token', new_refresh_token);
-
-          // 重试原请求
-          originalRequest.headers.Authorization = `Bearer ${access_token}`;
-          return apiClient(originalRequest);
-        }
-      } catch (refreshError) {
-        // Token刷新失败，清除本地存储并跳转到登录页
-        forceRelogin();
-        return Promise.reject(refreshError);
-      }
+    const userMessage = getApiErrorMessage(error);
+    if (error?.response?.data && typeof error.response.data === 'object') {
+      error.response.data = {
+        ...error.response.data,
+        detail: userMessage,
+      };
     }
+    error.message = userMessage;
 
     return Promise.reject(error);
   }

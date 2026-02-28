@@ -17,7 +17,12 @@ enum APIError: Error {
 struct EmptyResponse: Decodable {}
 
 enum AssetURLResolver {
-    private static let urlCache = NSCache<NSString, NSURL>()
+    private static let urlCache: NSCache<NSString, NSURL> = {
+        let cache = NSCache<NSString, NSURL>()
+        cache.countLimit = 1600
+        cache.totalCostLimit = 4 * 1024 * 1024
+        return cache
+    }()
 
     static func resolveURL(from rawValue: String?, assetBaseURL: String = APIClient.shared.assetBaseURL) -> URL? {
         guard let rawValue else { return nil }
@@ -45,17 +50,13 @@ enum AssetURLResolver {
         }
 
         guard let url = URL(string: resolvedString) else { return nil }
-        urlCache.setObject(url as NSURL, forKey: cacheKey)
+        urlCache.setObject(url as NSURL, forKey: cacheKey, cost: resolvedString.utf8.count)
         return url
     }
 
     static func resolveString(from rawValue: String?, assetBaseURL: String = APIClient.shared.assetBaseURL) -> String? {
         resolveURL(from: rawValue, assetBaseURL: assetBaseURL)?.absoluteString
     }
-}
-
-private struct RefreshTokenRequest: Encodable {
-    let refresh_token: String
 }
 
 struct AnyEncodable: Encodable {
@@ -100,6 +101,24 @@ final class APIClient {
         pattern: "^\\d{6}$",
         options: []
     )
+    private static let forceReloginKeywords: [String] = [
+        "temporarily restricted",
+        "restricted until",
+        "account restricted",
+        "temporarily restricted from booking",
+        "account is inactive",
+        "user account is inactive",
+        "account disabled",
+        "account suspended",
+        "account locked",
+        "blocked",
+        "account banned",
+        "permanently banned",
+        "permanently_banned",
+        "permanent ban",
+        "forbidden login",
+        "login forbidden",
+    ]
     private static let allowedPurposes: Set<String> = ["register", "login", "reset_password"]
     private static let allowedGenders: Set<String> = ["male", "female", "other"]
     private static let dateFormatter: DateFormatter = {
@@ -123,8 +142,8 @@ final class APIClient {
         }
     }
     private(set) var assetBaseURL: String
-    private let refreshCoordinator = TokenRefreshCoordinator()
     private let responseCache = ResponseMemoryCache()
+    private let inFlightGETDeduplicator = InFlightGETRequestDeduplicator()
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
         config.requestCachePolicy = .useProtocolCachePolicy
@@ -179,43 +198,21 @@ final class APIClient {
             return try decodeResponse(data: cached.data, http: cached.http, postUnauthorizedNotification: false)
         }
 
-        let (data, response) = try await performDataTask(for: request)
+        let (data, response): (Data, URLResponse)
+        if normalizedMethod == "GET", let responseCacheKey {
+            let requestSnapshot = request
+            (data, response) = try await inFlightGETDeduplicator.perform(key: responseCacheKey) { [weak self] in
+                guard let self else {
+                    throw APIError.network("Request failed. Please try again.")
+                }
+                return try await self.performDataTask(for: requestSnapshot)
+            }
+        } else {
+            (data, response) = try await performDataTask(for: request)
+        }
 
         guard let http = response as? HTTPURLResponse else {
             throw APIError.network("Invalid response")
-        }
-
-        if http.statusCode == 401,
-           authToken != nil,
-           !path.contains("/auth/login"),
-           !path.contains("/auth/refresh"),
-           let newToken = await refreshCoordinator.refresh(using: { [weak self] in
-               guard let self else { return nil }
-               return await self.refreshAccessToken()
-           }) {
-            var retryRequest = request
-            retryRequest.setValue("Bearer \(newToken)", forHTTPHeaderField: "Authorization")
-            let (retryData, retryResponse) = try await performDataTask(for: retryRequest)
-
-            guard let retryHTTP = retryResponse as? HTTPURLResponse else {
-                throw APIError.network("Invalid response")
-            }
-
-            if (200 ... 299).contains(retryHTTP.statusCode) {
-                if normalizedMethod == "GET", let responseCacheKey {
-                    responseCache.write(
-                        key: responseCacheKey,
-                        data: retryData,
-                        http: retryHTTP,
-                        ttl: Self.responseCacheTTL,
-                        maxEntries: Self.responseCacheMaxEntries
-                    )
-                } else if Self.cacheInvalidatingMethods.contains(normalizedMethod) {
-                    responseCache.clear()
-                }
-            }
-
-            return try decodeResponse(data: retryData, http: retryHTTP, postUnauthorizedNotification: true)
         }
 
         if (200 ... 299).contains(http.statusCode) {
@@ -232,7 +229,16 @@ final class APIClient {
             }
         }
 
-        return try decodeResponse(data: data, http: http, postUnauthorizedNotification: true)
+        let shouldPostUnauthorizedNotification = shouldPostUnauthorizedNotification(
+            path: path,
+            method: normalizedMethod
+        )
+
+        return try decodeResponse(
+            data: data,
+            http: http,
+            postUnauthorizedNotification: shouldPostUnauthorizedNotification
+        )
     }
 
     private func cacheKey(for request: URLRequest) -> String? {
@@ -313,7 +319,30 @@ final class APIClient {
                 statusCode: http.statusCode,
                 fallback: "You do not have permission to perform this action."
             )
+            if postUnauthorizedNotification && shouldForceRelogin(statusCode: http.statusCode, detail: detail) {
+                NotificationCenter.default.post(name: .apiUnauthorized, object: nil)
+            }
             throw APIError.forbidden(detail)
+        case 423:
+            let detail = extractUserMessage(
+                from: data,
+                statusCode: http.statusCode,
+                fallback: "Your account is restricted. Please sign in again."
+            )
+            if postUnauthorizedNotification && shouldForceRelogin(statusCode: http.statusCode, detail: detail) {
+                NotificationCenter.default.post(name: .apiUnauthorized, object: nil)
+            }
+            throw APIError.forbidden(detail)
+        case 429:
+            let detail = extractUserMessage(
+                from: data,
+                statusCode: http.statusCode,
+                fallback: "Too many requests. Please try again in a few minutes."
+            )
+            if postUnauthorizedNotification && shouldForceRelogin(statusCode: http.statusCode, detail: detail) {
+                NotificationCenter.default.post(name: .apiUnauthorized, object: nil)
+            }
+            throw APIError.server(detail)
         case 422:
             let text = extractUserMessage(
                 from: data,
@@ -328,6 +357,41 @@ final class APIClient {
                 fallback: "Server is busy. Please try again later."
             )
             throw APIError.server(detail)
+        }
+    }
+
+    private func shouldPostUnauthorizedNotification(path: String, method: String) -> Bool {
+        let normalizedPath = normalizePath(path).lowercased()
+        let normalizedMethod = method.uppercased()
+        guard normalizedMethod == "POST" else {
+            return true
+        }
+
+        // Auth entry requests should not trigger global "session expired" handling.
+        if pathMatches(normalizedPath, pattern: "^/(api/v1/)?auth/login$")
+            || pathMatches(normalizedPath, pattern: "^/(api/v1/)?auth/register$")
+            || pathMatches(normalizedPath, pattern: "^/(api/v1/)?auth/send-verification-code$")
+            || pathMatches(normalizedPath, pattern: "^/(api/v1/)?auth/verify-code$")
+            || pathMatches(normalizedPath, pattern: "^/(api/v1/)?auth/reset-password$") {
+            return false
+        }
+
+        return true
+    }
+
+    private func shouldForceRelogin(statusCode: Int, detail: String?) -> Bool {
+        if statusCode == 401 {
+            return true
+        }
+        guard statusCode == 403 || statusCode == 423 || statusCode == 429 else {
+            return false
+        }
+        let normalized = (detail ?? "").lowercased()
+        guard !normalized.isEmpty else {
+            return false
+        }
+        return Self.forceReloginKeywords.contains { keyword in
+            normalized.contains(keyword)
         }
     }
 
@@ -496,6 +560,14 @@ final class APIClient {
             || lower.contains("token has expired")
             || lower.contains("session expired") {
             return "Session expired. Please sign in again."
+        }
+        if lower.contains("temporarily restricted")
+            || lower.contains("restricted until")
+            || lower.contains("account restricted")
+            || lower.contains("permanently banned")
+            || lower.contains("account is inactive")
+            || lower.contains("forbidden login") {
+            return "Your account is restricted. Please sign in again."
         }
         if lower.contains("forbidden")
             || lower.contains("permission denied")
@@ -1021,64 +1093,6 @@ final class APIClient {
         }
     }
 
-    private func refreshAccessToken() async -> String? {
-        guard let refreshToken = TokenStore.shared.read(key: TokenStore.Keys.refreshToken), !refreshToken.isEmpty else {
-            return nil
-        }
-
-        if let token = await requestRefreshTokenWithJSON(refreshToken) {
-            return token
-        }
-
-        if let token = await requestRefreshTokenWithQuery(refreshToken) {
-            return token
-        }
-
-        return nil
-    }
-
-    private func requestRefreshTokenWithJSON(_ refreshToken: String) async -> String? {
-        guard let url = URL(string: baseURL + "/auth/refresh") else {
-            return nil
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONEncoder().encode(RefreshTokenRequest(refresh_token: refreshToken))
-        return await executeRefreshRequest(request)
-    }
-
-    private func requestRefreshTokenWithQuery(_ refreshToken: String) async -> String? {
-        guard var components = URLComponents(string: baseURL + "/auth/refresh") else {
-            return nil
-        }
-        components.queryItems = [URLQueryItem(name: "refresh_token", value: refreshToken)]
-        guard let url = components.url else {
-            return nil
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        return await executeRefreshRequest(request)
-    }
-
-    private func executeRefreshRequest(_ request: URLRequest) async -> String? {
-        do {
-            let (data, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse, (200 ... 299).contains(http.statusCode) else {
-                return nil
-            }
-
-            let tokenResponse = try JSONDecoder().decode(TokenResponse.self, from: data)
-            TokenStore.shared.save(tokenResponse.access_token, key: TokenStore.Keys.accessToken)
-            TokenStore.shared.save(tokenResponse.refresh_token, key: TokenStore.Keys.refreshToken)
-            return tokenResponse.access_token
-        } catch {
-            return nil
-        }
-    }
 }
 
 private final class ResponseMemoryCache {
@@ -1140,18 +1154,22 @@ private final class ResponseMemoryCache {
     }
 }
 
-private actor TokenRefreshCoordinator {
-    private var task: Task<String?, Never>?
+private actor InFlightGETRequestDeduplicator {
+    private var tasks: [String: Task<(Data, URLResponse), Error>] = [:]
 
-    func refresh(using operation: @escaping @Sendable () async -> String?) async -> String? {
-        if let task {
-            return await task.value
+    func perform(
+        key: String,
+        operation: @escaping @Sendable () async throws -> (Data, URLResponse)
+    ) async throws -> (Data, URLResponse) {
+        if let running = tasks[key] {
+            return try await running.value
         }
 
-        let task = Task { await operation() }
-        self.task = task
-        let token = await task.value
-        self.task = nil
-        return token
+        let task = Task.detached(priority: .utility) {
+            try await operation()
+        }
+        tasks[key] = task
+        defer { tasks[key] = nil }
+        return try await task.value
     }
 }

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, MapPin, Star } from 'lucide-react';
-import { getMyFavoriteStores, Store, removeStoreFromFavorites } from '../api/stores';
+import { getMyFavoriteStores, getStoreImages, Store, StoreImage, removeStoreFromFavorites } from '../api/stores';
 import { getMyFavoritePins, Pin, removePinFromFavorites } from '../api/pins';
 import { toast } from 'react-toastify';
+import { resolveAssetUrl } from '../utils/assetUrl';
 
 export function MyFavorites() {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ export function MyFavorites() {
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [favoritePins, setFavoritePins] = useState<Pin[]>([]);
+  const [favoriteStoreImages, setFavoriteStoreImages] = useState<Record<number, string>>({});
 
   useEffect(() => {
     loadFavorites();
@@ -21,6 +23,7 @@ export function MyFavorites() {
     if (!token) {
       setStores([]);
       setFavoritePins([]);
+      setFavoriteStoreImages({});
       setLoading(false);
       return;
     }
@@ -33,6 +36,21 @@ export function MyFavorites() {
       ]);
       setStores(storeData);
       setFavoritePins(pinData);
+      const storeImageEntries = await Promise.allSettled(
+        storeData.map(async (store) => {
+          const images = await getStoreImages(store.id);
+          return [store.id, pickStoreImage(images)] as const;
+        }),
+      );
+
+      const nextImageMap: Record<number, string> = {};
+      storeImageEntries.forEach((entry) => {
+        if (entry.status !== 'fulfilled') return;
+        const [storeID, imageURL] = entry.value;
+        if (!imageURL) return;
+        nextImageMap[storeID] = imageURL;
+      });
+      setFavoriteStoreImages(nextImageMap);
     } catch (error) {
       console.error('Failed to load favorites:', error);
       toast.error('Failed to load favorites');
@@ -47,12 +65,33 @@ export function MyFavorites() {
 
     try {
       await removeStoreFromFavorites(storeId, token);
-      setStores(stores.filter(s => s.id !== storeId));
+      setStores((prev) => prev.filter((s) => s.id !== storeId));
+      setFavoriteStoreImages((prev) => {
+        const next = { ...prev };
+        delete next[storeId];
+        return next;
+      });
       toast.success('Removed from favorites');
     } catch (error) {
       console.error('Failed to remove favorite:', error);
       toast.error('Failed to remove favorite');
     }
+  };
+
+  const pickStoreImage = (images: StoreImage[]): string => {
+    if (!Array.isArray(images) || images.length === 0) return '';
+    const sorted = [...images].sort((a, b) => {
+      if (a.is_primary !== b.is_primary) return b.is_primary - a.is_primary;
+      if (a.display_order !== b.display_order) return a.display_order - b.display_order;
+      return a.id - b.id;
+    });
+    return sorted[0]?.image_url || '';
+  };
+
+  const resolveStoreImage = (store: Store) => {
+    const fromImages = favoriteStoreImages[store.id];
+    if (fromImages) return resolveAssetUrl(fromImages);
+    return resolveAssetUrl(store.image_url);
   };
 
   const handleRemoveFavoritePin = (pinId: number) => {
@@ -156,18 +195,20 @@ export function MyFavorites() {
                   >
                     <div className="flex gap-4 p-4">
                       {/* Store Image */}
-                      {store.image_url && (
-                        <div
-                          className="w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer"
-                          onClick={() => navigate(`/services/${store.id}`)}
-                        >
+                      <div
+                        className="w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer bg-white/10"
+                        onClick={() => navigate(`/services/${store.id}`)}
+                      >
+                        {resolveStoreImage(store) ? (
                           <img
-                            src={store.image_url}
+                            src={resolveStoreImage(store)}
                             alt={store.name}
                             className="w-full h-full object-cover"
                           />
-                        </div>
-                      )}
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No Image</div>
+                        )}
+                      </div>
 
                       {/* Store Info */}
                       <div className="flex-1 min-w-0">

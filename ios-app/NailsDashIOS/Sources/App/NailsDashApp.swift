@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import ImageIO
 
 enum UITheme {
     static let brandGold = Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0)
@@ -69,6 +70,141 @@ enum UITheme {
     static let uiSecondaryText = UIColor(white: 0.62, alpha: 1.0)
     static let tabFontNormal = UIFont.systemFont(ofSize: 11, weight: .medium)
     static let tabFontSelected = UIFont.systemFont(ofSize: 11, weight: .semibold)
+}
+
+private extension UIImage {
+    var decodedCost: Int {
+        guard let cgImage else { return 1 }
+        return max(cgImage.bytesPerRow * cgImage.height, 1)
+    }
+}
+
+actor CachedImagePipeline {
+    static let shared = CachedImagePipeline()
+
+    private let memoryCache: NSCache<NSURL, UIImage> = {
+        let cache = NSCache<NSURL, UIImage>()
+        cache.countLimit = 240
+        cache.totalCostLimit = 96 * 1024 * 1024
+        return cache
+    }()
+
+    private let session: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.requestCachePolicy = .returnCacheDataElseLoad
+        config.timeoutIntervalForRequest = 20
+        config.timeoutIntervalForResource = 60
+        config.httpMaximumConnectionsPerHost = 8
+        config.waitsForConnectivity = true
+        config.urlCache = URLCache(
+            memoryCapacity: 96 * 1024 * 1024,
+            diskCapacity: 512 * 1024 * 1024,
+            diskPath: "nailsdash_image_cache"
+        )
+        return URLSession(configuration: config)
+    }()
+
+    private var inFlight: [URL: Task<UIImage?, Never>] = [:]
+
+    func image(for url: URL, scale: CGFloat) async -> UIImage? {
+        let key = url as NSURL
+        if let cached = memoryCache.object(forKey: key) {
+            return cached
+        }
+
+        if let existing = inFlight[url] {
+            return await existing.value
+        }
+
+        let maxPixelSize = max(960, 1280 * max(scale, 1))
+        let task = Task.detached(priority: .utility) { [session] in
+            await CachedImagePipeline.fetchImage(url: url, session: session, maxPixelSize: maxPixelSize)
+        }
+        inFlight[url] = task
+        let image = await task.value
+        inFlight[url] = nil
+
+        if let image {
+            memoryCache.setObject(image, forKey: key, cost: image.decodedCost)
+        }
+        return image
+    }
+
+    private static func fetchImage(url: URL, session: URLSession, maxPixelSize: CGFloat) async -> UIImage? {
+        var request = URLRequest(url: url)
+        request.cachePolicy = .returnCacheDataElseLoad
+        request.timeoutInterval = 20
+        do {
+            let (data, response) = try await session.data(for: request)
+            guard let http = response as? HTTPURLResponse, (200 ... 299).contains(http.statusCode) else {
+                return nil
+            }
+            if let downsampled = downsample(data: data, maxPixelSize: maxPixelSize) {
+                return downsampled
+            }
+            return UIImage(data: data)
+        } catch {
+            return nil
+        }
+    }
+
+    private static func downsample(data: Data, maxPixelSize: CGFloat) -> UIImage? {
+        let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithData(data as CFData, sourceOptions) else { return nil }
+        let options = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: false,
+            kCGImageSourceThumbnailMaxPixelSize: Int(maxPixelSize.rounded(.up)),
+        ] as CFDictionary
+        guard let imageRef = CGImageSourceCreateThumbnailAtIndex(source, 0, options) else { return nil }
+        return UIImage(cgImage: imageRef)
+    }
+}
+
+struct CachedAsyncImage<Content: View>: View {
+    let url: URL?
+    let content: (AsyncImagePhase) -> Content
+
+    @Environment(\.displayScale) private var displayScale
+    @State private var phase: AsyncImagePhase = .empty
+
+    init(
+        url: URL?,
+        @ViewBuilder content: @escaping (AsyncImagePhase) -> Content
+    ) {
+        self.url = url
+        self.content = content
+    }
+
+    var body: some View {
+        content(phase)
+            .task(id: cacheKey) {
+                await load()
+            }
+    }
+
+    private var cacheKey: String {
+        url?.absoluteString ?? "nil-url"
+    }
+
+    @MainActor
+    private func load() async {
+        guard let url else {
+            phase = .empty
+            return
+        }
+
+        if Task.isCancelled { return }
+        phase = .empty
+        if let uiImage = await CachedImagePipeline.shared.image(for: url, scale: displayScale) {
+            if Task.isCancelled { return }
+            phase = .success(Image(uiImage: uiImage))
+        } else {
+            if Task.isCancelled { return }
+            phase = .failure(URLError(.badServerResponse))
+        }
+    }
 }
 
 @main

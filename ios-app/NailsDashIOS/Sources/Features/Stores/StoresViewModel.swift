@@ -73,6 +73,8 @@ final class StoreDetailViewModel: ObservableObject {
     @Published var services: [ServiceDTO] = []
     @Published var reviews: [StoreReviewDTO] = []
     @Published var storeHours: [StoreHourDTO] = []
+    @Published var isFavorited: Bool = false
+    @Published var isFavoriteLoading: Bool = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
 
@@ -95,6 +97,32 @@ final class StoreDetailViewModel: ObservableObject {
             services = try await serviceTask.filter { $0.is_active == 1 }
             reviews = (try? await reviewTask) ?? []
             storeHours = (try? await hoursTask) ?? []
+            errorMessage = nil
+        } catch let error as APIError {
+            errorMessage = mapError(error)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func loadFavoriteState(storeID: Int, token: String?) async {
+        guard let token else {
+            isFavorited = false
+            return
+        }
+        do {
+            isFavorited = try await service.checkFavorite(storeID: storeID, token: token)
+        } catch {
+            isFavorited = false
+        }
+    }
+
+    func toggleFavorite(storeID: Int, token: String) async {
+        isFavoriteLoading = true
+        defer { isFavoriteLoading = false }
+        do {
+            try await service.setFavorite(storeID: storeID, token: token, favorited: !isFavorited)
+            isFavorited.toggle()
             errorMessage = nil
         } catch let error as APIError {
             errorMessage = mapError(error)

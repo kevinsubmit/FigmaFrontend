@@ -1010,6 +1010,7 @@ struct BookAppointmentView: View {
             try? await Task.sleep(for: .milliseconds(120))
 
             await MainActor.run {
+                appState.resetBookFlowSource()
                 appState.selectedTab = .appointments
                 isProcessingSubmissionTransition = false
             }
@@ -1066,7 +1067,7 @@ struct BookAppointmentView: View {
                     ZStack(alignment: .bottomTrailing) {
                         TabView(selection: $heroPageIndex) {
                             ForEach(Array(store.images.enumerated()), id: \.element.id) { idx, img in
-                                AsyncImage(url: imageURL(from: img.image_url)) { phase in
+                                CachedAsyncImage(url: imageURL(from: img.image_url)) { phase in
                                     switch phase {
                                     case .empty:
                                         ProgressView().frame(maxWidth: .infinity, minHeight: UITheme.cardHeroHeight, maxHeight: UITheme.cardHeroHeight)

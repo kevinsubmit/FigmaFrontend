@@ -229,7 +229,7 @@ struct StoresListView: View {
         HStack(spacing: UITheme.spacing10) {
             Group {
                 if let url = styleReferenceImageURL(styleReference) {
-                    AsyncImage(url: url) { phase in
+                    CachedAsyncImage(url: url) { phase in
                         switch phase {
                         case .empty:
                             ProgressView().tint(brandGold)
@@ -375,7 +375,7 @@ struct StoresListView: View {
     @ViewBuilder
     private func storeImageView(url: URL?) -> some View {
         if let url {
-            AsyncImage(url: url) { phase in
+            CachedAsyncImage(url: url) { phase in
                 switch phase {
                 case .empty:
                     ZStack {

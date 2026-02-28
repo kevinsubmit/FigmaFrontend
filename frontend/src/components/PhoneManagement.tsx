@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Phone, Lock, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+import { validateRequestPayload } from '../lib/requestValidation';
+import apiClient from '../lib/api';
 
 const PhoneManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -41,38 +40,16 @@ const PhoneManagement: React.FC = () => {
     }
   }, [countdown]);
 
-  const getAuthToken = (): string | null => {
-    return localStorage.getItem('access_token') || localStorage.getItem('token');
-  };
-
-  const handleAuthExpired = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    toast.error('Session expired. Please log in again.');
-    navigate('/login');
-  };
-
   const fetchCurrentPhone = async () => {
     try {
-      const token = getAuthToken();
-      if (!token) {
-        handleAuthExpired();
-        return;
-      }
-      const response = await axios.get(`${API_BASE_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await apiClient.get('/auth/me');
       
       setCurrentPhone(response.data.phone);
       setIsPhoneVerified(response.data.phone_verified);
     } catch (error) {
       console.error('Failed to fetch phone:', error);
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        handleAuthExpired();
-        return;
-      }
+      const status = (error as any)?.response?.status;
+      if (status === 401 || status === 403 || status === 423 || status === 429) return;
       toast.error('Failed to load phone number');
     }
   };
@@ -95,9 +72,15 @@ const PhoneManagement: React.FC = () => {
     setSendingCode(true);
 
     try {
-      await axios.post(`${API_BASE_URL}/auth/send-verification-code`, {
-        phone: formData.newPhone,
+      const payload = {
+        phone: formData.newPhone.trim(),
         purpose: 'register'
+      };
+      validateRequestPayload(payload, { context: 'Send verification code' });
+
+      await apiClient.post('/auth/send-verification-code', {
+        phone: payload.phone,
+        purpose: payload.purpose
       });
 
       toast.success('Verification code sent!');
@@ -144,31 +127,21 @@ const PhoneManagement: React.FC = () => {
     setLoading(true);
 
     try {
-      const token = getAuthToken();
-      if (!token) {
-        handleAuthExpired();
-        return;
-      }
-      await axios.put(
-        `${API_BASE_URL}/users/phone`,
-        {
-          new_phone: formData.newPhone,
-          verification_code: formData.verificationCode,
-          current_password: formData.currentPassword
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
+      const payload = {
+        new_phone: formData.newPhone.trim(),
+        verification_code: formData.verificationCode.trim(),
+        current_password: formData.currentPassword
+      };
+      validateRequestPayload(payload, { context: 'Update phone number' });
+
+      await apiClient.put('/users/phone', payload);
 
       toast.success('Phone number updated successfully!');
       navigate('/profile');
     } catch (error: any) {
       console.error('Failed to update phone:', error);
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        handleAuthExpired();
-        return;
-      }
+      const status = error?.response?.status;
+      if (status === 401 || status === 403 || status === 423 || status === 429) return;
       const errorMessage = error.response?.data?.detail || 'Failed to update phone number';
       toast.error(errorMessage);
     } finally {
