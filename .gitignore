@@ -1,22 +1,39 @@
+# Backend local config/runtime
 backend/.env
 backend/uploads/
 backend/*.log
 backend/*.pid
 backend/venv311/
 backend/.venv/
-backend/nailsdash.db
+
+# Python artifacts
 **/__pycache__/
 **/*.pyc
-**/.DS_Store
-node_modules/
-.DS_Store
-**/__pycache__/
-*.pyc
+
+# Local databases
 backend/nailsdash.db
+nailsdash.db
+*.db
+*.sqlite3
+*.sqlite3-journal
+
+# Alembic local migration scripts (generated locally, do not commit)
+backend/alembic/versions/*.py
+backend/alembic/versions/*.pyc
+backend/alembic/versions/__pycache__/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Node / frontend
+node_modules/
 frontend/*.pid
 frontend/*.log
 admin-dashboard/.env
 admin-dashboard/dist/
 admin-dashboard/*.log
 admin-dashboard/*.pid
+
+# IDE/run configs
 .run/
