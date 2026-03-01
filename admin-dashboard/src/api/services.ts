@@ -9,6 +9,8 @@ export interface Service {
   category?: string | null;
   description?: string | null;
   price: number;
+  commission_type?: 'fixed' | 'percent';
+  commission_value?: number;
   commission_amount?: number;
   duration_minutes: number;
   is_active?: number;
@@ -75,6 +77,8 @@ export const addServiceToStore = async (
   payload: {
     catalog_id: number;
     price: number;
+    commission_type?: 'fixed' | 'percent';
+    commission_value?: number;
     commission_amount?: number;
     duration_minutes: number;
     description?: string;
@@ -89,6 +93,8 @@ export const updateStoreService = async (
   serviceId: number,
   payload: {
     price?: number;
+    commission_type?: 'fixed' | 'percent';
+    commission_value?: number;
     commission_amount?: number;
     duration_minutes?: number;
     description?: string;

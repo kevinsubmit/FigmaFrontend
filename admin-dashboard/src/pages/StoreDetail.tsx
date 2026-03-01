@@ -153,6 +153,7 @@ const StoreDetail: React.FC = () => {
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [addingCatalogId, setAddingCatalogId] = useState<number | null>(null);
   const [newServicePrice, setNewServicePrice] = useState<string>('50');
+  const [newServiceCommissionType, setNewServiceCommissionType] = useState<'fixed' | 'percent'>('fixed');
   const [newServiceCommission, setNewServiceCommission] = useState<string>('0');
   const [newServiceDuration, setNewServiceDuration] = useState<string>('60');
   const [serviceSavingId, setServiceSavingId] = useState<number | null>(null);
@@ -428,7 +429,7 @@ const StoreDetail: React.FC = () => {
     if (!store) return;
     const price = Number.parseInt(newServicePrice, 10);
     const duration = Number(newServiceDuration);
-    const commission = Number.parseInt(newServiceCommission, 10);
+    const commission = Number.parseFloat(newServiceCommission);
     if (!Number.isFinite(price) || price <= 0) {
       toast.error('Price must be greater than 0');
       return;
@@ -441,12 +442,18 @@ const StoreDetail: React.FC = () => {
       toast.error('Commission must be greater than or equal to 0');
       return;
     }
+    if (newServiceCommissionType === 'percent' && commission > 100) {
+      toast.error('Percent commission cannot exceed 100');
+      return;
+    }
     setAddingCatalogId(catalogItem.id);
     try {
       const created = await addServiceToStore(store.id, {
         catalog_id: catalogItem.id,
         price,
-        commission_amount: commission,
+        commission_type: newServiceCommissionType,
+        commission_value: commission,
+        commission_amount: newServiceCommissionType === 'fixed' ? commission : 0,
         duration_minutes: duration,
       });
       setServices((prev) => [created, ...prev]);
@@ -460,7 +467,14 @@ const StoreDetail: React.FC = () => {
 
   const handleQuickUpdateService = async (
     service: Service,
-    patch: { price?: number; commission_amount?: number; duration_minutes?: number; is_active?: number }
+    patch: {
+      price?: number;
+      commission_type?: 'fixed' | 'percent';
+      commission_value?: number;
+      commission_amount?: number;
+      duration_minutes?: number;
+      is_active?: number;
+    }
   ) => {
     if (!store) return;
     setServiceSavingId(service.id);
@@ -595,7 +609,7 @@ const StoreDetail: React.FC = () => {
                       <p className="text-xs font-semibold text-slate-900">可选服务目录</p>
                       <span className="text-xs text-slate-500">{catalog.length} templates</span>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       <div>
                         <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Price ($)</label>
                         <input
@@ -608,11 +622,27 @@ const StoreDetail: React.FC = () => {
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Commission ($)</label>
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Commission Type</label>
+                        <select
+                          value={newServiceCommissionType}
+                          onChange={(event) =>
+                            setNewServiceCommissionType(event.target.value === 'percent' ? 'percent' : 'fixed')
+                          }
+                          className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
+                        >
+                          <option value="fixed">Fixed ($)</option>
+                          <option value="percent">Percent (%)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
+                          {newServiceCommissionType === 'percent' ? 'Commission (%)' : 'Commission ($)'}
+                        </label>
                         <input
                           type="number"
                           min="0"
-                          step="1"
+                          max={newServiceCommissionType === 'percent' ? 100 : undefined}
+                          step={newServiceCommissionType === 'percent' ? '0.1' : '1'}
                           value={newServiceCommission}
                           onChange={(event) => setNewServiceCommission(event.target.value)}
                           className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
@@ -620,7 +650,7 @@ const StoreDetail: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-3 gap-2">
                       <div>
                         <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Duration (min)</label>
                         <input
@@ -632,6 +662,8 @@ const StoreDetail: React.FC = () => {
                           className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
                         />
                       </div>
+                      <div />
+                      <div />
                     </div>
 
                     {catalogLoading && <p className="text-sm text-slate-500">Loading catalog...</p>}
@@ -677,87 +709,127 @@ const StoreDetail: React.FC = () => {
                     {!servicesLoading &&
                       services.map((service) => (
                         <div key={service.id} className="rounded-xl border border-blue-100 bg-white p-3 space-y-2">
-                          <div>
-                            <h3 className="text-sm font-semibold text-slate-900">{service.name}</h3>
-                            <p className="mt-1 text-xs text-slate-500">{service.category || 'General'}</p>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2">
-                            <div>
-                              <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Price</label>
-                              <input
-                                type="number"
-                                min="1"
-                                step="1"
-                                defaultValue={service.price}
-                                onBlur={(event) => {
-                                  const nextPrice = Number.parseInt(event.target.value, 10);
-                                  if (!Number.isFinite(nextPrice) || nextPrice <= 0 || nextPrice === service.price) return;
-                                  event.target.value = String(nextPrice);
-                                  handleQuickUpdateService(service, { price: nextPrice });
-                                }}
-                                className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Commission</label>
-                              <input
-                                type="number"
-                                min="0"
-                                step="1"
-                                defaultValue={service.commission_amount ?? 0}
-                                onBlur={(event) => {
-                                  const nextCommission = Number.parseInt(event.target.value, 10);
-                                  if (
-                                    !Number.isFinite(nextCommission) ||
-                                    nextCommission < 0 ||
-                                    nextCommission === (service.commission_amount ?? 0)
-                                  )
-                                    return;
-                                  event.target.value = String(nextCommission);
-                                  handleQuickUpdateService(service, { commission_amount: nextCommission });
-                                }}
-                                className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Duration</label>
-                              <input
-                                type="number"
-                                min="1"
-                                step="5"
-                                defaultValue={service.duration_minutes}
-                                onBlur={(event) => {
-                                  const nextDuration = Number(event.target.value);
-                                  if (
-                                    !Number.isFinite(nextDuration) ||
-                                    nextDuration <= 0 ||
-                                    nextDuration === service.duration_minutes
-                                  )
-                                    return;
-                                  handleQuickUpdateService(service, { duration_minutes: nextDuration });
-                                }}
-                                className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
-                              />
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <button
-                              type="button"
-                              onClick={() => handleQuickUpdateService(service, { is_active: service.is_active === 1 ? 0 : 1 })}
-                              disabled={serviceSavingId === service.id}
-                              className="rounded-lg border border-blue-200 px-2 py-1 text-xs text-slate-800 disabled:opacity-50"
-                            >
-                              {service.is_active === 1 ? 'Disable' : 'Enable'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteStoreService(service.id)}
-                              disabled={serviceDeletingId === service.id}
-                              className="rounded-lg border border-red-500/40 px-2 py-1 text-xs text-red-600 disabled:opacity-50"
-                            >
-                              {serviceDeletingId === service.id ? 'Deactivating...' : 'Deactivate'}
-                            </button>
-                          </div>
+                          {(() => {
+                            const serviceCommissionType = service.commission_type === 'percent' ? 'percent' : 'fixed';
+                            const serviceCommissionValue = (() => {
+                              if (serviceCommissionType === 'fixed') {
+                                const value = Number(service.commission_value ?? 0);
+                                const amount = Number(service.commission_amount ?? 0);
+                                return value > 0 ? value : amount;
+                              }
+                              return Number(service.commission_value ?? 0);
+                            })();
+                            return (
+                              <>
+                                <div>
+                                  <h3 className="text-sm font-semibold text-slate-900">{service.name}</h3>
+                                  <p className="mt-1 text-xs text-slate-500">{service.category || 'General'}</p>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div>
+                                    <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Price</label>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      step="1"
+                                      defaultValue={service.price}
+                                      onBlur={(event) => {
+                                        const nextPrice = Number.parseInt(event.target.value, 10);
+                                        if (!Number.isFinite(nextPrice) || nextPrice <= 0 || nextPrice === service.price) return;
+                                        event.target.value = String(nextPrice);
+                                        handleQuickUpdateService(service, { price: nextPrice });
+                                      }}
+                                      className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Commission</label>
+                                    <div className="mt-1 grid grid-cols-2 gap-1">
+                                      <select
+                                        defaultValue={serviceCommissionType}
+                                        onChange={(event) => {
+                                          const nextType = event.target.value === 'percent' ? 'percent' : 'fixed';
+                                          const safeValue = nextType === 'percent'
+                                            ? Math.min(Number(serviceCommissionValue || 0), 100)
+                                            : Number(serviceCommissionValue || 0);
+                                          handleQuickUpdateService(service, {
+                                            commission_type: nextType,
+                                            commission_value: safeValue,
+                                            commission_amount: nextType === 'fixed' ? safeValue : 0,
+                                          });
+                                        }}
+                                        className="w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-gold-500"
+                                      >
+                                        <option value="fixed">$</option>
+                                        <option value="percent">%</option>
+                                      </select>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max={serviceCommissionType === 'percent' ? 100 : undefined}
+                                        step={serviceCommissionType === 'percent' ? '0.1' : '1'}
+                                        defaultValue={serviceCommissionValue}
+                                        onBlur={(event) => {
+                                          const nextCommission = Number.parseFloat(event.target.value);
+                                          if (!Number.isFinite(nextCommission) || nextCommission < 0) return;
+                                          if (serviceCommissionType === 'percent' && nextCommission > 100) {
+                                            toast.error('Percent commission cannot exceed 100');
+                                            event.target.value = String(serviceCommissionValue);
+                                            return;
+                                          }
+                                          if (nextCommission === Number(serviceCommissionValue ?? 0)) return;
+                                          event.target.value = String(nextCommission);
+                                          handleQuickUpdateService(service, {
+                                            commission_value: nextCommission,
+                                            commission_amount: serviceCommissionType === 'fixed' ? nextCommission : 0,
+                                          });
+                                        }}
+                                        className="w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Duration</label>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      step="5"
+                                      defaultValue={service.duration_minutes}
+                                      onBlur={(event) => {
+                                        const nextDuration = Number(event.target.value);
+                                        if (
+                                          !Number.isFinite(nextDuration) ||
+                                          nextDuration <= 0 ||
+                                          nextDuration === service.duration_minutes
+                                        )
+                                          return;
+                                        handleQuickUpdateService(service, { duration_minutes: nextDuration });
+                                      }}
+                                      className="mt-1 w-full rounded-lg border border-blue-100 bg-white px-2 py-1.5 text-sm text-slate-900 outline-none focus:border-gold-500"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuickUpdateService(service, { is_active: service.is_active === 1 ? 0 : 1 })}
+                                    disabled={serviceSavingId === service.id}
+                                    className="rounded-lg border border-blue-200 px-2 py-1 text-xs text-slate-800 disabled:opacity-50"
+                                  >
+                                    {service.is_active === 1 ? 'Disable' : 'Enable'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteStoreService(service.id)}
+                                    disabled={serviceDeletingId === service.id}
+                                    className="rounded-lg border border-red-500/40 px-2 py-1 text-xs text-red-600 disabled:opacity-50"
+                                  >
+                                    {serviceDeletingId === service.id ? 'Deactivating...' : 'Deactivate'}
+                                  </button>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       ))}
                   </div>

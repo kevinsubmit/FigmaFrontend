@@ -18,6 +18,35 @@ from app.schemas.service import (
 )
 
 
+def _normalize_commission_payload(
+    *,
+    commission_type: Optional[str],
+    commission_value: Optional[float],
+    commission_amount: Optional[float],
+    current_type: str = Service.COMMISSION_TYPE_FIXED,
+    current_value: float = 0.0,
+) -> tuple[str, float, float]:
+    normalized_type = (commission_type or current_type or Service.COMMISSION_TYPE_FIXED).strip().lower()
+    if normalized_type not in {Service.COMMISSION_TYPE_FIXED, Service.COMMISSION_TYPE_PERCENT}:
+        raise ValueError("commission_type must be fixed or percent")
+
+    if commission_value is None:
+        if commission_amount is not None:
+            normalized_value = float(commission_amount)
+        else:
+            normalized_value = float(current_value or 0)
+    else:
+        normalized_value = float(commission_value)
+
+    if normalized_value < 0:
+        raise ValueError("commission_value must be greater than or equal to 0")
+    if normalized_type == Service.COMMISSION_TYPE_PERCENT and normalized_value > 100:
+        raise ValueError("commission_value cannot exceed 100 for percent commission")
+
+    legacy_amount = normalized_value if normalized_type == Service.COMMISSION_TYPE_FIXED else 0.0
+    return normalized_type, normalized_value, legacy_amount
+
+
 def get_service(db: Session, service_id: int) -> Optional[Service]:
     """Get service by ID"""
     return db.query(Service).filter(Service.id == service_id).first()
@@ -57,7 +86,17 @@ def get_store_services(db: Session, store_id: int, include_inactive: bool = Fals
 
 def create_service(db: Session, service: ServiceCreate) -> Service:
     """Create new service"""
-    db_service = Service(**service.model_dump())
+    payload = service.model_dump()
+    provided_data = service.model_dump(exclude_unset=True)
+    commission_type, commission_value, commission_amount = _normalize_commission_payload(
+        commission_type=provided_data.get("commission_type"),
+        commission_value=provided_data.get("commission_value"),
+        commission_amount=provided_data.get("commission_amount"),
+    )
+    payload["commission_type"] = commission_type
+    payload["commission_value"] = commission_value
+    payload["commission_amount"] = commission_amount
+    db_service = Service(**payload)
     db.add(db_service)
     db.commit()
     db.refresh(db_service)
@@ -71,6 +110,22 @@ def update_service(db: Session, service_id: int, service: ServiceUpdate) -> Opti
         return None
 
     update_data = service.model_dump(exclude_unset=True)
+    if any(field in update_data for field in {"commission_type", "commission_value", "commission_amount"}):
+        commission_type, commission_value, commission_amount = _normalize_commission_payload(
+            commission_type=update_data.get("commission_type"),
+            commission_value=update_data.get("commission_value"),
+            commission_amount=update_data.get("commission_amount"),
+            current_type=db_service.commission_type,
+            current_value=(
+                db_service.commission_value
+                if db_service.commission_value is not None
+                else float(db_service.commission_amount or 0)
+            ),
+        )
+        update_data["commission_type"] = commission_type
+        update_data["commission_value"] = commission_value
+        update_data["commission_amount"] = commission_amount
+
     for field, value in update_data.items():
         setattr(db_service, field, value)
 
@@ -218,6 +273,7 @@ def assign_catalog_service_to_store(
     catalog_item = get_catalog_item(db, payload.catalog_id)
     if not catalog_item:
         raise ValueError("Catalog item not found")
+    provided_data = payload.model_dump(exclude_unset=True)
 
     existing = (
         db.query(Service)
@@ -225,8 +281,21 @@ def assign_catalog_service_to_store(
         .first()
     )
     if existing:
+        commission_type, commission_value, commission_amount = _normalize_commission_payload(
+            commission_type=provided_data.get("commission_type"),
+            commission_value=provided_data.get("commission_value"),
+            commission_amount=provided_data.get("commission_amount"),
+            current_type=existing.commission_type,
+            current_value=(
+                existing.commission_value
+                if existing.commission_value is not None
+                else float(existing.commission_amount or 0)
+            ),
+        )
         existing.price = payload.price
-        existing.commission_amount = payload.commission_amount
+        existing.commission_type = commission_type
+        existing.commission_value = commission_value
+        existing.commission_amount = commission_amount
         existing.duration_minutes = payload.duration_minutes
         existing.description = payload.description if payload.description is not None else catalog_item.description
         existing.name = catalog_item.name
@@ -236,6 +305,12 @@ def assign_catalog_service_to_store(
         db.refresh(existing)
         return existing
 
+    commission_type, commission_value, commission_amount = _normalize_commission_payload(
+        commission_type=provided_data.get("commission_type"),
+        commission_value=provided_data.get("commission_value"),
+        commission_amount=provided_data.get("commission_amount"),
+    )
+
     db_service = Service(
         store_id=store_id,
         catalog_id=payload.catalog_id,
@@ -243,7 +318,9 @@ def assign_catalog_service_to_store(
         category=catalog_item.category,
         description=payload.description if payload.description is not None else catalog_item.description,
         price=payload.price,
-        commission_amount=payload.commission_amount,
+        commission_type=commission_type,
+        commission_value=commission_value,
+        commission_amount=commission_amount,
         duration_minutes=payload.duration_minutes,
         is_active=1,
     )
@@ -264,6 +341,22 @@ def update_store_service(
         return None
 
     update_data = payload.model_dump(exclude_unset=True)
+    if any(field in update_data for field in {"commission_type", "commission_value", "commission_amount"}):
+        commission_type, commission_value, commission_amount = _normalize_commission_payload(
+            commission_type=update_data.get("commission_type"),
+            commission_value=update_data.get("commission_value"),
+            commission_amount=update_data.get("commission_amount"),
+            current_type=service.commission_type,
+            current_value=(
+                service.commission_value
+                if service.commission_value is not None
+                else float(service.commission_amount or 0)
+            ),
+        )
+        update_data["commission_type"] = commission_type
+        update_data["commission_value"] = commission_value
+        update_data["commission_amount"] = commission_amount
+
     for field, value in update_data.items():
         setattr(service, field, value)
     db.commit()

@@ -9,6 +9,9 @@ class Service(Base):
     """Service model"""
     __tablename__ = "services"
 
+    COMMISSION_TYPE_FIXED = "fixed"
+    COMMISSION_TYPE_PERCENT = "percent"
+
     id = Column(Integer, primary_key=True, index=True)
     store_id = Column(Integer, nullable=False, index=True)
     catalog_id = Column(Integer, nullable=True, index=True)
@@ -16,6 +19,8 @@ class Service(Base):
     description = Column(Text)
     price = Column(Float, nullable=False)
     commission_amount = Column(Float, nullable=False, default=0)
+    commission_type = Column(String(20), nullable=False, default=COMMISSION_TYPE_FIXED)
+    commission_value = Column(Float, nullable=False, default=0)
     duration_minutes = Column(Integer, nullable=False)
     category = Column(String(100), index=True)
     is_active = Column(Integer, default=1)

@@ -4076,6 +4076,9 @@ private struct DealsView: View {
     @StateObject private var viewModel = DealsViewModel()
     @State private var alertMessage: String = ""
     @State private var showAlert: Bool = false
+    @State private var selectedStoreIDForNavigation: Int?
+    @State private var navigateToStoreDetail: Bool = false
+    @State private var navigateToStoresList: Bool = false
     private let brandGold = UITheme.brandGold
     private let cardBG = UITheme.cardBackground
 
@@ -4084,7 +4087,7 @@ private struct DealsView: View {
             dealsHeader
 
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: UITheme.spacing12) {
+                VStack(alignment: .leading, spacing: UITheme.spacing12) {
                     if !viewModel.isLoading && viewModel.filtered.isEmpty {
                         UnifiedEmptyStateCard(
                             icon: "tag.fill",
@@ -4093,8 +4096,9 @@ private struct DealsView: View {
                             compact: true
                         )
                     } else {
-                        ForEach(viewModel.filtered) { promotion in
-                            dealRow(promotion)
+                        let totalCount = viewModel.filtered.count
+                        ForEach(Array(viewModel.filtered.enumerated()), id: \.offset) { idx, promotion in
+                            dealRow(promotion, index: idx, totalCount: totalCount)
                         }
                     }
                 }
@@ -4116,6 +4120,14 @@ private struct DealsView: View {
         .unifiedNoticeAlert(isPresented: $showAlert, message: alertMessage)
         .overlay {
             UnifiedLoadingOverlay(isLoading: viewModel.isLoading)
+        }
+        .navigationDestination(isPresented: $navigateToStoreDetail) {
+            if let storeID = selectedStoreIDForNavigation {
+                StoreDetailView(storeID: storeID)
+            }
+        }
+        .navigationDestination(isPresented: $navigateToStoresList) {
+            StoresListView(hideTabBar: true)
         }
     }
 
@@ -4179,10 +4191,11 @@ private struct DealsView: View {
     }
 
     @ViewBuilder
-    private func dealRow(_ promotion: PromotionDTO) -> some View {
-        let store = promotion.store_id.flatMap { viewModel.storesByID[$0] }
-        let hasStore = store != nil
-        let scopeLabel = hasStore ? "STORE DEAL" : "PLATFORM DEAL"
+    private func dealRow(_ promotion: PromotionDTO, index: Int, totalCount: Int) -> some View {
+        let storeID = promotion.store_id
+        let store = storeID.flatMap { viewModel.storesByID[$0] }
+        let hasDirectStoreTarget = storeID != nil
+        let scopeLabel = hasDirectStoreTarget ? "STORE DEAL" : "PLATFORM DEAL"
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topLeading) {
                 Group {
@@ -4237,7 +4250,7 @@ private struct DealsView: View {
                             .font(.title3.weight(.bold))
                             .foregroundStyle(.white)
                             .lineLimit(2)
-                        Text(hasStore ? (store?.name ?? "Store Offer") : "Platform Offer")
+                        Text(hasDirectStoreTarget ? (store?.name ?? "Store Offer") : "Platform Offer")
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Color.white.opacity(0.78))
                             .lineLimit(1)
@@ -4301,9 +4314,10 @@ private struct DealsView: View {
                         .lineLimit(3)
                 }
 
-                if let store {
-                    NavigationLink {
-                        StoreDetailView(storeID: store.id)
+                if let targetStoreID = storeID {
+                    Button {
+                        selectedStoreIDForNavigation = targetStoreID
+                        navigateToStoreDetail = true
                     } label: {
                         HStack(spacing: UITheme.spacing6) {
                             Text("Book Now")
@@ -4318,8 +4332,8 @@ private struct DealsView: View {
                     }
                     .buttonStyle(.plain)
                 } else {
-                    NavigationLink {
-                        StoresListView(hideTabBar: true)
+                    Button {
+                        navigateToStoresList = true
                     } label: {
                         HStack(spacing: UITheme.spacing6) {
                             Text("Browse Stores")
@@ -4336,7 +4350,7 @@ private struct DealsView: View {
                                 .stroke(brandGold.opacity(0.28), lineWidth: 1)
                         )
                     }
-                        .buttonStyle(.plain)
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, UITheme.cardPadding)
@@ -4351,12 +4365,16 @@ private struct DealsView: View {
                 .fill(brandGold.opacity(0.42))
                 .frame(height: UITheme.spacing1)
                 .clipShape(RoundedRectangle(cornerRadius: UITheme.cardCornerRadius))
+                .allowsHitTesting(false)
         }
         .overlay(
             RoundedRectangle(cornerRadius: UITheme.cardCornerRadius)
                 .stroke(brandGold.opacity(UITheme.cardStrokeOpacity), lineWidth: 1)
+                .allowsHitTesting(false)
         )
         .shadow(color: .black.opacity(0.22), radius: 6, y: 3)
+        .contentShape(RoundedRectangle(cornerRadius: UITheme.cardCornerRadius))
+        .zIndex(Double(max(totalCount - index, 0)))
     }
 
     private var dealCoverFallback: some View {

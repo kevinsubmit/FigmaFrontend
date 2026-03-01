@@ -145,7 +145,10 @@ def update_store_service(
     if not current_user.is_admin and current_user.store_id != store_id:
         raise HTTPException(status_code=403, detail="You can only manage services for your own store")
 
-    updated = crud_service.update_store_service(db, service_id=service_id, payload=payload)
+    try:
+        updated = crud_service.update_store_service(db, service_id=service_id, payload=payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return updated
 
 
@@ -235,7 +238,10 @@ def create_service(
             detail="You can only create services for your own store",
         )
 
-    new_service = crud_service.create_service(db, service=service)
+    try:
+        new_service = crud_service.create_service(db, service=service)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return new_service
 
 
@@ -262,7 +268,10 @@ def update_service(
             detail="You can only update services from your own store",
         )
 
-    updated_service = crud_service.update_service(db, service_id=service_id, service=service)
+    try:
+        updated_service = crud_service.update_service(db, service_id=service_id, service=service)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     return updated_service
 
 

@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 from app.api.deps import get_db, get_current_admin_user, get_current_store_admin
 from app.models.user import User
 from app.models.appointment import Appointment, AppointmentStatus
+from app.models.appointment_service_item import AppointmentServiceItem
 from app.models.appointment_staff_split import AppointmentStaffSplit
 from app.models.service import Service
 from app.models.technician import Technician as TechnicianModel
@@ -28,6 +29,119 @@ def _ensure_store_scope(current_user: User, target_store_id: int) -> None:
         return
     if current_user.store_id != target_store_id:
         raise HTTPException(status_code=403, detail="You can only access data from your own store")
+
+
+def _normalize_commission_config(
+    commission_type: Optional[str],
+    commission_value: Optional[float],
+    commission_amount: Optional[float] = None,
+) -> tuple[str, float]:
+    normalized_type = (commission_type or Service.COMMISSION_TYPE_FIXED).lower()
+    if normalized_type not in {Service.COMMISSION_TYPE_FIXED, Service.COMMISSION_TYPE_PERCENT}:
+        normalized_type = Service.COMMISSION_TYPE_FIXED
+    normalized_value = commission_value
+    if normalized_value is None:
+        normalized_value = commission_amount or 0.0
+    normalized_value = max(float(normalized_value or 0), 0.0)
+    # Backward compatibility: old fixed rows may still store only commission_amount.
+    if (
+        normalized_type == Service.COMMISSION_TYPE_FIXED
+        and normalized_value <= 0
+        and float(commission_amount or 0) > 0
+    ):
+        normalized_value = float(commission_amount or 0)
+    if normalized_type == Service.COMMISSION_TYPE_PERCENT:
+        normalized_value = min(normalized_value, 100.0)
+    return normalized_type, normalized_value
+
+
+def _load_service_commission_config_map(db: Session, service_ids: set[int]) -> dict[int, tuple[str, float]]:
+    if not service_ids:
+        return {}
+    rows = (
+        db.query(
+            Service.id.label("service_id"),
+            Service.commission_type.label("commission_type"),
+            Service.commission_value.label("commission_value"),
+            Service.commission_amount.label("commission_amount"),
+        )
+        .filter(Service.id.in_(service_ids))
+        .all()
+    )
+    return {
+        int(row.service_id): _normalize_commission_config(
+            row.commission_type,
+            row.commission_value,
+            row.commission_amount,
+        )
+        for row in rows
+    }
+
+
+def _load_appointment_service_amount_map(
+    db: Session, appointment_ids: list[int]
+) -> tuple[dict[int, list[tuple[int, float]]], dict[int, dict[int, float]]]:
+    if not appointment_ids:
+        return {}, {}
+    rows = (
+        db.query(
+            AppointmentServiceItem.appointment_id.label("appointment_id"),
+            AppointmentServiceItem.service_id.label("service_id"),
+            AppointmentServiceItem.amount.label("amount"),
+        )
+        .filter(AppointmentServiceItem.appointment_id.in_(appointment_ids))
+        .all()
+    )
+    items_map: dict[int, list[tuple[int, float]]] = {}
+    totals_map: dict[int, dict[int, float]] = {}
+    for row in rows:
+        appointment_id = int(row.appointment_id)
+        service_id = int(row.service_id)
+        amount = float(row.amount or 0)
+        items_map.setdefault(appointment_id, []).append((service_id, amount))
+        totals_map.setdefault(appointment_id, {})
+        totals_map[appointment_id][service_id] = totals_map[appointment_id].get(service_id, 0.0) + amount
+    return items_map, totals_map
+
+
+def _calculate_commission_by_amount(
+    amount: float,
+    commission_type: str,
+    commission_value: float,
+) -> float:
+    amount = float(amount or 0)
+    if amount <= 0 or commission_value <= 0:
+        return 0.0
+    if commission_type == Service.COMMISSION_TYPE_PERCENT:
+        return amount * (commission_value / 100.0)
+    return commission_value
+
+
+def _calculate_split_commission(
+    split_amount: float,
+    service_total: float,
+    commission_type: str,
+    commission_value: float,
+) -> float:
+    if commission_type == Service.COMMISSION_TYPE_PERCENT:
+        return _calculate_commission_by_amount(split_amount, commission_type, commission_value)
+    if service_total <= 0 or commission_value <= 0:
+        return 0.0
+    return commission_value * (float(split_amount or 0) / float(service_total))
+
+
+def _calculate_items_commission(
+    items: list[tuple[int, float]],
+    service_commission_map: dict[int, tuple[str, float]],
+) -> float:
+    total = 0.0
+    for item_service_id, item_amount in items:
+        commission_type, commission_value = service_commission_map.get(
+            int(item_service_id),
+            (Service.COMMISSION_TYPE_FIXED, 0.0),
+        )
+        total += _calculate_commission_by_amount(item_amount, commission_type, commission_value)
+    return total
 
 
 @router.get("/", response_model=List[TechnicianSchema])
@@ -83,14 +197,11 @@ def get_technician_performance_summary(
             Appointment.appointment_date.label("appointment_date"),
             Appointment.appointment_time.label("appointment_time"),
             Appointment.technician_id.label("appointment_technician_id"),
+            Appointment.service_id.label("appointment_service_id"),
             Appointment.order_amount.label("order_amount"),
-            Service.name.label("service_name"),
             Service.price.label("service_price"),
-            Service.commission_amount.label("service_commission_amount"),
-            func.coalesce(User.full_name, User.username).label("customer_name"),
         )
         .join(Service, Service.id == Appointment.service_id)
-        .join(User, User.id == Appointment.user_id)
         .filter(
             Appointment.store_id == target_store_id,
             Appointment.status == AppointmentStatus.COMPLETED,
@@ -105,26 +216,66 @@ def get_technician_performance_summary(
                 AppointmentStaffSplit.id.label("split_id"),
                 AppointmentStaffSplit.appointment_id.label("appointment_id"),
                 AppointmentStaffSplit.technician_id.label("technician_id"),
+                AppointmentStaffSplit.service_id.label("service_id"),
                 AppointmentStaffSplit.amount.label("amount"),
             )
             .filter(AppointmentStaffSplit.appointment_id.in_(appointment_ids))
             .all()
         )
     split_map: dict[int, list] = {}
+    split_service_totals: dict[int, dict[int, float]] = {}
     for row in split_rows:
-        split_map.setdefault(row.appointment_id, []).append(row)
+        appointment_id = int(row.appointment_id)
+        service_id = int(row.service_id) if row.service_id else None
+        split_map.setdefault(appointment_id, []).append(row)
+        if service_id is not None:
+            split_service_totals.setdefault(appointment_id, {})
+            split_service_totals[appointment_id][service_id] = (
+                split_service_totals[appointment_id].get(service_id, 0.0) + float(row.amount or 0)
+            )
+
+    service_items_map, service_item_totals_map = _load_appointment_service_amount_map(db, appointment_ids)
+
+    service_ids: set[int] = set()
+    service_ids.update(
+        int(row.appointment_service_id)
+        for row in completed_appointments
+        if row.appointment_service_id is not None
+    )
+    service_ids.update(
+        int(row.service_id)
+        for row in split_rows
+        if row.service_id is not None
+    )
+    for items in service_items_map.values():
+        for service_id, _ in items:
+            service_ids.add(int(service_id))
+    service_commission_map = _load_service_commission_config_map(db, service_ids)
 
     for appt in completed_appointments:
         order_amount = float(appt.order_amount if appt.order_amount is not None else (appt.service_price or 0))
-        order_commission = float(appt.service_commission_amount or 0)
-        appointment_splits = split_map.get(appt.appointment_id, [])
+        appointment_id = int(appt.appointment_id)
+        appointment_splits = split_map.get(appointment_id, [])
+        appointment_items = service_items_map.get(appointment_id, [])
 
         if appointment_splits:
-            split_total = round(sum(float(item.amount or 0) for item in appointment_splits), 2)
             for split in appointment_splits:
                 technician_id = int(split.technician_id)
                 split_amount = float(split.amount or 0)
-                split_commission = order_commission * (split_amount / split_total) if split_total > 0 else 0.0
+                split_service_id = int(split.service_id) if split.service_id is not None else int(appt.appointment_service_id)
+                commission_type, commission_value = service_commission_map.get(
+                    split_service_id,
+                    (Service.COMMISSION_TYPE_FIXED, 0.0),
+                )
+                service_total = service_item_totals_map.get(appointment_id, {}).get(split_service_id, 0.0)
+                if service_total <= 0:
+                    service_total = split_service_totals.get(appointment_id, {}).get(split_service_id, 0.0)
+                split_commission = _calculate_split_commission(
+                    split_amount=split_amount,
+                    service_total=service_total,
+                    commission_type=commission_type,
+                    commission_value=commission_value,
+                )
                 metrics = agg_map.setdefault(
                     technician_id,
                     {
@@ -147,6 +298,18 @@ def get_technician_performance_summary(
 
         if not appt.appointment_technician_id:
             continue
+
+        if appointment_items:
+            unsplit_amount = sum(float(item_amount or 0) for _, item_amount in appointment_items)
+            unsplit_commission = _calculate_items_commission(appointment_items, service_commission_map)
+        else:
+            unsplit_amount = order_amount
+            commission_type, commission_value = service_commission_map.get(
+                int(appt.appointment_service_id),
+                (Service.COMMISSION_TYPE_FIXED, 0.0),
+            )
+            unsplit_commission = _calculate_commission_by_amount(order_amount, commission_type, commission_value)
+
         technician_id = int(appt.appointment_technician_id)
         metrics = agg_map.setdefault(
             technician_id,
@@ -160,12 +323,12 @@ def get_technician_performance_summary(
             },
         )
         metrics["total_order_count"] += 1
-        metrics["total_amount"] += order_amount
-        metrics["total_commission"] += order_commission
+        metrics["total_amount"] += unsplit_amount
+        metrics["total_commission"] += unsplit_commission
         if appt.appointment_date == today_et:
             metrics["today_order_count"] += 1
-            metrics["today_amount"] += order_amount
-            metrics["today_commission"] += order_commission
+            metrics["today_amount"] += unsplit_amount
+            metrics["today_commission"] += unsplit_commission
 
     technicians = (
         db.query(TechnicianModel)
@@ -230,10 +393,10 @@ def get_technician_performance_detail(
             Appointment.appointment_date.label("appointment_date"),
             Appointment.appointment_time.label("appointment_time"),
             Appointment.technician_id.label("appointment_technician_id"),
+            Appointment.service_id.label("appointment_service_id"),
             Appointment.order_amount.label("order_amount"),
             Service.name.label("service_name"),
             Service.price.label("service_price"),
-            Service.commission_amount.label("service_commission_amount"),
             func.coalesce(User.full_name, User.username).label("customer_name"),
         )
         .join(Service, Service.id == Appointment.service_id)
@@ -252,27 +415,67 @@ def get_technician_performance_detail(
                 AppointmentStaffSplit.id.label("split_id"),
                 AppointmentStaffSplit.appointment_id.label("appointment_id"),
                 AppointmentStaffSplit.technician_id.label("technician_id"),
+                AppointmentStaffSplit.service_id.label("service_id"),
                 AppointmentStaffSplit.amount.label("amount"),
             )
             .filter(AppointmentStaffSplit.appointment_id.in_(appointment_ids))
             .all()
         )
     split_map: dict[int, list] = {}
+    split_service_totals: dict[int, dict[int, float]] = {}
     for row in split_rows:
-        split_map.setdefault(row.appointment_id, []).append(row)
+        appointment_id = int(row.appointment_id)
+        service_id = int(row.service_id) if row.service_id else None
+        split_map.setdefault(appointment_id, []).append(row)
+        if service_id is not None:
+            split_service_totals.setdefault(appointment_id, {})
+            split_service_totals[appointment_id][service_id] = (
+                split_service_totals[appointment_id].get(service_id, 0.0) + float(row.amount or 0)
+            )
+
+    service_items_map, service_item_totals_map = _load_appointment_service_amount_map(db, appointment_ids)
+
+    service_ids: set[int] = set()
+    service_ids.update(
+        int(row.appointment_service_id)
+        for row in completed_appointments
+        if row.appointment_service_id is not None
+    )
+    service_ids.update(
+        int(row.service_id)
+        for row in split_rows
+        if row.service_id is not None
+    )
+    for items in service_items_map.values():
+        for service_id, _ in items:
+            service_ids.add(int(service_id))
+    service_commission_map = _load_service_commission_config_map(db, service_ids)
 
     all_items = []
     for appt in completed_appointments:
         order_amount = float(appt.order_amount if appt.order_amount is not None else (appt.service_price or 0))
-        order_commission = float(appt.service_commission_amount or 0)
-        appointment_splits = split_map.get(appt.appointment_id, [])
+        appointment_id = int(appt.appointment_id)
+        appointment_splits = split_map.get(appointment_id, [])
+        appointment_items = service_items_map.get(appointment_id, [])
         if appointment_splits:
-            split_total = round(sum(float(item.amount or 0) for item in appointment_splits), 2)
             for split in appointment_splits:
                 if split.technician_id != technician_id:
                     continue
                 split_amount = float(split.amount or 0)
-                split_commission = order_commission * (split_amount / split_total) if split_total > 0 else 0.0
+                split_service_id = int(split.service_id) if split.service_id is not None else int(appt.appointment_service_id)
+                commission_type, commission_value = service_commission_map.get(
+                    split_service_id,
+                    (Service.COMMISSION_TYPE_FIXED, 0.0),
+                )
+                service_total = service_item_totals_map.get(appointment_id, {}).get(split_service_id, 0.0)
+                if service_total <= 0:
+                    service_total = split_service_totals.get(appointment_id, {}).get(split_service_id, 0.0)
+                split_commission = _calculate_split_commission(
+                    split_amount=split_amount,
+                    service_total=service_total,
+                    commission_type=commission_type,
+                    commission_value=commission_value,
+                )
                 all_items.append(
                     {
                         "split_id": int(split.split_id),
@@ -291,6 +494,16 @@ def get_technician_performance_detail(
 
         if appt.appointment_technician_id != technician_id:
             continue
+        if appointment_items:
+            unsplit_amount = sum(float(item_amount or 0) for _, item_amount in appointment_items)
+            unsplit_commission = _calculate_items_commission(appointment_items, service_commission_map)
+        else:
+            unsplit_amount = order_amount
+            commission_type, commission_value = service_commission_map.get(
+                int(appt.appointment_service_id),
+                (Service.COMMISSION_TYPE_FIXED, 0.0),
+            )
+            unsplit_commission = _calculate_commission_by_amount(order_amount, commission_type, commission_value)
         all_items.append(
             {
                 "split_id": -int(appt.appointment_id),
@@ -301,8 +514,8 @@ def get_technician_performance_detail(
                 "service_name": appt.service_name,
                 "customer_name": appt.customer_name,
                 "work_type": appt.service_name,
-                "amount": order_amount,
-                "commission_amount": order_commission,
+                "amount": unsplit_amount,
+                "commission_amount": unsplit_commission,
             }
         )
 
