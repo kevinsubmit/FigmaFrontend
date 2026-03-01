@@ -18,6 +18,8 @@ const Dashboard: React.FC = () => {
     id: number;
     message: string;
     created_at: string;
+    store_id: number;
+    store_name?: string | null;
   }>>([]);
   const [summary, setSummary] = useState({
     today_appointments: 0,
@@ -101,6 +103,8 @@ const Dashboard: React.FC = () => {
             id: item.id,
             message: item.message,
             created_at: item.created_at,
+            store_id: item.store_id,
+            store_name: item.store_name,
           })),
         );
       } catch {
@@ -187,7 +191,13 @@ const Dashboard: React.FC = () => {
                         : 'border-cyan-100 bg-cyan-50/60'
                     }`}
                   >
-                    <p className="text-sm text-slate-800">{item.message}</p>
+                    <p className="text-sm text-slate-800">
+                      {item.message}
+                      <span className="text-slate-600">
+                        {' · '}
+                        {item.store_name?.trim() || `Store #${item.store_id}`}
+                      </span>
+                    </p>
                     <p className="mt-1 text-xs text-slate-500">{formatRelativeTime(item.created_at)}</p>
                   </div>
                 ))

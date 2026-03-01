@@ -1754,6 +1754,7 @@ const AppointmentsList: React.FC = () => {
 
               <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3 space-y-2 text-sm">
                 <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Service</p>
+                <p className="text-slate-600">Store: {getStoreLabel(selected)}</p>
                 <div className="space-y-1.5">
                   {serviceItemsLoading ? (
                     <p className="text-xs text-slate-500">Loading services...</p>
