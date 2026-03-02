@@ -138,7 +138,11 @@ struct BookAppointmentView: View {
             syncReferenceNote()
         }
         .alert("Message", isPresented: $showAlert) {
-            Button("OK", role: .cancel) {}
+            Button("OK", role: .cancel) {
+                if shouldForceLogoutAfterAlert(alertMessage) {
+                    appState.forceLogout(message: alertMessage)
+                }
+            }
         } message: {
             Text(alertMessage)
         }
@@ -995,6 +999,17 @@ struct BookAppointmentView: View {
             let ok = await submitCurrentBooking(token: token)
             guard ok else {
                 await MainActor.run {
+                    if let latestError = viewModel.errorMessage?.trimmingCharacters(in: .whitespacesAndNewlines),
+                       !latestError.isEmpty
+                    {
+                        alertMessage = latestError
+                        showAlert = true
+                    } else if let latestHint = viewModel.slotHintMessage?.trimmingCharacters(in: .whitespacesAndNewlines),
+                              !latestHint.isEmpty
+                    {
+                        alertMessage = latestHint
+                        showAlert = true
+                    }
                     isProcessingSubmissionTransition = false
                 }
                 return
@@ -1395,6 +1410,10 @@ struct BookAppointmentView: View {
             return "\(hours)h \(mins)m"
         }
         return "\(mins)m"
+    }
+
+    private func shouldForceLogoutAfterAlert(_ message: String) -> Bool {
+        AppState.shouldForceLogoutAfterSensitiveAuthAlert(message)
     }
 
     private func syncReferenceNote() {

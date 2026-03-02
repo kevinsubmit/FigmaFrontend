@@ -43,12 +43,45 @@ export const shouldForceRelogin = (status?: number, detail?: unknown): boolean =
   return false;
 };
 
-export const forceRelogin = () => {
+export const FORCE_RELOGIN_EVENT = 'auth:force-relogin-required';
+
+type ForceReloginEventDetail = {
+  message?: string;
+};
+
+let reloginPromptActive = false;
+
+const clearAuthStorage = () => {
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
   localStorage.removeItem('token');
   localStorage.removeItem('user');
+};
+
+export const completeRelogin = () => {
+  clearAuthStorage();
+  reloginPromptActive = false;
   if (window.location.pathname !== '/login') {
     window.location.replace('/login');
   }
+};
+
+export const forceRelogin = (message?: string, requireConfirm = true) => {
+  if (!requireConfirm) {
+    completeRelogin();
+    return;
+  }
+
+  if (reloginPromptActive) {
+    return;
+  }
+
+  reloginPromptActive = true;
+  window.dispatchEvent(
+    new CustomEvent<ForceReloginEventDetail>(FORCE_RELOGIN_EVENT, {
+      detail: {
+        message: message || 'Session expired. Please sign in again.',
+      },
+    }),
+  );
 };

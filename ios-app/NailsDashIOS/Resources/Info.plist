@@ -24,6 +24,8 @@
 	<string>$(NAILSDASH_API_BASE_URL)</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>We use your location to sort nearby salons by distance.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Allow NailsDash to save inspiration images to your Photos library.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

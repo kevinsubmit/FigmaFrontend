@@ -1,3 +1,4 @@
+import Photos
 import SwiftUI
 import UIKit
 
@@ -3703,6 +3704,7 @@ private struct HomeFeedPinDetailView: View {
     @StateObject private var viewModel: HomeFeedPinDetailViewModel
     @State private var toast: PinDetailToastPayload?
     @State private var heroBaseScale: CGFloat = 1
+    @State private var isDownloadingImage = false
     @GestureState private var heroPinchScale: CGFloat = 1
     @State private var heroAccumulatedOffset: CGSize = .zero
     @GestureState private var heroDragOffset: CGSize = .zero
@@ -4031,7 +4033,20 @@ private struct HomeFeedPinDetailView: View {
     }
 
     private var shareButton: some View {
-        ShareLink(item: sharePayload) {
+        Menu {
+            ShareLink(item: sharePayload) {
+                Label("Share", systemImage: "square.and.arrow.up")
+            }
+
+            Button {
+                Task {
+                    await downloadCurrentImageToLibrary()
+                }
+            } label: {
+                Label("Download image", systemImage: "arrow.down.to.line")
+            }
+            .disabled(isDownloadingImage)
+        } label: {
             ZStack {
                 Circle()
                     .fill(Color.black.opacity(0.62))
@@ -4156,6 +4171,68 @@ private struct HomeFeedPinDetailView: View {
             guard toast?.id == payload.id else { return }
             withAnimation(.easeOut(duration: 0.2)) {
                 toast = nil
+            }
+        }
+    }
+
+    @MainActor
+    private func downloadCurrentImageToLibrary() async {
+        guard !isDownloadingImage else { return }
+        guard let imageURL = viewModel.pin.imageURL else {
+            showToast(message: "Image is unavailable.", isError: true)
+            return
+        }
+
+        isDownloadingImage = true
+        defer { isDownloadingImage = false }
+
+        var authorizationStatus = PHPhotoLibrary.authorizationStatus(for: .addOnly)
+        if authorizationStatus == .notDetermined {
+            authorizationStatus = await requestPhotoAddAuthorization()
+        }
+
+        guard authorizationStatus == .authorized || authorizationStatus == .limited else {
+            showToast(message: "Please allow photo access in Settings.", isError: true)
+            return
+        }
+
+        guard let image = await CachedImagePipeline.shared.image(for: imageURL, scale: UIScreen.main.scale) else {
+            showToast(message: "Failed to load image.", isError: true)
+            return
+        }
+
+        do {
+            try await saveImageToPhotoLibrary(image)
+            showToast(message: "Image downloaded.", isError: false)
+        } catch {
+            showToast(message: "Failed to save image.", isError: true)
+        }
+    }
+
+    private func requestPhotoAddAuthorization() async -> PHAuthorizationStatus {
+        await withCheckedContinuation { continuation in
+            PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+                continuation.resume(returning: status)
+            }
+        }
+    }
+
+    private func saveImageToPhotoLibrary(_ image: UIImage) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            PHPhotoLibrary.shared().performChanges({
+                PHAssetChangeRequest.creationRequestForAsset(from: image)
+            }) { success, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume(returning: ())
+                } else {
+                    continuation.resume(throwing: NSError(
+                        domain: "HomeFeedPinDetailView",
+                        code: 1,
+                        userInfo: [NSLocalizedDescriptionKey: "Failed to save image to Photos."]
+                    ))
+                }
             }
         }
     }
@@ -5366,7 +5443,11 @@ private extension View {
         let clean = message.trimmingCharacters(in: .whitespacesAndNewlines)
         let finalMessage = clean.isEmpty ? "Something went wrong. Please try again." : clean
         return alert("Notice", isPresented: isPresented) {
-            Button("OK", role: .cancel) {}
+            Button("OK", role: .cancel) {
+                if AppState.shouldForceLogoutAfterSensitiveAuthAlert(finalMessage) {
+                    NotificationCenter.default.post(name: .apiUnauthorized, object: nil)
+                }
+            }
         } message: {
             Text(finalMessage)
         }

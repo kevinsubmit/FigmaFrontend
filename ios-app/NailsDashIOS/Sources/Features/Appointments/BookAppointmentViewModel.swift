@@ -57,6 +57,8 @@ final class BookAppointmentViewModel: ObservableObject {
     }
 
     func submit(token: String) async -> Bool {
+        successMessage = nil
+        errorMessage = nil
         guard let serviceID = selectedServiceID else {
             errorMessage = "Please select a service."
             return false
@@ -110,6 +112,8 @@ final class BookAppointmentViewModel: ObservableObject {
     }
 
     func submitGroup(token: String, guestServiceIDs: [Int]) async -> Bool {
+        successMessage = nil
+        errorMessage = nil
         guard let hostServiceID = selectedServiceID else {
             errorMessage = "Please select a service."
             return false
@@ -298,6 +302,11 @@ final class BookAppointmentViewModel: ObservableObject {
         }
         if normalized.contains("not available") || normalized.contains("no available") {
             return "No available times for this date."
+        }
+        if normalized.contains("daily booking limit")
+            || (normalized.contains("booking limit reached") && normalized.contains("another day"))
+        {
+            return "Daily booking limit reached. Please choose another day."
         }
         return nil
     }

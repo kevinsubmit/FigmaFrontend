@@ -53,7 +53,11 @@ struct MyAppointmentsView: View {
             showAlert = true
         }
         .alert("Message", isPresented: $showAlert) {
-            Button("OK", role: .cancel) {}
+            Button("OK", role: .cancel) {
+                if AppState.shouldForceLogoutAfterSensitiveAuthAlert(alertMessage) {
+                    appState.forceLogout(message: alertMessage)
+                }
+            }
         } message: {
             Text(alertMessage)
         }

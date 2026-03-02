@@ -24,6 +24,31 @@ struct BookingStyleReference: Identifiable, Equatable {
 @MainActor
 final class AppState: ObservableObject {
     nonisolated static let sessionExpiredMessage = "Session expired, please sign in again."
+    nonisolated static func shouldForceLogoutAfterSensitiveAuthAlert(_ message: String) -> Bool {
+        let normalized = message.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized.isEmpty { return false }
+
+        // Account restriction / ban style messages should always return user to login.
+        if normalized.contains("restricted")
+            || normalized.contains("ban")
+            || normalized.contains("banned")
+            || normalized.contains("blocked")
+            || normalized.contains("suspended")
+        {
+            return true
+        }
+
+        // Keep existing auth-expired style behavior unified.
+        if normalized.contains("session expired")
+            || normalized.contains("sign in again")
+            || normalized.contains("unauthorized")
+            || normalized.contains("not authenticated")
+        {
+            return true
+        }
+
+        return false
+    }
     @Published var isLoggedIn: Bool = false
     @Published var authMessage: String? = nil
     @Published var isLoadingAuth: Bool = false

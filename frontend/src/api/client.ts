@@ -103,8 +103,8 @@ class APIClient {
 
     // For explicitly protected routes, no token means request should fail as before.
     if (requiresAuth && !token) {
-      forceRelogin();
-      throw new Error('Authentication required');
+      forceRelogin('Please sign in to continue.', true);
+      throw new Error('Please sign in to continue.');
     }
 
     const requestCacheKey =
@@ -132,17 +132,13 @@ class APIClient {
     const executeRequest = async (): Promise<T> => {
       const response = await fetch(`${this.baseURL}${endpoint}${queryString}`, config);
 
-      if (shouldForceRelogin(response.status)) {
-        forceRelogin();
-      }
-
       // Handle non-OK responses
       if (!response.ok) {
         const errorPayload = await this.parseErrorPayload(response);
-        if (shouldForceRelogin(response.status, errorPayload?.detail ?? errorPayload)) {
-          forceRelogin();
-        }
         const message = getApiErrorMessageFromPayload(errorPayload, response.status, 'Request failed');
+        if (shouldForceRelogin(response.status, errorPayload?.detail ?? errorPayload)) {
+          forceRelogin(message, true);
+        }
         throw new Error(message);
       }
 

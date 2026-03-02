@@ -1,11 +1,13 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { BottomNav } from './components/BottomNav';
 import { AuthProvider } from './contexts/AuthContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { toast } from 'react-toastify';
 import { Sparkles } from 'lucide-react';
+import { completeRelogin, FORCE_RELOGIN_EVENT } from './utils/authGuard';
 
 export type Page = 'home' | 'services' | 'appointments' | 'profile' | 'deals' | 'notifications' | 'pin-detail' | 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'login' | 'register' | 'my-reviews' | 'my-favorites' | 'change-password' | 'phone-management' | 'referral' | 'language' | 'feedback-support' | 'partnership' | 'privacy-safety' | 'about';
 
@@ -52,6 +54,10 @@ function AppRouter() {
   const [settingsSection, setSettingsSection] = useState<'main' | 'vip'>('main');
   const [myBookings, setMyBookings] = useState<any[]>([]);
   const [isViewingStoreDetails, setIsViewingStoreDetails] = useState(false);
+  const [reloginPrompt, setReloginPrompt] = useState<{ open: boolean; message: string }>({
+    open: false,
+    message: 'Session expired. Please sign in again.',
+  });
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -68,6 +74,33 @@ function AppRouter() {
       window.history.scrollRestoration = 'manual';
     }
   }, []);
+
+  useEffect(() => {
+    const handleForceRelogin = (event: Event) => {
+      const customEvent = event as CustomEvent<{ message?: string }>;
+      setReloginPrompt({
+        open: true,
+        message: customEvent.detail?.message || 'Session expired. Please sign in again.',
+      });
+    };
+
+    window.addEventListener(FORCE_RELOGIN_EVENT, handleForceRelogin as EventListener);
+    return () => {
+      window.removeEventListener(FORCE_RELOGIN_EVENT, handleForceRelogin as EventListener);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!reloginPrompt.open) return;
+    const previousOverflow = document.body.style.overflow;
+    const previousTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.touchAction = previousTouchAction;
+    };
+  }, [reloginPrompt.open]);
   
   // Create a ref to store scroll positions for each page
   const scrollPositions = useRef<Record<string, number>>({});
@@ -179,6 +212,11 @@ function AppRouter() {
     // Navigate directly to the store details page using store ID
     const storeId = salon.id || 1;
     navigate(`/services/${storeId}`);
+  };
+
+  const handleReloginConfirm = () => {
+    setReloginPrompt((prev) => ({ ...prev, open: false }));
+    completeRelogin();
   };
 
   return (
@@ -444,6 +482,43 @@ function AppRouter() {
       {/* Hide BottomNav when in FullScreen views or login */}
       {!isFullScreenPage && (
         <BottomNav currentPage={currentPage} onNavigate={handleNavigate} />
+      )}
+
+      {reloginPrompt.open && createPortal(
+        <div
+          className="fixed inset-0 flex items-center justify-center px-6 pointer-events-auto"
+          style={{
+            zIndex: 2147483647,
+            backgroundColor: 'rgba(0, 0, 0, 0.92)',
+            backdropFilter: 'blur(4px)',
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Session expired"
+        >
+          <div className="w-full max-w-sm rounded-2xl border border-[#D4AF37]/35 bg-[#080808] p-6 shadow-[0_30px_80px_rgba(0,0,0,0.85)]">
+            <h3
+              className="text-[34px] leading-none font-semibold mb-4"
+              style={{ color: '#FFFFFF' }}
+            >
+              Message
+            </h3>
+            <p
+              className="text-[30px] leading-[1.25]"
+              style={{ color: '#FFFFFF' }}
+            >
+              {reloginPrompt.message}
+            </p>
+            <button
+              type="button"
+              onClick={handleReloginConfirm}
+              className="mt-8 w-full rounded-2xl bg-white/20 hover:bg-white/30 transition-colors py-3.5 text-[#D4AF37] text-[38px] font-semibold"
+            >
+              OK
+            </button>
+          </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

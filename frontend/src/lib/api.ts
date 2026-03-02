@@ -293,6 +293,7 @@ apiClient.interceptors.response.use(
     const status = error?.response?.status;
     const detail = error?.response?.data?.detail ?? error?.response?.data;
     const originalRequest = error?.config as RetryableAxiosRequestConfig | undefined;
+    const userMessage = getApiErrorMessage(error);
 
     if (
       status === 401
@@ -314,11 +315,11 @@ apiClient.interceptors.response.use(
     if (!isAuthEntryRequest(originalRequest) && shouldForceRelogin(status, detail)) {
       clearGetCache();
       inFlightGetRequests.clear();
-      forceRelogin();
+      forceRelogin(userMessage, true);
+      error.message = userMessage;
       return Promise.reject(error);
     }
 
-    const userMessage = getApiErrorMessage(error);
     if (error?.response?.data && typeof error.response.data === 'object') {
       error.response.data = {
         ...error.response.data,
