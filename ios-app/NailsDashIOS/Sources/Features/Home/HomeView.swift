@@ -34,6 +34,7 @@ struct HomeView: View {
             NavigationStack {
                 DealsView()
             }
+            .id(appState.dealsTabResetID)
             .tag(AppTab.deals)
             .tabItem {
                 Label("Deals", systemImage: "tag")
@@ -1776,7 +1777,7 @@ private struct SettingsView: View {
                         )
                         rowDivider
                         settingsRow(
-                            icon: "hand.raised.shield",
+                            icon: "lock.shield",
                             title: "Privacy & Safety",
                             destination: PrivacySafetyView()
                         )
@@ -1875,7 +1876,8 @@ private struct SettingsView: View {
         badge: String? = nil,
         destination: Destination
     ) -> some View {
-        NavigationLink {
+        let resolvedIcon = resolvedSettingsIcon(icon)
+        return NavigationLink {
             destination
         } label: {
             HStack(spacing: UITheme.spacing12) {
@@ -1887,7 +1889,7 @@ private struct SettingsView: View {
                             RoundedRectangle(cornerRadius: 12, style: .continuous)
                                 .stroke(Color.white.opacity(0.10), lineWidth: 1)
                         )
-                    Image(systemName: icon)
+                    Image(systemName: resolvedIcon)
                         .font(.system(size: 18, weight: .medium))
                         .foregroundStyle(Color.white.opacity(0.68))
                 }
@@ -1922,6 +1924,13 @@ private struct SettingsView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    private func resolvedSettingsIcon(_ icon: String) -> String {
+        if UIImage(systemName: icon) != nil {
+            return icon
+        }
+        return "shield"
     }
 }
 

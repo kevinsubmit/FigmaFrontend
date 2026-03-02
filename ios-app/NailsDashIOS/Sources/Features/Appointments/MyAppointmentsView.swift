@@ -278,6 +278,18 @@ struct MyAppointmentsView: View {
         return URL(string: "https://www.google.com/maps/search/?api=1&query=\(encoded)")
     }
 
+    private func resolvedStoreAddress(_ item: AppointmentDTO) -> String? {
+        if let fullAddress = viewModel.storeAddressByStoreID[item.store_id]?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !fullAddress.isEmpty {
+            return fullAddress
+        }
+        if let rawAddress = item.store_address?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !rawAddress.isEmpty {
+            return rawAddress
+        }
+        return nil
+    }
+
     private func appointmentCard(_ item: AppointmentDTO) -> some View {
         let isPast = !isUpcomingAppointment(item)
 
@@ -297,6 +309,7 @@ struct MyAppointmentsView: View {
 
     private func appointmentCardBody(item: AppointmentDTO, isPast: Bool) -> some View {
         let state = effectiveStatus(item)
+        let displayAddress = resolvedStoreAddress(item)
         return VStack(alignment: .leading, spacing: UITheme.spacing10) {
             HStack(alignment: .center, spacing: UITheme.spacing8) {
                 statusCapsule(state)
@@ -318,26 +331,30 @@ struct MyAppointmentsView: View {
                         .foregroundStyle(.white)
                 }
 
-                if let address = item.store_address,
-                   !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    HStack(alignment: .center, spacing: UITheme.spacing6) {
+                if let address = displayAddress {
+                    HStack(alignment: .top, spacing: UITheme.spacing6) {
                         Image(systemName: "mappin.and.ellipse")
                             .font(.caption)
                             .foregroundStyle(brandGold)
+                            .padding(.top, UITheme.spacing1)
                         if let mapURL = mapsURL(address) {
                             Link(destination: mapURL) {
                                 Text(address)
                                     .font(.caption)
                                     .foregroundStyle(Color.white.opacity(0.72))
-                                    .lineLimit(1)
+                                    .lineLimit(nil)
                                     .underline(true, color: Color.white.opacity(0.35))
+                                    .multilineTextAlignment(.leading)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                             .buttonStyle(.plain)
                         } else {
                             Text(address)
                                 .font(.caption)
                                 .foregroundStyle(Color.white.opacity(0.72))
-                                .lineLimit(1)
+                                .lineLimit(nil)
+                                .multilineTextAlignment(.leading)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
@@ -585,7 +602,8 @@ private struct AppointmentDetailView: View {
 
     @ViewBuilder
     private var locationCard: some View {
-        if viewModel.appointment.store_name != nil || viewModel.appointment.store_address != nil {
+        let displayAddress = resolvedDetailStoreAddress
+        if viewModel.appointment.store_name != nil || displayAddress != nil {
             VStack(alignment: .leading, spacing: UITheme.spacing10) {
                 sectionHeader("LOCATION", systemImage: "mappin.and.ellipse")
                 Text(viewModel.appointment.store_name ?? "Store #\(viewModel.appointment.store_id)")
@@ -593,27 +611,30 @@ private struct AppointmentDetailView: View {
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.86)
-                if let address = viewModel.appointment.store_address,
-                   !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                if let address = displayAddress {
                     if let mapURL = mapsURL(address) {
                         Link(destination: mapURL) {
-                            HStack(spacing: UITheme.spacing8) {
+                            HStack(alignment: .top, spacing: UITheme.spacing8) {
                                 Image(systemName: "location")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(brandGold)
+                                    .padding(.top, UITheme.spacing1)
                                 Text(address)
                                     .font(.subheadline)
                                     .underline()
                                     .foregroundStyle(Color.white.opacity(0.78))
                                     .multilineTextAlignment(.leading)
-                                    .lineLimit(2)
+                                    .lineLimit(nil)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
                         }
                     } else {
                         Text(address)
                             .font(.subheadline)
                             .foregroundStyle(Color.white.opacity(0.78))
-                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -1235,6 +1256,15 @@ private struct AppointmentDetailView: View {
 
     private var resolvedServiceAmount: Double? {
         viewModel.appointment.order_amount ?? viewModel.appointment.service_price
+    }
+
+    private var resolvedDetailStoreAddress: String? {
+        let resolved = viewModel.resolvedStoreAddress?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !resolved.isEmpty {
+            return resolved
+        }
+        let fallback = viewModel.appointment.store_address?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return fallback.isEmpty ? nil : fallback
     }
 
     private var disabledReasonText: String {

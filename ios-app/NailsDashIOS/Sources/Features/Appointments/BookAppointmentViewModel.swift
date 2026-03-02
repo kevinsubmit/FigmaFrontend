@@ -417,20 +417,28 @@ final class BookAppointmentViewModel: ObservableObject {
 @MainActor
 final class MyAppointmentsViewModel: ObservableObject {
     @Published var items: [AppointmentDTO] = []
+    @Published var storeAddressByStoreID: [Int: String] = [:]
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
 
     private let service: AppointmentsServiceProtocol
+    private let storesService: StoresServiceProtocol
 
-    init(service: AppointmentsServiceProtocol = AppointmentsService()) {
+    init(
+        service: AppointmentsServiceProtocol = AppointmentsService(),
+        storesService: StoresServiceProtocol = StoresService()
+    ) {
         self.service = service
+        self.storesService = storesService
     }
 
     func load(token: String) async {
         isLoading = true
         defer { isLoading = false }
         do {
-            items = try await service.getMyAppointments(token: token, limit: 100)
+            let loadedItems = try await service.getMyAppointments(token: token, limit: 100)
+            items = loadedItems
+            await loadStoreAddressFallbacks(for: loadedItems)
             errorMessage = nil
         } catch let err as APIError {
             errorMessage = mapError(err)
@@ -478,11 +486,39 @@ final class MyAppointmentsViewModel: ObservableObject {
             return "Unexpected response format"
         }
     }
+
+    private func loadStoreAddressFallbacks(for appointments: [AppointmentDTO]) async {
+        let storeIDs = Set(appointments.map(\.store_id))
+        guard !storeIDs.isEmpty else {
+            storeAddressByStoreID = [:]
+            return
+        }
+
+        do {
+            let stores = try await storesService.fetchStores(
+                limit: 100,
+                sortBy: nil,
+                userLat: nil,
+                userLng: nil
+            )
+            var addressMap: [Int: String] = [:]
+            for store in stores where storeIDs.contains(store.id) {
+                let fullAddress = store.formattedAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !fullAddress.isEmpty {
+                    addressMap[store.id] = fullAddress
+                }
+            }
+            storeAddressByStoreID = addressMap
+        } catch {
+            // Keep existing mapping if store fallback lookup fails.
+        }
+    }
 }
 
 @MainActor
 final class AppointmentDetailViewModel: ObservableObject {
     @Published var appointment: AppointmentDTO
+    @Published var resolvedStoreAddress: String?
     @Published var isLoading = false
     @Published var isSubmitting = false
     @Published var errorMessage: String?
@@ -492,10 +528,17 @@ final class AppointmentDetailViewModel: ObservableObject {
     @Published var rescheduleTime: Date = .now
 
     private let service: AppointmentsServiceProtocol
+    private let storesService: StoresServiceProtocol
 
-    init(appointment: AppointmentDTO, service: AppointmentsServiceProtocol = AppointmentsService()) {
+    init(
+        appointment: AppointmentDTO,
+        service: AppointmentsServiceProtocol = AppointmentsService(),
+        storesService: StoresServiceProtocol = StoresService()
+    ) {
         self.appointment = appointment
         self.service = service
+        self.storesService = storesService
+        self.resolvedStoreAddress = Self.normalizedAddress(appointment.store_address)
         let parsedDate = Self.dateFormatter.date(from: appointment.appointment_date) ?? .now
         let parsedTime = Self.timeFormatter.date(from: appointment.appointment_time) ?? .now
         rescheduleDate = parsedDate
@@ -510,6 +553,7 @@ final class AppointmentDetailViewModel: ObservableObject {
             let fetched = try await service.getAppointment(token: token, appointmentID: appointment.id)
             appointment = mergeDetailFields(primary: fetched, fallback: existing)
             await enrichServiceFieldsIfNeeded()
+            await enrichStoreAddress()
             errorMessage = nil
         } catch let err as APIError {
             errorMessage = mapError(err)
@@ -659,6 +703,49 @@ final class AppointmentDetailViewModel: ObservableObject {
         } catch {
             // Fallback to existing display fields if service lookup fails.
         }
+    }
+
+    private func enrichStoreAddress() async {
+        do {
+            let detail = try await storesService.fetchStoreDetail(storeID: appointment.store_id)
+            let fullAddress = detail.formattedAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !fullAddress.isEmpty else {
+                resolvedStoreAddress = Self.normalizedAddress(appointment.store_address)
+                return
+            }
+            resolvedStoreAddress = fullAddress
+            appointment = withStoreAddress(fullAddress)
+        } catch {
+            resolvedStoreAddress = Self.normalizedAddress(appointment.store_address)
+        }
+    }
+
+    private func withStoreAddress(_ address: String?) -> AppointmentDTO {
+        AppointmentDTO(
+            id: appointment.id,
+            order_number: appointment.order_number,
+            store_id: appointment.store_id,
+            service_id: appointment.service_id,
+            technician_id: appointment.technician_id,
+            appointment_date: appointment.appointment_date,
+            appointment_time: appointment.appointment_time,
+            status: appointment.status,
+            order_amount: appointment.order_amount,
+            notes: appointment.notes,
+            store_name: appointment.store_name,
+            store_address: address,
+            service_name: appointment.service_name,
+            service_price: appointment.service_price,
+            service_duration: appointment.service_duration,
+            technician_name: appointment.technician_name,
+            created_at: appointment.created_at,
+            cancel_reason: appointment.cancel_reason
+        )
+    }
+
+    private static func normalizedAddress(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private static let dateFormatter: DateFormatter = {

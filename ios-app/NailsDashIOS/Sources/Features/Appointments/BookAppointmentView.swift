@@ -542,13 +542,21 @@ struct BookAppointmentView: View {
 
                     VStack(alignment: .leading, spacing: UITheme.spacing4) {
                         Text("Your appointment is secured instantly. No")
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.68)
+                            .allowsTightening(true)
                         Text("prepayment or deposit is required today.")
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.68)
+                            .allowsTightening(true)
                         Text("Just show up and pay after your service.")
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.68)
+                            .allowsTightening(true)
                     }
                     .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(Color.white.opacity(0.64))
-                    .lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
 
@@ -1012,6 +1020,7 @@ struct BookAppointmentView: View {
             await MainActor.run {
                 appState.resetBookFlowSource()
                 appState.resetBookNavigationStack()
+                appState.resetDealsNavigationStack()
                 appState.selectedTab = .appointments
                 isProcessingSubmissionTransition = false
             }
@@ -1188,7 +1197,7 @@ struct BookAppointmentView: View {
         let sum = selectedServiceChips.reduce(0.0) { $0 + $1.price }
         let fallback = selectedService?.price ?? 0
         let total = sum > 0 ? sum : fallback
-        return "$\(String(format: "%.2f", total))"
+        return "$\(String(format: "%.2f", total))+"
     }
 
     private var successTimeText: String {

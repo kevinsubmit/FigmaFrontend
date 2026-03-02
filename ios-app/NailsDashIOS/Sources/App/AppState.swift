@@ -32,6 +32,7 @@ final class AppState: ObservableObject {
     @Published var bookingStyleReference: BookingStyleReference? = nil
     @Published var bookOpenedFromStyleReference: Bool = false
     @Published var bookTabResetID = UUID()
+    @Published var dealsTabResetID = UUID()
     private var unauthorizedObserver: NSObjectProtocol?
 
     init() {
@@ -207,6 +208,7 @@ final class AppState: ObservableObject {
         bookingStyleReference = nil
         bookOpenedFromStyleReference = false
         bookTabResetID = UUID()
+        dealsTabResetID = UUID()
     }
 
     func openBookFlow(with styleReference: BookingStyleReference) {
@@ -222,6 +224,10 @@ final class AppState: ObservableObject {
 
     func resetBookNavigationStack() {
         bookTabResetID = UUID()
+    }
+
+    func resetDealsNavigationStack() {
+        dealsTabResetID = UUID()
     }
 
     private func handleAuthError(_ error: APIError) {

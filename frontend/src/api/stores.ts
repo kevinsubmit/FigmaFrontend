@@ -4,6 +4,9 @@ export interface Store {
   id: number;
   name: string;
   address: string;
+  city?: string | null;
+  state?: string | null;
+  zip_code?: string | null;
   phone: string | null;
   description: string | null;
   image_url: string | null;

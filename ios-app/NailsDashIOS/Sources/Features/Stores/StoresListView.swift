@@ -18,7 +18,6 @@ struct StoresListView: View {
     @State private var selectedSort: StoreSortOption = .recommended
     @State private var userLocation: UserLocationCoordinate? = UserLocationCache.loadValid()
     @State private var locationBootstrapDone: Bool = false
-    @State private var autoSortApplied: Bool = false
     @State private var locationService: UserLocationService = UserLocationService()
     private let brandGold = UITheme.brandGold
     private let cardBG = UITheme.cardBackground
@@ -212,21 +211,11 @@ struct StoresListView: View {
     }
 
     private func bootstrapLocation() async {
-        if userLocation != nil, !autoSortApplied {
-            autoSortApplied = true
-            selectedSort = .distance
-            return
-        }
-
         guard userLocation == nil else { return }
         guard let coordinate = await locationService.requestCurrentLocation() else { return }
 
         userLocation = coordinate
         UserLocationCache.save(coordinate)
-        if !autoSortApplied {
-            autoSortApplied = true
-            selectedSort = .distance
-        }
     }
 
     private func ensureLocationForDistanceSort() async {

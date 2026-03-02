@@ -41,6 +41,40 @@ export function Appointments() {
     loadAppointments();
   }, []);
 
+  const formatUSAddress = (
+    address?: string | null,
+    city?: string | null,
+    state?: string | null,
+    zipCode?: string | null
+  ) => {
+    const street = String(address || '').trim();
+    const cityText = String(city || '').trim();
+    const stateText = String(state || '').trim();
+    const zipText = String(zipCode || '').trim();
+    const cityStateZip = [cityText, [stateText, zipText].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+    return [street, cityStateZip].filter(Boolean).join(', ') || street || '';
+  };
+
+  const resolveAppointmentStoreAddress = (apt: AppointmentWithDetails): string => {
+    const storeObj = apt.store as (Store & { city?: string | null; state?: string | null; zip_code?: string | null }) | undefined;
+    const fromStoreObject = formatUSAddress(
+      storeObj?.address,
+      storeObj?.city,
+      storeObj?.state,
+      storeObj?.zip_code
+    );
+    if (fromStoreObject) {
+      return fromStoreObject;
+    }
+
+    const fromStoreMap = storeAddressById[apt.store_id];
+    if (fromStoreMap) {
+      return fromStoreMap;
+    }
+
+    return String(apt.store_address || apt.store?.address || '').trim();
+  };
+
   const loadAppointments = async () => {
     try {
       setLoading(true);
@@ -50,8 +84,9 @@ export function Appointments() {
         const stores = await getStores({ limit: 100 });
         const addressMap: Record<number, string> = {};
         stores.forEach((store) => {
-          if (store.address) {
-            addressMap[store.id] = store.address;
+          const fullAddress = formatUSAddress(store.address, store.city, store.state, store.zip_code);
+          if (fullAddress) {
+            addressMap[store.id] = fullAddress;
           }
         });
         setStoreAddressById(addressMap);
@@ -263,7 +298,7 @@ export function Appointments() {
               const displayStatus = isPast && (apt.status === 'pending' || apt.status === 'confirmed')
                 ? 'expired'
                 : apt.status;
-              const displayAddress = apt.store_address || apt.store?.address || storeAddressById[apt.store_id];
+              const displayAddress = resolveAppointmentStoreAddress(apt);
 
               return (
               <div
@@ -333,10 +368,12 @@ export function Appointments() {
                         onClick={(event) =>
                           openMapOptions(event, apt.store?.name || apt.store_name || 'Selected location', displayAddress)
                         }
-                        className="text-sm text-gray-300 hover:text-white transition-colors inline-flex items-center gap-1"
+                        className="text-sm text-gray-300 hover:text-white transition-colors inline-flex items-start gap-1 text-left"
                       >
-                        <MapPin className="w-4 h-4 text-[#D4AF37]" />
-                        <span className="underline decoration-white/30 underline-offset-4">{displayAddress}</span>
+                        <MapPin className="w-4 h-4 text-[#D4AF37] mt-0.5 shrink-0" />
+                        <span className="whitespace-normal break-words underline decoration-white/30 underline-offset-4">
+                          {displayAddress}
+                        </span>
                       </button>
                     )}
                   </div>

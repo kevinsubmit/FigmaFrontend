@@ -31,6 +31,21 @@ interface AppointmentDetailsDialogProps {
   onUpdate: () => void;
 }
 
+const formatUSAddress = (
+  address?: string | null,
+  city?: string | null,
+  state?: string | null,
+  zipCode?: string | null
+) => {
+  const street = String(address || '').trim();
+  const cityText = String(city || '').trim();
+  const stateText = String(state || '').trim();
+  const zipText = String(zipCode || '').trim();
+  const stateZip = [stateText, zipText].filter(Boolean).join(' ');
+  const cityStateZip = [cityText, stateZip].filter(Boolean).join(', ');
+  return [street, cityStateZip].filter(Boolean).join(', ');
+};
+
 export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: AppointmentDetailsDialogProps) {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showRescheduleDialog, setShowRescheduleDialog] = useState(false);
@@ -91,7 +106,8 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
   }, [appointment.id, appointment.notes]);
 
   useEffect(() => {
-    if (appointment.store?.address || storeDetails) {
+    const needsFetch = !storeDetails || storeDetails.id !== appointment.store_id;
+    if (!needsFetch) {
       return;
     }
 
@@ -100,7 +116,7 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
       .catch((error) => {
         console.error('Failed to load store details:', error);
       });
-  }, [appointment.store?.address, appointment.store_id, storeDetails]);
+  }, [appointment.store_id, storeDetails]);
 
   useEffect(() => {
     const loadGroup = async () => {
@@ -122,12 +138,30 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
     loadGroup();
   }, [appointment.id, appointment.group_id]);
 
-  const resolvedStore = appointment.store || storeDetails;
+  const resolvedStore = storeDetails || appointment.store;
+  const resolvedStoreName = resolvedStore?.name || appointment.store_name;
+  const resolvedStoreAddress = useMemo(() => {
+    const full = formatUSAddress(
+      resolvedStore?.address ?? appointment.store_address,
+      resolvedStore?.city,
+      resolvedStore?.state,
+      resolvedStore?.zip_code
+    );
+    if (full) return full;
+    return String(appointment.store_address || resolvedStore?.address || '').trim();
+  }, [
+    appointment.store_address,
+    resolvedStore?.address,
+    resolvedStore?.city,
+    resolvedStore?.state,
+    resolvedStore?.zip_code
+  ]);
+
   const mapQuery = useMemo(() => {
-    if (!resolvedStore?.address) return '';
-    const name = resolvedStore?.name ? `${resolvedStore.name} ` : '';
-    return `${name}${resolvedStore.address}`.trim();
-  }, [resolvedStore?.address, resolvedStore?.name]);
+    if (!resolvedStoreAddress) return '';
+    const name = resolvedStoreName ? `${resolvedStoreName} ` : '';
+    return `${name}${resolvedStoreAddress}`.trim();
+  }, [resolvedStoreAddress, resolvedStoreName]);
 
   const openMaps = (provider: 'apple' | 'google') => {
     if (!mapQuery) return;
@@ -321,19 +355,19 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
             )}
 
             {/* Store */}
-            {appointment.store || appointment.store_name || resolvedStore?.address ? (
+            {appointment.store || appointment.store_name || resolvedStoreAddress ? (
               <div className="flex items-start gap-3 rounded-xl bg-white/5 border border-white/10 px-4 py-3">
                 <div>
                   <div className="text-sm text-gray-400 uppercase tracking-widest">Location</div>
-                  <div className="font-semibold text-white">{appointment.store?.name || appointment.store_name}</div>
-                  {resolvedStore?.address ? (
+                  <div className="font-semibold text-white">{resolvedStoreName}</div>
+                  {resolvedStoreAddress ? (
                     <button
                       onClick={() => setShowMapOptions(true)}
-                      className="mt-1 inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white transition-colors"
+                      className="mt-1 inline-flex items-start gap-2 text-sm text-gray-300 hover:text-white transition-colors text-left"
                     >
-                      <MapPin className="w-4 h-4 text-[#D4AF37]" />
-                      <span className="underline decoration-white/30 underline-offset-4">
-                        {resolvedStore.address}
+                      <MapPin className="w-4 h-4 text-[#D4AF37] mt-0.5 shrink-0" />
+                      <span className="whitespace-normal break-words underline decoration-white/30 underline-offset-4">
+                        {resolvedStoreAddress}
                       </span>
                     </button>
                   ) : null}
@@ -620,7 +654,7 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
           <div className="w-full max-w-md rounded-2xl bg-[#0f0f0f] border border-white/10 shadow-2xl">
             <div className="px-6 py-4 border-b border-white/10">
               <p className="text-sm text-gray-400 uppercase tracking-widest">Open in Maps</p>
-              <p className="text-base text-white font-semibold mt-1">{resolvedStore?.name || 'Selected location'}</p>
+              <p className="text-base text-white font-semibold mt-1">{resolvedStoreName || 'Selected location'}</p>
             </div>
             <div className="p-4 space-y-3">
               <button
