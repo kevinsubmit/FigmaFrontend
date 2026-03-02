@@ -1011,6 +1011,7 @@ struct BookAppointmentView: View {
 
             await MainActor.run {
                 appState.resetBookFlowSource()
+                appState.resetBookNavigationStack()
                 appState.selectedTab = .appointments
                 isProcessingSubmissionTransition = false
             }
@@ -1159,7 +1160,7 @@ struct BookAppointmentView: View {
 
     private var selectedServicePriceText: String {
         guard let service = selectedService else { return "-" }
-        return "$\(String(format: "%.2f", service.price))"
+        return "$\(String(format: "%.2f", service.price))+"
     }
 
     private var selectedServiceDurationText: String {

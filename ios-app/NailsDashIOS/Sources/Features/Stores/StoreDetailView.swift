@@ -986,8 +986,8 @@ struct StoreDetailView: View {
     }
 
     private var selectedServicesTotalPriceText: String {
-        guard let primary = primarySelectedService else { return "$0.00" }
-        return "$\(String(format: "%.2f", primary.price))"
+        guard let primary = primarySelectedService else { return "$0.00+" }
+        return "$\(String(format: "%.2f", primary.price))+"
     }
 
     private func selectedServicesBar(store: StoreDetailDTO, services: [ServiceDTO]) -> some View {
@@ -998,16 +998,21 @@ struct StoreDetailView: View {
                     .kerning(2.2)
                     .foregroundStyle(.secondary)
 
-                HStack(spacing: UITheme.spacing8) {
-                    Text(selectedServicesTotalPriceText)
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(.white)
-                    Text("Est. Total")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                HStack(alignment: .bottom, spacing: UITheme.spacing8) {
+                    VStack(alignment: .leading, spacing: UITheme.spacing2) {
+                        Text(selectedServicesTotalPriceText)
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                        Text("Est. Total")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                     Rectangle()
                         .fill(Color.white.opacity(0.18))
-                        .frame(width: 1, height: 16)
+                        .frame(width: 1, height: 28)
                     Image(systemName: "clock")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(brandGold)

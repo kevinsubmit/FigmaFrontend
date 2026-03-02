@@ -16,12 +16,17 @@ final class StoresViewModel: ObservableObject {
         self.service = service
     }
 
-    func loadStores() async {
+    func loadStores(sortBy: String, userLat: Double? = nil, userLng: Double? = nil) async {
         isLoading = true
         defer { isLoading = false }
 
         do {
-            stores = try await service.fetchStores(limit: 100)
+            stores = try await service.fetchStores(
+                limit: 100,
+                sortBy: sortBy,
+                userLat: userLat,
+                userLng: userLng
+            )
             let validStoreIDs = Set(stores.map(\.id))
             storeRatingSummaries = storeRatingSummaries.filter { validStoreIDs.contains($0.key) }
             loadingStoreRatingIDs = loadingStoreRatingIDs.filter { validStoreIDs.contains($0) }

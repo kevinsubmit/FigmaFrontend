@@ -52,6 +52,7 @@ struct AppointmentDTO: Decodable, Identifiable {
     let appointment_date: String
     let appointment_time: String
     let status: String
+    let order_amount: Double?
     let notes: String?
     let store_name: String?
     let store_address: String?

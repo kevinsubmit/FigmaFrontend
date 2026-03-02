@@ -16,6 +16,10 @@ struct StoresListView: View {
     @State private var alertMessage: String = ""
     @State private var showAlert: Bool = false
     @State private var selectedSort: StoreSortOption = .recommended
+    @State private var userLocation: UserLocationCoordinate? = UserLocationCache.loadValid()
+    @State private var locationBootstrapDone: Bool = false
+    @State private var autoSortApplied: Bool = false
+    @State private var locationService: UserLocationService = UserLocationService()
     private let brandGold = UITheme.brandGold
     private let cardBG = UITheme.cardBackground
     private let hideTabBar: Bool
@@ -85,12 +89,23 @@ struct StoresListView: View {
             }
         }
         .task {
-            if viewModel.stores.isEmpty {
-                await viewModel.loadStores()
+            if !locationBootstrapDone {
+                locationBootstrapDone = true
+                await bootstrapLocation()
             }
         }
+        .task(id: storesRequestKey) {
+            await loadStoresForCurrentContext()
+        }
         .refreshable {
-            await viewModel.loadStores()
+            if selectedSort == .distance {
+                await ensureLocationForDistanceSort()
+            }
+            await loadStoresForCurrentContext()
+        }
+        .onChange(of: selectedSort) { newValue in
+            guard newValue == .distance else { return }
+            Task { await ensureLocationForDistanceSort() }
         }
         .onChange(of: viewModel.errorMessage) { value in
             guard let value, !value.isEmpty else { return }
@@ -106,6 +121,12 @@ struct StoresListView: View {
 
     private var effectiveHideTabBar: Bool {
         hideTabBar || appState.bookOpenedFromStyleReference
+    }
+
+    private var storesRequestKey: String {
+        let sort = selectedSort.rawValue
+        let locationPart = userLocation.map { "\($0.latitude),\($0.longitude)" } ?? "none"
+        return "\(sort)|\(locationPart)"
     }
 
     private var topBar: some View {
@@ -169,6 +190,53 @@ struct StoresListView: View {
                 return l < r
             }
         }
+    }
+
+    private func apiSortValue() -> String {
+        switch selectedSort {
+        case .recommended:
+            return "recommended"
+        case .rating:
+            return "top_rated"
+        case .distance:
+            return userLocation == nil ? "recommended" : "distance"
+        }
+    }
+
+    private func loadStoresForCurrentContext() async {
+        await viewModel.loadStores(
+            sortBy: apiSortValue(),
+            userLat: userLocation?.latitude,
+            userLng: userLocation?.longitude
+        )
+    }
+
+    private func bootstrapLocation() async {
+        if userLocation != nil, !autoSortApplied {
+            autoSortApplied = true
+            selectedSort = .distance
+            return
+        }
+
+        guard userLocation == nil else { return }
+        guard let coordinate = await locationService.requestCurrentLocation() else { return }
+
+        userLocation = coordinate
+        UserLocationCache.save(coordinate)
+        if !autoSortApplied {
+            autoSortApplied = true
+            selectedSort = .distance
+        }
+    }
+
+    private func ensureLocationForDistanceSort() async {
+        guard userLocation == nil else { return }
+        if let coordinate = await locationService.requestCurrentLocation() {
+            userLocation = coordinate
+            UserLocationCache.save(coordinate)
+            return
+        }
+        selectedSort = .recommended
     }
 
     private var sortHeaderArea: some View {

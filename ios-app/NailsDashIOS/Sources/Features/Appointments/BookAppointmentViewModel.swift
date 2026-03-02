@@ -453,6 +453,7 @@ final class MyAppointmentsViewModel: ObservableObject {
             appointment_date: appointment.appointment_date,
             appointment_time: appointment.appointment_time,
             status: appointment.status,
+            order_amount: appointment.order_amount ?? old.order_amount,
             notes: appointment.notes,
             store_name: old.store_name,
             store_address: old.store_address,
@@ -505,7 +506,10 @@ final class AppointmentDetailViewModel: ObservableObject {
         isLoading = true
         defer { isLoading = false }
         do {
-            appointment = try await service.getAppointment(token: token, appointmentID: appointment.id)
+            let existing = appointment
+            let fetched = try await service.getAppointment(token: token, appointmentID: appointment.id)
+            appointment = mergeDetailFields(primary: fetched, fallback: existing)
+            await enrichServiceFieldsIfNeeded()
             errorMessage = nil
         } catch let err as APIError {
             errorMessage = mapError(err)
@@ -527,15 +531,16 @@ final class AppointmentDetailViewModel: ObservableObject {
         defer { isSubmitting = false }
         do {
             let reason = cancelReason.trimmingCharacters(in: .whitespacesAndNewlines)
-            let updated = try await service.cancelAppointment(
+            let existing = appointment
+            let updatedRaw = try await service.cancelAppointment(
                 token: token,
                 appointmentID: appointment.id,
                 reason: reason.isEmpty ? nil : reason
             )
-            appointment = updated
+            appointment = mergeDetailFields(primary: updatedRaw, fallback: existing)
             successMessage = "Appointment cancelled"
             errorMessage = nil
-            return updated
+            return appointment
         } catch let err as APIError {
             errorMessage = mapError(err)
             successMessage = nil
@@ -564,16 +569,17 @@ final class AppointmentDetailViewModel: ObservableObject {
         isSubmitting = true
         defer { isSubmitting = false }
         do {
-            let updated = try await service.rescheduleAppointment(
+            let existing = appointment
+            let updatedRaw = try await service.rescheduleAppointment(
                 token: token,
                 appointmentID: appointment.id,
                 newDate: Self.dateFormatter.string(from: rescheduleDate),
                 newTime: Self.timeFormatter.string(from: rescheduleTime)
             )
-            appointment = updated
+            appointment = mergeDetailFields(primary: updatedRaw, fallback: existing)
             successMessage = "Appointment rescheduled"
             errorMessage = nil
-            return updated
+            return appointment
         } catch let err as APIError {
             errorMessage = mapError(err)
             successMessage = nil
@@ -595,6 +601,63 @@ final class AppointmentDetailViewModel: ObservableObject {
             return "Invalid API URL"
         case .decoding:
             return "Unexpected response format"
+        }
+    }
+
+    private func mergeDetailFields(primary: AppointmentDTO, fallback: AppointmentDTO) -> AppointmentDTO {
+        AppointmentDTO(
+            id: primary.id,
+            order_number: primary.order_number ?? fallback.order_number,
+            store_id: primary.store_id,
+            service_id: primary.service_id,
+            technician_id: primary.technician_id,
+            appointment_date: primary.appointment_date,
+            appointment_time: primary.appointment_time,
+            status: primary.status,
+            order_amount: primary.order_amount ?? fallback.order_amount,
+            notes: primary.notes,
+            store_name: primary.store_name ?? fallback.store_name,
+            store_address: primary.store_address ?? fallback.store_address,
+            service_name: primary.service_name ?? fallback.service_name,
+            service_price: primary.service_price ?? fallback.service_price,
+            service_duration: primary.service_duration ?? fallback.service_duration,
+            technician_name: primary.technician_name ?? fallback.technician_name,
+            created_at: primary.created_at ?? fallback.created_at,
+            cancel_reason: primary.cancel_reason
+        )
+    }
+
+    private func enrichServiceFieldsIfNeeded() async {
+        let name = appointment.service_name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let needName = name.isEmpty
+        let needAmountFallback = appointment.service_price == nil
+        guard needName || needAmountFallback else { return }
+
+        do {
+            let services = try await service.getStoreServices(storeID: appointment.store_id)
+            guard let matched = services.first(where: { $0.id == appointment.service_id }) else { return }
+            appointment = AppointmentDTO(
+                id: appointment.id,
+                order_number: appointment.order_number,
+                store_id: appointment.store_id,
+                service_id: appointment.service_id,
+                technician_id: appointment.technician_id,
+                appointment_date: appointment.appointment_date,
+                appointment_time: appointment.appointment_time,
+                status: appointment.status,
+                order_amount: appointment.order_amount,
+                notes: appointment.notes,
+                store_name: appointment.store_name,
+                store_address: appointment.store_address,
+                service_name: needName ? matched.name : appointment.service_name,
+                service_price: appointment.service_price ?? matched.price,
+                service_duration: appointment.service_duration ?? matched.duration_minutes,
+                technician_name: appointment.technician_name,
+                created_at: appointment.created_at,
+                cancel_reason: appointment.cancel_reason
+            )
+        } catch {
+            // Fallback to existing display fields if service lookup fails.
         }
     }
 

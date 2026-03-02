@@ -220,6 +220,10 @@ final class AppState: ObservableObject {
         bookOpenedFromStyleReference = false
     }
 
+    func resetBookNavigationStack() {
+        bookTabResetID = UUID()
+    }
+
     private func handleAuthError(_ error: APIError) {
         switch error {
         case .unauthorized:

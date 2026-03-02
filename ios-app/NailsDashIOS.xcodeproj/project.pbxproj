@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -12,6 +12,7 @@
 		36ABAF8E177D9B071F3BC4D7 /* BookAppointmentViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A93FE0C0C05C49238A947AF /* BookAppointmentViewModel.swift */; };
 		516B855BD37582763D9CA0D1 /* BookAppointmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9545DF0A4ABD1935546B6A2 /* BookAppointmentView.swift */; };
 		598A5611A236ECA5B26CF27A /* PhoneFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1643BED7FC99E52520186313 /* PhoneFormatter.swift */; };
+		5F1EE204041A11E05FC3E129 /* UserLocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C42A0DC81FEA66C97739EA76 /* UserLocationService.swift */; };
 		6460B7113D3C2D3F9D47F247 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48EDF5BB4443EAB30BB2CFAC /* AppState.swift */; };
 		6933756772F078B938769065 /* StoreModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E637FC76552DE0DB5F90C5E5 /* StoreModels.swift */; };
 		6E58B3D8F8633DED3017500E /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A71C8FD57CF3D60EC95B4C /* APIClient.swift */; };
@@ -53,6 +54,7 @@
 		6BD1C5C353519E7F91DDA17A /* NailsDashApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NailsDashApp.swift; sourceTree = "<group>"; };
 		7CBE6600EF1F41C68120D8D6 /* StoresViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoresViewModel.swift; sourceTree = "<group>"; };
 		7F1FA00668ACF5A4F9C8936D /* StoresService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoresService.swift; sourceTree = "<group>"; };
+		C42A0DC81FEA66C97739EA76 /* UserLocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserLocationService.swift; sourceTree = "<group>"; };
 		C8A71C8FD57CF3D60EC95B4C /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		C9545DF0A4ABD1935546B6A2 /* BookAppointmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookAppointmentView.swift; sourceTree = "<group>"; };
 		C99C5C13D6058F84542D1B66 /* NailsDashIOSTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = NailsDashIOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -60,7 +62,7 @@
 		DFC50FB29BFE863D2A9433C1 /* StoresListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoresListView.swift; sourceTree = "<group>"; };
 		E0223719970CAFE1A510CB70 /* NailsDashIOSTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NailsDashIOSTests.swift; sourceTree = "<group>"; };
 		E637FC76552DE0DB5F90C5E5 /* StoreModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreModels.swift; sourceTree = "<group>"; };
-		F0D75736C682585EE701A3DD /* NailsDashIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NailsDashIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F0D75736C682585EE701A3DD /* NailsDashIOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NailsDashIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -181,6 +183,7 @@
 				DFC50FB29BFE863D2A9433C1 /* StoresListView.swift */,
 				7F1FA00668ACF5A4F9C8936D /* StoresService.swift */,
 				7CBE6600EF1F41C68120D8D6 /* StoresViewModel.swift */,
+				C42A0DC81FEA66C97739EA76 /* UserLocationService.swift */,
 			);
 			path = Stores;
 			sourceTree = "<group>";
@@ -254,7 +257,6 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					85A0E59EDA17344D9EF3E861 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 					D8A3A5DAD63CBB07845CAA8B = {
@@ -273,7 +275,6 @@
 			);
 			mainGroup = 136E749B55E7AE897E5C5634;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -314,6 +315,7 @@
 				915A910E62EFC74ED5F9CC07 /* StoresService.swift in Sources */,
 				C84C1AFADA6A0BDF13EFA1DF /* StoresViewModel.swift in Sources */,
 				9940EC4C0B5582DD6EA8B730 /* TokenStore.swift in Sources */,
+				5F1EE204041A11E05FC3E129 /* UserLocationService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -402,11 +404,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = Q5W8B7ZG46;
 				INFOPLIST_FILE = NailsDashIOS/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				NAILSDASH_API_BASE_URL = "https://api.nailsdash.app/api/v1";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -434,11 +438,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = Q5W8B7ZG46;
 				INFOPLIST_FILE = NailsDashIOS/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				NAILSDASH_API_BASE_URL = "http://192.168.1.225:8000/api/v1";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};

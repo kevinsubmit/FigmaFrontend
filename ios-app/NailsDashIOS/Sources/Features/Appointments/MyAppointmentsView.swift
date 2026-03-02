@@ -109,7 +109,7 @@ struct MyAppointmentsView: View {
     }
 
     private var tabHeader: some View {
-        HStack(spacing: UITheme.spacing6) {
+        HStack(spacing: UITheme.spacing8) {
             tabButton(.upcoming, count: upcomingCount)
             tabButton(.past, count: nil)
         }
@@ -117,10 +117,6 @@ struct MyAppointmentsView: View {
         .padding(UITheme.spacing4)
         .background(Color.white.opacity(0.04))
         .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: UITheme.controlCornerRadius)
-                .stroke(brandGold.opacity(0.16), lineWidth: 1)
-        )
         .padding(.top, UITheme.spacing2)
     }
 
@@ -130,22 +126,27 @@ struct MyAppointmentsView: View {
         } label: {
             HStack(spacing: UITheme.spacing6) {
                 Text(segment.title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.footnote.weight(.semibold))
                 if segment == .upcoming, let count, count > 0 {
                     Text("\(count)")
                         .font(.caption2.weight(.bold))
                         .padding(.horizontal, UITheme.compactPillHorizontalPadding - 2)
                         .padding(.vertical, UITheme.compactPillVerticalPadding - 2)
-                        .background(selectedSegment == segment ? Color.black.opacity(0.14) : brandGold)
-                        .foregroundStyle(selectedSegment == segment ? .black : .black)
+                        .background(selectedSegment == segment ? Color.black.opacity(0.14) : Color.white.opacity(0.10))
+                        .foregroundStyle(selectedSegment == segment ? .black : Color.white.opacity(0.86))
                         .clipShape(Capsule())
                 }
             }
+            .padding(.horizontal, UITheme.pillHorizontalPadding)
             .frame(maxWidth: .infinity)
             .frame(minHeight: UITheme.segmentHeight)
             .background(selectedSegment == segment ? brandGold : Color.clear)
-            .foregroundStyle(selectedSegment == segment ? .black : Color.white.opacity(0.78))
+            .foregroundStyle(selectedSegment == segment ? .black : Color.white.opacity(0.86))
             .clipShape(RoundedRectangle(cornerRadius: UITheme.chipCornerRadius))
+            .overlay(
+                RoundedRectangle(cornerRadius: UITheme.chipCornerRadius)
+                    .stroke(selectedSegment == segment ? Color.clear : brandGold.opacity(0.24), lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
@@ -300,12 +301,6 @@ struct MyAppointmentsView: View {
             HStack(alignment: .center, spacing: UITheme.spacing8) {
                 statusCapsule(state)
                 Spacer(minLength: 0)
-                if let order = item.order_number, !order.isEmpty {
-                    Text("#\(order)")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(Color.white.opacity(0.72))
-                        .lineLimit(1)
-                }
                 if !isPast {
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
@@ -358,7 +353,7 @@ struct MyAppointmentsView: View {
                     .foregroundStyle(.white)
 
                 HStack(alignment: .center, spacing: UITheme.spacing8) {
-                    if let amount = item.service_price {
+                    if let amount = item.order_amount ?? item.service_price {
                         HStack(spacing: UITheme.spacing5) {
                             Image(systemName: "dollarsign.circle")
                                 .font(.caption)
@@ -540,20 +535,11 @@ private struct AppointmentDetailView: View {
     }
 
     private var topBar: some View {
-        HStack(alignment: .top, spacing: UITheme.spacing12) {
-            VStack(alignment: .leading, spacing: UITheme.spacing2) {
-                Text("APPOINTMENT DETAIL")
-                    .font(.caption2.weight(.semibold))
-                    .kerning(UITheme.sectionHeaderKerning)
-                    .foregroundStyle(brandGold.opacity(0.88))
-                Text("Appointment Details")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.white)
-                Text("ORDER \(orderCode)")
-                    .font(.caption2.weight(.medium))
-                    .kerning(1.6)
-                    .foregroundStyle(.secondary)
-            }
+        HStack(alignment: .center, spacing: UITheme.spacing12) {
+            Text("Appointment Details")
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(height: UITheme.navControlSize)
             Spacer()
             Button {
                 dismiss()
@@ -638,7 +624,7 @@ private struct AppointmentDetailView: View {
     private var serviceCard: some View {
         VStack(alignment: .leading, spacing: UITheme.spacing10) {
             sectionHeader("SERVICE", systemImage: "dollarsign")
-            Text(viewModel.appointment.service_name ?? "Service #\(viewModel.appointment.service_id)")
+            Text(resolvedServiceName)
                 .font(.title2.weight(.bold))
                 .foregroundStyle(.white)
                 .lineLimit(2)
@@ -646,7 +632,7 @@ private struct AppointmentDetailView: View {
                 Text("Amount:")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(.secondary)
-                Text(moneyText(viewModel.appointment.service_price))
+                Text(moneyText(resolvedServiceAmount))
                     .font(.title3.weight(.bold))
                     .foregroundStyle(.white)
                 Text("•")
@@ -1241,6 +1227,16 @@ private struct AppointmentDetailView: View {
         canRescheduleByStatus && isWithinCutoff
     }
 
+    private var resolvedServiceName: String {
+        let raw = viewModel.appointment.service_name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !raw.isEmpty { return raw }
+        return "Service #\(viewModel.appointment.service_id)"
+    }
+
+    private var resolvedServiceAmount: Double? {
+        viewModel.appointment.order_amount ?? viewModel.appointment.service_price
+    }
+
     private var disabledReasonText: String {
         if !isWithinCutoff {
             return "Cutoff passed. Changes are disabled."
@@ -1257,7 +1253,7 @@ private struct AppointmentDetailView: View {
 
     private func moneyText(_ value: Double?) -> String {
         guard let value else { return "-" }
-        return "$\(String(format: "%.2f", value))"
+        return "$\(String(format: "%.2f", value))+"
     }
 
     private func durationText(_ minutes: Int?) -> String {

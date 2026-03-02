@@ -3229,13 +3229,13 @@ private struct HomeFeedService {
 
     func setFavorite(pinID: Int, token: String, favorited: Bool) async throws {
         if favorited {
-            let _: [String: String] = try await APIClient.shared.request(
+            let _: EmptyResponse = try await APIClient.shared.request(
                 path: "/pins/\(pinID)/favorite",
                 method: "POST",
                 token: token
             )
         } else {
-            let _: [String: String] = try await APIClient.shared.request(
+            let _: EmptyResponse = try await APIClient.shared.request(
                 path: "/pins/\(pinID)/favorite",
                 method: "DELETE",
                 token: token
@@ -3615,13 +3615,18 @@ private final class HomeFeedPinDetailViewModel: ObservableObject {
     }
 
     func toggleFavorite(token: String) async {
+        guard !isFavoriteLoading else { return }
+        let targetFavorited = !isFavorited
         isFavoriteLoading = true
         defer { isFavoriteLoading = false }
         do {
-            try await service.setFavorite(pinID: pin.id, token: token, favorited: !isFavorited)
-            isFavorited.toggle()
+            try await service.setFavorite(pinID: pin.id, token: token, favorited: targetFavorited)
+            isFavorited = targetFavorited
             errorMessage = nil
         } catch let err as APIError {
+            if recoverFavoriteToggleState(error: err, targetFavorited: targetFavorited) {
+                return
+            }
             errorMessage = mapError(err)
         } catch {
             errorMessage = error.localizedDescription
@@ -3646,14 +3651,49 @@ private final class HomeFeedPinDetailViewModel: ObservableObject {
             return "Unexpected response from server."
         }
     }
+
+    private func recoverFavoriteToggleState(error: APIError, targetFavorited: Bool) -> Bool {
+        let detail: String
+        switch error {
+        case .forbidden(let value), .validation(let value), .server(let value), .network(let value):
+            detail = value
+        case .unauthorized, .invalidURL, .decoding:
+            return false
+        }
+
+        let normalized = detail.lowercased()
+        if normalized.contains("already in favorites") {
+            isFavorited = true
+            errorMessage = nil
+            return true
+        }
+
+        if normalized.contains("not in favorites") {
+            isFavorited = false
+            errorMessage = nil
+            return true
+        }
+
+        // If backend state changed between check and toggle, keep UI aligned with target state.
+        if normalized.contains("favorite") && (normalized.contains("already") || normalized.contains("not")) {
+            isFavorited = targetFavorited
+            errorMessage = nil
+            return true
+        }
+
+        return false
+    }
 }
 
 private struct HomeFeedPinDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel: HomeFeedPinDetailViewModel
-    @State private var alertMessage: String = ""
-    @State private var showAlert: Bool = false
+    @State private var toast: PinDetailToastPayload?
+    @State private var heroBaseScale: CGFloat = 1
+    @GestureState private var heroPinchScale: CGFloat = 1
+    @State private var heroAccumulatedOffset: CGSize = .zero
+    @GestureState private var heroDragOffset: CGSize = .zero
     private let brandGold = UITheme.brandGold
     private let cardBG = UITheme.cardBackground
     private var heroHeight: CGFloat {
@@ -3668,6 +3708,17 @@ private struct HomeFeedPinDetailView: View {
             return topInset + UITheme.spacing18
         }
         return topInset + UITheme.spacing10
+    }
+
+    private var heroCurrentScale: CGFloat {
+        min(max(heroBaseScale * heroPinchScale, 1), 4)
+    }
+
+    private var heroCurrentOffset: CGSize {
+        CGSize(
+            width: heroAccumulatedOffset.width + heroDragOffset.width,
+            height: heroAccumulatedOffset.height + heroDragOffset.height
+        )
     }
 
     init(pin: HomeFeedPinDTO) {
@@ -3696,6 +3747,7 @@ private struct HomeFeedPinDetailView: View {
                 }
                 .frame(width: proxy.size.width)
                 .background(Color.black)
+                .scrollDisabled(heroCurrentScale > 1.01)
 
                 topBarOverlay
             }
@@ -3717,10 +3769,17 @@ private struct HomeFeedPinDetailView: View {
         }
         .onChange(of: viewModel.errorMessage) { value in
             guard let value, !value.isEmpty else { return }
-            alertMessage = value
-            showAlert = true
+            showToast(message: value, isError: true)
         }
-        .unifiedNoticeAlert(isPresented: $showAlert, message: alertMessage)
+        .overlay(alignment: .top) {
+            if let toast {
+                PinDetailToastView(payload: toast)
+                    .padding(.top, UITheme.spacing56)
+                    .padding(.horizontal, UITheme.pagePadding)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: toast?.id)
     }
 
     private func heroImageSection(containerWidth: CGFloat) -> some View {
@@ -3736,6 +3795,16 @@ private struct HomeFeedPinDetailView: View {
                     image
                         .resizable()
                         .scaledToFill()
+                        .scaleEffect(heroCurrentScale)
+                        .offset(heroCurrentOffset)
+                        .frame(width: containerWidth, height: heroHeight)
+                        .clipped()
+                        .onTapGesture(count: 2) {
+                            withAnimation(.easeOut(duration: 0.2)) {
+                                heroBaseScale = 1
+                                heroAccumulatedOffset = .zero
+                            }
+                        }
                 case .failure:
                     Color.gray.opacity(0.2)
                         .overlay(Text("Image unavailable").font(.caption).foregroundStyle(.white))
@@ -3752,8 +3821,12 @@ private struct HomeFeedPinDetailView: View {
                 endPoint: .bottom
             )
             .frame(height: 220)
+            .allowsHitTesting(false)
         }
         .frame(width: containerWidth, height: heroHeight)
+        .contentShape(Rectangle())
+        .highPriorityGesture(heroMagnificationGesture(containerWidth: containerWidth))
+        .simultaneousGesture(heroDragGesture(containerWidth: containerWidth))
     }
 
     private var titleInfoSection: some View {
@@ -3883,36 +3956,51 @@ private struct HomeFeedPinDetailView: View {
     }
 
     private var topBarOverlay: some View {
-        LinearGradient(
-            colors: [Color.black.opacity(0.75), .clear],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .frame(height: 130)
-        .overlay(alignment: .top) {
-            HStack(spacing: UITheme.spacing10) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: UITheme.navIconSize, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: UITheme.floatingControlSize, height: UITheme.floatingControlSize)
-                        .background(Color.black.opacity(0.62))
-                        .clipShape(Circle())
+        ZStack(alignment: .top) {
+            LinearGradient(
+                colors: [Color.black.opacity(0.75), .clear],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .allowsHitTesting(false)
+
+            VStack {
+                HStack {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: UITheme.navIconSize, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: UITheme.floatingControlSize, height: UITheme.floatingControlSize)
+                            .background(Color.black.opacity(0.62))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+
+                    Spacer()
                 }
-                .buttonStyle(.plain)
+                .padding(.horizontal, UITheme.pagePadding)
+                .padding(.top, topControlTopPadding)
 
                 Spacer()
-
-                HStack(spacing: UITheme.spacing10) {
-                    shareButton
-                    favoriteButton
-                }
             }
-            .padding(.horizontal, UITheme.pagePadding)
-            .padding(.top, topControlTopPadding)
+
+            VStack {
+                HStack {
+                    Spacer()
+                    HStack(spacing: UITheme.spacing10) {
+                        shareButton
+                        favoriteButton
+                    }
+                }
+                .padding(.horizontal, UITheme.pagePadding)
+                .padding(.top, topControlTopPadding)
+
+                Spacer()
+            }
         }
+        .frame(height: 130)
         .ignoresSafeArea(edges: .top)
     }
 
@@ -3954,11 +4042,19 @@ private struct HomeFeedPinDetailView: View {
     private var favoriteButton: some View {
         Button {
             guard let token = TokenStore.shared.read(key: TokenStore.Keys.accessToken) else {
-                alertMessage = "Please sign in to save favorites."
-                showAlert = true
+                showToast(message: "Please sign in to save favorites.", isError: true)
                 return
             }
-            Task { await viewModel.toggleFavorite(token: token) }
+            Task {
+                let wasFavorited = viewModel.isFavorited
+                await viewModel.toggleFavorite(token: token)
+                if let error = viewModel.errorMessage, !error.isEmpty { return }
+                guard viewModel.isFavorited != wasFavorited else { return }
+                showToast(
+                    message: viewModel.isFavorited ? "Added to favorites." : "Removed from favorites.",
+                    isError: false
+                )
+            }
         } label: {
             ZStack {
                 Circle()
@@ -3976,6 +4072,107 @@ private struct HomeFeedPinDetailView: View {
             .frame(width: UITheme.floatingControlSize, height: UITheme.floatingControlSize)
         }
         .buttonStyle(.plain)
+        .disabled(viewModel.isFavoriteLoading)
+    }
+
+    private func heroMagnificationGesture(containerWidth: CGFloat) -> some Gesture {
+        MagnificationGesture()
+            .updating($heroPinchScale) { value, state, _ in
+                state = value
+            }
+            .onEnded { value in
+                let nextScale = min(max(heroBaseScale * value, 1), 4)
+                withAnimation(.easeOut(duration: 0.2)) {
+                    heroBaseScale = nextScale < 1.02 ? 1 : nextScale
+                    if heroBaseScale <= 1.01 {
+                        heroAccumulatedOffset = .zero
+                    } else {
+                        heroAccumulatedOffset = clampedHeroOffset(
+                            heroAccumulatedOffset,
+                            scale: heroBaseScale,
+                            containerWidth: containerWidth
+                        )
+                    }
+                }
+            }
+    }
+
+    private func heroDragGesture(containerWidth: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .updating($heroDragOffset) { value, state, _ in
+                if heroCurrentScale > 1.01 {
+                    state = value.translation
+                }
+            }
+            .onEnded { value in
+                guard heroCurrentScale > 1.01 else {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        heroAccumulatedOffset = .zero
+                    }
+                    return
+                }
+                let raw = CGSize(
+                    width: heroAccumulatedOffset.width + value.translation.width,
+                    height: heroAccumulatedOffset.height + value.translation.height
+                )
+                withAnimation(.interactiveSpring(response: 0.25, dampingFraction: 0.86)) {
+                    heroAccumulatedOffset = clampedHeroOffset(
+                        raw,
+                        scale: heroCurrentScale,
+                        containerWidth: containerWidth
+                    )
+                }
+            }
+    }
+
+    private func clampedHeroOffset(_ offset: CGSize, scale: CGFloat, containerWidth: CGFloat) -> CGSize {
+        guard scale > 1.01 else { return .zero }
+        let maxX = max(0, ((containerWidth * scale) - containerWidth) / 2)
+        let maxY = max(0, ((heroHeight * scale) - heroHeight) / 2)
+        return CGSize(
+            width: min(max(offset.width, -maxX), maxX),
+            height: min(max(offset.height, -maxY), maxY)
+        )
+    }
+
+    private func showToast(message: String, isError: Bool) {
+        let payload = PinDetailToastPayload(message: message, isError: isError)
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+            toast = payload
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard toast?.id == payload.id else { return }
+            withAnimation(.easeOut(duration: 0.2)) {
+                toast = nil
+            }
+        }
+    }
+}
+
+private struct PinDetailToastPayload: Identifiable, Equatable {
+    let id = UUID()
+    let message: String
+    let isError: Bool
+}
+
+private struct PinDetailToastView: View {
+    let payload: PinDetailToastPayload
+
+    var body: some View {
+        HStack(spacing: UITheme.spacing10) {
+            Image(systemName: payload.isError ? "xmark.circle.fill" : "checkmark.circle.fill")
+                .foregroundStyle(.white)
+            Text(payload.message)
+                .font(.subheadline)
+                .foregroundStyle(.white)
+                .lineLimit(2)
+        }
+        .padding(.vertical, UITheme.pillVerticalPadding * 2)
+        .padding(.horizontal, UITheme.cardPadding)
+        .frame(maxWidth: .infinity)
+        .background(payload.isError ? Color.red.opacity(0.9) : Color.green.opacity(0.9))
+        .clipShape(RoundedRectangle(cornerRadius: UITheme.overlayCornerRadius, style: .continuous))
+        .shadow(color: .black.opacity(0.15), radius: 8, y: 3)
     }
 }
 
@@ -4145,10 +4342,6 @@ private struct DealsView: View {
             .padding(UITheme.spacing4)
             .background(Color.white.opacity(0.04))
             .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius))
-            .overlay(
-                RoundedRectangle(cornerRadius: UITheme.controlCornerRadius)
-                    .stroke(brandGold.opacity(0.16), lineWidth: 1)
-            )
             .padding(.top, UITheme.spacing2)
         }
         .padding(.horizontal, UITheme.pagePadding)
@@ -6645,7 +6838,20 @@ private struct MyFavoritesView: View {
     @State private var showAlert: Bool = false
     private let brandGold = UITheme.brandGold
     private let cardBG = UITheme.cardBackground
-    private let columns = [GridItem(.flexible(), spacing: UITheme.spacing10), GridItem(.flexible(), spacing: UITheme.spacing10)]
+    private let columnSpacing: CGFloat = 10
+    private let cardSpacing: CGFloat = 16
+
+    private var favoritePinItemWidth: CGFloat {
+        let availableWidth = max(UIScreen.main.bounds.width - (UITheme.pagePadding * 2) - columnSpacing, 0)
+        return max(floor(availableWidth / 2), 120)
+    }
+
+    private var favoritePinColumns: [GridItem] {
+        [
+            GridItem(.fixed(favoritePinItemWidth), spacing: columnSpacing, alignment: .top),
+            GridItem(.fixed(favoritePinItemWidth), spacing: 0, alignment: .top),
+        ]
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -6681,9 +6887,9 @@ private struct MyFavoritesView: View {
                         if !viewModel.favoritePins.isEmpty {
                             VStack(alignment: .leading, spacing: UITheme.spacing10) {
                                 UnifiedSectionHeader(title: "FAVORITE DESIGNS")
-                                LazyVGrid(columns: columns, spacing: UITheme.spacing10) {
+                                LazyVGrid(columns: favoritePinColumns, alignment: .center, spacing: cardSpacing) {
                                     ForEach(viewModel.favoritePins) { pin in
-                                        favoritePinCard(pin)
+                                        favoritePinCard(pin, itemWidth: favoritePinItemWidth)
                                     }
                                 }
                             }
@@ -6733,47 +6939,36 @@ private struct MyFavoritesView: View {
         await viewModel.load(token: token)
     }
 
-    private func favoritePinCard(_ pin: HomeFeedPinDTO) -> some View {
+    private func favoritePinCard(_ pin: HomeFeedPinDTO, itemWidth: CGFloat) -> some View {
         ZStack(alignment: .topTrailing) {
             NavigationLink {
                 HomeFeedPinDetailView(pin: pin)
                     .environmentObject(appState)
             } label: {
-                VStack(alignment: .leading, spacing: UITheme.spacing6) {
-                    CachedAsyncImage(url: pin.imageURL) { phase in
-                        switch phase {
-                        case .empty:
-                            ZStack {
-                                Color.gray.opacity(0.14)
-                                ProgressView().tint(brandGold)
-                            }
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .scaledToFill()
-                        case .failure:
-                            Color.gray.opacity(0.22)
-                        @unknown default:
-                            Color.gray.opacity(0.22)
+                CachedAsyncImage(url: pin.imageURL) { phase in
+                    switch phase {
+                    case .empty:
+                        ZStack {
+                            Color.gray.opacity(0.14)
+                            ProgressView().tint(brandGold)
                         }
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    case .failure:
+                        Color.gray.opacity(0.2)
+                    @unknown default:
+                        Color.gray.opacity(0.2)
                     }
-                    .frame(height: 186)
-                    .frame(maxWidth: .infinity)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: UITheme.cardCornerRadius, style: .continuous))
-
-                    Text(pin.title)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
                 }
-                .padding(UITheme.spacing8)
-                .background(cardBG)
-                .clipShape(RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner))
+                .frame(width: itemWidth, height: itemWidth * (4.0 / 3.0))
+                .background(Color.gray.opacity(0.08))
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner)
-                        .stroke(brandGold.opacity(0.16), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.white.opacity(0.06), lineWidth: 1)
                 )
             }
             .buttonStyle(.plain)

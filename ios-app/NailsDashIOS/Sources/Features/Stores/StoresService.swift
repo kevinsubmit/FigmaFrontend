@@ -1,7 +1,7 @@
 import Foundation
 
 protocol StoresServiceProtocol {
-    func fetchStores(limit: Int) async throws -> [StoreDTO]
+    func fetchStores(limit: Int, sortBy: String?, userLat: Double?, userLng: Double?) async throws -> [StoreDTO]
     func fetchStoreDetail(storeID: Int) async throws -> StoreDetailDTO
     func fetchStoreImages(storeID: Int) async throws -> [StoreImageDTO]
     func fetchStoreServices(storeID: Int) async throws -> [ServiceDTO]
@@ -17,8 +17,19 @@ struct StoresService: StoresServiceProtocol {
         let is_favorited: Bool
     }
 
-    func fetchStores(limit: Int = 100) async throws -> [StoreDTO] {
-        try await APIClient.shared.request(path: "/stores?skip=0&limit=\(limit)")
+    func fetchStores(limit: Int = 100, sortBy: String? = nil, userLat: Double? = nil, userLng: Double? = nil) async throws -> [StoreDTO] {
+        var params = ["skip=0", "limit=\(limit)"]
+        if let sortBy, !sortBy.isEmpty {
+            params.append("sort_by=\(sortBy)")
+        }
+        if let userLat {
+            params.append("user_lat=\(userLat)")
+        }
+        if let userLng {
+            params.append("user_lng=\(userLng)")
+        }
+        let query = params.joined(separator: "&")
+        return try await APIClient.shared.request(path: "/stores?\(query)")
     }
 
     func fetchStoreDetail(storeID: Int) async throws -> StoreDetailDTO {

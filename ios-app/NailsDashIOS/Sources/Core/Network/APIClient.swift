@@ -128,8 +128,13 @@ final class APIClient {
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter
     }()
+
+    private static let debugSimulatorBaseURL = "http://127.0.0.1:8000/api/v1"
+    private static let debugDeviceBaseURL = "http://192.168.1.225:8000/api/v1"
+    private static let releaseBaseURL = "https://api.nailsdash.app/api/v1"
+
     private init() {
-        let configuredBaseURL = ProcessInfo.processInfo.environment["NAILSDASH_API_BASE_URL"] ?? "http://127.0.0.1:8000/api/v1"
+        let configuredBaseURL = Self.resolveBaseURL()
         self.baseURL = configuredBaseURL
         self.assetBaseURL = Self.makeAssetBaseURL(from: configuredBaseURL)
     }
@@ -161,6 +166,36 @@ final class APIClient {
 
     private static func makeAssetBaseURL(from baseURL: String) -> String {
         baseURL.replacingOccurrences(of: "/api/v1", with: "")
+    }
+
+    private static func resolveBaseURL() -> String {
+        let envValue = ProcessInfo.processInfo.environment["NAILSDASH_API_BASE_URL"]
+        if let normalizedEnv = normalizeConfiguredBaseURL(envValue) {
+            return normalizedEnv
+        }
+
+        let plistValue = Bundle.main.object(forInfoDictionaryKey: "NAILSDASH_API_BASE_URL") as? String
+        if let normalizedPlist = normalizeConfiguredBaseURL(plistValue) {
+            return normalizedPlist
+        }
+
+        #if DEBUG
+        #if targetEnvironment(simulator)
+        return debugSimulatorBaseURL
+        #else
+        return debugDeviceBaseURL
+        #endif
+        #else
+        return releaseBaseURL
+        #endif
+    }
+
+    private static func normalizeConfiguredBaseURL(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        guard !trimmed.contains("$(") else { return nil } // unresolved build setting placeholder
+        return trimmed
     }
 
     func request<T: Decodable>(
