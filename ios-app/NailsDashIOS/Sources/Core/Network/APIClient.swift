@@ -149,6 +149,7 @@ final class APIClient {
     private(set) var assetBaseURL: String
     private let responseCache = ResponseMemoryCache()
     private let inFlightGETDeduplicator = InFlightGETRequestDeduplicator()
+    private let tokenRefreshCoordinator = TokenRefreshCoordinator()
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
         config.requestCachePolicy = .useProtocolCachePolicy
@@ -204,6 +205,22 @@ final class APIClient {
         token: String? = nil,
         body: Encodable? = nil
     ) async throws -> T {
+        return try await requestInternal(
+            path: path,
+            method: method,
+            token: token,
+            body: body,
+            didRetryAfterRefresh: false
+        )
+    }
+
+    private func requestInternal<T: Decodable>(
+        path: String,
+        method: String = "GET",
+        token: String? = nil,
+        body: Encodable? = nil,
+        didRetryAfterRefresh: Bool
+    ) async throws -> T {
         let normalizedMethod = method.uppercased()
         guard let url = URL(string: baseURL + path) else {
             throw APIError.invalidURL
@@ -250,6 +267,23 @@ final class APIClient {
             throw APIError.network("Invalid response")
         }
 
+        if http.statusCode == 401,
+           !didRetryAfterRefresh,
+           shouldAttemptTokenRefresh(path: path) {
+            do {
+                let refreshedAccessToken = try await refreshAccessToken()
+                return try await requestInternal(
+                    path: path,
+                    method: normalizedMethod,
+                    token: refreshedAccessToken,
+                    body: body,
+                    didRetryAfterRefresh: true
+                )
+            } catch {
+                // Fall through to normal 401 handling (global re-login flow).
+            }
+        }
+
         if (200 ... 299).contains(http.statusCode) {
             if normalizedMethod == "GET", let responseCacheKey {
                 responseCache.write(
@@ -274,6 +308,100 @@ final class APIClient {
             http: http,
             postUnauthorizedNotification: shouldPostUnauthorizedNotification
         )
+    }
+
+    private func shouldAttemptTokenRefresh(path: String) -> Bool {
+        guard TokenStore.shared.read(key: TokenStore.Keys.refreshToken) != nil else {
+            return false
+        }
+
+        let normalizedPath = normalizePath(path).lowercased()
+        if pathMatches(normalizedPath, pattern: "^/(api/v1/)?auth/login$") {
+            return false
+        }
+        if pathMatches(normalizedPath, pattern: "^/(api/v1/)?auth/register$") {
+            return false
+        }
+        if pathMatches(normalizedPath, pattern: "^/(api/v1/)?auth/send-verification-code$") {
+            return false
+        }
+        if pathMatches(normalizedPath, pattern: "^/(api/v1/)?auth/verify-code$") {
+            return false
+        }
+        if pathMatches(normalizedPath, pattern: "^/(api/v1/)?auth/reset-password$") {
+            return false
+        }
+        if pathMatches(normalizedPath, pattern: "^/(api/v1/)?auth/refresh$") {
+            return false
+        }
+
+        return true
+    }
+
+    private func refreshAccessToken() async throws -> String {
+        let runningTask = await tokenRefreshCoordinator.acquire { [weak self] in
+            guard let self else {
+                throw APIError.unauthorized
+            }
+            return try await self.performTokenRefreshRequest()
+        }
+
+        do {
+            let nextToken = try await runningTask.task.value
+            await tokenRefreshCoordinator.clear(id: runningTask.id)
+            return nextToken
+        } catch {
+            await tokenRefreshCoordinator.clear(id: runningTask.id)
+            throw error
+        }
+    }
+
+    private func performTokenRefreshRequest() async throws -> String {
+        guard let refreshToken = TokenStore.shared.read(key: TokenStore.Keys.refreshToken) else {
+            throw APIError.unauthorized
+        }
+
+        guard var components = URLComponents(string: baseURL + "/auth/refresh") else {
+            throw APIError.invalidURL
+        }
+        components.queryItems = [URLQueryItem(name: "refresh_token", value: refreshToken)]
+        guard let url = components.url else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+
+        let (data, response) = try await performDataTask(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.network("Invalid response")
+        }
+
+        guard (200 ... 299).contains(http.statusCode) else {
+            let detail = extractUserMessage(
+                from: data,
+                statusCode: http.statusCode,
+                fallback: "Session expired. Please sign in again."
+            )
+            if http.statusCode == 401 || http.statusCode == 403 || http.statusCode == 423 {
+                throw APIError.unauthorized
+            }
+            throw APIError.server(detail)
+        }
+
+        let refreshedToken: TokenResponse
+        do {
+            refreshedToken = try JSONDecoder().decode(TokenResponse.self, from: data)
+        } catch {
+            throw APIError.decoding
+        }
+
+        TokenStore.shared.save(refreshedToken.access_token, key: TokenStore.Keys.accessToken)
+        TokenStore.shared.save(refreshedToken.refresh_token, key: TokenStore.Keys.refreshToken)
+        responseCache.clear()
+        return refreshedToken.access_token
     }
 
     private func cacheKey(for request: URLRequest) -> String? {
@@ -1206,5 +1334,30 @@ private actor InFlightGETRequestDeduplicator {
         tasks[key] = task
         defer { tasks[key] = nil }
         return try await task.value
+    }
+}
+
+private actor TokenRefreshCoordinator {
+    private var running: (id: UUID, task: Task<String, Error>)?
+
+    func acquire(
+        taskFactory: @escaping @Sendable () async throws -> String
+    ) -> (id: UUID, task: Task<String, Error>) {
+        if let running {
+            return running
+        }
+
+        let id = UUID()
+        let task = Task.detached(priority: .userInitiated) {
+            try await taskFactory()
+        }
+        let payload = (id: id, task: task)
+        running = payload
+        return payload
+    }
+
+    func clear(id: UUID) {
+        guard let running, running.id == id else { return }
+        self.running = nil
     }
 }

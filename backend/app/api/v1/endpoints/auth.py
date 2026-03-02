@@ -1,7 +1,7 @@
 """
 Authentication API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Body
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
@@ -345,7 +345,8 @@ async def get_current_user_info(
 
 @router.post("/refresh", response_model=Token)
 async def refresh_token(
-    refresh_token: str,
+    refresh_token: str | None = None,
+    payload: dict | None = Body(default=None),
     db: Session = Depends(get_db)
 ):
     """
@@ -363,15 +364,27 @@ async def refresh_token(
     """
     from app.core.security import decode_token, verify_token_type
     
+    token_value = refresh_token
+    if not token_value and isinstance(payload, dict):
+        body_token = payload.get("refresh_token")
+        if isinstance(body_token, str):
+            token_value = body_token
+
+    if not token_value:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="refresh_token is required",
+        )
+
     # Decode and verify refresh token
-    payload = decode_token(refresh_token)
-    if not verify_token_type(payload, "refresh"):
+    token_payload = decode_token(token_value)
+    if not verify_token_type(token_payload, "refresh"):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type"
         )
     
-    user_id = int(payload.get("sub"))
+    user_id = int(token_payload.get("sub"))
     user = crud_user.get(db, id=user_id)
     if not user:
         raise HTTPException(
@@ -379,7 +392,7 @@ async def refresh_token(
             detail="User not found"
         )
     
-    login_portal = payload.get("login_portal") or "frontend"
+    login_portal = token_payload.get("login_portal") or "frontend"
     access_expires = None
     if login_portal == "admin":
         access_expires = timedelta(minutes=settings.ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES)

@@ -86,9 +86,11 @@ export async function refreshToken(): Promise<TokenResponse> {
     throw new Error('No refresh token available');
   }
 
-  const response = await apiClient.post<TokenResponse>('/api/v1/auth/refresh', {
-    refresh_token: refreshToken,
-  });
+  const response = await apiClient.post<TokenResponse>(
+    '/api/v1/auth/refresh',
+    null,
+    { params: { refresh_token: refreshToken } },
+  );
 
   // Update tokens
   apiClient.setToken(response.access_token);

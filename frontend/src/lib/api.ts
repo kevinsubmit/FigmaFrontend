@@ -41,6 +41,88 @@ const MAX_GET_CACHE_ENTRIES = 200;
 const getResponseCache = new Map<string, CachedGetResponse>();
 const inFlightGetRequests = new Map<string, Promise<AxiosResponse<any>>>();
 let lastAuthToken: string | null = null;
+let refreshRequestPromise: Promise<string | null> | null = null;
+
+type RetryableAxiosRequestConfig = AxiosRequestConfig & {
+  _retryAfterRefresh?: boolean;
+};
+
+const AUTH_ENTRY_PATTERNS = [
+  /^\/auth\/login$/i,
+  /^\/auth\/register$/i,
+  /^\/auth\/send-verification-code$/i,
+  /^\/auth\/verify-code$/i,
+  /^\/auth\/reset-password$/i,
+  /^\/auth\/refresh$/i,
+];
+
+const normalizePath = (rawUrl?: string) => {
+  if (!rawUrl) return '';
+  try {
+    const parsed = new URL(rawUrl, apiClient.defaults.baseURL);
+    const path = parsed.pathname.replace(/^\/api\/v1/, '');
+    return path.startsWith('/') ? path : `/${path}`;
+  } catch {
+    const noQuery = rawUrl.split('?')[0].split('#')[0] || rawUrl;
+    const path = noQuery.replace(/^https?:\/\/[^/]+/i, '').replace(/^\/api\/v1/, '');
+    return path.startsWith('/') ? path : `/${path}`;
+  }
+};
+
+const isAuthEntryRequest = (config?: AxiosRequestConfig) => {
+  const path = normalizePath(config?.url);
+  return AUTH_ENTRY_PATTERNS.some((pattern) => pattern.test(path));
+};
+
+const refreshAccessToken = async (): Promise<string | null> => {
+  if (refreshRequestPromise) {
+    return refreshRequestPromise;
+  }
+
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) {
+    return null;
+  }
+
+  const refreshURL = `${apiClient.defaults.baseURL}/auth/refresh`;
+  refreshRequestPromise = (async () => {
+    try {
+      const response = await axios.post<{
+        access_token?: string;
+        refresh_token?: string;
+      }>(
+        refreshURL,
+        null,
+        {
+          params: { refresh_token: refreshToken },
+          timeout: 10000,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+      const nextAccessToken = response.data?.access_token ?? null;
+      const nextRefreshToken = response.data?.refresh_token ?? null;
+      if (!nextAccessToken || !nextRefreshToken) {
+        return null;
+      }
+
+      localStorage.setItem('access_token', nextAccessToken);
+      localStorage.setItem('refresh_token', nextRefreshToken);
+      lastAuthToken = nextAccessToken;
+      clearGetCache();
+      inFlightGetRequests.clear();
+      return nextAccessToken;
+    } catch {
+      return null;
+    } finally {
+      refreshRequestPromise = null;
+    }
+  })();
+
+  return refreshRequestPromise;
+};
 
 const cloneData = <T>(value: T): T => {
   if (value === null || value === undefined || typeof value !== 'object') return value;
@@ -207,11 +289,29 @@ apiClient.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error) => {
     const status = error?.response?.status;
     const detail = error?.response?.data?.detail ?? error?.response?.data;
+    const originalRequest = error?.config as RetryableAxiosRequestConfig | undefined;
 
-    if (shouldForceRelogin(status, detail)) {
+    if (
+      status === 401
+      && originalRequest
+      && !originalRequest._retryAfterRefresh
+      && !isAuthEntryRequest(originalRequest)
+    ) {
+      originalRequest._retryAfterRefresh = true;
+      const nextToken = await refreshAccessToken();
+      if (nextToken) {
+        originalRequest.headers = {
+          ...(originalRequest.headers || {}),
+          Authorization: `Bearer ${nextToken}`,
+        };
+        return apiClient.request(originalRequest);
+      }
+    }
+
+    if (!isAuthEntryRequest(originalRequest) && shouldForceRelogin(status, detail)) {
       clearGetCache();
       inFlightGetRequests.clear();
       forceRelogin();

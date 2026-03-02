@@ -985,14 +985,18 @@ private struct ActivityView: UIViewControllerRepresentable {
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
+private struct ShareSheetPayload: Identifiable {
+    let id = UUID()
+    let activityItems: [Any]
+}
+
 private struct ReferAFriendView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = ReferAFriendViewModel()
     @State private var alertMessage: String = ""
     @State private var showAlert: Bool = false
-    @State private var shareItems: [Any] = []
-    @State private var showShareSheet = false
+    @State private var shareSheetPayload: ShareSheetPayload?
     private let brandGold = UITheme.brandGold
     private let cardBG = UITheme.cardBackground
 
@@ -1025,8 +1029,8 @@ private struct ReferAFriendView: View {
             alertMessage = value
             showAlert = true
         }
-        .sheet(isPresented: $showShareSheet) {
-            ActivityView(activityItems: shareItems)
+        .sheet(item: $shareSheetPayload) { payload in
+            ActivityView(activityItems: payload.activityItems)
         }
         .unifiedNoticeAlert(isPresented: $showAlert, message: alertMessage)
         .overlay {
@@ -1128,8 +1132,7 @@ private struct ReferAFriendView: View {
         VStack(spacing: UITheme.spacing10) {
             Button {
                 guard let payload = viewModel.sharePayload() else { return }
-                shareItems = payload
-                showShareSheet = true
+                shareSheetPayload = ShareSheetPayload(activityItems: payload)
             } label: {
                 HStack(spacing: UITheme.spacing8) {
                     Image(systemName: "square.and.arrow.up")
