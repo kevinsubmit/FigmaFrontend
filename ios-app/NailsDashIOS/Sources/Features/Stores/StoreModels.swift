@@ -91,3 +91,10 @@ struct StoreHourDTO: Decodable, Identifiable {
     let close_time: String?
     let is_closed: Bool
 }
+
+struct StoreRatingSummaryDTO: Decodable {
+    let store_id: Int
+    let average_rating: Double
+    let total_reviews: Int
+    let rating_distribution: [String: Int]?
+}

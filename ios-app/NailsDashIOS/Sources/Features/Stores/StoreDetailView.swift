@@ -260,7 +260,10 @@ struct StoreDetailView: View {
     }
 
     private func storeIdentitySection(_ store: StoreDetailDTO) -> some View {
-        VStack(alignment: .leading, spacing: UITheme.spacing8) {
+        let rating = displayRating(for: store)
+        let reviewCount = displayReviewCount(for: store)
+
+        return VStack(alignment: .leading, spacing: UITheme.spacing8) {
             Text(store.name)
                 .font(.largeTitle.bold())
                 .foregroundStyle(.white)
@@ -273,16 +276,24 @@ struct StoreDetailView: View {
                 Image(systemName: "star.fill")
                     .foregroundStyle(brandGold)
                     .font(.caption)
-                Text(String(format: "%.1f", store.rating))
+                Text(String(format: "%.1f", rating))
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(.white)
-                Text("(\(store.review_count) reviews)")
+                Text("(\(reviewCount) reviews)")
                     .font(.subheadline)
                     .foregroundStyle(brandGold)
             }
         }
         .padding(.horizontal, UITheme.spacing2)
         .padding(.top, UITheme.spacing2)
+    }
+
+    private func displayRating(for store: StoreDetailDTO) -> Double {
+        viewModel.ratingSummary?.average_rating ?? store.rating
+    }
+
+    private func displayReviewCount(for store: StoreDetailDTO) -> Int {
+        viewModel.ratingSummary?.total_reviews ?? store.review_count
     }
 
     private var tabBar: some View {
@@ -411,14 +422,17 @@ struct StoreDetailView: View {
     }
 
     private func reviewsContent(_ store: StoreDetailDTO) -> some View {
-        VStack(alignment: .leading, spacing: UITheme.spacing10) {
+        let rating = displayRating(for: store)
+        let reviewCount = displayReviewCount(for: store)
+
+        return VStack(alignment: .leading, spacing: UITheme.spacing10) {
             HStack(spacing: UITheme.spacing8) {
                 Image(systemName: "star.fill")
                     .foregroundStyle(brandGold)
-                Text(String(format: "%.1f", store.rating))
+                Text(String(format: "%.1f", rating))
                     .font(.title3.weight(.bold))
                     .foregroundStyle(.white)
-                Text("• \(store.review_count) reviews")
+                Text("• \(reviewCount) reviews")
                     .foregroundStyle(.secondary)
             }
 

@@ -4,9 +4,11 @@ import Foundation
 final class StoresViewModel: ObservableObject {
     @Published var stores: [StoreDTO] = []
     @Published var storeImages: [Int: [StoreImageDTO]] = [:]
+    @Published var storeRatingSummaries: [Int: StoreRatingSummaryDTO] = [:]
     @Published var isLoading: Bool = false
     @Published var errorMessage: String? = nil
     private var loadingStoreImageIDs: Set<Int> = []
+    private var loadingStoreRatingIDs: Set<Int> = []
 
     private let service: StoresServiceProtocol
 
@@ -20,6 +22,9 @@ final class StoresViewModel: ObservableObject {
 
         do {
             stores = try await service.fetchStores(limit: 100)
+            let validStoreIDs = Set(stores.map(\.id))
+            storeRatingSummaries = storeRatingSummaries.filter { validStoreIDs.contains($0.key) }
+            loadingStoreRatingIDs = loadingStoreRatingIDs.filter { validStoreIDs.contains($0) }
             errorMessage = nil
         } catch let error as APIError {
             errorMessage = mapError(error)
@@ -53,6 +58,30 @@ final class StoresViewModel: ObservableObject {
         }
     }
 
+    func loadStoreRatingIfNeeded(storeID: Int) async {
+        if storeRatingSummaries[storeID] != nil || loadingStoreRatingIDs.contains(storeID) {
+            return
+        }
+
+        loadingStoreRatingIDs.insert(storeID)
+        defer { loadingStoreRatingIDs.remove(storeID) }
+
+        do {
+            let summary = try await service.fetchStoreRating(storeID: storeID)
+            storeRatingSummaries[storeID] = summary
+        } catch {
+            // Keep list stable and fall back to list endpoint values.
+        }
+    }
+
+    func displayRating(for store: StoreDTO) -> Double {
+        storeRatingSummaries[store.id]?.average_rating ?? store.rating
+    }
+
+    func displayReviewCount(for store: StoreDTO) -> Int {
+        storeRatingSummaries[store.id]?.total_reviews ?? store.review_count
+    }
+
     private func mapError(_ error: APIError) -> String {
         switch error {
         case .unauthorized:
@@ -72,6 +101,7 @@ final class StoreDetailViewModel: ObservableObject {
     @Published var store: StoreDetailDTO?
     @Published var services: [ServiceDTO] = []
     @Published var reviews: [StoreReviewDTO] = []
+    @Published var ratingSummary: StoreRatingSummaryDTO?
     @Published var storeHours: [StoreHourDTO] = []
     @Published var isFavorited: Bool = false
     @Published var isFavoriteLoading: Bool = false
@@ -92,10 +122,12 @@ final class StoreDetailViewModel: ObservableObject {
             async let detailTask = service.fetchStoreDetail(storeID: storeID)
             async let serviceTask = service.fetchStoreServices(storeID: storeID)
             async let reviewTask = service.fetchStoreReviews(storeID: storeID, skip: 0, limit: 20)
+            async let ratingTask: StoreRatingSummaryDTO? = try? service.fetchStoreRating(storeID: storeID)
             async let hoursTask = service.fetchStoreHours(storeID: storeID)
             store = try await detailTask
             services = try await serviceTask.filter { $0.is_active == 1 }
             reviews = (try? await reviewTask) ?? []
+            ratingSummary = await ratingTask
             storeHours = (try? await hoursTask) ?? []
             errorMessage = nil
         } catch let error as APIError {

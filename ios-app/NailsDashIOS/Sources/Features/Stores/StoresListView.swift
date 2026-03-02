@@ -53,7 +53,11 @@ struct StoresListView: View {
                             }
                             .buttonStyle(.plain)
                             .onAppear {
-                                Task { await viewModel.loadStoreImagesIfNeeded(storeID: store.id) }
+                                Task {
+                                    async let imageTask: Void = viewModel.loadStoreImagesIfNeeded(storeID: store.id)
+                                    async let ratingTask: Void = viewModel.loadStoreRatingIfNeeded(storeID: store.id)
+                                    _ = await (imageTask, ratingTask)
+                                }
                             }
                         }
                     }
@@ -151,10 +155,12 @@ struct StoresListView: View {
             return viewModel.stores
         case .rating:
             return viewModel.stores.sorted { lhs, rhs in
-                if lhs.rating == rhs.rating {
-                    return lhs.review_count > rhs.review_count
+                let lhsRating = viewModel.displayRating(for: lhs)
+                let rhsRating = viewModel.displayRating(for: rhs)
+                if lhsRating == rhsRating {
+                    return viewModel.displayReviewCount(for: lhs) > viewModel.displayReviewCount(for: rhs)
                 }
-                return lhs.rating > rhs.rating
+                return lhsRating > rhsRating
             }
         case .distance:
             return viewModel.stores.sorted { lhs, rhs in
@@ -308,6 +314,7 @@ struct StoresListView: View {
         let imageURLs = storeCardImageURLs(for: store)
         let heroURL = imageURLs.first
         let thumbURLs = Array(imageURLs.dropFirst().prefix(4))
+        let rating = viewModel.displayRating(for: store)
 
         return VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topLeading) {
@@ -323,7 +330,7 @@ struct StoresListView: View {
                     )
                 )
 
-                Text(String(format: "%.1f★", store.rating))
+                Text(String(format: "%.1f★", rating))
                     .font(.caption.bold())
                     .padding(.horizontal, UITheme.compactPillHorizontalPadding)
                     .padding(.vertical, UITheme.compactPillVerticalPadding)
