@@ -25,6 +25,24 @@
 		9940EC4C0B5582DD6EA8B730 /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B79367B80E53991EA6A6E23 /* TokenStore.swift */; };
 		C26E9BB373441BF4C009CDF2 /* AppointmentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 353835D4F888821BAA3D8DDC /* AppointmentModels.swift */; };
 		C84C1AFADA6A0BDF13EFA1DF /* StoresViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CBE6600EF1F41C68120D8D6 /* StoresViewModel.swift */; };
+		D1A2031425364758697A8B9D /* SettingsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5061728394A5B6C /* SettingsModule.swift */; };
+		E1F2031425364758697A8B9C /* ProfileModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* ProfileModule.swift */; };
+		B100000000000000000000001 /* ProfileCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000001 /* ProfileCenterView.swift */; };
+		B100000000000000000000002 /* VipMembershipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000002 /* VipMembershipView.swift */; };
+		B100000000000000000000003 /* ReferAFriendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000003 /* ReferAFriendView.swift */; };
+		B100000000000000000000004 /* NotificationsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000004 /* NotificationsModule.swift */; };
+		B100000000000000000000005 /* ProfileRewardsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000005 /* ProfileRewardsModule.swift */; };
+		B100000000000000000000006 /* ProfileRewardsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000006 /* ProfileRewardsModels.swift */; };
+		B100000000000000000000007 /* ProfileRewardsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000007 /* ProfileRewardsService.swift */; };
+		B100000000000000000000008 /* ProfileRewardsViewModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000008 /* ProfileRewardsViewModels.swift */; };
+		B100000000000000000000009 /* ProfileRewardsSharedUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000009 /* ProfileRewardsSharedUI.swift */; };
+		B10000000000000000000000A /* ProfileRewardsHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000000A /* ProfileRewardsHelpers.swift */; };
+		B10000000000000000000000B /* PointsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000000B /* PointsView.swift */; };
+		B10000000000000000000000C /* CouponsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000000C /* CouponsView.swift */; };
+		B10000000000000000000000D /* GiftCardsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000000D /* GiftCardsView.swift */; };
+		B10000000000000000000000E /* OrderHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000000E /* OrderHistoryView.swift */; };
+		B10000000000000000000000F /* MyReviewsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000000F /* MyReviewsView.swift */; };
+		B100000000000000000000010 /* MyFavoritesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000010 /* MyFavoritesView.swift */; };
 		E938B4A98D458A5C00ED4F65 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69971322EED483F5BA88EA3E /* HomeView.swift */; };
 		E97894949AFB6E70D0E37A14 /* MyAppointmentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABA11B03E51EF58C41B4813 /* MyAppointmentsView.swift */; };
 /* End PBXBuildFile section */
@@ -54,6 +72,24 @@
 		6BD1C5C353519E7F91DDA17A /* NailsDashApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NailsDashApp.swift; sourceTree = "<group>"; };
 		7CBE6600EF1F41C68120D8D6 /* StoresViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoresViewModel.swift; sourceTree = "<group>"; };
 		7F1FA00668ACF5A4F9C8936D /* StoresService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoresService.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5C /* ProfileModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileModule.swift; sourceTree = "<group>"; };
+		C100000000000000000000001 /* ProfileCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileCenterView.swift; sourceTree = "<group>"; };
+		C100000000000000000000002 /* VipMembershipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VipMembershipView.swift; sourceTree = "<group>"; };
+		C100000000000000000000003 /* ReferAFriendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferAFriendView.swift; sourceTree = "<group>"; };
+		C100000000000000000000004 /* NotificationsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsModule.swift; sourceTree = "<group>"; };
+		C100000000000000000000005 /* ProfileRewardsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsModule.swift; sourceTree = "<group>"; };
+		C100000000000000000000006 /* ProfileRewardsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsModels.swift; sourceTree = "<group>"; };
+		C100000000000000000000007 /* ProfileRewardsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsService.swift; sourceTree = "<group>"; };
+		C100000000000000000000008 /* ProfileRewardsViewModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsViewModels.swift; sourceTree = "<group>"; };
+		C100000000000000000000009 /* ProfileRewardsSharedUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsSharedUI.swift; sourceTree = "<group>"; };
+		C10000000000000000000000A /* ProfileRewardsHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsHelpers.swift; sourceTree = "<group>"; };
+		C10000000000000000000000B /* PointsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointsView.swift; sourceTree = "<group>"; };
+		C10000000000000000000000C /* CouponsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CouponsView.swift; sourceTree = "<group>"; };
+		C10000000000000000000000D /* GiftCardsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GiftCardsView.swift; sourceTree = "<group>"; };
+		C10000000000000000000000E /* OrderHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrderHistoryView.swift; sourceTree = "<group>"; };
+		C10000000000000000000000F /* MyReviewsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyReviewsView.swift; sourceTree = "<group>"; };
+		C100000000000000000000010 /* MyFavoritesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyFavoritesView.swift; sourceTree = "<group>"; };
+		B1C2D3E4F5061728394A5B6C /* SettingsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModule.swift; sourceTree = "<group>"; };
 		C42A0DC81FEA66C97739EA76 /* UserLocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserLocationService.swift; sourceTree = "<group>"; };
 		C8A71C8FD57CF3D60EC95B4C /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		C9545DF0A4ABD1935546B6A2 /* BookAppointmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookAppointmentView.swift; sourceTree = "<group>"; };
@@ -146,15 +182,49 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		C1D2E3F405162738495A6B7C /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				A1B2C3D4E5F60718293A4B5C /* ProfileModule.swift */,
+				C100000000000000000000001 /* ProfileCenterView.swift */,
+				C100000000000000000000002 /* VipMembershipView.swift */,
+				C100000000000000000000003 /* ReferAFriendView.swift */,
+				C100000000000000000000004 /* NotificationsModule.swift */,
+				C100000000000000000000005 /* ProfileRewardsModule.swift */,
+				C100000000000000000000006 /* ProfileRewardsModels.swift */,
+				C100000000000000000000007 /* ProfileRewardsService.swift */,
+				C100000000000000000000008 /* ProfileRewardsViewModels.swift */,
+				C100000000000000000000009 /* ProfileRewardsSharedUI.swift */,
+				C10000000000000000000000A /* ProfileRewardsHelpers.swift */,
+				C10000000000000000000000B /* PointsView.swift */,
+				C10000000000000000000000C /* CouponsView.swift */,
+				C10000000000000000000000D /* GiftCardsView.swift */,
+				C10000000000000000000000E /* OrderHistoryView.swift */,
+				C10000000000000000000000F /* MyReviewsView.swift */,
+				C100000000000000000000010 /* MyFavoritesView.swift */,
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
 		DA5134E5F1B122EEF7DA142A /* Features */ = {
 			isa = PBXGroup;
 			children = (
 				F070DB808A156B50364E37F6 /* Appointments */,
 				5FD0DE029877C0E70ABC3ACC /* Auth */,
 				3C8CBC1218D0207834AB5E2F /* Home */,
+				C1D2E3F405162738495A6B7C /* Profile */,
+				D1E2F30415263748596A7B8C /* Settings */,
 				EE711A927730CC95175E4DFB /* Stores */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		D1E2F30415263748596A7B8C /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				B1C2D3E4F5061728394A5B6C /* SettingsModule.swift */,
+			);
+			path = Settings;
 			sourceTree = "<group>";
 		};
 		E5C76CD14CF5BB4109288BE0 /* Core */ = {
@@ -309,6 +379,24 @@
 				E97894949AFB6E70D0E37A14 /* MyAppointmentsView.swift in Sources */,
 				29359FB573E617D7E0498D11 /* NailsDashApp.swift in Sources */,
 				598A5611A236ECA5B26CF27A /* PhoneFormatter.swift in Sources */,
+				E1F2031425364758697A8B9C /* ProfileModule.swift in Sources */,
+				B100000000000000000000001 /* ProfileCenterView.swift in Sources */,
+				B100000000000000000000002 /* VipMembershipView.swift in Sources */,
+				B100000000000000000000003 /* ReferAFriendView.swift in Sources */,
+				B100000000000000000000004 /* NotificationsModule.swift in Sources */,
+				B100000000000000000000005 /* ProfileRewardsModule.swift in Sources */,
+				B100000000000000000000006 /* ProfileRewardsModels.swift in Sources */,
+				B100000000000000000000007 /* ProfileRewardsService.swift in Sources */,
+				B100000000000000000000008 /* ProfileRewardsViewModels.swift in Sources */,
+				B100000000000000000000009 /* ProfileRewardsSharedUI.swift in Sources */,
+				B10000000000000000000000A /* ProfileRewardsHelpers.swift in Sources */,
+				B10000000000000000000000B /* PointsView.swift in Sources */,
+				B10000000000000000000000C /* CouponsView.swift in Sources */,
+				B10000000000000000000000D /* GiftCardsView.swift in Sources */,
+				B10000000000000000000000E /* OrderHistoryView.swift in Sources */,
+				B10000000000000000000000F /* MyReviewsView.swift in Sources */,
+				B100000000000000000000010 /* MyFavoritesView.swift in Sources */,
+				D1A2031425364758697A8B9D /* SettingsModule.swift in Sources */,
 				8D3DDACAEE0DCEB24ADCC7C5 /* StoreDetailView.swift in Sources */,
 				6933756772F078B938769065 /* StoreModels.swift in Sources */,
 				87185F16A1D7A5B0274718C7 /* StoresListView.swift in Sources */,
