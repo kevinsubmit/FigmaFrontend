@@ -222,14 +222,23 @@ final class OrderHistoryViewModel: ObservableObject {
         token: String,
         appointmentID: Int,
         rating: Double,
-        comment: String?
+        comment: String?,
+        images: [String]? = nil
     ) async throws -> UserReviewDTO {
         try await rewardsService.createReview(
             token: token,
             appointmentID: appointmentID,
             rating: rating,
-            comment: comment
+            comment: comment,
+            images: images
         )
+    }
+
+    func uploadReviewImages(
+        token: String,
+        files: [ReviewUploadImagePayload]
+    ) async throws -> [String] {
+        try await rewardsService.uploadReviewImages(token: token, files: files)
     }
 }
 

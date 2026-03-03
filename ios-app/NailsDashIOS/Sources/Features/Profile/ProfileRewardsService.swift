@@ -1,4 +1,11 @@
 import Foundation
+
+struct ReviewUploadImagePayload {
+    let data: Data
+    let fileName: String
+    let mimeType: String
+}
+
 struct ProfileRewardsService {
     func getPointsBalance(token: String) async throws -> PointsBalanceDTO {
         try await APIClient.shared.request(path: "/points/balance", token: token)
@@ -83,6 +90,46 @@ struct ProfileRewardsService {
         )
     }
 
+    func uploadReviewImages(
+        token: String,
+        files: [ReviewUploadImagePayload]
+    ) async throws -> [String] {
+        guard !files.isEmpty else { return [] }
+        guard let url = URL(string: APIClient.shared.baseURL + "/upload/images") else {
+            throw APIError.invalidURL
+        }
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.httpBody = buildReviewImagesMultipartBody(boundary: boundary, files: files)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.network("Invalid response")
+        }
+
+        switch http.statusCode {
+        case 200 ... 299:
+            do {
+                return try JSONDecoder().decode([String].self, from: data)
+            } catch {
+                throw APIError.decoding
+            }
+        case 401:
+            throw APIError.unauthorized
+        case 403:
+            throw APIError.forbidden(extractUploadErrorMessage(from: data, fallback: "You do not have permission to upload images."))
+        case 400, 413, 422:
+            throw APIError.validation(extractUploadErrorMessage(from: data, fallback: "Please upload valid images (jpg/png, max 5MB each, up to 5 files)."))
+        default:
+            throw APIError.server(extractUploadErrorMessage(from: data, fallback: "Failed to upload images. Please try again."))
+        }
+    }
+
     func updateReview(
         token: String,
         reviewID: Int,
@@ -104,6 +151,48 @@ struct ProfileRewardsService {
             token: token,
             body: payload
         )
+    }
+
+    private func buildReviewImagesMultipartBody(
+        boundary: String,
+        files: [ReviewUploadImagePayload]
+    ) -> Data {
+        var body = Data()
+        for file in files {
+            body.append("--\(boundary)\r\n".data(using: .utf8)!)
+            body.append("Content-Disposition: form-data; name=\"files\"; filename=\"\(file.fileName)\"\r\n".data(using: .utf8)!)
+            body.append("Content-Type: \(file.mimeType)\r\n\r\n".data(using: .utf8)!)
+            body.append(file.data)
+            body.append("\r\n".data(using: .utf8)!)
+        }
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        return body
+    }
+
+    private func extractUploadErrorMessage(from data: Data, fallback: String) -> String {
+        guard !data.isEmpty else { return fallback }
+        if let object = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]),
+           let dict = object as? [String: Any],
+           let detail = dict["detail"]
+        {
+            if let text = detail as? String, !text.isEmpty {
+                return text
+            }
+            if let list = detail as? [Any] {
+                for item in list {
+                    if let text = item as? String, !text.isEmpty {
+                        return text
+                    }
+                    if let row = item as? [String: Any],
+                       let msg = row["msg"] as? String,
+                       !msg.isEmpty
+                    {
+                        return msg
+                    }
+                }
+            }
+        }
+        return fallback
     }
 
     func deleteReview(token: String, reviewID: Int) async throws {
