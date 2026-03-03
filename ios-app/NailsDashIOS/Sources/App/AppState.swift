@@ -224,6 +224,10 @@ final class AppState: ObservableObject {
     }
 
     func forceLogout(message: String? = nil) {
+        let accessTokenBeforeLogout = TokenStore.shared.read(key: TokenStore.Keys.accessToken)
+        PushNotificationManager.shared.unregisterCurrentTokenOnLogout(accessToken: accessTokenBeforeLogout)
+        PushNotificationManager.shared.setAppBadge(0)
+
         TokenStore.shared.clear(key: TokenStore.Keys.accessToken)
         TokenStore.shared.clear(key: TokenStore.Keys.refreshToken)
         isLoggedIn = false

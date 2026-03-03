@@ -6,6 +6,7 @@ import { TopBar } from '../layout/TopBar';
 import { useAuth } from '../context/AuthContext';
 import { getStoreById } from '../api/stores';
 import { getDashboardRealtimeNotifications, getDashboardSummary } from '../api/dashboard';
+import { sendAdminTestPush } from '../api/notifications';
 import { parseApiDateTimeAsUTC } from '../utils/time';
 
 const Dashboard: React.FC = () => {
@@ -14,6 +15,7 @@ const Dashboard: React.FC = () => {
   const [storeName, setStoreName] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [testPushLoading, setTestPushLoading] = useState(false);
   const [realtimeNotifications, setRealtimeNotifications] = useState<Array<{
     id: number;
     message: string;
@@ -209,6 +211,27 @@ const Dashboard: React.FC = () => {
 
           <div className="card-surface p-5 space-y-3">
             <h3 className="text-base font-semibold text-slate-900">快捷操作</h3>
+            {role === 'super_admin' && (
+              <button
+                onClick={async () => {
+                  if (testPushLoading) return;
+                  try {
+                    setTestPushLoading(true);
+                    await sendAdminTestPush({
+                      title: 'Admin Test Push',
+                      message: 'This is a test push from dashboard.',
+                    });
+                  } finally {
+                    setTestPushLoading(false);
+                  }
+                }}
+                className="w-full flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-slate-800 hover:bg-emerald-100 disabled:opacity-60"
+                disabled={testPushLoading}
+              >
+                <span>{testPushLoading ? '发送中...' : '测试推送（超管）'}</span>
+                <Sparkles className="w-4 h-4 text-emerald-600" />
+              </button>
+            )}
             <button
               onClick={() => navigate('/admin/appointments')}
               className="w-full flex items-center justify-between rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm text-slate-800 hover:bg-cyan-100"

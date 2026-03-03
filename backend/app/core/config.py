@@ -99,6 +99,16 @@ class Settings(BaseSettings):
     @property
     def booking_rate_limit_phone_whitelist_list(self) -> List[str]:
         return [phone.strip() for phone in self.BOOKING_RATE_LIMIT_PHONE_WHITELIST.split(",") if phone.strip()]
+
+    # APNs Push
+    APNS_ENABLED: bool = False
+    APNS_KEY_ID: str = ""
+    APNS_TEAM_ID: str = ""
+    APNS_BUNDLE_ID: str = ""
+    APNS_PRIVATE_KEY: str = ""  # .p8 content
+    APNS_PRIVATE_KEY_PATH: str = ""  # optional .p8 file path
+    APNS_USE_SANDBOX: bool = True
+    APNS_TIMEOUT_SECONDS: int = 8
     
     class Config:
         env_file = ".env"

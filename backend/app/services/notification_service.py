@@ -5,11 +5,15 @@ Handles notification creation and management
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
+import logging
 
 from app.models.notification import Notification, NotificationType
 from app.models.appointment import Appointment
 from app.models.user import User
 from app.models.store import Store
+from app.services import push_service
+
+logger = logging.getLogger(__name__)
 
 
 def create_notification(
@@ -31,6 +35,11 @@ def create_notification(
     db.add(notification)
     db.commit()
     db.refresh(notification)
+    try:
+        push_service.send_push_for_notification(db, notification)
+    except Exception as exc:
+        # Push delivery must not break primary business flow.
+        logger.warning("Push delivery skipped for notification_id=%s (%s)", notification.id, exc)
     return notification
 
 

@@ -13,7 +13,7 @@ from app.crud import user as user_crud
 from app.crud import store as store_crud
 from app.crud import service as service_crud
 from app.models.appointment_reminder import AppointmentReminder
-from app.crud.notification import create_notification
+from app.services.notification_service import create_notification
 from app.models.notification import NotificationType
 
 logger = logging.getLogger(__name__)
@@ -65,10 +65,10 @@ def send_reminder_notification(
         notification = create_notification(
             db=db,
             user_id=reminder.user_id,
-            notification_type=NotificationType.APPOINTMENT_REMINDER.value,
+            notification_type=NotificationType.APPOINTMENT_REMINDER,
             title=title,
             message=message,
-            related_id=reminder.appointment_id
+            appointment_id=reminder.appointment_id
         )
         
         if notification:

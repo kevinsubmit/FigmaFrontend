@@ -68,6 +68,14 @@ private struct UnreadCountDTO: Decodable {
     let unread_count: Int
 }
 
+private struct NotificationPreferencesDTO: Decodable {
+    let push_enabled: Bool
+}
+
+private struct NotificationPreferencesUpdateRequest: Encodable {
+    let push_enabled: Bool
+}
+
 @MainActor
 private final class ProfileCenterViewModel: ObservableObject {
     @Published var unreadCount: Int = 0
@@ -112,6 +120,11 @@ private final class ProfileCenterViewModel: ObservableObject {
             let vipStatus = await vipStatusTask
 
             unreadCount = unread.unread_count
+            PushNotificationManager.shared.setAppBadge(
+                PushNotificationManager.shared.isPushPreferenceEnabled()
+                ? unread.unread_count
+                : 0
+            )
             points = pointsBalance.available_points
             couponCount = coupons.count
             giftBalance = giftCards
@@ -1301,6 +1314,19 @@ private struct NotificationsService {
         return payload.unread_count
     }
 
+    func getNotificationPreferences(token: String) async throws -> NotificationPreferencesDTO {
+        try await APIClient.shared.request(path: "/notifications/preferences", token: token)
+    }
+
+    func updateNotificationPreferences(pushEnabled: Bool, token: String) async throws -> NotificationPreferencesDTO {
+        try await APIClient.shared.request(
+            path: "/notifications/preferences",
+            method: "PUT",
+            token: token,
+            body: NotificationPreferencesUpdateRequest(push_enabled: pushEnabled)
+        )
+    }
+
     func markAsRead(notificationID: Int, token: String) async throws -> AppNotificationDTO {
         try await APIClient.shared.request(
             path: "/notifications/\(notificationID)/read",
@@ -1323,6 +1349,8 @@ private final class NotificationsViewModel: ObservableObject {
     @Published var items: [AppNotificationDTO] = []
     @Published var selectedFilter: NotificationsFilter = .all
     @Published var unreadCount: Int = 0
+    @Published var pushEnabled: Bool = true
+    @Published var isUpdatingPushPreference = false
     @Published var isLoading = false
     @Published var errorMessage: String?
 
@@ -1335,11 +1363,16 @@ private final class NotificationsViewModel: ObservableObject {
         do {
             async let notificationsTask = service.getNotifications(token: token, unreadOnly: selectedFilter.unreadOnly)
             async let unreadTask = service.getUnreadCount(token: token)
+            async let preferenceTask = service.getNotificationPreferences(token: token)
             let notifications = try await notificationsTask
             let unread = try await unreadTask
+            let preference = try await preferenceTask
 
             items = notifications
             unreadCount = unread
+            pushEnabled = preference.push_enabled
+            PushNotificationManager.shared.setPushPreferenceEnabled(pushEnabled)
+            syncAppBadgeCount()
             errorMessage = nil
         } catch let err as APIError {
             setAPIErrorIfNeeded(err)
@@ -1366,6 +1399,7 @@ private final class NotificationsViewModel: ObservableObject {
                 items[index] = updated
             }
             unreadCount = max(unreadCount - 1, 0)
+            syncAppBadgeCount()
             errorMessage = nil
         } catch let err as APIError {
             setAPIErrorIfNeeded(err)
@@ -1383,6 +1417,7 @@ private final class NotificationsViewModel: ObservableObject {
             if wasUnread {
                 unreadCount = max(unreadCount - 1, 0)
             }
+            syncAppBadgeCount()
             errorMessage = nil
         } catch let err as APIError {
             setAPIErrorIfNeeded(err)
@@ -1396,6 +1431,27 @@ private final class NotificationsViewModel: ObservableObject {
             await markAsRead(notificationID: item.id, token: token)
         }
         return item.appointment_id != nil
+    }
+
+    func updatePushPreference(enabled: Bool, token: String) async {
+        let previous = pushEnabled
+        pushEnabled = enabled
+        isUpdatingPushPreference = true
+        defer { isUpdatingPushPreference = false }
+
+        do {
+            let updated = try await service.updateNotificationPreferences(pushEnabled: enabled, token: token)
+            pushEnabled = updated.push_enabled
+            PushNotificationManager.shared.setPushPreferenceEnabled(pushEnabled)
+            syncAppBadgeCount()
+            errorMessage = nil
+        } catch let err as APIError {
+            pushEnabled = previous
+            setAPIErrorIfNeeded(err)
+        } catch {
+            pushEnabled = previous
+            setUnexpectedErrorIfNeeded(error)
+        }
     }
 
     private func setAPIErrorIfNeeded(_ error: APIError) {
@@ -1421,6 +1477,10 @@ private final class NotificationsViewModel: ObservableObject {
             errorMessage = message
         }
     }
+
+    private func syncAppBadgeCount() {
+        PushNotificationManager.shared.setAppBadge(pushEnabled ? unreadCount : 0)
+    }
 }
 
 private struct NotificationsView: View {
@@ -1435,6 +1495,7 @@ private struct NotificationsView: View {
         VStack(spacing: 0) {
             topBar
             filterBar
+            pushPreferenceBar
             content
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -1512,6 +1573,43 @@ private struct NotificationsView: View {
         }
         .padding(.horizontal, UITheme.pagePadding)
         .padding(.vertical, UITheme.spacing8)
+        .background(Color.black)
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.white.opacity(0.08))
+                .frame(height: UITheme.spacing1)
+        }
+    }
+
+    private var pushPreferenceBar: some View {
+        HStack(spacing: UITheme.spacing10) {
+            VStack(alignment: .leading, spacing: UITheme.spacing2) {
+                Text("Push Notifications")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                Text(viewModel.pushEnabled ? "Enabled" : "Disabled")
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.58))
+            }
+            Spacer(minLength: UITheme.spacing10)
+            Toggle(
+                "",
+                isOn: Binding(
+                    get: { viewModel.pushEnabled },
+                    set: { enabled in
+                        Task {
+                            guard let token = appState.requireAccessToken() else { return }
+                            await viewModel.updatePushPreference(enabled: enabled, token: token)
+                        }
+                    }
+                )
+            )
+            .labelsHidden()
+            .toggleStyle(SwitchToggleStyle(tint: brandGold))
+            .disabled(viewModel.isUpdatingPushPreference)
+        }
+        .padding(.horizontal, UITheme.pagePadding)
+        .padding(.vertical, UITheme.spacing10)
         .background(Color.black)
         .overlay(alignment: .bottom) {
             Rectangle()

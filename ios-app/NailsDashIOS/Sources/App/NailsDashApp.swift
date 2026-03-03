@@ -1,6 +1,340 @@
 import SwiftUI
 import UIKit
 import ImageIO
+@preconcurrency import UserNotifications
+
+extension Notification.Name {
+    static let pushOpenAppointments = Notification.Name("pushOpenAppointments")
+}
+
+private struct PushDeviceRegisterRequest: Encodable {
+    let device_token: String
+    let platform: String
+    let apns_environment: String
+    let app_version: String?
+    let device_name: String?
+    let locale: String?
+    let timezone: String?
+}
+
+private struct PushDeviceUnregisterRequest: Encodable {
+    let device_token: String
+}
+
+private struct PushDeviceRegisterResponse: Decodable {
+    let detail: String?
+    let device_id: Int?
+    let apns_environment: String?
+}
+
+private struct PushDeviceUnregisterResponse: Decodable {
+    let detail: String?
+    let deactivated: Bool?
+}
+
+@MainActor
+final class PushNotificationManager: NSObject {
+    static let shared = PushNotificationManager()
+
+    private let persistedDeviceTokenKey = "push.apns.device_token"
+    private let persistedUploadedFingerprintKey = "push.apns.last_uploaded_fingerprint"
+    private let persistedPushPermissionRequestedKey = "push.apns.permission_requested"
+    private let persistedPushEnabledKey = "push.apns.user_enabled"
+
+    private var activeUserID: Int?
+    private var hasConfiguredNotificationCenter = false
+    private var isUploadingToken = false
+    private var pushEnabledByUser: Bool = true {
+        didSet {
+            UserDefaults.standard.set(pushEnabledByUser, forKey: persistedPushEnabledKey)
+        }
+    }
+    private var uploadedFingerprint: String? {
+        didSet {
+            UserDefaults.standard.set(uploadedFingerprint, forKey: persistedUploadedFingerprintKey)
+        }
+    }
+
+    private(set) var deviceToken: String? {
+        didSet {
+            if let deviceToken, !deviceToken.isEmpty {
+                UserDefaults.standard.set(deviceToken, forKey: persistedDeviceTokenKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: persistedDeviceTokenKey)
+            }
+        }
+    }
+
+    private override init() {
+        self.deviceToken = UserDefaults.standard.string(forKey: persistedDeviceTokenKey)
+        self.uploadedFingerprint = UserDefaults.standard.string(forKey: persistedUploadedFingerprintKey)
+        if UserDefaults.standard.object(forKey: persistedPushEnabledKey) == nil {
+            self.pushEnabledByUser = true
+        } else {
+            self.pushEnabledByUser = UserDefaults.standard.bool(forKey: persistedPushEnabledKey)
+        }
+        super.init()
+    }
+
+    func configureNotificationCenterIfNeeded() {
+        guard !hasConfiguredNotificationCenter else { return }
+        hasConfiguredNotificationCenter = true
+        UNUserNotificationCenter.current().delegate = self
+    }
+
+    func syncForSession(isLoggedIn: Bool, userID: Int?) {
+        activeUserID = userID
+        if !isLoggedIn {
+            uploadedFingerprint = nil
+            setAppBadge(0)
+            return
+        }
+
+        guard pushEnabledByUser else { return }
+
+        configureNotificationCenterIfNeeded()
+        requestPermissionAndRegisterIfNeeded()
+
+        Task { [weak self] in
+            await self?.uploadDeviceTokenIfPossible(force: true)
+        }
+    }
+
+    func didRegisterRemoteDeviceToken(_ data: Data) {
+        guard pushEnabledByUser else { return }
+        let token = data.map { String(format: "%02x", $0) }.joined()
+        guard !token.isEmpty else { return }
+        if token != deviceToken {
+            deviceToken = token
+        }
+        Task { [weak self] in
+            await self?.uploadDeviceTokenIfPossible(force: true)
+        }
+    }
+
+    func didFailToRegisterRemoteNotifications(_ error: Error) {
+        #if DEBUG
+        print("APNs register failed: \(error.localizedDescription)")
+        #endif
+    }
+
+    func unregisterCurrentTokenOnLogout(accessToken: String?) {
+        guard let accessToken, !accessToken.isEmpty else { return }
+        guard let token = deviceToken, !token.isEmpty else { return }
+        Task { [weak self] in
+            await self?.unregisterDeviceToken(token, accessToken: accessToken)
+        }
+    }
+
+    func setPushPreferenceEnabled(_ enabled: Bool) {
+        pushEnabledByUser = enabled
+        if !enabled {
+            uploadedFingerprint = nil
+            UIApplication.shared.unregisterForRemoteNotifications()
+            setAppBadge(0)
+            return
+        }
+        requestPermissionAndRegisterIfNeeded()
+        Task { [weak self] in
+            await self?.uploadDeviceTokenIfPossible(force: true)
+        }
+    }
+
+    func isPushPreferenceEnabled() -> Bool {
+        pushEnabledByUser
+    }
+
+    func setAppBadge(_ count: Int) {
+        UIApplication.shared.applicationIconBadgeNumber = max(0, count)
+    }
+
+    func handleRemoteNotificationPayload(_ userInfo: [AnyHashable: Any]) {
+        if let notificationType = (userInfo["notification_type"] as? String)?.lowercased(),
+           notificationType.contains("appointment")
+        {
+            NotificationCenter.default.post(name: .pushOpenAppointments, object: nil, userInfo: userInfo)
+            return
+        }
+
+        if userInfo["appointment_id"] != nil {
+            NotificationCenter.default.post(name: .pushOpenAppointments, object: nil, userInfo: userInfo)
+        }
+    }
+
+    private func requestPermissionAndRegisterIfNeeded() {
+        guard pushEnabledByUser else { return }
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                DispatchQueue.main.async {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+            case .notDetermined:
+                let alreadyRequested = UserDefaults.standard.bool(forKey: self.persistedPushPermissionRequestedKey)
+                if alreadyRequested {
+                    return
+                }
+                UserDefaults.standard.set(true, forKey: self.persistedPushPermissionRequestedKey)
+                center.requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+                    guard granted else { return }
+                    DispatchQueue.main.async {
+                        UIApplication.shared.registerForRemoteNotifications()
+                    }
+                }
+            case .denied:
+                return
+            @unknown default:
+                return
+            }
+        }
+    }
+
+    private func uploadDeviceTokenIfPossible(force: Bool) async {
+        guard pushEnabledByUser else { return }
+        guard !isUploadingToken else { return }
+        guard let userID = activeUserID, userID > 0 else { return }
+        guard let token = deviceToken, !token.isEmpty else { return }
+        guard let accessToken = TokenStore.shared.read(key: TokenStore.Keys.accessToken), !accessToken.isEmpty else {
+            return
+        }
+
+        let fingerprint = "\(userID)|\(token)"
+        if !force, uploadedFingerprint == fingerprint {
+            return
+        }
+
+        let payload = PushDeviceRegisterRequest(
+            device_token: token,
+            platform: "ios",
+            apns_environment: Self.currentAPNSEnvironment,
+            app_version: Self.appVersionString,
+            device_name: UIDevice.current.name,
+            locale: Locale.current.identifier,
+            timezone: TimeZone.current.identifier
+        )
+
+        isUploadingToken = true
+        defer { isUploadingToken = false }
+
+        do {
+            let _: PushDeviceRegisterResponse = try await APIClient.shared.request(
+                path: "/notifications/devices/register",
+                method: "POST",
+                token: accessToken,
+                body: payload
+            )
+            uploadedFingerprint = fingerprint
+        } catch {
+            #if DEBUG
+            print("APNs token upload failed: \(error)")
+            #endif
+        }
+    }
+
+    private func unregisterDeviceToken(_ token: String, accessToken: String) async {
+        let payload = PushDeviceUnregisterRequest(device_token: token)
+        do {
+            let _: PushDeviceUnregisterResponse = try await APIClient.shared.request(
+                path: "/notifications/devices/unregister",
+                method: "POST",
+                token: accessToken,
+                body: payload
+            )
+            uploadedFingerprint = nil
+        } catch {
+            #if DEBUG
+            print("APNs token unregister failed: \(error)")
+            #endif
+        }
+    }
+
+    private static var appVersionString: String? {
+        let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+        switch (short, build) {
+        case let (s?, b?) where !s.isEmpty && !b.isEmpty:
+            return "\(s) (\(b))"
+        case let (s?, _) where !s.isEmpty:
+            return s
+        case let (_, b?) where !b.isEmpty:
+            return b
+        default:
+            return nil
+        }
+    }
+
+    private static var currentAPNSEnvironment: String {
+        #if DEBUG
+        return "sandbox"
+        #else
+        return "production"
+        #endif
+    }
+}
+
+extension PushNotificationManager: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        if #available(iOS 14.0, *) {
+            completionHandler([.banner, .list, .sound, .badge])
+        } else {
+            completionHandler([.alert, .sound, .badge])
+        }
+    }
+
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        Task { @MainActor in
+            self.handleRemoteNotificationPayload(response.notification.request.content.userInfo)
+        }
+        completionHandler()
+    }
+}
+
+final class PushAppDelegate: NSObject, UIApplicationDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        Task { @MainActor in
+            PushNotificationManager.shared.configureNotificationCenterIfNeeded()
+        }
+        return true
+    }
+
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        Task { @MainActor in
+            PushNotificationManager.shared.didRegisterRemoteDeviceToken(deviceToken)
+        }
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        Task { @MainActor in
+            PushNotificationManager.shared.didFailToRegisterRemoteNotifications(error)
+        }
+    }
+
+    func application(
+        _ application: UIApplication,
+        didReceiveRemoteNotification userInfo: [AnyHashable: Any],
+        fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void
+    ) {
+        completionHandler(.noData)
+    }
+}
 
 enum UITheme {
     static let brandGold = Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0)
@@ -209,6 +543,7 @@ struct CachedAsyncImage<Content: View>: View {
 
 @main
 struct NailsDashApp: App {
+    @UIApplicationDelegateAdaptor(PushAppDelegate.self) private var pushAppDelegate
     @StateObject private var appState = AppState()
 
     init() {
@@ -259,6 +594,29 @@ struct NailsDashApp: App {
             .preferredColorScheme(.dark)
             .task {
                 appState.bootstrap()
+                PushNotificationManager.shared.syncForSession(
+                    isLoggedIn: appState.isLoggedIn,
+                    userID: appState.currentUser?.id
+                )
+            }
+            .onChange(of: appState.isLoggedIn) { isLoggedIn in
+                PushNotificationManager.shared.syncForSession(
+                    isLoggedIn: isLoggedIn,
+                    userID: appState.currentUser?.id
+                )
+            }
+            .onChange(of: appState.currentUser?.id) { userID in
+                PushNotificationManager.shared.syncForSession(
+                    isLoggedIn: appState.isLoggedIn,
+                    userID: userID
+                )
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .pushOpenAppointments)) { _ in
+                guard appState.isLoggedIn else { return }
+                appState.selectedTab = .appointments
+                appState.resetBookFlowSource()
+                appState.resetBookNavigationStack()
+                appState.resetDealsNavigationStack()
             }
         }
     }
