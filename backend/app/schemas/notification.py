@@ -1,8 +1,8 @@
 """
 Notification Schemas
 """
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional
+from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 from app.models.notification import NotificationType
 
@@ -91,3 +91,53 @@ class AdminTestPushRequest(BaseModel):
     title: str = Field(default="Test Push", min_length=1, max_length=120)
     message: str = Field(default="This is a test push from admin dashboard.", min_length=1, max_length=500)
     user_id: Optional[int] = Field(default=None, ge=1)
+
+
+class AdminPushSendRequest(BaseModel):
+    """Super admin single-user push payload."""
+
+    user_id: int = Field(..., ge=1)
+    title: str = Field(..., min_length=1, max_length=120)
+    message: str = Field(..., min_length=1, max_length=500)
+    custom_data: Optional[Dict[str, Any]] = None
+
+
+class AdminPushSendResponse(BaseModel):
+    """Single-user push result."""
+
+    detail: str
+    target_user_id: int
+    sent: int
+    failed: int
+    deactivated: int
+
+
+class AdminPushBatchRequest(BaseModel):
+    """Super admin batch push payload."""
+
+    user_ids: Optional[List[int]] = Field(default=None, min_length=1, max_length=500)
+    store_id: Optional[int] = Field(default=None, ge=1)
+    title: str = Field(..., min_length=1, max_length=120)
+    message: str = Field(..., min_length=1, max_length=500)
+    max_users: int = Field(default=200, ge=1, le=500)
+    custom_data: Optional[Dict[str, Any]] = None
+
+    @model_validator(mode="after")
+    def validate_target(self):
+        if not self.user_ids and self.store_id is None:
+            raise ValueError("Please provide user_ids or store_id")
+        return self
+
+
+class AdminPushBatchResponse(BaseModel):
+    """Batch push result."""
+
+    detail: str
+    target_user_count: int
+    sent_user_count: int
+    failed_user_count: int
+    skipped_user_count: int
+    sent: int
+    failed: int
+    deactivated: int
+    truncated: bool = False

@@ -26,6 +26,7 @@ import Security from './pages/Security';
 import Logs from './pages/Logs';
 import Staff from './pages/Staff';
 import VipLevels from './pages/VipLevels';
+import PushCenter from './pages/PushCenter';
 
 const App = () => (
   <AuthProvider>
@@ -208,6 +209,14 @@ const App = () => (
           element={
             <ProtectedRoute>
               <VipLevels />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/push-center"
+          element={
+            <ProtectedRoute requireSuperAdmin>
+              <PushCenter />
             </ProtectedRoute>
           }
         />
