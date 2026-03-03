@@ -101,7 +101,7 @@ private final class ProfileCenterViewModel: ObservableObject {
         defer { isLoading = false }
 
         do {
-            async let unreadTask: UnreadCountDTO = APIClient.shared.request(path: "/notifications/unread-count", token: token)
+            async let unreadTask: UnreadCountDTO = APIClient.shared.request(path: "/notifications/stats/unread-count", token: token)
             async let pointsTask = rewardsService.getPointsBalance(token: token)
             async let couponsTask = rewardsService.getMyCoupons(token: token, status: "available", limit: 100)
             async let giftCardsTask = rewardsService.getMyGiftCards(token: token, limit: 100)
@@ -1310,17 +1310,17 @@ private struct NotificationsService {
     }
 
     func getUnreadCount(token: String) async throws -> Int {
-        let payload: UnreadCountDTO = try await APIClient.shared.request(path: "/notifications/unread-count", token: token)
+        let payload: UnreadCountDTO = try await APIClient.shared.request(path: "/notifications/stats/unread-count", token: token)
         return payload.unread_count
     }
 
     func getNotificationPreferences(token: String) async throws -> NotificationPreferencesDTO {
-        try await APIClient.shared.request(path: "/notifications/preferences", token: token)
+        try await APIClient.shared.request(path: "/notifications/settings/preferences", token: token)
     }
 
     func updateNotificationPreferences(pushEnabled: Bool, token: String) async throws -> NotificationPreferencesDTO {
         try await APIClient.shared.request(
-            path: "/notifications/preferences",
+            path: "/notifications/settings/preferences",
             method: "PUT",
             token: token,
             body: NotificationPreferencesUpdateRequest(push_enabled: pushEnabled)
@@ -4876,6 +4876,30 @@ private struct GiftCardDTO: Decodable, Identifiable {
     let updated_at: String
 }
 
+private struct GiftCardTransferRequestDTO: Encodable {
+    let recipient_phone: String
+    let message: String?
+}
+
+private struct GiftCardClaimRequestDTO: Encodable {
+    let claim_code: String
+}
+
+private struct GiftCardPurchaseResponseDTO: Decodable {
+    let gift_card: GiftCardDTO
+    let sms_sent: Bool
+    let claim_expires_at: String?
+    let claim_code: String?
+}
+
+private struct GiftCardClaimResponseDTO: Decodable {
+    let gift_card: GiftCardDTO
+}
+
+private struct GiftCardRevokeResponseDTO: Decodable {
+    let gift_card: GiftCardDTO
+}
+
 private struct UserReviewDTO: Decodable, Identifiable {
     let id: Int
     let user_id: Int?
@@ -4961,8 +4985,70 @@ private struct ProfileRewardsService {
         try await APIClient.shared.request(path: "/gift-cards/my-cards?skip=0&limit=\(limit)", token: token)
     }
 
+    func transferGiftCard(
+        token: String,
+        giftCardID: Int,
+        recipientPhone: String,
+        message: String?
+    ) async throws -> GiftCardDTO {
+        let trimmedMessage = message?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let payload = GiftCardTransferRequestDTO(
+            recipient_phone: recipientPhone,
+            message: (trimmedMessage?.isEmpty ?? true) ? nil : trimmedMessage
+        )
+        let response: GiftCardPurchaseResponseDTO = try await APIClient.shared.request(
+            path: "/gift-cards/\(giftCardID)/transfer",
+            method: "POST",
+            token: token,
+            body: payload
+        )
+        return response.gift_card
+    }
+
+    func claimGiftCard(token: String, claimCode: String) async throws -> GiftCardDTO {
+        let payload = GiftCardClaimRequestDTO(claim_code: claimCode)
+        let response: GiftCardClaimResponseDTO = try await APIClient.shared.request(
+            path: "/gift-cards/claim",
+            method: "POST",
+            token: token,
+            body: payload
+        )
+        return response.gift_card
+    }
+
+    func revokeGiftCard(token: String, giftCardID: Int) async throws -> GiftCardDTO {
+        let response: GiftCardRevokeResponseDTO = try await APIClient.shared.request(
+            path: "/gift-cards/\(giftCardID)/revoke",
+            method: "POST",
+            token: token
+        )
+        return response.gift_card
+    }
+
     func getMyReviews(token: String, limit: Int = 100) async throws -> [UserReviewDTO] {
         try await APIClient.shared.request(path: "/reviews/my-reviews?skip=0&limit=\(limit)", token: token)
+    }
+
+    func createReview(
+        token: String,
+        appointmentID: Int,
+        rating: Double,
+        comment: String?,
+        images: [String]? = nil
+    ) async throws -> UserReviewDTO {
+        let trimmed = comment?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let payload = ReviewUpsertRequest(
+            appointment_id: appointmentID,
+            rating: min(max(rating, 1), 5),
+            comment: (trimmed?.isEmpty ?? true) ? nil : trimmed,
+            images: images
+        )
+        return try await APIClient.shared.request(
+            path: "/reviews/",
+            method: "POST",
+            token: token,
+            body: payload
+        )
     }
 
     func updateReview(
@@ -5114,7 +5200,11 @@ private final class CouponsViewModel: ObservableObject {
 private final class GiftCardsViewModel: ObservableObject {
     @Published var cards: [GiftCardDTO] = []
     @Published var isLoading = false
+    @Published var isClaiming = false
+    @Published var sendingCardID: Int?
+    @Published var revokingCardID: Int?
     @Published var errorMessage: String?
+    @Published var actionMessage: String?
 
     private let service = ProfileRewardsService()
 
@@ -5130,6 +5220,92 @@ private final class GiftCardsViewModel: ObservableObject {
             errorMessage = error.localizedDescription
         }
     }
+
+    func transfer(
+        token: String,
+        giftCardID: Int,
+        recipientPhone: String,
+        message: String?
+    ) async -> Bool {
+        let normalizedPhone = PhoneFormatter.normalizeUSPhone(recipientPhone)
+        guard normalizedPhone.count == 11 else {
+            errorMessage = "Please enter a valid US phone number."
+            return false
+        }
+
+        sendingCardID = giftCardID
+        defer { sendingCardID = nil }
+        do {
+            let updated = try await service.transferGiftCard(
+                token: token,
+                giftCardID: giftCardID,
+                recipientPhone: normalizedPhone,
+                message: message
+            )
+            upsert(updated)
+            actionMessage = "Gift sent successfully."
+            errorMessage = nil
+            return true
+        } catch let err as APIError {
+            errorMessage = mapError(err)
+            return false
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func claim(token: String, claimCode: String) async -> Bool {
+        let normalizedCode = claimCode
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+        guard !normalizedCode.isEmpty else {
+            errorMessage = "Please enter a claim code."
+            return false
+        }
+
+        isClaiming = true
+        defer { isClaiming = false }
+        do {
+            let claimed = try await service.claimGiftCard(token: token, claimCode: normalizedCode)
+            upsert(claimed)
+            actionMessage = "Gift card claimed."
+            errorMessage = nil
+            return true
+        } catch let err as APIError {
+            errorMessage = mapError(err)
+            return false
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func revoke(token: String, giftCardID: Int) async -> Bool {
+        revokingCardID = giftCardID
+        defer { revokingCardID = nil }
+        do {
+            let updated = try await service.revokeGiftCard(token: token, giftCardID: giftCardID)
+            upsert(updated)
+            actionMessage = "Transfer canceled."
+            errorMessage = nil
+            return true
+        } catch let err as APIError {
+            errorMessage = mapError(err)
+            return false
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    private func upsert(_ card: GiftCardDTO) {
+        if let idx = cards.firstIndex(where: { $0.id == card.id }) {
+            cards[idx] = card
+        } else {
+            cards.insert(card, at: 0)
+        }
+    }
 }
 
 @MainActor
@@ -5139,9 +5315,14 @@ private final class OrderHistoryViewModel: ObservableObject {
     @Published var errorMessage: String?
 
     private let appointmentsService: AppointmentsServiceProtocol
+    private let rewardsService: ProfileRewardsService
 
-    init(appointmentsService: AppointmentsServiceProtocol = AppointmentsService()) {
+    init(
+        appointmentsService: AppointmentsServiceProtocol = AppointmentsService(),
+        rewardsService: ProfileRewardsService = ProfileRewardsService()
+    ) {
         self.appointmentsService = appointmentsService
+        self.rewardsService = rewardsService
     }
 
     func load(token: String) async {
@@ -5164,6 +5345,20 @@ private final class OrderHistoryViewModel: ObservableObject {
 
     private func appointmentDateTime(_ item: AppointmentDTO) -> Date {
         HomeDateFormatterCache.appointmentDateTime(item)
+    }
+
+    func createReview(
+        token: String,
+        appointmentID: Int,
+        rating: Double,
+        comment: String?
+    ) async throws -> UserReviewDTO {
+        try await rewardsService.createReview(
+            token: token,
+            appointmentID: appointmentID,
+            rating: rating,
+            comment: comment
+        )
     }
 }
 
@@ -5858,63 +6053,64 @@ private struct PointsView: View {
     }
 
     private func historyRow(item: PointTransactionDTO, isLast: Bool) -> some View {
-        let isPositive = item.amount >= 0
-        let reasonText = item.reason.replacingOccurrences(of: "_", with: " ")
+        let isPositive = item.type.lowercased() == "earn" || item.amount >= 0
 
-        return HStack(alignment: .top, spacing: UITheme.spacing12) {
+        return HStack(alignment: .center, spacing: UITheme.spacing12) {
             ZStack {
                 Circle()
-                    .fill((isPositive ? Color.green : Color.red).opacity(0.16))
-                    .frame(width: 42, height: 42)
+                    .fill((isPositive ? Color.green : Color.red).opacity(0.22))
+                    .frame(width: 32, height: 32)
                 Image(systemName: isPositive ? "arrow.up.right" : "arrow.down.right")
-                    .font(.subheadline.weight(.black))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(isPositive ? Color.green : Color.red)
             }
-            .padding(.top, UITheme.spacing1)
 
-            VStack(alignment: .leading, spacing: UITheme.spacing4) {
-                Text(reasonText.capitalized)
-                    .font(.headline.weight(.semibold))
+            VStack(alignment: .leading, spacing: UITheme.spacing2) {
+                Text(formattedPointsReason(item.reason))
+                    .font(.system(size: 14, weight: .medium))
                     .foregroundStyle(.white)
                     .lineLimit(1)
 
                 if let desc = item.description, !desc.isEmpty {
                     Text(desc)
-                        .font(.subheadline)
+                        .font(.system(size: 12, weight: .regular))
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
                 }
+
                 Text(displayDateOnly(item.created_at))
-                    .font(.caption.weight(.medium))
-                    .kerning(0.4)
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(.secondary)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: UITheme.spacing1) {
-                Text(item.amount > 0 ? "+\(item.amount)" : "\(item.amount)")
-                    .font(.system(size: 35, weight: .black, design: .rounded))
-                    .foregroundStyle(isPositive ? .green : .white.opacity(0.88))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-
-                Text("PTS")
-                    .font(.caption2.weight(.bold))
-                    .kerning(1.1)
-                    .foregroundStyle(.secondary)
-            }
+            Text(item.amount > 0 ? "+\(item.amount)" : "\(item.amount)")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(isPositive ? .green : .white.opacity(0.9))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
-        .padding(.horizontal, UITheme.spacing10)
-        .padding(.vertical, UITheme.spacing14)
+        .padding(.horizontal, UITheme.spacing2)
+        .padding(.vertical, UITheme.spacing12)
         .overlay(alignment: .bottom) {
             if !isLast {
                 Rectangle()
                     .fill(Color.white.opacity(0.10))
                     .frame(height: UITheme.spacing1)
-                    .padding(.leading, UITheme.spacing54)
+                    .padding(.leading, 44)
             }
         }
+    }
+
+    private func formattedPointsReason(_ raw: String) -> String {
+        let normalized = raw
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "_", with: " ")
+            .replacingOccurrences(of: "-", with: " ")
+        if normalized.isEmpty {
+            return "Points update"
+        }
+        return normalized.localizedCapitalized
     }
 }
 
@@ -6203,6 +6399,12 @@ private struct GiftCardsView: View {
     @StateObject private var viewModel = GiftCardsViewModel()
     @State private var alertMessage: String = ""
     @State private var showAlert: Bool = false
+    @State private var claimCode: String = ""
+    @State private var selectedCardForSending: GiftCardDTO?
+    @State private var sendRecipientPhone: String = ""
+    @State private var sendMessage: String = ""
+    @State private var showSendSheet: Bool = false
+    @State private var showClaimSheet: Bool = false
     private let brandGold = UITheme.brandGold
     private let cardBG = UITheme.cardBackground
 
@@ -6214,20 +6416,52 @@ private struct GiftCardsView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: UITheme.spacing12) {
+                    giftAssetsHint
                     giftSummaryCard
                     UnifiedSectionHeader(
                         title: "MY COLLECTION",
-                        trailing: !viewModel.cards.isEmpty ? "\(viewModel.cards.count) cards" : nil,
+                        trailing: nil,
                         showsDivider: true
                     )
                     .padding(.top, UITheme.spacing2)
+
+                    HStack(spacing: UITheme.spacing8) {
+                        Text("\(viewModel.cards.count) cards")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(.secondary)
+
+                        Spacer()
+
+                        Button {
+                            showClaimSheet = true
+                        } label: {
+                            HStack(spacing: UITheme.spacing4) {
+                                Image(systemName: "ticket.fill")
+                                    .font(.caption2.weight(.bold))
+                                Text("Claim")
+                                    .font(.caption.weight(.bold))
+                                    .kerning(1.1)
+                                    .textCase(.uppercase)
+                            }
+                            .foregroundStyle(brandGold)
+                            .padding(.horizontal, UITheme.spacing10)
+                            .padding(.vertical, UITheme.spacing7)
+                            .background(Color.black.opacity(0.45))
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(brandGold.opacity(0.35), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
                     .padding(.bottom, UITheme.spacing1)
 
                     if !viewModel.isLoading && viewModel.cards.isEmpty {
                         UnifiedEmptyStateCard(
                             icon: "gift.fill",
                             title: "No gift cards found",
-                            subtitle: "Gift cards you receive will appear here."
+                            subtitle: "Claim or receive gift cards to see them here."
                         )
                         .padding(.top, UITheme.spacing16)
                         .padding(.bottom, UITheme.spacing8)
@@ -6240,6 +6474,9 @@ private struct GiftCardsView: View {
                         .padding(.horizontal, UITheme.spacing1)
                         .padding(.top, UITheme.spacing3)
                     }
+
+                    redemptionInfoCard
+                        .padding(.top, UITheme.spacing8)
                 }
                 .padding(.horizontal, UITheme.pagePadding)
                 .padding(.top, UITheme.spacing8)
@@ -6256,8 +6493,25 @@ private struct GiftCardsView: View {
             guard let value, !value.isEmpty else { return }
             alertMessage = value
             showAlert = true
+            viewModel.errorMessage = nil
+        }
+        .onChange(of: viewModel.actionMessage) { value in
+            guard let value, !value.isEmpty else { return }
+            alertMessage = value
+            showAlert = true
+            viewModel.actionMessage = nil
         }
         .unifiedNoticeAlert(isPresented: $showAlert, message: alertMessage)
+        .sheet(isPresented: $showSendSheet) {
+            sendGiftSheet
+                .presentationDetents([.height(420)])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showClaimSheet) {
+            claimGiftSheet
+                .presentationDetents([.height(340)])
+                .presentationDragIndicator(.visible)
+        }
         .overlay {
             UnifiedLoadingOverlay(isLoading: viewModel.isLoading)
         }
@@ -6270,7 +6524,12 @@ private struct GiftCardsView: View {
 
     private var sortedCards: [GiftCardDTO] {
         viewModel.cards.sorted { lhs, rhs in
-            statusPriority(lhs.status) < statusPriority(rhs.status)
+            let leftPriority = statusPriority(lhs.status)
+            let rightPriority = statusPriority(rhs.status)
+            if leftPriority != rightPriority {
+                return leftPriority < rightPriority
+            }
+            return lhs.created_at > rhs.created_at
         }
     }
 
@@ -6385,6 +6644,187 @@ private struct GiftCardsView: View {
         .shadow(color: Color.black.opacity(0.35), radius: 12, y: 5)
     }
 
+    private var giftAssetsHint: some View {
+        HStack(spacing: UITheme.spacing6) {
+            Circle()
+                .fill(brandGold)
+                .frame(width: 6, height: 6)
+            Text("DIGITAL ASSETS PURCHASED IN-SALON")
+                .font(.caption2.weight(.bold))
+                .kerning(1.6)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var claimGiftSheet: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            VStack(alignment: .leading, spacing: UITheme.spacing12) {
+                HStack {
+                    Text("Claim a Gift")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Button("Close") {
+                        showClaimSheet = false
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(brandGold)
+                }
+
+                Text("Enter claim code")
+                    .font(.caption.weight(.bold))
+                    .kerning(1.6)
+                    .foregroundStyle(.secondary)
+
+                TextField("Claim code", text: $claimCode)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled(true)
+                    .onChange(of: claimCode) { value in
+                        claimCode = value.uppercased()
+                    }
+                    .padding(.horizontal, UITheme.spacing12)
+                    .padding(.vertical, UITheme.spacing10)
+                    .background(Color.black.opacity(0.42))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+                    .foregroundStyle(.white)
+
+                Button {
+                    Task { await handleClaimGiftCard() }
+                } label: {
+                    HStack(spacing: UITheme.spacing6) {
+                        if viewModel.isClaiming {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .tint(.black)
+                                .scaleEffect(0.9)
+                        } else {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.caption.weight(.bold))
+                        }
+                        Text(viewModel.isClaiming ? "Claiming..." : "Claim Gift Card")
+                            .font(.headline.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, UITheme.spacing11)
+                    .foregroundStyle(.black)
+                    .background(brandGold)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+                .buttonStyle(.plain)
+                .disabled(viewModel.isClaiming)
+
+                Text("Enter the code from SMS to claim a transferred gift card.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Spacer(minLength: 0)
+            }
+            .padding(UITheme.pagePadding)
+        }
+    }
+
+    private var sendGiftSheet: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: UITheme.spacing12) {
+                HStack {
+                    Text("Send Gift Card")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Button("Close") {
+                        showSendSheet = false
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(brandGold)
+                }
+
+                if let card = selectedCardForSending {
+                    HStack(spacing: UITheme.spacing6) {
+                        Text("Balance")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Text("$\(String(format: "%.2f", card.balance))")
+                            .font(.title3.weight(.black))
+                            .foregroundStyle(brandGold)
+                    }
+                    .padding(UITheme.spacing12)
+                    .background(cardBG)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+
+                VStack(alignment: .leading, spacing: UITheme.spacing6) {
+                    Text("Recipient Phone")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    TextField("Enter US phone", text: $sendRecipientPhone)
+                        .keyboardType(.numberPad)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled(true)
+                        .padding(.horizontal, UITheme.spacing12)
+                        .padding(.vertical, UITheme.spacing10)
+                        .background(Color.black.opacity(0.42))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        )
+                }
+
+                VStack(alignment: .leading, spacing: UITheme.spacing6) {
+                    Text("Message (Optional)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    TextField("Write a message", text: $sendMessage)
+                        .textInputAutocapitalization(.sentences)
+                        .padding(.horizontal, UITheme.spacing12)
+                        .padding(.vertical, UITheme.spacing10)
+                        .background(Color.black.opacity(0.42))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                        )
+                }
+
+                Button {
+                    Task { await handleSendGiftCard() }
+                } label: {
+                    HStack(spacing: UITheme.spacing6) {
+                        if viewModel.sendingCardID == selectedCardForSending?.id {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .tint(.black)
+                                .scaleEffect(0.9)
+                        } else {
+                            Image(systemName: "paperplane.fill")
+                                .font(.caption.weight(.bold))
+                        }
+                        Text(viewModel.sendingCardID == selectedCardForSending?.id ? "Sending..." : "Send Digital Gift Card")
+                            .font(.headline.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, UITheme.spacing11)
+                    .foregroundStyle(.black)
+                    .background(brandGold)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+                .buttonStyle(.plain)
+                .disabled(viewModel.sendingCardID != nil)
+
+                Spacer(minLength: 0)
+            }
+            .padding(UITheme.pagePadding)
+        }
+    }
+
     private func giftCardItem(_ card: GiftCardDTO) -> some View {
         let statusText = card.status.replacingOccurrences(of: "_", with: " ").capitalized
         let statusColor = giftStatusColor(card.status)
@@ -6436,6 +6876,19 @@ private struct GiftCardsView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
                 Spacer()
+                Button {
+                    UIPasteboard.general.string = card.card_number
+                    alertMessage = "Card code copied."
+                    showAlert = true
+                } label: {
+                    Image(systemName: "doc.on.doc")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .padding(7)
+                        .background(Color.white.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, UITheme.spacing12)
             .padding(.vertical, RewardsVisualTokens.codeRowVerticalPadding)
@@ -6475,6 +6928,65 @@ private struct GiftCardsView: View {
                         .font(.caption.weight(.semibold))
                 }
                 .foregroundStyle(.secondary)
+            }
+
+            if card.status.lowercased() == "active" {
+                Button {
+                    selectedCardForSending = card
+                    sendRecipientPhone = ""
+                    sendMessage = ""
+                    showSendSheet = true
+                } label: {
+                    HStack(spacing: UITheme.spacing5) {
+                        Image(systemName: "paperplane.fill")
+                            .font(.caption.weight(.bold))
+                        Text("Send this card")
+                            .font(.caption.weight(.bold))
+                            .kerning(0.8)
+                            .textCase(.uppercase)
+                    }
+                    .foregroundStyle(brandGold)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, UITheme.spacing9)
+                    .background(Color.black.opacity(0.42))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(brandGold.opacity(0.35), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+            } else if card.status.lowercased() == "pending_transfer" {
+                Button {
+                    Task { await handleRevokeGiftCard(card) }
+                } label: {
+                    HStack(spacing: UITheme.spacing5) {
+                        if viewModel.revokingCardID == card.id {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .tint(.red)
+                                .scaleEffect(0.75)
+                        } else {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.caption.weight(.bold))
+                        }
+                        Text(viewModel.revokingCardID == card.id ? "Canceling..." : "Cancel transfer")
+                            .font(.caption.weight(.bold))
+                            .kerning(0.8)
+                            .textCase(.uppercase)
+                    }
+                    .foregroundStyle(Color.red.opacity(0.9))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, UITheme.spacing9)
+                    .background(Color.red.opacity(0.10))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.red.opacity(0.45), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+                .disabled(viewModel.revokingCardID == card.id)
             }
         }
         .padding(.horizontal, UITheme.pagePadding)
@@ -6520,6 +7032,8 @@ private struct GiftCardsView: View {
             return brandGold
         case "active":
             return .green
+        case "used":
+            return .orange
         case "revoked":
             return .red
         case "expired":
@@ -6534,6 +7048,72 @@ private struct GiftCardsView: View {
         guard digits.count > 4 else { return raw }
         return "***\(digits.suffix(4))"
     }
+
+    private func handleClaimGiftCard() async {
+        guard let token = appState.requireAccessToken() else { return }
+        let success = await viewModel.claim(token: token, claimCode: claimCode)
+        if success {
+            claimCode = ""
+            showClaimSheet = false
+        }
+    }
+
+    private func handleSendGiftCard() async {
+        guard let token = appState.requireAccessToken() else { return }
+        guard let card = selectedCardForSending else {
+            alertMessage = "Please select a gift card."
+            showAlert = true
+            return
+        }
+        let success = await viewModel.transfer(
+            token: token,
+            giftCardID: card.id,
+            recipientPhone: sendRecipientPhone,
+            message: sendMessage
+        )
+        if success {
+            showSendSheet = false
+            selectedCardForSending = nil
+            sendRecipientPhone = ""
+            sendMessage = ""
+        }
+    }
+
+    private func handleRevokeGiftCard(_ card: GiftCardDTO) async {
+        guard let token = appState.requireAccessToken() else { return }
+        _ = await viewModel.revoke(token: token, giftCardID: card.id)
+    }
+
+    private var redemptionInfoCard: some View {
+        HStack(alignment: .top, spacing: UITheme.spacing10) {
+            ZStack {
+                Circle()
+                    .fill(brandGold.opacity(0.12))
+                    .frame(width: 34, height: 34)
+                Image(systemName: "shield.checkered")
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(brandGold)
+            }
+
+            VStack(alignment: .leading, spacing: UITheme.spacing5) {
+                Text("IN-STORE REDEMPTION")
+                    .font(.caption.weight(.bold))
+                    .kerning(1.6)
+                    .foregroundStyle(brandGold)
+                Text("Show your gift card code to the receptionist at checkout and the amount will be deducted from your final bill.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(UITheme.spacing12)
+        .background(brandGold.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner))
+        .overlay(
+            RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner)
+                .stroke(brandGold.opacity(0.18), lineWidth: 1)
+        )
+    }
 }
 
 private struct OrderHistoryView: View {
@@ -6542,8 +7122,14 @@ private struct OrderHistoryView: View {
     @StateObject private var viewModel = OrderHistoryViewModel()
     @State private var alertMessage: String = ""
     @State private var showAlert: Bool = false
+    @State private var showReviewSheet: Bool = false
+    @State private var reviewingItem: AppointmentDTO?
+    @State private var reviewRating: Int = 5
+    @State private var reviewComment: String = ""
+    @State private var isSubmittingReview: Bool = false
     private let brandGold = UITheme.brandGold
     private let cardBG = UITheme.cardBackground
+    private let reviewWindowDays = 30
 
     var body: some View {
         VStack(spacing: 0) {
@@ -6590,6 +7176,12 @@ private struct OrderHistoryView: View {
             guard let value, !value.isEmpty else { return }
             alertMessage = value
             showAlert = true
+        }
+        .sheet(isPresented: $showReviewSheet, onDismiss: { reviewingItem = nil }) {
+            reviewComposerSheet
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+                .preferredColorScheme(.dark)
         }
         .unifiedNoticeAlert(isPresented: $showAlert, message: alertMessage)
         .overlay {
@@ -6660,6 +7252,17 @@ private struct OrderHistoryView: View {
                             .foregroundStyle(Color.white.opacity(0.55))
                             .lineLimit(1)
                     }
+                    if let address = item.store_address?.trimmingCharacters(in: .whitespacesAndNewlines), !address.isEmpty {
+                        HStack(spacing: UITheme.spacing4) {
+                            Image(systemName: "mappin.and.ellipse")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(Color.white.opacity(0.48))
+                            Text(address)
+                                .font(.caption2)
+                                .foregroundStyle(Color.white.opacity(0.6))
+                                .lineLimit(1)
+                        }
+                    }
                 }
 
                 Spacer(minLength: UITheme.spacing8)
@@ -6686,6 +7289,47 @@ private struct OrderHistoryView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
+
+            if item.status.lowercased() == "completed" {
+                Rectangle()
+                    .fill(Color.white.opacity(0.08))
+                    .frame(height: UITheme.spacing1)
+
+                HStack(spacing: UITheme.spacing8) {
+                    Text("Review")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.68))
+
+                    Spacer(minLength: UITheme.spacing8)
+
+                    if canReview(item) {
+                        Button {
+                            startReview(item)
+                        } label: {
+                            HStack(spacing: UITheme.spacing4) {
+                                Image(systemName: "star.fill")
+                                    .font(.caption2.weight(.bold))
+                                Text("Review")
+                                    .font(.caption.weight(.bold))
+                            }
+                            .foregroundStyle(brandGold)
+                            .padding(.horizontal, UITheme.spacing12)
+                            .padding(.vertical, UITheme.spacing6)
+                            .background(brandGold.opacity(0.12))
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(brandGold.opacity(0.42), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        Text(item.review_id != nil ? "Reviewed" : "Review window closed")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(item.review_id != nil ? brandGold : Color.white.opacity(0.56))
+                    }
+                }
+            }
         }
         .padding(UITheme.spacing14)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -6709,6 +7353,169 @@ private struct OrderHistoryView: View {
 
     private func formattedTime(_ raw: String) -> String {
         HomeDateFormatterCache.formattedNYTime(raw) ?? raw
+    }
+
+    private func canReview(_ item: AppointmentDTO) -> Bool {
+        item.status.lowercased() == "completed" && item.review_id == nil && isReviewWindowOpen(item)
+    }
+
+    private func isReviewWindowOpen(_ item: AppointmentDTO) -> Bool {
+        let baseDate = HomeDateFormatterCache.appointmentDateTime(item)
+        guard baseDate != .distantPast else { return false }
+        guard let cutoff = Calendar(identifier: .gregorian).date(byAdding: .day, value: reviewWindowDays, to: baseDate) else {
+            return false
+        }
+        return Date() <= cutoff
+    }
+
+    private func startReview(_ item: AppointmentDTO) {
+        reviewingItem = item
+        reviewRating = 5
+        reviewComment = ""
+        showReviewSheet = true
+    }
+
+    private func submitReview() {
+        guard let item = reviewingItem else { return }
+        guard let token = appState.requireAccessToken() else { return }
+        Task { @MainActor in
+            isSubmittingReview = true
+            do {
+                _ = try await viewModel.createReview(
+                    token: token,
+                    appointmentID: item.id,
+                    rating: Double(reviewRating),
+                    comment: reviewComment
+                )
+                await viewModel.load(token: token)
+                showReviewSheet = false
+                reviewingItem = nil
+                reviewComment = ""
+            } catch let err as APIError {
+                alertMessage = mapError(err)
+                showAlert = true
+            } catch {
+                alertMessage = error.localizedDescription
+                showAlert = true
+            }
+            isSubmittingReview = false
+        }
+    }
+
+    @ViewBuilder
+    private var reviewComposerSheet: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(alignment: .leading, spacing: UITheme.spacing14) {
+                HStack(alignment: .center, spacing: UITheme.spacing8) {
+                    Text("Write a Review")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Button("Close") {
+                        showReviewSheet = false
+                        reviewingItem = nil
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.74))
+                }
+
+                if let item = reviewingItem {
+                    VStack(alignment: .leading, spacing: UITheme.spacing4) {
+                        Text(item.store_name ?? "Salon")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                        Text(item.service_name ?? "Service")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, UITheme.spacing10)
+                    .padding(.vertical, UITheme.spacing8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(cardBG)
+                    .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous)
+                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                    )
+                }
+
+                VStack(alignment: .leading, spacing: UITheme.spacing8) {
+                    Text("Rating")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.62))
+                    HStack(spacing: UITheme.spacing8) {
+                        ForEach(1 ... 5, id: \.self) { star in
+                            Button {
+                                reviewRating = star
+                            } label: {
+                                Image(systemName: star <= reviewRating ? "star.fill" : "star")
+                                    .font(.title3)
+                                    .foregroundStyle(star <= reviewRating ? brandGold : Color.white.opacity(0.34))
+                                    .frame(width: UITheme.iconControlSize, height: UITheme.iconControlSize)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: UITheme.spacing8) {
+                    Text("Comment (Optional)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.62))
+                    TextEditor(text: $reviewComment)
+                        .font(.body)
+                        .foregroundStyle(.white)
+                        .scrollContentBackground(.hidden)
+                        .padding(UITheme.spacing8)
+                        .frame(minHeight: 120, maxHeight: 180)
+                        .background(cardBG)
+                        .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        )
+                }
+
+                Text("Reviews are available within 30 days after your appointment.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: UITheme.spacing8) {
+                    Button("Cancel") {
+                        showReviewSheet = false
+                        reviewingItem = nil
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.8))
+                    .frame(maxWidth: .infinity, minHeight: UITheme.ctaHeight)
+                    .background(Color.white.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous))
+
+                    Button {
+                        submitReview()
+                    } label: {
+                        if isSubmittingReview {
+                            ProgressView()
+                                .tint(Color.black.opacity(0.85))
+                                .frame(maxWidth: .infinity, minHeight: UITheme.ctaHeight)
+                        } else {
+                            Text("Submit")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(Color.black.opacity(0.88))
+                                .frame(maxWidth: .infinity, minHeight: UITheme.ctaHeight)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(isSubmittingReview)
+                    .background(brandGold)
+                    .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous))
+                }
+            }
+            .padding(.horizontal, UITheme.pagePadding)
+            .padding(.top, UITheme.spacing18)
+            .padding(.bottom, UITheme.spacing12)
+        }
     }
 }
 

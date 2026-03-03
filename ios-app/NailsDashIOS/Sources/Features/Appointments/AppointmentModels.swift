@@ -60,8 +60,54 @@ struct AppointmentDTO: Decodable, Identifiable {
     let service_price: Double?
     let service_duration: Int?
     let technician_name: String?
+    let review_id: Int?
+    let completed_at: String?
     let created_at: String?
     let cancel_reason: String?
+
+    init(
+        id: Int,
+        order_number: String?,
+        store_id: Int,
+        service_id: Int,
+        technician_id: Int?,
+        appointment_date: String,
+        appointment_time: String,
+        status: String,
+        order_amount: Double?,
+        notes: String?,
+        store_name: String?,
+        store_address: String?,
+        service_name: String?,
+        service_price: Double?,
+        service_duration: Int?,
+        technician_name: String?,
+        review_id: Int? = nil,
+        completed_at: String? = nil,
+        created_at: String?,
+        cancel_reason: String?
+    ) {
+        self.id = id
+        self.order_number = order_number
+        self.store_id = store_id
+        self.service_id = service_id
+        self.technician_id = technician_id
+        self.appointment_date = appointment_date
+        self.appointment_time = appointment_time
+        self.status = status
+        self.order_amount = order_amount
+        self.notes = notes
+        self.store_name = store_name
+        self.store_address = store_address
+        self.service_name = service_name
+        self.service_price = service_price
+        self.service_duration = service_duration
+        self.technician_name = technician_name
+        self.review_id = review_id
+        self.completed_at = completed_at
+        self.created_at = created_at
+        self.cancel_reason = cancel_reason
+    }
 }
 
 struct TechnicianDTO: Decodable, Identifiable {
