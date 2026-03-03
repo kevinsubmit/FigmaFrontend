@@ -43,6 +43,9 @@
 		B10000000000000000000000E /* OrderHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000000E /* OrderHistoryView.swift */; };
 		B10000000000000000000000F /* MyReviewsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000000F /* MyReviewsView.swift */; };
 		B100000000000000000000010 /* MyFavoritesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000010 /* MyFavoritesView.swift */; };
+		B20000000000000000000001 /* HomeFeedModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000001 /* HomeFeedModule.swift */; };
+		B20000000000000000000002 /* PinDetailModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000002 /* PinDetailModule.swift */; };
+		B20000000000000000000003 /* HomeSharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000003 /* HomeSharedComponents.swift */; };
 		E938B4A98D458A5C00ED4F65 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69971322EED483F5BA88EA3E /* HomeView.swift */; };
 		E97894949AFB6E70D0E37A14 /* MyAppointmentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABA11B03E51EF58C41B4813 /* MyAppointmentsView.swift */; };
 /* End PBXBuildFile section */
@@ -89,6 +92,9 @@
 		C10000000000000000000000E /* OrderHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrderHistoryView.swift; sourceTree = "<group>"; };
 		C10000000000000000000000F /* MyReviewsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyReviewsView.swift; sourceTree = "<group>"; };
 		C100000000000000000000010 /* MyFavoritesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyFavoritesView.swift; sourceTree = "<group>"; };
+		C20000000000000000000001 /* HomeFeedModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeFeedModule.swift; sourceTree = "<group>"; };
+		C20000000000000000000002 /* PinDetailModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinDetailModule.swift; sourceTree = "<group>"; };
+		C20000000000000000000003 /* HomeSharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSharedComponents.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5061728394A5B6C /* SettingsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModule.swift; sourceTree = "<group>"; };
 		C42A0DC81FEA66C97739EA76 /* UserLocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserLocationService.swift; sourceTree = "<group>"; };
 		C8A71C8FD57CF3D60EC95B4C /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
@@ -145,6 +151,9 @@
 			isa = PBXGroup;
 			children = (
 				69971322EED483F5BA88EA3E /* HomeView.swift */,
+				C20000000000000000000001 /* HomeFeedModule.swift */,
+				C20000000000000000000002 /* PinDetailModule.swift */,
+				C20000000000000000000003 /* HomeSharedComponents.swift */,
 			);
 			path = Home;
 			sourceTree = "<group>";
@@ -375,6 +384,9 @@
 				516B855BD37582763D9CA0D1 /* BookAppointmentView.swift in Sources */,
 				36ABAF8E177D9B071F3BC4D7 /* BookAppointmentViewModel.swift in Sources */,
 				E938B4A98D458A5C00ED4F65 /* HomeView.swift in Sources */,
+				B20000000000000000000001 /* HomeFeedModule.swift in Sources */,
+				B20000000000000000000002 /* PinDetailModule.swift in Sources */,
+				B20000000000000000000003 /* HomeSharedComponents.swift in Sources */,
 				8B76ADAB759AEE7C687A83A9 /* LoginView.swift in Sources */,
 				E97894949AFB6E70D0E37A14 /* MyAppointmentsView.swift in Sources */,
 				29359FB573E617D7E0498D11 /* NailsDashApp.swift in Sources */,
