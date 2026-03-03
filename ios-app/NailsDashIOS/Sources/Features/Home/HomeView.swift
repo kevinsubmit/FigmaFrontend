@@ -1,4 +1,5 @@
 import Photos
+import PhotosUI
 import SwiftUI
 import UIKit
 
@@ -2077,6 +2078,10 @@ private struct SettingsUpdateProfileResponseDTO: Decodable {
     let user: AuthUser
 }
 
+private struct AvatarUploadResponseDTO: Decodable {
+    let avatar_url: String
+}
+
 private struct SettingsUpdatePasswordRequestDTO: Encodable {
     let current_password: String
     let new_password: String
@@ -2140,6 +2145,92 @@ private struct SettingsService {
     func updateSettings(token: String, payload: SettingsUpdateRequestDTO) async throws -> SettingsUpdateResponseDTO {
         try await APIClient.shared.request(path: "/users/settings", method: "PUT", token: token, body: payload)
     }
+
+    func uploadAvatar(
+        token: String,
+        imageData: Data,
+        fileName: String,
+        mimeType: String = "image/jpeg"
+    ) async throws -> AvatarUploadResponseDTO {
+        guard let url = URL(string: APIClient.shared.baseURL + "/auth/me/avatar") else {
+            throw APIError.invalidURL
+        }
+
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.httpBody = buildMultipartBody(
+            boundary: boundary,
+            imageData: imageData,
+            fieldName: "file",
+            fileName: fileName,
+            mimeType: mimeType
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.network("Invalid response")
+        }
+
+        switch http.statusCode {
+        case 200 ... 299:
+            do {
+                return try JSONDecoder().decode(AvatarUploadResponseDTO.self, from: data)
+            } catch {
+                throw APIError.decoding
+            }
+        case 401:
+            throw APIError.unauthorized
+        case 403:
+            throw APIError.forbidden(extractUploadErrorMessage(from: data, fallback: "You do not have permission to perform this action."))
+        case 422:
+            throw APIError.validation(extractUploadErrorMessage(from: data, fallback: "Please upload a valid image file."))
+        default:
+            throw APIError.server(extractUploadErrorMessage(from: data, fallback: "Failed to upload avatar. Please try again."))
+        }
+    }
+
+    private func buildMultipartBody(
+        boundary: String,
+        imageData: Data,
+        fieldName: String,
+        fileName: String,
+        mimeType: String
+    ) -> Data {
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(imageData)
+        body.append("\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        return body
+    }
+
+    private func extractUploadErrorMessage(from data: Data, fallback: String) -> String {
+        guard !data.isEmpty else { return fallback }
+        if let object = try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed]) {
+            if let dict = object as? [String: Any], let detail = dict["detail"] {
+                if let detailText = detail as? String, !detailText.isEmpty {
+                    return detailText
+                }
+                if let array = detail as? [Any] {
+                    for item in array {
+                        if let text = item as? String, !text.isEmpty {
+                            return text
+                        }
+                        if let row = item as? [String: Any], let text = row["msg"] as? String, !text.isEmpty {
+                            return text
+                        }
+                    }
+                }
+            }
+        }
+        return fallback
+    }
 }
 
 @MainActor
@@ -2148,12 +2239,14 @@ private final class ProfileSettingsViewModel: ObservableObject {
     @Published var username: String = "-"
     @Published var phone: String = "-"
     @Published var gender: String = ""
+    @Published var avatarURL: String?
     @Published var birthday: Date = Date()
     @Published var canEditGender: Bool = true
     @Published var canEditBirthday: Bool = true
     @Published var birthdayDisplay: String = "Not set"
     @Published var isLoading: Bool = false
     @Published var isSaving: Bool = false
+    @Published var isUploadingAvatar: Bool = false
     @Published var errorMessage: String?
     @Published var actionMessage: String?
 
@@ -2173,6 +2266,7 @@ private final class ProfileSettingsViewModel: ObservableObject {
             fullName = user.full_name ?? ""
             username = user.username
             phone = formatUSPhoneForDisplay(user.phone)
+            avatarURL = user.avatar_url
             gender = user.gender ?? ""
             canEditGender = gender.isEmpty
             if let birthdayText = user.date_of_birth,
@@ -2190,6 +2284,43 @@ private final class ProfileSettingsViewModel: ObservableObject {
             errorMessage = mapError(err)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func uploadAvatar(token: String, image: UIImage) async -> Bool {
+        guard var imageData = image.jpegData(compressionQuality: 0.9) else {
+            errorMessage = "Invalid image file."
+            return false
+        }
+
+        let maxSize = 5 * 1024 * 1024
+        if imageData.count > maxSize {
+            guard let compressed = image.jpegData(compressionQuality: 0.72), compressed.count <= maxSize else {
+                errorMessage = "File size exceeds 5MB limit."
+                return false
+            }
+            imageData = compressed
+        }
+
+        isUploadingAvatar = true
+        defer { isUploadingAvatar = false }
+        do {
+            let fileName = "avatar_\(Int(Date().timeIntervalSince1970)).jpg"
+            let response = try await service.uploadAvatar(
+                token: token,
+                imageData: imageData,
+                fileName: fileName
+            )
+            avatarURL = response.avatar_url
+            actionMessage = "Avatar updated successfully!"
+            errorMessage = nil
+            return true
+        } catch let err as APIError {
+            errorMessage = mapError(err)
+            return false
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
         }
     }
 
@@ -2407,10 +2538,13 @@ private final class PhoneNumberSettingsViewModel: ObservableObject {
     }
 }
 
+@MainActor
 private struct ProfileSettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = ProfileSettingsViewModel()
+    @State private var pickedAvatarItem: PhotosPickerItem?
+    @State private var avatarPreviewImage: UIImage?
 
     private let brandGold = UITheme.brandGold
 
@@ -2426,6 +2560,50 @@ private struct ProfileSettingsView: View {
                     settingsMessageBanner(error: viewModel.errorMessage, message: viewModel.actionMessage)
 
                     settingsCard {
+                        let isUploadingAvatar = viewModel.isUploadingAvatar
+                        VStack(spacing: UITheme.spacing8) {
+                            ZStack(alignment: .bottomTrailing) {
+                                avatarDisplay
+                                    .frame(width: 128, height: 128)
+                                    .clipShape(Circle())
+                                    .overlay(
+                                        Circle()
+                                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                    )
+                                    .shadow(color: Color.black.opacity(0.28), radius: 14, x: 0, y: 8)
+
+                                PhotosPicker(
+                                    selection: $pickedAvatarItem,
+                                    matching: .images,
+                                    photoLibrary: .shared()
+                                ) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(brandGold)
+                                            .frame(width: 36, height: 36)
+                                        if isUploadingAvatar {
+                                            ProgressView()
+                                                .progressViewStyle(.circular)
+                                                .tint(.white)
+                                                .scaleEffect(0.82)
+                                        } else {
+                                            Image(systemName: "camera.fill")
+                                                .font(.system(size: 14, weight: .bold))
+                                                .foregroundStyle(.black)
+                                        }
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(isUploadingAvatar)
+                            }
+
+                            Text(isUploadingAvatar ? "Uploading avatar..." : "Tap camera icon to change avatar")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(Color.white.opacity(0.55))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, UITheme.spacing2)
+
                         settingsStaticRow(label: "Username", value: viewModel.username)
                         settingsFieldLabel("Full Name")
                         settingsInputField {
@@ -2510,6 +2688,72 @@ private struct ProfileSettingsView: View {
             guard let token = appState.requireAccessToken() else { return }
             await viewModel.load(token: token)
         }
+        .onChange(of: pickedAvatarItem) { item in
+            guard let item else { return }
+            Task {
+                await handlePickedAvatar(item)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var avatarDisplay: some View {
+        if let avatarPreviewImage {
+            Image(uiImage: avatarPreviewImage)
+                .resizable()
+                .scaledToFill()
+        } else if let url = AssetURLResolver.resolveURL(from: viewModel.avatarURL) {
+            CachedAsyncImage(url: url) { phase in
+                switch phase {
+                case .empty:
+                    ProgressView()
+                        .tint(brandGold)
+                case .success(let image):
+                    image.resizable().scaledToFill()
+                case .failure:
+                    avatarPlaceholder
+                @unknown default:
+                    avatarPlaceholder
+                }
+            }
+        } else {
+            avatarPlaceholder
+        }
+    }
+
+    private var avatarPlaceholder: some View {
+        ZStack {
+            Color.white.opacity(0.06)
+            Image(systemName: "person.fill")
+                .font(.system(size: 52, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.35))
+        }
+    }
+
+    private func handlePickedAvatar(_ item: PhotosPickerItem) async {
+        guard let token = appState.requireAccessToken() else {
+            pickedAvatarItem = nil
+            return
+        }
+        do {
+            guard let data = try await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data) else {
+                viewModel.errorMessage = "Invalid image file."
+                pickedAvatarItem = nil
+                return
+            }
+            avatarPreviewImage = image
+            let success = await viewModel.uploadAvatar(token: token, image: image)
+            if success {
+                await appState.refreshSession()
+            } else {
+                avatarPreviewImage = nil
+            }
+        } catch {
+            viewModel.errorMessage = "Failed to read image."
+            avatarPreviewImage = nil
+        }
+        pickedAvatarItem = nil
     }
 }
 

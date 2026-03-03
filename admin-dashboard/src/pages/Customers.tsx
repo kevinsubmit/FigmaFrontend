@@ -83,6 +83,19 @@ const Customers: React.FC = () => {
     getEnumParam(searchParams.get('gs'), ['all', 'active', 'pending_transfer', 'expired', 'revoked']),
   );
 
+  const copyUserId = async (event: React.MouseEvent<HTMLButtonElement>, userId: number) => {
+    event.stopPropagation();
+    try {
+      if (!navigator?.clipboard?.writeText) {
+        throw new Error('clipboard_not_supported');
+      }
+      await navigator.clipboard.writeText(String(userId));
+      toast.success(`User ID copied: ${userId}`);
+    } catch {
+      toast.error('Failed to copy User ID');
+    }
+  };
+
   const totalAppointments = useMemo(
     () => customers.reduce((sum, customer) => sum + customer.total_appointments, 0),
     [customers],
@@ -336,6 +349,7 @@ const Customers: React.FC = () => {
               <thead className="bg-blue-50">
                 <tr className="text-xs uppercase tracking-[0.15em] text-slate-500 border-b border-blue-100">
                   <th className="px-3 py-2 font-medium">Customer</th>
+                  <th className="px-3 py-2 font-medium">User ID</th>
                   <th className="px-3 py-2 font-medium">Register</th>
                   <th className="px-3 py-2 font-medium">Last Login</th>
                   <th className="px-3 py-2 font-medium">Bookings</th>
@@ -365,6 +379,18 @@ const Customers: React.FC = () => {
                         ))}
                       </div>
                       <p className="text-xs text-slate-600">{maskPhone(customer.phone)}</p>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <div className="inline-flex items-center gap-2">
+                        <span className="font-medium text-slate-900">{customer.id}</span>
+                        <button
+                          type="button"
+                          onClick={(event) => copyUserId(event, customer.id)}
+                          className="rounded-md border border-blue-200 bg-white px-2 py-1 text-[11px] font-medium text-blue-700 hover:bg-blue-50"
+                        >
+                          Copy
+                        </button>
+                      </div>
                     </td>
                     <td className="px-3 py-2.5 text-slate-700">{formatDateTime(customer.registered_at)}</td>
                     <td className="px-3 py-2.5 text-slate-700">{formatDateTime(customer.last_login_at)}</td>
