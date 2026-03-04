@@ -132,6 +132,10 @@ final class APIClient {
     private static let debugSimulatorBaseURL = "http://127.0.0.1:8000/api/v1"
     private static let debugDeviceBaseURL = "http://192.168.1.225:8000/api/v1"
     private static let releaseBaseURL = "https://api.nailsdash.app/api/v1"
+    private static let readTimeoutSeconds: TimeInterval = 15
+    private static let writeTimeoutSeconds: TimeInterval = 20
+    private static let uploadTimeoutSeconds: TimeInterval = 120
+    private static let refreshTimeoutSeconds: TimeInterval = 15
 
     private init() {
         let configuredBaseURL = Self.resolveBaseURL()
@@ -153,8 +157,8 @@ final class APIClient {
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
         config.requestCachePolicy = .useProtocolCachePolicy
-        config.timeoutIntervalForRequest = 20
-        config.timeoutIntervalForResource = 60
+        config.timeoutIntervalForRequest = APIClient.writeTimeoutSeconds
+        config.timeoutIntervalForResource = APIClient.uploadTimeoutSeconds
         config.waitsForConnectivity = true
         config.httpMaximumConnectionsPerHost = 6
         config.urlCache = URLCache(
@@ -229,6 +233,7 @@ final class APIClient {
         var request = URLRequest(url: url)
         request.httpMethod = normalizedMethod
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = timeoutInterval(for: path, method: normalizedMethod)
         if normalizedMethod != "GET" {
             request.cachePolicy = .reloadIgnoringLocalCacheData
         }
@@ -372,6 +377,7 @@ final class APIClient {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = Self.refreshTimeoutSeconds
         request.cachePolicy = .reloadIgnoringLocalCacheData
 
         let (data, response) = try await performDataTask(for: request)
@@ -415,6 +421,24 @@ final class APIClient {
         hasher.combine(request.value(forHTTPHeaderField: "Authorization") ?? "")
         hasher.combine(request.value(forHTTPHeaderField: "Accept-Language") ?? "")
         return "GET-\(hasher.finalize())"
+    }
+
+    private func timeoutInterval(for path: String, method: String) -> TimeInterval {
+        let normalizedPath = normalizePath(path).lowercased()
+        if isUploadPath(normalizedPath) {
+            return Self.uploadTimeoutSeconds
+        }
+        if method.uppercased() == "GET" {
+            return Self.readTimeoutSeconds
+        }
+        return Self.writeTimeoutSeconds
+    }
+
+    private func isUploadPath(_ normalizedPath: String) -> Bool {
+        normalizedPath.contains("/upload/")
+            || normalizedPath.hasSuffix("/upload")
+            || normalizedPath.contains("/avatar")
+            || normalizedPath.contains("/portfolio")
     }
 
     private func performDataTask(for request: URLRequest) async throws -> (Data, URLResponse) {

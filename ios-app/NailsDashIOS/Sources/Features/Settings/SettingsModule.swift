@@ -371,6 +371,7 @@ private struct SettingsService {
         request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 120
         request.httpBody = buildMultipartBody(
             boundary: boundary,
             imageData: imageData,
@@ -379,7 +380,16 @@ private struct SettingsService {
             mimeType: mimeType
         )
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            let nsError = error as NSError
+            if nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorTimedOut {
+                throw APIError.network("Request timed out. Please try again.")
+            }
+            throw APIError.network("Network error. Please check your connection and try again.")
+        }
         guard let http = response as? HTTPURLResponse else {
             throw APIError.network("Invalid response")
         }

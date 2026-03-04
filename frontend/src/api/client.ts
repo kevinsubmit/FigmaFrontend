@@ -18,6 +18,7 @@ interface RequestOptions extends RequestInit {
   skipCache?: boolean;
   dedupe?: boolean;
   cacheKey?: string;
+  timeoutMs?: number;
 }
 
 type RequestConfig = boolean | RequestOptions;
@@ -28,6 +29,9 @@ class APIClient {
   private readonly inFlightGet = new Map<string, Promise<unknown>>();
   private readonly defaultGetCacheTTL = 10000;
   private readonly maxGetCacheEntries = 200;
+  private readonly readTimeoutMs = 15000;
+  private readonly writeTimeoutMs = 20000;
+  private readonly uploadTimeoutMs = 120000;
 
   constructor(baseURL: string) {
     this.baseURL = baseURL;
@@ -73,6 +77,7 @@ class APIClient {
       skipCache = false,
       dedupe = true,
       cacheKey,
+      timeoutMs,
       ...restOptions
     } = options;
 
@@ -130,7 +135,24 @@ class APIClient {
     }
 
     const executeRequest = async (): Promise<T> => {
-      const response = await fetch(`${this.baseURL}${endpoint}${queryString}`, config);
+      const requestTimeoutMs = this.resolveTimeoutMs(endpoint, method, timeoutMs);
+      const { signal, cleanup, didTimeout } = this.createTimeoutSignal(config.signal, requestTimeoutMs);
+      const requestConfig: RequestInit = {
+        ...config,
+        signal,
+      };
+
+      let response: Response;
+      try {
+        response = await fetch(`${this.baseURL}${endpoint}${queryString}`, requestConfig);
+      } catch (error) {
+        if (didTimeout()) {
+          throw new Error(`Request timed out after ${Math.ceil(requestTimeoutMs / 1000)}s. Please try again.`);
+        }
+        throw error;
+      } finally {
+        cleanup();
+      }
 
       // Handle non-OK responses
       if (!response.ok) {
@@ -192,6 +214,64 @@ class APIClient {
 
   private clearGetCache() {
     this.getCache.clear();
+  }
+
+  private resolveTimeoutMs(endpoint: string, method: string, explicitTimeoutMs?: number): number {
+    if (typeof explicitTimeoutMs === 'number' && Number.isFinite(explicitTimeoutMs) && explicitTimeoutMs > 0) {
+      return explicitTimeoutMs;
+    }
+    if (this.isUploadEndpoint(endpoint)) {
+      return this.uploadTimeoutMs;
+    }
+    if (method === 'GET') {
+      return this.readTimeoutMs;
+    }
+    return this.writeTimeoutMs;
+  }
+
+  private isUploadEndpoint(endpoint: string): boolean {
+    const normalized = endpoint.toLowerCase();
+    return normalized.includes('/upload/')
+      || normalized.endsWith('/upload')
+      || normalized.includes('/avatar')
+      || normalized.includes('/portfolio');
+  }
+
+  private createTimeoutSignal(
+    upstreamSignal: AbortSignal | undefined,
+    timeoutMs: number,
+  ): {
+    signal: AbortSignal;
+    cleanup: () => void;
+    didTimeout: () => boolean;
+  } {
+    const controller = new AbortController();
+    let timedOut = false;
+    const timeoutID = globalThis.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, timeoutMs);
+
+    const abortFromUpstream = () => {
+      controller.abort();
+    };
+
+    if (upstreamSignal) {
+      if (upstreamSignal.aborted) {
+        abortFromUpstream();
+      } else {
+        upstreamSignal.addEventListener('abort', abortFromUpstream, { once: true });
+      }
+    }
+
+    return {
+      signal: controller.signal,
+      cleanup: () => {
+        globalThis.clearTimeout(timeoutID);
+        upstreamSignal?.removeEventListener('abort', abortFromUpstream);
+      },
+      didTimeout: () => timedOut,
+    };
   }
 
   private async parseErrorPayload(response: Response): Promise<any> {

@@ -103,6 +103,9 @@ const mapKnownMessage = (raw: string, status?: number): string | null => {
   if (lower === 'failed to fetch' || lower.includes('network error') || lower.includes('network request failed')) {
     return 'Network error. Please check your connection and try again.';
   }
+  if (lower.includes('timed out') || lower.includes('timeout')) {
+    return 'Request timed out. Please check your connection and try again.';
+  }
   if (lower.includes('not authenticated') || lower.includes('authentication required')) {
     return 'Please sign in to continue.';
   }

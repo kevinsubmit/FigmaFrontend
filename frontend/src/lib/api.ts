@@ -11,11 +11,15 @@ import {
 
 // API Base URL - 根据环境变量配置
 const API_BASE_URL = getApiBaseUrl();
+const READ_REQUEST_TIMEOUT_MS = 15000;
+const WRITE_REQUEST_TIMEOUT_MS = 20000;
+const UPLOAD_REQUEST_TIMEOUT_MS = 120000;
+const REFRESH_REQUEST_TIMEOUT_MS = 15000;
 
 // 创建axios实例
 const apiClient = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
-  timeout: 10000,
+  timeout: READ_REQUEST_TIMEOUT_MS,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -74,6 +78,30 @@ const isAuthEntryRequest = (config?: AxiosRequestConfig) => {
   return AUTH_ENTRY_PATTERNS.some((pattern) => pattern.test(path));
 };
 
+const isUploadPath = (rawUrl?: string) => {
+  const path = normalizePath(rawUrl).toLowerCase();
+  return path.includes('/upload/')
+    || path.endsWith('/upload')
+    || path.includes('/avatar')
+    || path.includes('/portfolio');
+};
+
+const resolveRequestTimeout = (
+  rawUrl: string | undefined,
+  method: string | undefined,
+  explicitTimeout: number | undefined,
+) => {
+  if (typeof explicitTimeout === 'number' && Number.isFinite(explicitTimeout) && explicitTimeout > 0) {
+    return explicitTimeout;
+  }
+  if (isUploadPath(rawUrl)) {
+    return UPLOAD_REQUEST_TIMEOUT_MS;
+  }
+  return (method || 'GET').toUpperCase() === 'GET'
+    ? READ_REQUEST_TIMEOUT_MS
+    : WRITE_REQUEST_TIMEOUT_MS;
+};
+
 const refreshAccessToken = async (): Promise<string | null> => {
   if (refreshRequestPromise) {
     return refreshRequestPromise;
@@ -95,7 +123,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
         null,
         {
           params: { refresh_token: refreshToken },
-          timeout: 10000,
+          timeout: REFRESH_REQUEST_TIMEOUT_MS,
           headers: {
             'Content-Type': 'application/json',
           },
@@ -261,6 +289,7 @@ apiClient.interceptors.request.use(
     }
 
     const method = (config.method || 'GET').toUpperCase();
+    config.timeout = resolveRequestTimeout(config.url, config.method, config.timeout);
     if (isBodyMethod(method)) {
       const allowEmptyByRoute = shouldAllowEmptyBody(method, config.url);
       const allowEmptyBody = allowEmptyByRoute
