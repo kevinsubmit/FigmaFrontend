@@ -345,7 +345,7 @@ struct StoreDetailView: View {
         case .reviews:
             reviewsContent(store)
         case .portfolio:
-            portfolioContent(store)
+            portfolioContent()
         case .details:
             detailsContent(store)
         }
@@ -588,15 +588,15 @@ struct StoreDetailView: View {
     }
 
     @ViewBuilder
-    private func portfolioContent(_ store: StoreDetailDTO) -> some View {
+    private func portfolioContent() -> some View {
         VStack(alignment: .leading, spacing: UITheme.spacing10) {
-            if store.images.isEmpty {
+            if viewModel.portfolioItems.isEmpty {
                 Text("No portfolio images yet.")
                     .foregroundStyle(.secondary)
             } else {
                 let fixedCardHeight: CGFloat = 214
                 LazyVGrid(columns: portfolioColumns, spacing: UITheme.spacing8) {
-                    ForEach(store.images, id: \.id) { image in
+                    ForEach(viewModel.portfolioItems, id: \.id) { image in
                         CachedAsyncImage(url: imageURL(from: image.image_url)) { phase in
                             switch phase {
                             case .empty:

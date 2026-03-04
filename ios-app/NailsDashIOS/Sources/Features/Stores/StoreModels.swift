@@ -7,6 +7,17 @@ struct StoreImageDTO: Decodable, Identifiable {
     let display_order: Int?
 }
 
+struct StorePortfolioDTO: Decodable, Identifiable {
+    let id: Int
+    let store_id: Int
+    let image_url: String
+    let title: String?
+    let description: String?
+    let display_order: Int
+    let created_at: String
+    let updated_at: String?
+}
+
 struct StoreDTO: Decodable, Identifiable {
     let id: Int
     let name: String

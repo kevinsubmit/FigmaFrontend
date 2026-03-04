@@ -106,6 +106,7 @@ final class StoreDetailViewModel: ObservableObject {
     @Published var store: StoreDetailDTO?
     @Published var services: [ServiceDTO] = []
     @Published var reviews: [StoreReviewDTO] = []
+    @Published var portfolioItems: [StorePortfolioDTO] = []
     @Published var ratingSummary: StoreRatingSummaryDTO?
     @Published var storeHours: [StoreHourDTO] = []
     @Published var isFavorited: Bool = false
@@ -127,11 +128,13 @@ final class StoreDetailViewModel: ObservableObject {
             async let detailTask = service.fetchStoreDetail(storeID: storeID)
             async let serviceTask = service.fetchStoreServices(storeID: storeID)
             async let reviewTask = service.fetchStoreReviews(storeID: storeID, skip: 0, limit: 20)
+            async let portfolioTask = service.fetchStorePortfolio(storeID: storeID, skip: 0, limit: 100)
             async let ratingTask: StoreRatingSummaryDTO? = try? service.fetchStoreRating(storeID: storeID)
             async let hoursTask = service.fetchStoreHours(storeID: storeID)
             store = try await detailTask
             services = try await serviceTask.filter { $0.is_active == 1 }
             reviews = (try? await reviewTask) ?? []
+            portfolioItems = (try? await portfolioTask) ?? []
             ratingSummary = await ratingTask
             storeHours = (try? await hoursTask) ?? []
             errorMessage = nil

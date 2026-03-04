@@ -4,6 +4,7 @@ protocol StoresServiceProtocol {
     func fetchStores(limit: Int, sortBy: String?, userLat: Double?, userLng: Double?) async throws -> [StoreDTO]
     func fetchStoreDetail(storeID: Int) async throws -> StoreDetailDTO
     func fetchStoreImages(storeID: Int) async throws -> [StoreImageDTO]
+    func fetchStorePortfolio(storeID: Int, skip: Int, limit: Int) async throws -> [StorePortfolioDTO]
     func fetchStoreServices(storeID: Int) async throws -> [ServiceDTO]
     func fetchStoreReviews(storeID: Int, skip: Int, limit: Int) async throws -> [StoreReviewDTO]
     func fetchStoreRating(storeID: Int) async throws -> StoreRatingSummaryDTO
@@ -38,6 +39,10 @@ struct StoresService: StoresServiceProtocol {
 
     func fetchStoreImages(storeID: Int) async throws -> [StoreImageDTO] {
         try await APIClient.shared.request(path: "/stores/\(storeID)/images")
+    }
+
+    func fetchStorePortfolio(storeID: Int, skip: Int = 0, limit: Int = 50) async throws -> [StorePortfolioDTO] {
+        try await APIClient.shared.request(path: "/stores/portfolio/\(storeID)?skip=\(skip)&limit=\(limit)")
     }
 
     func fetchStoreServices(storeID: Int) async throws -> [ServiceDTO] {
