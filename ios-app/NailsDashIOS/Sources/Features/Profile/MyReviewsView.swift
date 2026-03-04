@@ -163,8 +163,11 @@ struct MyReviewsView: View {
         if let storeName = item.store_name?.trimmingCharacters(in: .whitespacesAndNewlines), !storeName.isEmpty {
             return storeName
         }
-        if let storeID = item.store_id {
-            return "Store #\(storeID)"
+        if let storeID = item.store_id,
+           let resolvedName = viewModel.storeNameByID[storeID]?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !resolvedName.isEmpty
+        {
+            return resolvedName
         }
         return "Salon"
     }
@@ -307,4 +310,3 @@ struct MyReviewsView: View {
         }
     }
 }
-

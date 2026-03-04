@@ -245,6 +245,7 @@ final class OrderHistoryViewModel: ObservableObject {
 @MainActor
 final class MyReviewsViewModel: ObservableObject {
     @Published var items: [UserReviewDTO] = []
+    @Published var storeNameByID: [Int: String] = [:]
     @Published var deletingReviewID: Int?
     @Published var updatingReviewID: Int?
     @Published var isLoading = false
@@ -252,12 +253,18 @@ final class MyReviewsViewModel: ObservableObject {
     @Published var actionMessage: String?
 
     private let service = ProfileRewardsService()
+    private let storesService: StoresServiceProtocol
+
+    init(storesService: StoresServiceProtocol = StoresService()) {
+        self.storesService = storesService
+    }
 
     func load(token: String) async {
         isLoading = true
         defer { isLoading = false }
         do {
             items = try await service.getMyReviews(token: token, limit: 100)
+            await refreshStoreNameMap()
             errorMessage = nil
         } catch let err as APIError {
             errorMessage = mapError(err)
@@ -309,6 +316,50 @@ final class MyReviewsViewModel: ObservableObject {
             errorMessage = mapError(err)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func refreshStoreNameMap() async {
+        var mergedMap: [Int: String] = [:]
+        for item in items {
+            guard let storeID = item.store_id else { continue }
+            guard let rawName = item.store_name else { continue }
+            let normalized = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !normalized.isEmpty else { continue }
+            mergedMap[storeID] = normalized
+        }
+
+        let missingIDs = Set(items.compactMap(\.store_id)).subtracting(mergedMap.keys)
+        if !missingIDs.isEmpty {
+            let resolved = await resolveStoreNames(for: missingIDs)
+            for (id, name) in resolved {
+                mergedMap[id] = name
+            }
+        }
+
+        storeNameByID = mergedMap
+    }
+
+    private func resolveStoreNames(for ids: Set<Int>) async -> [Int: String] {
+        await withTaskGroup(of: (Int, String?).self, returning: [Int: String].self) { group in
+            for id in ids {
+                group.addTask { [storesService] in
+                    do {
+                        let detail = try await storesService.fetchStoreDetail(storeID: id)
+                        let normalized = detail.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                        return (id, normalized.isEmpty ? nil : normalized)
+                    } catch {
+                        return (id, nil)
+                    }
+                }
+            }
+
+            var map: [Int: String] = [:]
+            for await (id, name) in group {
+                guard let name else { continue }
+                map[id] = name
+            }
+            return map
         }
     }
 }

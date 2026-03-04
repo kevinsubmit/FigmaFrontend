@@ -949,7 +949,9 @@ struct StoreDetailView: View {
 
     private func backendWeekdayIndex(_ date: Date) -> Int {
         // Swift weekday: 1=Sun ... 7=Sat -> backend: 0=Mon ... 6=Sun
-        let weekday = Calendar.current.component(.weekday, from: date)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+        let weekday = calendar.component(.weekday, from: date)
         return (weekday + 5) % 7
     }
 
@@ -1168,9 +1170,13 @@ struct StoreDetailView: View {
 }
 
 private enum StoreDetailDateFormatter {
+    private static let etTimeZone = TimeZone(identifier: "America/New_York")!
+    private static let utcTimeZone = TimeZone(secondsFromGMT: 0)!
+
     private static let hmsParser: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = etTimeZone
         formatter.dateFormat = "HH:mm:ss"
         return formatter
     }()
@@ -1178,13 +1184,15 @@ private enum StoreDetailDateFormatter {
     private static let displayTimeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = etTimeZone
         formatter.dateFormat = "h:mm a"
         return formatter
     }()
 
     static let reviewDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale.current
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.timeZone = etTimeZone
         formatter.dateFormat = "MMM d, yyyy"
         return formatter
     }()
@@ -1204,6 +1212,7 @@ private enum StoreDetailDateFormatter {
     private static let fallbackParser: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = utcTimeZone
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
         return formatter
     }()
@@ -1216,13 +1225,51 @@ private enum StoreDetailDateFormatter {
     }
 
     static func parseServerDate(_ raw: String) -> Date? {
-        if let date = isoFractionalParser.date(from: raw) {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let date = isoFractionalParser.date(from: trimmed) {
             return date
         }
-        if let date = isoParser.date(from: raw) {
+        if let date = isoParser.date(from: trimmed) {
             return date
         }
-        return fallbackParser.date(from: raw)
+        if !hasTimezoneInfo(trimmed) {
+            let normalizedISO = trimmed.contains("T") ? "\(trimmed)Z" : trimmed.replacingOccurrences(of: " ", with: "T") + "Z"
+            if let date = isoFractionalParser.date(from: normalizedISO) {
+                return date
+            }
+            if let date = isoParser.date(from: normalizedISO) {
+                return date
+            }
+        }
+        if let date = fallbackParser.date(from: trimmed) {
+            return date
+        }
+        return parseNaiveUTC(trimmed)
+    }
+
+    private static func hasTimezoneInfo(_ value: String) -> Bool {
+        value.hasSuffix("Z") || value.hasSuffix("z") || value.range(of: #"[+-]\d{2}:\d{2}$"#, options: .regularExpression) != nil
+    }
+
+    private static func parseNaiveUTC(_ raw: String) -> Date? {
+        let formats = [
+            "yyyy-MM-dd HH:mm:ss.SSSSSS",
+            "yyyy-MM-dd HH:mm:ss.SSS",
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSS",
+            "yyyy-MM-dd'T'HH:mm:ss.SSS",
+            "yyyy-MM-dd'T'HH:mm:ss"
+        ]
+        for format in formats {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = utcTimeZone
+            formatter.dateFormat = format
+            if let date = formatter.date(from: raw) {
+                return date
+            }
+        }
+        return nil
     }
 }
 

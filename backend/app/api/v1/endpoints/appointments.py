@@ -11,6 +11,7 @@ import json
 from app.api.deps import get_db, get_current_user
 from app.crud import appointment as crud_appointment
 from app.crud import points as crud_points
+from app.crud import store_hours as crud_store_hours
 from app.schemas.appointment import (
     Appointment,
     AppointmentAmountUpdate,
@@ -164,6 +165,37 @@ def _ensure_not_past_appointment(appointment_date, appointment_time):
         raise HTTPException(
             status_code=400,
             detail="Past time cannot be booked. Please select a future time."
+        )
+
+
+def _ensure_within_store_business_hours(
+    db: Session,
+    store_id: int,
+    appointment_date,
+    appointment_time,
+    duration_minutes: int,
+):
+    day_of_week = appointment_date.weekday()
+    store_hours = crud_store_hours.get_store_hours_for_day(db, store_id=store_id, day_of_week=day_of_week)
+    if not store_hours or store_hours.get("is_closed"):
+        raise HTTPException(status_code=400, detail="The salon is closed on this date.")
+
+    open_time = store_hours.get("open_time")
+    close_time = store_hours.get("close_time")
+    if not open_time or not close_time or close_time <= open_time:
+        raise HTTPException(status_code=400, detail="The salon is closed on this date.")
+
+    appt_start = datetime.combine(appointment_date, appointment_time)
+    appt_end = appt_start + timedelta(minutes=max(int(duration_minutes or 0), 1))
+    open_at = datetime.combine(appointment_date, open_time)
+    close_at = datetime.combine(appointment_date, close_time)
+
+    if appt_start < open_at or appt_end > close_at:
+        open_text = open_time.strftime("%H:%M")
+        close_text = close_time.strftime("%H:%M")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Selected time is outside salon business hours ({open_text}-{close_text}).",
         )
 
 
@@ -446,6 +478,13 @@ def create_appointment(
         raise HTTPException(status_code=400, detail="Service does not belong to this store")
     if service.is_active != 1:
         raise HTTPException(status_code=400, detail="Service is not available")
+    _ensure_within_store_business_hours(
+        db=db,
+        store_id=appointment.store_id,
+        appointment_date=appointment.appointment_date,
+        appointment_time=appointment.appointment_time,
+        duration_minutes=service.duration_minutes,
+    )
     _ensure_not_blocked_by_store_slot(
         db=db,
         store_id=appointment.store_id,
@@ -545,7 +584,15 @@ def _create_group_child_appointment(
     appointment_time,
     item: AppointmentGroupGuestCreate,
 ) -> AppointmentModel:
+    _ensure_not_past_appointment(appointment_date, appointment_time)
     service = _validate_store_service_for_group(db, store_id, item.service_id)
+    _ensure_within_store_business_hours(
+        db=db,
+        store_id=store_id,
+        appointment_date=appointment_date,
+        appointment_time=appointment_time,
+        duration_minutes=service.duration_minutes,
+    )
     _ensure_not_blocked_by_store_slot(
         db=db,
         store_id=store_id,
@@ -612,6 +659,13 @@ def create_appointment_group(
         raise HTTPException(status_code=400, detail="Store is not available")
 
     host_service = _validate_store_service_for_group(db, payload.store_id, payload.host_service_id)
+    _ensure_within_store_business_hours(
+        db=db,
+        store_id=payload.store_id,
+        appointment_date=payload.appointment_date,
+        appointment_time=payload.appointment_time,
+        duration_minutes=host_service.duration_minutes,
+    )
     _ensure_not_blocked_by_store_slot(
         db=db,
         store_id=payload.store_id,
@@ -1005,6 +1059,51 @@ def update_appointment(
     # Check if appointment belongs to current user
     if appointment.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to modify this appointment")
+
+    is_time_changed = (
+        appointment_update.appointment_date is not None
+        or appointment_update.appointment_time is not None
+    )
+    if is_time_changed:
+        if appointment.status == AppointmentStatus.CANCELLED:
+            raise HTTPException(status_code=400, detail="Cannot reschedule a cancelled appointment")
+        if appointment.status == AppointmentStatus.COMPLETED:
+            raise HTTPException(status_code=400, detail="Cannot reschedule a completed appointment")
+
+        new_date = appointment_update.appointment_date or appointment.appointment_date
+        new_time = appointment_update.appointment_time or appointment.appointment_time
+        _ensure_not_past_appointment(new_date, new_time)
+
+        service = db.query(Service).filter(Service.id == appointment.service_id).first()
+        if not service:
+            raise HTTPException(status_code=404, detail="Service not found")
+
+        _ensure_within_store_business_hours(
+            db=db,
+            store_id=service.store_id,
+            appointment_date=new_date,
+            appointment_time=new_time,
+            duration_minutes=service.duration_minutes,
+        )
+        _ensure_not_blocked_by_store_slot(
+            db=db,
+            store_id=service.store_id,
+            appointment_date=new_date,
+            appointment_time=new_time,
+            duration_minutes=service.duration_minutes,
+        )
+
+        conflict_result = crud_appointment.check_time_conflict(
+            db,
+            appointment_date=new_date,
+            appointment_time=new_time,
+            service_id=appointment.service_id,
+            technician_id=appointment.technician_id,
+            user_id=current_user.id,
+            exclude_appointment_id=appointment_id,
+        )
+        if conflict_result["has_conflict"]:
+            raise HTTPException(status_code=400, detail=conflict_result["message"])
     
     updated_appointment = crud_appointment.update_appointment(
         db,
@@ -1089,8 +1188,6 @@ def reschedule_appointment(
     
     # Appointment owner can reschedule. Store admins can reschedule appointments in their store.
     if appointment.user_id != current_user.id:
-        from app.models.service import Service
-
         if not current_user.is_admin and not current_user.store_id:
             raise HTTPException(
                 status_code=403,
@@ -1122,6 +1219,13 @@ def reschedule_appointment(
     service = db.query(Service).filter(Service.id == appointment.service_id).first()
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
+    _ensure_within_store_business_hours(
+        db=db,
+        store_id=service.store_id,
+        appointment_date=reschedule_data.new_date,
+        appointment_time=reschedule_data.new_time,
+        duration_minutes=service.duration_minutes,
+    )
     _ensure_not_blocked_by_store_slot(
         db=db,
         store_id=service.store_id,

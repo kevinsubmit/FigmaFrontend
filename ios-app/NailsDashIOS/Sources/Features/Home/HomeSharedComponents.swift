@@ -2,8 +2,8 @@ import Foundation
 
 enum HomeDateFormatterCache {
     private static let posixLocale = Locale(identifier: "en_US_POSIX")
-    private static let utcTimeZone = TimeZone(secondsFromGMT: 0)
-    private static let newYorkTimeZone = TimeZone(identifier: "America/New_York")
+    private static let utcTimeZone = TimeZone(secondsFromGMT: 0)!
+    private static let newYorkTimeZone = TimeZone(identifier: "America/New_York")!
 
     private static let isoParserWithFraction: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
@@ -35,7 +35,8 @@ enum HomeDateFormatterCache {
 
     private static let joinedDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = posixLocale
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.timeZone = newYorkTimeZone
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter
@@ -44,13 +45,15 @@ enum HomeDateFormatterCache {
     static let monthDayFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US")
+        formatter.timeZone = newYorkTimeZone
         formatter.dateFormat = "MMM d"
         return formatter
     }()
 
     private static let displayDateTimeFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale.current
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.timeZone = newYorkTimeZone
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter
@@ -58,7 +61,8 @@ enum HomeDateFormatterCache {
 
     private static let displayDateOnlyFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = posixLocale
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.timeZone = newYorkTimeZone
         formatter.dateStyle = .short
         formatter.timeStyle = .none
         return formatter
@@ -121,16 +125,29 @@ enum HomeDateFormatterCache {
     }()
 
     static func parseServerDate(_ raw: String) -> Date? {
-        if let date = isoParserWithFraction.date(from: raw) {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let date = isoParserWithFraction.date(from: trimmed) {
             return date
         }
-        if let date = isoParser.date(from: raw) {
+        if let date = isoParser.date(from: trimmed) {
             return date
         }
-        if let date = serverMicrosecondParser.date(from: raw) {
+        if !hasTimezoneInfo(trimmed) {
+            let normalizedISO = normalizedUTCISO(trimmed)
+            if let date = isoParserWithFraction.date(from: normalizedISO) {
+                return date
+            }
+            if let date = isoParser.date(from: normalizedISO) {
+                return date
+            }
+        }
+        if let date = serverMicrosecondParser.date(from: trimmed) {
             return date
         }
-        return serverSecondParser.date(from: raw)
+        if let date = serverSecondParser.date(from: trimmed) {
+            return date
+        }
+        return parseNaiveUTC(trimmed)
     }
 
     static func formatJoinedDate(_ raw: String) -> String? {
@@ -170,5 +187,37 @@ enum HomeDateFormatterCache {
     static func formatDisplayDateOnly(_ raw: String) -> String? {
         guard let date = parseServerDate(raw) else { return nil }
         return displayDateOnlyFormatter.string(from: date)
+    }
+
+    private static func hasTimezoneInfo(_ value: String) -> Bool {
+        value.hasSuffix("Z") || value.hasSuffix("z") || value.range(of: #"[+-]\d{2}:\d{2}$"#, options: .regularExpression) != nil
+    }
+
+    private static func normalizedUTCISO(_ value: String) -> String {
+        if value.contains("T") {
+            return "\(value)Z"
+        }
+        return value.replacingOccurrences(of: " ", with: "T") + "Z"
+    }
+
+    private static func parseNaiveUTC(_ raw: String) -> Date? {
+        let formats = [
+            "yyyy-MM-dd HH:mm:ss.SSSSSS",
+            "yyyy-MM-dd HH:mm:ss.SSS",
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSS",
+            "yyyy-MM-dd'T'HH:mm:ss.SSS",
+            "yyyy-MM-dd'T'HH:mm:ss"
+        ]
+        for format in formats {
+            let formatter = DateFormatter()
+            formatter.locale = posixLocale
+            formatter.timeZone = utcTimeZone
+            formatter.dateFormat = format
+            if let date = formatter.date(from: raw) {
+                return date
+            }
+        }
+        return nil
     }
 }

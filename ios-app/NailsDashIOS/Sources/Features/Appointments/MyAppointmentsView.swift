@@ -228,7 +228,14 @@ struct MyAppointmentsView: View {
         components.hour = timeParts[0]
         components.minute = timeParts.count > 1 ? timeParts[1] : 0
         components.second = timeParts.count > 2 ? timeParts[2] : 0
-        return Calendar.current.date(from: components)
+        return Self.etCalendar.date(from: components)
+    }
+
+    private static let etTimeZone = TimeZone(identifier: "America/New_York")!
+    private static var etCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = etTimeZone
+        return calendar
     }
 
     private func effectiveStatus(_ item: AppointmentDTO) -> String {
@@ -1219,7 +1226,14 @@ private struct AppointmentDetailView: View {
         components.hour = timeParts[0]
         components.minute = timeParts.count > 1 ? timeParts[1] : 0
         components.second = timeParts.count > 2 ? timeParts[2] : 0
-        return Calendar.current.date(from: components)
+        return Self.etCalendar.date(from: components)
+    }
+
+    private static let etTimeZone = TimeZone(identifier: "America/New_York")!
+    private static var etCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = etTimeZone
+        return calendar
     }
 
     private var cutoffDateTime: Date? {
@@ -1331,20 +1345,25 @@ private struct AppointmentDetailView: View {
 
     private static let weekDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale.current
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.timeZone = etTimeZone
         formatter.dateFormat = "EEE, MMM d"
         return formatter
     }()
 
     private static let cutoffFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale.current
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.timeZone = etTimeZone
         formatter.dateFormat = "MMM d 'at' h:mm a"
         return formatter
     }()
 }
 
 private enum AppointmentDetailDateFormatter {
+    private static let etTimeZone = TimeZone(identifier: "America/New_York")!
+    private static let utcTimeZone = TimeZone(secondsFromGMT: 0)!
+
     private static let iso8601FractionalParser: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -1359,17 +1378,55 @@ private enum AppointmentDetailDateFormatter {
 
     static let outputFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = etTimeZone
+        formatter.dateFormat = "M/d/yyyy, h:mm:ss a 'ET'"
         return formatter
     }()
 
     static func parse(_ raw: String) -> Date? {
-        if let date = iso8601FractionalParser.date(from: raw) {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let date = iso8601FractionalParser.date(from: trimmed) {
             return date
         }
-        return iso8601Parser.date(from: raw)
+        if let date = iso8601Parser.date(from: trimmed) {
+            return date
+        }
+        if !hasTimezoneInfo(trimmed) {
+            let normalizedISO = trimmed.contains("T") ? "\(trimmed)Z" : trimmed.replacingOccurrences(of: " ", with: "T") + "Z"
+            if let date = iso8601FractionalParser.date(from: normalizedISO) {
+                return date
+            }
+            if let date = iso8601Parser.date(from: normalizedISO) {
+                return date
+            }
+        }
+        return parseNaiveUTC(trimmed)
+    }
+
+    private static func hasTimezoneInfo(_ value: String) -> Bool {
+        value.hasSuffix("Z") || value.hasSuffix("z") || value.range(of: #"[+-]\d{2}:\d{2}$"#, options: .regularExpression) != nil
+    }
+
+    private static func parseNaiveUTC(_ raw: String) -> Date? {
+        let formats = [
+            "yyyy-MM-dd HH:mm:ss.SSSSSS",
+            "yyyy-MM-dd HH:mm:ss.SSS",
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSS",
+            "yyyy-MM-dd'T'HH:mm:ss.SSS",
+            "yyyy-MM-dd'T'HH:mm:ss"
+        ]
+        for format in formats {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = utcTimeZone
+            formatter.dateFormat = format
+            if let date = formatter.date(from: raw) {
+                return date
+            }
+        }
+        return nil
     }
 }
 
@@ -1420,16 +1477,20 @@ private enum AppointmentSegment: CaseIterable {
 }
 
 private enum AppointmentLocalFormatter {
+    private static let etTimeZone = TimeZone(identifier: "America/New_York")!
+
     private static let inputDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = etTimeZone
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter
     }()
 
     private static let outputDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale.current
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.timeZone = etTimeZone
         formatter.dateFormat = "MMM d, yyyy"
         return formatter
     }()
@@ -1437,13 +1498,23 @@ private enum AppointmentLocalFormatter {
     private static let inputTimeFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = etTimeZone
         formatter.dateFormat = "HH:mm:ss"
+        return formatter
+    }()
+
+    private static let inputTimeMinuteFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = etTimeZone
+        formatter.dateFormat = "HH:mm"
         return formatter
     }()
 
     private static let outputTimeFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale.current
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.timeZone = etTimeZone
         formatter.dateFormat = "h:mm a"
         return formatter
     }()
@@ -1454,7 +1525,10 @@ private enum AppointmentLocalFormatter {
     }
 
     static func friendlyTime(_ raw: String) -> String? {
-        guard let value = inputTimeFormatter.date(from: raw) else { return nil }
+        if let value = inputTimeFormatter.date(from: raw) {
+            return outputTimeFormatter.string(from: value)
+        }
+        guard let value = inputTimeMinuteFormatter.date(from: raw) else { return nil }
         return outputTimeFormatter.string(from: value)
     }
 }

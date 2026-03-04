@@ -1247,6 +1247,7 @@ struct BookAppointmentView: View {
     private var calendar: Calendar {
         var cal = Calendar(identifier: .gregorian)
         cal.locale = Locale(identifier: "en_US_POSIX")
+        cal.timeZone = Self.etTimeZone
         cal.firstWeekday = 1 // Sunday
         return cal
     }
@@ -1290,6 +1291,7 @@ struct BookAppointmentView: View {
     private static let monthTitleFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = etTimeZone
         formatter.dateFormat = "MMMM yyyy"
         return formatter
     }()
@@ -1297,9 +1299,12 @@ struct BookAppointmentView: View {
     private static let successDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = etTimeZone
         formatter.dateFormat = "MMM d"
         return formatter
     }()
+
+    private static let etTimeZone = TimeZone(identifier: "America/New_York")!
 
     private func shiftMonth(by offset: Int) {
         guard let next = calendar.date(byAdding: .month, value: offset, to: displayedMonthStart) else { return }

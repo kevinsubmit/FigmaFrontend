@@ -324,15 +324,21 @@ final class BookAppointmentViewModel: ObservableObject {
     }
 
     private func dayIndexForStoreHours(_ date: Date) -> Int {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = .current
-        let weekday = calendar.component(.weekday, from: date) // 1=Sun...7=Sat
+        let weekday = Self.etCalendar.component(.weekday, from: date) // 1=Sun...7=Sat
         return weekday == 1 ? 6 : weekday - 2 // 0=Mon...6=Sun
+    }
+
+    private static let etTimeZone = TimeZone(identifier: "America/New_York")!
+    private static var etCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = etTimeZone
+        return calendar
     }
 
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.calendar = Calendar(identifier: .gregorian)
+        f.calendar = etCalendar
+        f.timeZone = etTimeZone
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy-MM-dd"
         return f
@@ -340,7 +346,8 @@ final class BookAppointmentViewModel: ObservableObject {
 
     private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.calendar = Calendar(identifier: .gregorian)
+        f.calendar = etCalendar
+        f.timeZone = etTimeZone
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "HH:mm:ss"
         return f
@@ -348,7 +355,8 @@ final class BookAppointmentViewModel: ObservableObject {
 
     private static let slotFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.calendar = Calendar(identifier: .gregorian)
+        f.calendar = etCalendar
+        f.timeZone = etTimeZone
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "HH:mm"
         return f
@@ -356,7 +364,8 @@ final class BookAppointmentViewModel: ObservableObject {
 
     private static let slotDisplayFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.locale = Locale.current
+        f.locale = Locale(identifier: "en_US")
+        f.timeZone = etTimeZone
         f.dateFormat = "h:mm a"
         return f
     }()
@@ -389,7 +398,7 @@ final class BookAppointmentViewModel: ObservableObject {
     }
 
     private func filterPastSlots(_ slots: [String]) -> [String] {
-        let calendar = Calendar.current
+        let calendar = Self.etCalendar
         let now = Date()
         if !calendar.isDate(selectedDate, inSameDayAs: now) {
             return slots
@@ -402,7 +411,7 @@ final class BookAppointmentViewModel: ObservableObject {
 
     private func slotToDate(_ slot: String) -> Date {
         guard let timeOnly = Self.slotFormatter.date(from: slot) else { return selectedDate }
-        let calendar = Calendar.current
+        let calendar = Self.etCalendar
         let datePart = calendar.dateComponents([.year, .month, .day], from: selectedDate)
         let timePart = calendar.dateComponents([.hour, .minute], from: timeOnly)
         var merged = DateComponents()
@@ -549,9 +558,9 @@ final class AppointmentDetailViewModel: ObservableObject {
         self.storesService = storesService
         self.resolvedStoreAddress = Self.normalizedAddress(appointment.store_address)
         let parsedDate = Self.dateFormatter.date(from: appointment.appointment_date) ?? .now
-        let parsedTime = Self.timeFormatter.date(from: appointment.appointment_time) ?? .now
+        let parsedTime = Self.parseAppointmentTime(appointment.appointment_time) ?? .now
         rescheduleDate = parsedDate
-        rescheduleTime = parsedTime
+        rescheduleTime = Self.minutePrecisionTime(parsedTime)
     }
 
     func load(token: String) async {
@@ -572,6 +581,8 @@ final class AppointmentDetailViewModel: ObservableObject {
     }
 
     func cancel(token: String) async -> AppointmentDTO? {
+        successMessage = nil
+        errorMessage = nil
         guard appointment.status.lowercased() != "cancelled" else {
             errorMessage = "Appointment is already cancelled"
             return nil
@@ -606,6 +617,8 @@ final class AppointmentDetailViewModel: ObservableObject {
     }
 
     func reschedule(token: String) async -> AppointmentDTO? {
+        successMessage = nil
+        errorMessage = nil
         guard appointment.status.lowercased() != "cancelled" else {
             errorMessage = "Cannot reschedule a cancelled appointment"
             return nil
@@ -614,7 +627,11 @@ final class AppointmentDetailViewModel: ObservableObject {
             errorMessage = "Cannot reschedule a completed appointment"
             return nil
         }
-        let nextDateTime = Self.combineDateAndTime(date: rescheduleDate, time: rescheduleTime)
+        let normalizedTime = Self.minutePrecisionTime(rescheduleTime)
+        if normalizedTime != rescheduleTime {
+            rescheduleTime = normalizedTime
+        }
+        let nextDateTime = Self.combineDateAndTime(date: rescheduleDate, time: normalizedTime)
         if nextDateTime <= Date() {
             errorMessage = "Please choose a future date and time."
             return nil
@@ -627,7 +644,7 @@ final class AppointmentDetailViewModel: ObservableObject {
                 token: token,
                 appointmentID: appointment.id,
                 newDate: Self.dateFormatter.string(from: rescheduleDate),
-                newTime: Self.timeFormatter.string(from: rescheduleTime)
+                newTime: Self.timeFormatter.string(from: normalizedTime)
             )
             appointment = mergeDetailFields(primary: updatedRaw, fallback: existing)
             successMessage = "Appointment rescheduled"
@@ -759,7 +776,8 @@ final class AppointmentDetailViewModel: ObservableObject {
 
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.calendar = Calendar(identifier: .gregorian)
+        f.calendar = etCalendar
+        f.timeZone = etTimeZone
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy-MM-dd"
         return f
@@ -767,23 +785,48 @@ final class AppointmentDetailViewModel: ObservableObject {
 
     private static let timeFormatter: DateFormatter = {
         let f = DateFormatter()
-        f.calendar = Calendar(identifier: .gregorian)
+        f.calendar = etCalendar
+        f.timeZone = etTimeZone
         f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "HH:mm:ss"
+        f.dateFormat = "HH:mm"
         return f
     }()
 
+    private static let etTimeZone = TimeZone(identifier: "America/New_York")!
+    private static var etCalendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = etTimeZone
+        return calendar
+    }
+
     private static func combineDateAndTime(date: Date, time: Date) -> Date {
-        let calendar = Calendar.current
+        let calendar = etCalendar
         let dateParts = calendar.dateComponents([.year, .month, .day], from: date)
-        let timeParts = calendar.dateComponents([.hour, .minute, .second], from: time)
+        let timeParts = calendar.dateComponents([.hour, .minute], from: time)
         var merged = DateComponents()
         merged.year = dateParts.year
         merged.month = dateParts.month
         merged.day = dateParts.day
         merged.hour = timeParts.hour
         merged.minute = timeParts.minute
-        merged.second = timeParts.second
+        merged.second = 0
         return calendar.date(from: merged) ?? date
+    }
+
+    private static func parseAppointmentTime(_ raw: String) -> Date? {
+        let full = DateFormatter()
+        full.calendar = etCalendar
+        full.timeZone = etTimeZone
+        full.locale = Locale(identifier: "en_US_POSIX")
+        full.dateFormat = "HH:mm:ss"
+        if let value = full.date(from: raw) {
+            return value
+        }
+        return timeFormatter.date(from: raw)
+    }
+
+    private static func minutePrecisionTime(_ value: Date) -> Date {
+        let components = etCalendar.dateComponents([.hour, .minute], from: value)
+        return etCalendar.date(from: components) ?? value
     }
 }
