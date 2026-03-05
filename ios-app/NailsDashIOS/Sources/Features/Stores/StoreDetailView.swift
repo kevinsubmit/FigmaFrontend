@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 private enum StoreDetailTab: String, CaseIterable, Identifiable {
     case services = "SERVICES"
@@ -11,6 +12,7 @@ private enum StoreDetailTab: String, CaseIterable, Identifiable {
 
 struct StoreDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @EnvironmentObject private var appState: AppState
     let storeID: Int
     @StateObject private var viewModel = StoreDetailViewModel()
@@ -25,6 +27,8 @@ struct StoreDetailView: View {
     @State private var showFullHours: Bool = false
     @State private var showBookServicesSheet: Bool = false
     @State private var toast: StoreDetailToastPayload?
+    @State private var mapChooserAddress: String = ""
+    @State private var showMapAppChooser: Bool = false
 
     private let brandGold = UITheme.brandGold
     private let cardBG = UITheme.cardBackground
@@ -119,6 +123,19 @@ struct StoreDetailView: View {
                 .presentationDragIndicator(.hidden)
                 .h5BottomSheetStyle()
             }
+        }
+        .confirmationDialog(
+            "Open in Maps",
+            isPresented: $showMapAppChooser,
+            titleVisibility: .visible
+        ) {
+            Button("Apple Maps") {
+                openAppleMaps()
+            }
+            Button("Google Maps") {
+                openGoogleMaps()
+            }
+            Button("Cancel", role: .cancel) {}
         }
         .animation(.easeInOut(duration: 0.2), value: toast?.id)
     }
@@ -759,22 +776,22 @@ struct StoreDetailView: View {
                     }
                 }
 
-                if let maps = mapsURL(store.formattedAddress) {
-                    Link(destination: maps) {
-                        HStack(spacing: UITheme.spacing8) {
-                            Image(systemName: "paperplane")
-                                .font(.system(size: 16, weight: .semibold))
-                                .rotationEffect(.degrees(45))
-                            Text("Open in Maps")
-                                .font(.system(size: 19, weight: .bold))
-                        }
-                        .frame(maxWidth: .infinity, minHeight: 58)
-                        .background(brandGold)
-                        .foregroundStyle(.black)
-                        .clipShape(Capsule())
+                Button {
+                    presentMapChooser(for: store.formattedAddress)
+                } label: {
+                    HStack(spacing: UITheme.spacing8) {
+                        Image(systemName: "paperplane")
+                            .font(.system(size: 16, weight: .semibold))
+                            .rotationEffect(.degrees(45))
+                        Text("Open in Maps")
+                            .font(.system(size: 19, weight: .bold))
                     }
-                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity, minHeight: 58)
+                    .background(brandGold)
+                    .foregroundStyle(.black)
+                    .clipShape(Capsule())
                 }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, UITheme.spacing14)
             .padding(.vertical, UITheme.spacing14)
@@ -1089,6 +1106,41 @@ struct StoreDetailView: View {
         guard !trimmed.isEmpty else { return nil }
         let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? trimmed
         return URL(string: "https://www.google.com/maps/search/?api=1&query=\(encoded)")
+    }
+
+    private func presentMapChooser(for address: String) {
+        let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        mapChooserAddress = trimmed
+        showMapAppChooser = true
+    }
+
+    private func openAppleMaps() {
+        guard let url = appleMapsURL(mapChooserAddress) else { return }
+        openURL(url)
+    }
+
+    private func openGoogleMaps() {
+        if let appURL = googleMapsAppURL(mapChooserAddress), UIApplication.shared.canOpenURL(appURL) {
+            openURL(appURL)
+            return
+        }
+        guard let webURL = mapsURL(mapChooserAddress) else { return }
+        openURL(webURL)
+    }
+
+    private func appleMapsURL(_ address: String) -> URL? {
+        let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? trimmed
+        return URL(string: "http://maps.apple.com/?q=\(encoded)")
+    }
+
+    private func googleMapsAppURL(_ address: String) -> URL? {
+        let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? trimmed
+        return URL(string: "comgooglemaps://?q=\(encoded)")
     }
 
     private func showToast(message: String, isError: Bool) {

@@ -159,7 +159,8 @@ final class APIClient {
         config.requestCachePolicy = .useProtocolCachePolicy
         config.timeoutIntervalForRequest = APIClient.writeTimeoutSeconds
         config.timeoutIntervalForResource = APIClient.uploadTimeoutSeconds
-        config.waitsForConnectivity = true
+        // Fail fast when device is offline so UI can stop loading and show actionable error.
+        config.waitsForConnectivity = false
         config.httpMaximumConnectionsPerHost = 6
         config.urlCache = URLCache(
             memoryCapacity: 64 * 1024 * 1024,
@@ -455,9 +456,10 @@ final class APIClient {
                 case NSURLErrorNotConnectedToInternet,
                      NSURLErrorNetworkConnectionLost,
                      NSURLErrorCannotConnectToHost,
-                     NSURLErrorCannotFindHost,
-                     NSURLErrorTimedOut:
-                    throw APIError.network("Network error. Please check your connection and try again.")
+                     NSURLErrorCannotFindHost:
+                    throw APIError.network("Network appears offline. Please check your connection and try again.")
+                case NSURLErrorTimedOut:
+                    throw APIError.network("Request timed out. Please try again.")
                 default:
                     break
                 }

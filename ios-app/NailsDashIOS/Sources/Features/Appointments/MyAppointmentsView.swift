@@ -1,12 +1,16 @@
 import SwiftUI
+import UIKit
 
 struct MyAppointmentsView: View {
+    @Environment(\.openURL) private var openURL
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = MyAppointmentsViewModel()
     @State private var selectedSegment: AppointmentSegment = .upcoming
     @State private var selectedDetailAppointment: AppointmentDTO?
     @State private var alertMessage: String = ""
     @State private var showAlert: Bool = false
+    @State private var mapChooserAddress: String = ""
+    @State private var showMapAppChooser: Bool = false
     private let brandGold = UITheme.brandGold
     private let cardBG = UITheme.cardBackground
 
@@ -60,6 +64,19 @@ struct MyAppointmentsView: View {
             }
         } message: {
             Text(alertMessage)
+        }
+        .confirmationDialog(
+            "Open in Maps",
+            isPresented: $showMapAppChooser,
+            titleVisibility: .visible
+        ) {
+            Button("Apple Maps") {
+                openAppleMaps()
+            }
+            Button("Google Maps") {
+                openGoogleMaps()
+            }
+            Button("Cancel", role: .cancel) {}
         }
         .overlay {
             if viewModel.isLoading {
@@ -289,6 +306,41 @@ struct MyAppointmentsView: View {
         return URL(string: "https://www.google.com/maps/search/?api=1&query=\(encoded)")
     }
 
+    private func appleMapsURL(_ address: String) -> URL? {
+        let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? trimmed
+        return URL(string: "http://maps.apple.com/?q=\(encoded)")
+    }
+
+    private func googleMapsAppURL(_ address: String) -> URL? {
+        let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? trimmed
+        return URL(string: "comgooglemaps://?q=\(encoded)")
+    }
+
+    private func presentMapChooser(for address: String) {
+        let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        mapChooserAddress = trimmed
+        showMapAppChooser = true
+    }
+
+    private func openAppleMaps() {
+        guard let url = appleMapsURL(mapChooserAddress) else { return }
+        openURL(url)
+    }
+
+    private func openGoogleMaps() {
+        if let appURL = googleMapsAppURL(mapChooserAddress), UIApplication.shared.canOpenURL(appURL) {
+            openURL(appURL)
+            return
+        }
+        guard let webURL = mapsURL(mapChooserAddress) else { return }
+        openURL(webURL)
+    }
+
     private func resolvedStoreAddress(_ item: AppointmentDTO) -> String? {
         if let fullAddress = viewModel.storeAddressByStoreID[item.store_id]?.trimmingCharacters(in: .whitespacesAndNewlines),
            !fullAddress.isEmpty {
@@ -348,25 +400,18 @@ struct MyAppointmentsView: View {
                             .font(.caption)
                             .foregroundStyle(brandGold)
                             .padding(.top, UITheme.spacing1)
-                        if let mapURL = mapsURL(address) {
-                            Link(destination: mapURL) {
-                                Text(address)
-                                    .font(.caption)
-                                    .foregroundStyle(Color.white.opacity(0.72))
-                                    .lineLimit(nil)
-                                    .underline(true, color: Color.white.opacity(0.35))
-                                    .multilineTextAlignment(.leading)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                            .buttonStyle(.plain)
-                        } else {
+                        Button {
+                            presentMapChooser(for: address)
+                        } label: {
                             Text(address)
                                 .font(.caption)
                                 .foregroundStyle(Color.white.opacity(0.72))
                                 .lineLimit(nil)
+                                .underline(true, color: Color.white.opacity(0.35))
                                 .multilineTextAlignment(.leading)
                                 .fixedSize(horizontal: false, vertical: true)
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -484,11 +529,14 @@ struct MyAppointmentsView: View {
 
 private struct AppointmentDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel: AppointmentDetailViewModel
     @State private var toast: ToastPayload?
     @State private var showRescheduleSheet = false
     @State private var showCancelSheet = false
+    @State private var mapChooserAddress: String = ""
+    @State private var showMapAppChooser: Bool = false
     private let brandGold = UITheme.brandGold
     private let cardBG = UITheme.cardBackground
     let onChanged: (AppointmentDTO) -> Void
@@ -559,6 +607,19 @@ private struct AppointmentDetailView: View {
         .sheet(isPresented: $showCancelSheet) {
             cancelSheet
         }
+        .confirmationDialog(
+            "Open in Maps",
+            isPresented: $showMapAppChooser,
+            titleVisibility: .visible
+        ) {
+            Button("Apple Maps") {
+                openAppleMaps()
+            }
+            Button("Google Maps") {
+                openGoogleMaps()
+            }
+            Button("Cancel", role: .cancel) {}
+        }
         .animation(.easeInOut(duration: 0.2), value: toast?.id)
     }
 
@@ -623,30 +684,24 @@ private struct AppointmentDetailView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.86)
                 if let address = displayAddress {
-                    if let mapURL = mapsURL(address) {
-                        Link(destination: mapURL) {
-                            HStack(alignment: .top, spacing: UITheme.spacing8) {
-                                Image(systemName: "location")
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(brandGold)
-                                    .padding(.top, UITheme.spacing1)
-                                Text(address)
-                                    .font(.subheadline)
-                                    .underline()
-                                    .foregroundStyle(Color.white.opacity(0.78))
-                                    .multilineTextAlignment(.leading)
-                                    .lineLimit(nil)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
+                    Button {
+                        presentMapChooser(for: address)
+                    } label: {
+                        HStack(alignment: .top, spacing: UITheme.spacing8) {
+                            Image(systemName: "location")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(brandGold)
+                                .padding(.top, UITheme.spacing1)
+                            Text(address)
+                                .font(.subheadline)
+                                .underline()
+                                .foregroundStyle(Color.white.opacity(0.78))
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(nil)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
-                    } else {
-                        Text(address)
-                            .font(.subheadline)
-                            .foregroundStyle(Color.white.opacity(0.78))
-                            .multilineTextAlignment(.leading)
-                            .lineLimit(nil)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .modifier(AppointmentDetailCard(cardBG: cardBG, brandGold: brandGold))
@@ -1341,6 +1396,41 @@ private struct AppointmentDetailView: View {
         guard !trimmed.isEmpty else { return nil }
         let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? trimmed
         return URL(string: "https://www.google.com/maps/search/?api=1&query=\(encoded)")
+    }
+
+    private func appleMapsURL(_ address: String) -> URL? {
+        let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? trimmed
+        return URL(string: "http://maps.apple.com/?q=\(encoded)")
+    }
+
+    private func googleMapsAppURL(_ address: String) -> URL? {
+        let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        let encoded = trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? trimmed
+        return URL(string: "comgooglemaps://?q=\(encoded)")
+    }
+
+    private func presentMapChooser(for address: String) {
+        let trimmed = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        mapChooserAddress = trimmed
+        showMapAppChooser = true
+    }
+
+    private func openAppleMaps() {
+        guard let url = appleMapsURL(mapChooserAddress) else { return }
+        openURL(url)
+    }
+
+    private func openGoogleMaps() {
+        if let appURL = googleMapsAppURL(mapChooserAddress), UIApplication.shared.canOpenURL(appURL) {
+            openURL(appURL)
+            return
+        }
+        guard let webURL = mapsURL(mapChooserAddress) else { return }
+        openURL(webURL)
     }
 
     private static let weekDateFormatter: DateFormatter = {

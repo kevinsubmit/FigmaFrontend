@@ -429,7 +429,8 @@ actor CachedImagePipeline {
         config.timeoutIntervalForRequest = 20
         config.timeoutIntervalForResource = 60
         config.httpMaximumConnectionsPerHost = 8
-        config.waitsForConnectivity = true
+        // Avoid long placeholder loading when network is disconnected.
+        config.waitsForConnectivity = false
         config.urlCache = URLCache(
             memoryCapacity: 96 * 1024 * 1024,
             diskCapacity: 512 * 1024 * 1024,
