@@ -16,23 +16,10 @@ struct CouponsView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: UITheme.spacing12) {
-                    UnifiedSectionHeader(title: "COUPONS")
-                        .padding(.top, UITheme.spacing1)
-
                     couponStatusTabs
                         .padding(RewardsVisualTokens.tabContainerPadding)
                         .background(Color.white.opacity(0.05))
                         .clipShape(RoundedRectangle(cornerRadius: RewardsVisualTokens.sectionCorner))
-                        .overlay(alignment: .top) {
-                            Rectangle()
-                                .fill(brandGold.opacity(0.30))
-                                .frame(height: UITheme.spacing1)
-                                .clipShape(RoundedRectangle(cornerRadius: RewardsVisualTokens.sectionCorner))
-                        }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: RewardsVisualTokens.sectionCorner)
-                                .stroke(brandGold.opacity(RewardsVisualTokens.thinBorderOpacity), lineWidth: 1)
-                        )
                         .padding(.bottom, UITheme.spacing2)
 
                     if !viewModel.isLoading && viewModel.coupons.isEmpty {
@@ -277,4 +264,3 @@ struct CouponsView: View {
         }
     }
 }
-

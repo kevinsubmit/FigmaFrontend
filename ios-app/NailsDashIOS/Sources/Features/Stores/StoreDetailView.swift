@@ -124,18 +124,11 @@ struct StoreDetailView: View {
                 .h5BottomSheetStyle()
             }
         }
-        .confirmationDialog(
-            "Open in Maps",
-            isPresented: $showMapAppChooser,
-            titleVisibility: .visible
-        ) {
-            Button("Apple Maps") {
-                openAppleMaps()
-            }
-            Button("Google Maps") {
-                openGoogleMaps()
-            }
-            Button("Cancel", role: .cancel) {}
+        .sheet(isPresented: $showMapAppChooser) {
+            mapChooserSheet
+                .presentationDetents([.height(382)])
+                .presentationDragIndicator(.hidden)
+                .h5BottomSheetStyle()
         }
         .animation(.easeInOut(duration: 0.2), value: toast?.id)
     }
@@ -1127,6 +1120,103 @@ struct StoreDetailView: View {
         }
         guard let webURL = mapsURL(mapChooserAddress) else { return }
         openURL(webURL)
+    }
+
+    private var mapChooserSheet: some View {
+        VStack(spacing: 0) {
+            Capsule()
+                .fill(Color.white.opacity(0.9))
+                .frame(width: 68, height: 8)
+                .padding(.top, UITheme.spacing12)
+
+            Text("Open in Maps")
+                .font(.system(size: 24, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.top, UITheme.spacing20)
+                .padding(.bottom, UITheme.spacing16)
+
+            VStack(spacing: UITheme.spacing10) {
+                mapChooserButton(
+                    title: "Google Maps",
+                    icon: "map.fill",
+                    tint: Color(red: 66.0 / 255.0, green: 133.0 / 255.0, blue: 244.0 / 255.0)
+                ) {
+                    showMapAppChooser = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                        openGoogleMaps()
+                    }
+                }
+
+                mapChooserButton(
+                    title: "Apple Maps",
+                    icon: "location.fill",
+                    tint: brandGold
+                ) {
+                    showMapAppChooser = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                        openAppleMaps()
+                    }
+                }
+            }
+            .padding(.horizontal, UITheme.pagePadding)
+
+            Button {
+                showMapAppChooser = false
+            } label: {
+                Text("Cancel")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.72))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, UITheme.spacing12)
+            .padding(.horizontal, UITheme.pagePadding)
+        }
+        .padding(.bottom, UITheme.spacing20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(Color(red: 18.0 / 255.0, green: 18.0 / 255.0, blue: 18.0 / 255.0))
+    }
+
+    private func mapChooserButton(
+        title: String,
+        icon: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: UITheme.spacing12) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.06))
+                    Image(systemName: icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(tint)
+                }
+                .frame(width: 42, height: 42)
+
+                Text(title)
+                    .font(.system(size: 19, weight: .bold))
+                    .foregroundStyle(.white)
+
+                Spacer()
+
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.44))
+            }
+            .padding(.horizontal, UITheme.spacing14)
+            .frame(maxWidth: .infinity)
+            .frame(height: 66)
+            .background(Color.white.opacity(0.04))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Color.white.opacity(0.12), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private func appleMapsURL(_ address: String) -> URL? {
