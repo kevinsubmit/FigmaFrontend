@@ -8,6 +8,7 @@ struct HomeView: View {
             NavigationStack {
                 HomeFeedView()
             }
+            .enableSwipeBackGesture()
             .tag(AppTab.home)
             .tabItem {
                 Label("Home", systemImage: "house")
@@ -16,6 +17,7 @@ struct HomeView: View {
             NavigationStack {
                 StoresListView()
             }
+            .enableSwipeBackGesture()
             .id(appState.bookTabResetID)
             .tag(AppTab.book)
             .tabItem {
@@ -25,6 +27,7 @@ struct HomeView: View {
             NavigationStack {
                 MyAppointmentsView()
             }
+            .enableSwipeBackGesture()
             .tag(AppTab.appointments)
             .tabItem {
                 Label("Appointments", systemImage: "calendar")
@@ -33,6 +36,7 @@ struct HomeView: View {
             NavigationStack {
                 DealsView()
             }
+            .enableSwipeBackGesture()
             .id(appState.dealsTabResetID)
             .tag(AppTab.deals)
             .tabItem {
@@ -43,6 +47,7 @@ struct HomeView: View {
                 ProfileCenterView()
                     .environmentObject(appState)
             }
+            .enableSwipeBackGesture()
             .tag(AppTab.profile)
             .tabItem {
                 Label("Profile", systemImage: "person")
@@ -511,5 +516,4 @@ private struct DealsView: View {
         return "Ends on \(HomeDateFormatterCache.monthDayFormatter.string(from: endDate))"
     }
 }
-
 

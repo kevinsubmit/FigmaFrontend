@@ -91,6 +91,7 @@ struct LoginView: View {
                 Text(alertMessage)
             }
         }
+        .enableSwipeBackGesture()
     }
 
     private var activeErrorMessage: String? {

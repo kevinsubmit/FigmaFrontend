@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import ImageIO
+import ObjectiveC.runtime
 @preconcurrency import UserNotifications
 
 extension Notification.Name {
@@ -539,6 +540,154 @@ struct CachedAsyncImage<Content: View>: View {
             if Task.isCancelled { return }
             phase = .failure(URLError(.badServerResponse))
         }
+    }
+}
+
+private struct SwipeBackEnabler: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> SwipeBackEnablerController {
+        SwipeBackEnablerController()
+    }
+
+    func updateUIViewController(_ uiViewController: SwipeBackEnablerController, context: Context) {
+        uiViewController.enableSwipeBackIfNeeded()
+    }
+}
+
+private final class SwipeBackEnablerController: UIViewController {
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        UIViewController.installGlobalSwipeBackEnablerIfNeeded()
+        enableSwipeBackIfNeeded()
+    }
+
+    func enableSwipeBackIfNeeded() {
+        guard let navigationController else { return }
+        guard let popGesture = navigationController.interactivePopGestureRecognizer else { return }
+        popGesture.isEnabled = true
+        popGesture.delegate = nil
+    }
+}
+
+private extension UIViewController {
+    private final class SwipeBackFallbackHandler: NSObject, UIGestureRecognizerDelegate {
+        weak var host: UIViewController?
+
+        init(host: UIViewController) {
+            self.host = host
+            super.init()
+        }
+
+        @objc
+        func handleEdgePan(_ gesture: UIScreenEdgePanGestureRecognizer) {
+            guard let host else { return }
+            guard gesture.state == .ended else { return }
+
+            let translation = gesture.translation(in: gesture.view)
+            let velocity = gesture.velocity(in: gesture.view)
+            let passedDistance = translation.x > 72
+            let passedVelocity = velocity.x > 900
+            guard passedDistance || passedVelocity else { return }
+
+            if let nav = host.navigationController,
+               nav.viewControllers.count > 1,
+               nav.topViewController === host
+            {
+                nav.popViewController(animated: true)
+                return
+            }
+
+            if host.presentingViewController != nil {
+                host.dismiss(animated: true)
+            }
+        }
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard let host else { return false }
+
+            if let nav = host.navigationController,
+               nav.viewControllers.count > 1,
+               nav.topViewController === host
+            {
+                return true
+            }
+
+            return host.presentingViewController != nil
+        }
+    }
+
+    private struct SwipeBackFallbackAssociationKeys {
+        static var recognizerKey: UInt8 = 0
+        static var handlerKey: UInt8 = 0
+    }
+
+    static func installGlobalSwipeBackEnablerIfNeeded() {
+        guard self === UIViewController.self else { return }
+        struct Holder {
+            static var didInstall = false
+        }
+        guard !Holder.didInstall else { return }
+        Holder.didInstall = true
+
+        let original = #selector(UIViewController.viewDidAppear(_:))
+        let swizzled = #selector(UIViewController.nd_swizzled_viewDidAppear(_:))
+        guard
+            let originalMethod = class_getInstanceMethod(UIViewController.self, original),
+            let swizzledMethod = class_getInstanceMethod(UIViewController.self, swizzled)
+        else {
+            return
+        }
+        method_exchangeImplementations(originalMethod, swizzledMethod)
+    }
+
+    @objc
+    func nd_swizzled_viewDidAppear(_ animated: Bool) {
+        // Calls original implementation after swizzle.
+        nd_swizzled_viewDidAppear(animated)
+        if let nav = navigationController, nav.viewControllers.count > 1 {
+            if let popGesture = nav.interactivePopGestureRecognizer {
+                popGesture.isEnabled = true
+                popGesture.delegate = nil
+            }
+        }
+        nd_installSwipeBackFallbackIfNeeded()
+    }
+
+    private func nd_installSwipeBackFallbackIfNeeded() {
+        guard objc_getAssociatedObject(self, &SwipeBackFallbackAssociationKeys.recognizerKey) == nil else {
+            if let handler = objc_getAssociatedObject(self, &SwipeBackFallbackAssociationKeys.handlerKey) as? SwipeBackFallbackHandler {
+                handler.host = self
+            }
+            return
+        }
+
+        let handler = SwipeBackFallbackHandler(host: self)
+        let recognizer = UIScreenEdgePanGestureRecognizer(target: handler, action: #selector(SwipeBackFallbackHandler.handleEdgePan(_:)))
+        recognizer.edges = .left
+        recognizer.cancelsTouchesInView = false
+        recognizer.delegate = handler
+
+        view.addGestureRecognizer(recognizer)
+        objc_setAssociatedObject(
+            self,
+            &SwipeBackFallbackAssociationKeys.handlerKey,
+            handler,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+        objc_setAssociatedObject(
+            self,
+            &SwipeBackFallbackAssociationKeys.recognizerKey,
+            recognizer,
+            .OBJC_ASSOCIATION_RETAIN_NONATOMIC
+        )
+    }
+}
+
+extension View {
+    func enableSwipeBackGesture() -> some View {
+        background(SwipeBackEnabler())
+            .onAppear {
+                UIViewController.installGlobalSwipeBackEnablerIfNeeded()
+            }
     }
 }
 

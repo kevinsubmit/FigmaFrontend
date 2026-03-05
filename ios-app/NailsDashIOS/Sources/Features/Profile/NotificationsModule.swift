@@ -230,6 +230,7 @@ struct NotificationsView: View {
             content
         }
         .toolbar(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
         .background(Color.black)
         .tint(brandGold)
         .task { await reload() }
