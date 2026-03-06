@@ -120,9 +120,8 @@ const refreshAccessToken = async (): Promise<string | null> => {
         refresh_token?: string;
       }>(
         refreshURL,
-        null,
+        { refresh_token: refreshToken },
         {
-          params: { refresh_token: refreshToken },
           timeout: REFRESH_REQUEST_TIMEOUT_MS,
           headers: {
             'Content-Type': 'application/json',

@@ -88,8 +88,7 @@ export async function refreshToken(): Promise<TokenResponse> {
 
   const response = await apiClient.post<TokenResponse>(
     '/api/v1/auth/refresh',
-    null,
-    { params: { refresh_token: refreshToken } },
+    { refresh_token: refreshToken },
   );
 
   // Update tokens

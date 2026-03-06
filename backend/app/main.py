@@ -16,6 +16,7 @@ import ipaddress
 import json
 import time
 import uuid
+from urllib.parse import parse_qsl, urlencode
 
 from app.core.security import decode_token
 from app.db.session import SessionLocal
@@ -24,6 +25,21 @@ from app.models.user import User
 from app.services import log_service
 
 logger = logging.getLogger(__name__)
+_SENSITIVE_QUERY_KEYS = {
+    "refresh_token",
+    "access_token",
+    "id_token",
+    "token",
+    "authorization",
+    "password",
+    "passwd",
+    "pwd",
+    "secret",
+    "api_key",
+    "apikey",
+    "verification_code",
+    "code",
+}
 
 
 @asynccontextmanager
@@ -87,6 +103,32 @@ def _extract_request_id(request) -> str:
     if incoming and incoming.strip():
         return incoming.strip()
     return uuid.uuid4().hex
+
+
+def _is_sensitive_query_key(key: str) -> bool:
+    normalized = key.strip().lower()
+    if not normalized:
+        return False
+    if normalized in _SENSITIVE_QUERY_KEYS:
+        return True
+    return normalized.endswith("_token") or "password" in normalized or "secret" in normalized
+
+
+def _sanitize_query_string(raw_query: str | None) -> str:
+    if not raw_query:
+        return ""
+    try:
+        pairs = parse_qsl(raw_query, keep_blank_values=True)
+    except Exception:
+        return "<unparseable>"
+    if not pairs:
+        return ""
+
+    sanitized_pairs = [
+        (key, "[REDACTED]" if _is_sensitive_query_key(key) else value)
+        for key, value in pairs
+    ]
+    return urlencode(sanitized_pairs, doseq=True)
 
 
 def _resolve_operator_user_id(db, request) -> int | None:
@@ -194,6 +236,7 @@ async def security_ip_guard(request, call_next):
 
         user_id = _resolve_operator_user_id(db, request)
 
+        sanitized_query = _sanitize_query_string(request.url.query)
         db.add(
             SecurityBlockLog(
                 ip_address=client_ip,
@@ -204,7 +247,7 @@ async def security_ip_guard(request, call_next):
                 block_reason="ip_deny",
                 user_id=user_id,
                 user_agent=request.headers.get("user-agent"),
-                meta_json=json.dumps({"query": str(request.url.query or "")}),
+                meta_json=json.dumps({"query": sanitized_query}),
             )
         )
         db.commit()
@@ -225,7 +268,7 @@ async def security_ip_guard(request, call_next):
             path=request.url.path,
             method=request.method,
             status_code=403,
-            meta={"scope": scope, "query": str(request.url.query or "")},
+            meta={"scope": scope, "query": sanitized_query},
         )
 
         return JSONResponse(
@@ -245,6 +288,7 @@ async def access_log_middleware(request, call_next):
     method = request.method
     client_ip = _extract_client_ip(request)
     module = _extract_module(path)
+    sanitized_query = _sanitize_query_string(request.url.query)
 
     # response default values
     status_code = 500
@@ -274,7 +318,7 @@ async def access_log_middleware(request, call_next):
                 method=method,
                 status_code=500,
                 latency_ms=latency_ms,
-                meta={"query": str(request.url.query or "")},
+                meta={"query": sanitized_query},
             )
         finally:
             db.close()
@@ -301,7 +345,7 @@ async def access_log_middleware(request, call_next):
             method=method,
             status_code=status_code,
             latency_ms=latency_ms,
-            meta={"query": str(request.url.query or "")},
+            meta={"query": sanitized_query},
         )
     finally:
         db.close()

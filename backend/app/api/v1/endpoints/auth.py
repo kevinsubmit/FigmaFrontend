@@ -1,7 +1,7 @@
 """
 Authentication API endpoints
 """
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Body
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Body, Query
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
@@ -345,15 +345,16 @@ async def get_current_user_info(
 
 @router.post("/refresh", response_model=Token)
 async def refresh_token(
-    refresh_token: str | None = None,
     payload: dict | None = Body(default=None),
+    query_refresh_token: str | None = Query(default=None, alias="refresh_token"),
     db: Session = Depends(get_db)
 ):
     """
     Refresh access token
     
     Args:
-        refresh_token: Refresh token
+        payload: Refresh token payload from request body
+        query_refresh_token: Legacy refresh token from query string
         db: Database session
         
     Returns:
@@ -364,11 +365,14 @@ async def refresh_token(
     """
     from app.core.security import decode_token, verify_token_type
     
-    token_value = refresh_token
-    if not token_value and isinstance(payload, dict):
+    token_value = None
+    if isinstance(payload, dict):
         body_token = payload.get("refresh_token")
         if isinstance(body_token, str):
             token_value = body_token
+
+    if not token_value:
+        token_value = query_refresh_token
 
     if not token_value:
         raise HTTPException(

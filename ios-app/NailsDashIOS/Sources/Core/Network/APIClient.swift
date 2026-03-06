@@ -262,17 +262,14 @@ final class APIClient {
             throw APIError.unauthorized
         }
 
-        guard var components = URLComponents(string: baseURL + "/auth/refresh") else {
-            throw APIError.invalidURL
-        }
-        components.queryItems = [URLQueryItem(name: "refresh_token", value: refreshToken)]
-        guard let url = components.url else {
+        guard let url = URL(string: baseURL + "/auth/refresh") else {
             throw APIError.invalidURL
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["refresh_token": refreshToken])
         request.timeoutInterval = Self.refreshTimeoutSeconds
         request.cachePolicy = .reloadIgnoringLocalCacheData
 
