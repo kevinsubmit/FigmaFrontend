@@ -301,10 +301,11 @@ final class APIClient {
                 statusCode: http.statusCode,
                 fallback: "Session expired. Please sign in again."
             )
+            let requestReference = responseRequestReference(http)
             if http.statusCode == 401 || http.statusCode == 403 || http.statusCode == 423 {
                 throw APIError.unauthorized
             }
-            throw APIError.server(detail)
+            throw APIError.server(withRequestReference(detail, requestReference: requestReference))
         }
 
         let refreshedToken: TokenResponse
@@ -404,6 +405,7 @@ final class APIClient {
         http: HTTPURLResponse,
         postUnauthorizedNotification: Bool
     ) throws -> T {
+        let requestReference = responseRequestReference(http)
         switch http.statusCode {
         case 200 ... 299:
             if isEmptyPayload(data), T.self == EmptyResponse.self {
@@ -428,7 +430,7 @@ final class APIClient {
             if postUnauthorizedNotification && shouldForceRelogin(statusCode: http.statusCode, detail: detail) {
                 NotificationCenter.default.post(name: .apiUnauthorized, object: nil)
             }
-            throw APIError.forbidden(detail)
+            throw APIError.forbidden(withRequestReference(detail, requestReference: requestReference))
         case 423:
             let detail = extractUserMessage(
                 from: data,
@@ -438,7 +440,7 @@ final class APIClient {
             if postUnauthorizedNotification && shouldForceRelogin(statusCode: http.statusCode, detail: detail) {
                 NotificationCenter.default.post(name: .apiUnauthorized, object: nil)
             }
-            throw APIError.forbidden(detail)
+            throw APIError.forbidden(withRequestReference(detail, requestReference: requestReference))
         case 429:
             let detail = extractUserMessage(
                 from: data,
@@ -448,22 +450,44 @@ final class APIClient {
             if postUnauthorizedNotification && shouldForceRelogin(statusCode: http.statusCode, detail: detail) {
                 NotificationCenter.default.post(name: .apiUnauthorized, object: nil)
             }
-            throw APIError.server(detail)
+            throw APIError.server(withRequestReference(detail, requestReference: requestReference))
         case 422:
             let text = extractUserMessage(
                 from: data,
                 statusCode: http.statusCode,
                 fallback: "Please check your input and try again."
             )
-            throw APIError.validation(text)
+            throw APIError.validation(withRequestReference(text, requestReference: requestReference))
         default:
             let detail = extractUserMessage(
                 from: data,
                 statusCode: http.statusCode,
                 fallback: "Server is busy. Please try again later."
             )
-            throw APIError.server(detail)
+            throw APIError.server(withRequestReference(detail, requestReference: requestReference))
         }
+    }
+
+    private func responseRequestReference(_ response: HTTPURLResponse) -> String? {
+        let raw = response.value(forHTTPHeaderField: "X-Request-Id")?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let raw, !raw.isEmpty else {
+            return nil
+        }
+        return raw
+    }
+
+    private func withRequestReference(_ message: String, requestReference: String?) -> String {
+        let baseMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let requestReference = requestReference?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !requestReference.isEmpty else {
+            return baseMessage.isEmpty ? message : baseMessage
+        }
+
+        let normalized = baseMessage.isEmpty ? "Request failed." : baseMessage
+        if normalized.range(of: requestReference, options: .caseInsensitive) != nil {
+            return normalized
+        }
+        return "\(normalized) [Ref: \(requestReference)]"
     }
 
     private func shouldPostUnauthorizedNotification(path: String, method: String) -> Bool {
