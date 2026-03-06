@@ -9,7 +9,9 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.api.v1.api import api_router
 from app.services.scheduler import reminder_scheduler
+import hashlib
 import logging
+import os
 from pathlib import Path
 from datetime import datetime
 import ipaddress
@@ -45,17 +47,30 @@ _REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
 _CLIENT_PLATFORM_PATTERN = re.compile(r"^[a-z0-9._-]{1,32}$")
 
 
+def _resolve_access_log_sample_rate() -> float:
+    raw_value = os.getenv("ACCESS_LOG_SAMPLE_RATE", "0.10")
+    try:
+        return max(0.0, min(1.0, float(raw_value)))
+    except (TypeError, ValueError):
+        return 0.10
+
+
+_ACCESS_LOG_SAMPLE_RATE = _resolve_access_log_sample_rate()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     # Startup
     logger.info("Starting up application...")
     reminder_scheduler.start()
+    log_service.start_async_logger()
     logger.info("Reminder scheduler started")
     yield
     # Shutdown
     logger.info("Shutting down application...")
     await reminder_scheduler.stop()
+    log_service.shutdown_async_logger(timeout_seconds=2.0)
     logger.info("Reminder scheduler stopped")
 
 
@@ -205,6 +220,17 @@ def _extract_module(path: str) -> str:
     if len(parts) >= 1:
         return parts[0]
     return "unknown"
+
+
+def _should_sample_access_log(request_id: str) -> bool:
+    if _ACCESS_LOG_SAMPLE_RATE >= 1.0:
+        return True
+    if _ACCESS_LOG_SAMPLE_RATE <= 0.0:
+        return False
+
+    digest = hashlib.md5(request_id.encode("utf-8")).hexdigest()
+    bucket = int(digest[:8], 16) / 0xFFFFFFFF
+    return bucket < _ACCESS_LOG_SAMPLE_RATE
 
 
 def _rule_matches_ip(target_type: str, target_value: str, ip_value: str) -> bool:
@@ -360,30 +386,49 @@ async def access_log_middleware(request, call_next):
         )
 
     latency_ms = int((time.perf_counter() - start_time) * 1000)
-    db = SessionLocal()
-    try:
-        operator_user_id = _resolve_operator_user_id(db, request)
-        log_type = "error" if status_code >= 500 else "access"
-        level = "error" if status_code >= 500 else ("warn" if status_code >= 400 else "info")
-        log_service.create_system_log(
-            db,
-            log_type=log_type,
-            level=level,
-            module=module,
-            action="http.request",
-            message=message,
-            operator_user_id=operator_user_id,
-            request_id=request_id,
-            ip_address=client_ip,
-            user_agent=request.headers.get("user-agent"),
-            path=path,
-            method=method,
-            status_code=status_code,
-            latency_ms=latency_ms,
-            meta=access_meta,
-        )
-    finally:
-        db.close()
+    if status_code < 400:
+        if _should_sample_access_log(request_id):
+            log_service.create_system_log_async(
+                log_type="access",
+                level="info",
+                module=module,
+                action="http.request",
+                message=message,
+                operator_user_id=None,
+                request_id=request_id,
+                ip_address=client_ip,
+                user_agent=request.headers.get("user-agent"),
+                path=path,
+                method=method,
+                status_code=status_code,
+                latency_ms=latency_ms,
+                meta=access_meta,
+            )
+    else:
+        db = SessionLocal()
+        try:
+            operator_user_id = _resolve_operator_user_id(db, request)
+            log_type = "error" if status_code >= 500 else "access"
+            level = "error" if status_code >= 500 else "warn"
+            log_service.create_system_log(
+                db,
+                log_type=log_type,
+                level=level,
+                module=module,
+                action="http.request",
+                message=message,
+                operator_user_id=operator_user_id,
+                request_id=request_id,
+                ip_address=client_ip,
+                user_agent=request.headers.get("user-agent"),
+                path=path,
+                method=method,
+                status_code=status_code,
+                latency_ms=latency_ms,
+                meta=access_meta,
+            )
+        finally:
+            db.close()
 
     response.headers.setdefault("X-Request-Id", request_id)
     return response
