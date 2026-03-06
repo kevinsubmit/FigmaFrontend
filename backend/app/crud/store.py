@@ -1,10 +1,11 @@
 """
 Store CRUD operations
 """
-from sqlalchemy import or_
+from sqlalchemy import and_, case, func, literal, or_
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timezone
+from math import asin, cos, radians, sin, sqrt
 from app.models.store import Store, StoreImage
 from app.schemas.store import StoreCreate, StoreUpdate
 
@@ -27,136 +28,148 @@ def get_stores(
     include_hidden: bool = False,
 ) -> List[Store]:
     """Get list of stores with optional filters and sorting"""
-    from sqlalchemy import case
-    from math import radians, cos, sin, asin, sqrt
-    
+
     query = db.query(Store)
     if not include_hidden:
         query = query.filter(or_(Store.is_visible.is_(True), Store.is_visible.is_(None)))
-    
+
     # Filter by city
     if city:
         query = query.filter(Store.city == city)
-    
+
     # Search in name and address
     if search:
         query = query.filter(
             (Store.name.contains(search)) |
             (Store.address.contains(search))
         )
-    
+
     # Filter by minimum rating
     if min_rating is not None:
         query = query.filter(Store.rating >= min_rating)
-    
-    # Calculate distance for all stores if user location is provided
-    stores_with_distance = None
-    if user_lat is not None and user_lng is not None:
-        lat1 = radians(user_lat)
-        lng1 = radians(user_lng)
-        
-        # Get all stores first
-        stores = query.all()
-        
-        # Calculate distance for each store
-        stores_with_distance = []
-        for store in stores:
-            if store.latitude and store.longitude:
-                lat2 = radians(store.latitude)
-                lng2 = radians(store.longitude)
-                
-                # Haversine formula
-                dlat = lat2 - lat1
-                dlng = lng2 - lng1
-                a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlng/2)**2
-                c = 2 * asin(sqrt(a))
-                distance = 3959 * c  # Radius of earth in miles
-                
-                # Attach distance to store object
-                store.distance = round(distance, 1)
-                stores_with_distance.append((store, distance))
-            else:
-                # If store doesn't have coordinates, put it at the end
-                store.distance = None
-                stores_with_distance.append((store, float('inf')))
-    
-    def rank_value(store: Store) -> int:
-        return store.manual_rank if store.manual_rank is not None else 10**9
+    has_location = user_lat is not None and user_lng is not None
 
-    def quality_score(store: Store) -> float:
-        rating = float(store.rating or 0.0)
-        review_count = float(store.review_count or 0.0)
-        confidence = min(review_count / 100.0, 1.0)
-        return (rating / 5.0) * (0.6 + 0.4 * confidence)
+    rating_expr = func.coalesce(Store.rating, 0.0)
+    review_count_expr = func.coalesce(Store.review_count, 0.0)
+    boost_score_expr = func.coalesce(Store.boost_score, 0.0)
 
-    def distance_score(distance: Optional[float]) -> float:
-        if distance is None or distance == float("inf"):
-            return 0.0
-        return max(0.0, 1.0 - min(distance, 20.0) / 20.0)
+    # SQL Haversine distance in miles. Exact distance values are still attached
+    # to result rows below so API payloads stay unchanged.
+    distance_miles_expr = None
+    if has_location:
+        user_lat_lit = literal(float(user_lat))
+        user_lng_lit = literal(float(user_lng))
+        lat_rad = func.radians(Store.latitude)
+        lng_rad = func.radians(Store.longitude)
+        user_lat_rad = func.radians(user_lat_lit)
+        user_lng_rad = func.radians(user_lng_lit)
 
-    def manual_rank_score(store: Store) -> float:
-        if store.manual_rank is None:
-            return 0.0
-        return max(0.0, 1.0 - min(float(store.manual_rank), 200.0) / 200.0)
+        dlat = lat_rad - user_lat_rad
+        dlng = lng_rad - user_lng_rad
+        haversine_a = (
+            func.pow(func.sin(dlat / 2.0), 2.0)
+            + func.cos(user_lat_rad) * func.cos(lat_rad) * func.pow(func.sin(dlng / 2.0), 2.0)
+        )
+        safe_haversine_a = case(
+            (haversine_a < 0.0, 0.0),
+            (haversine_a > 1.0, 1.0),
+            else_=haversine_a,
+        )
+        distance_raw_expr = 3959.0 * 2.0 * func.asin(func.sqrt(safe_haversine_a))
+        distance_miles_expr = case(
+            (
+                and_(Store.latitude.isnot(None), Store.longitude.isnot(None)),
+                distance_raw_expr,
+            ),
+            else_=literal(999999.0),
+        )
 
-    def featured_bonus(store: Store) -> float:
-        if not store.featured_until:
-            return 0.0
-        try:
-            feature_time = store.featured_until
-            now = datetime.now(timezone.utc)
-            if feature_time.tzinfo is None:
-                feature_time = feature_time.replace(tzinfo=timezone.utc)
-            return 0.2 if feature_time > now else 0.0
-        except Exception:
-            return 0.0
+    review_confidence_expr = case(
+        (review_count_expr / 100.0 > 1.0, 1.0),
+        else_=review_count_expr / 100.0,
+    )
+    quality_score_expr = (rating_expr / 5.0) * (0.6 + 0.4 * review_confidence_expr)
+    manual_rank_score_expr = case(
+        (Store.manual_rank.is_(None), 0.0),
+        (Store.manual_rank >= 200, 0.0),
+        else_=1.0 - (Store.manual_rank / 200.0),
+    )
+    now_utc = datetime.now(timezone.utc)
+    featured_bonus_expr = case(
+        (
+            and_(Store.featured_until.isnot(None), Store.featured_until > now_utc),
+            0.2,
+        ),
+        else_=0.0,
+    )
 
-    # Sort results
     if sort_by == "top_rated":
-        if stores_with_distance:
-            # Keep top-rated as primary; manual rank as tie-breaker.
-            stores_with_distance.sort(key=lambda x: (-x[0].rating, -x[0].review_count, rank_value(x[0])))
-            sorted_stores = [s[0] for s in stores_with_distance]
-            return sorted_stores[skip:skip+limit]
-        else:
-            query = query.order_by(Store.rating.desc(), Store.review_count.desc(), Store.manual_rank.asc().nullslast())
-            return query.offset(skip).limit(limit).all()
-    elif sort_by == "distance" and stores_with_distance:
-        # Sort by distance
-        stores_with_distance.sort(key=lambda x: (x[1], rank_value(x[0])))
-        sorted_stores = [s[0] for s in stores_with_distance]
-        return sorted_stores[skip:skip+limit]
+        query = query.order_by(
+            Store.rating.desc(),
+            Store.review_count.desc(),
+            Store.manual_rank.asc().nullslast(),
+        )
+    elif sort_by == "distance" and has_location and distance_miles_expr is not None:
+        query = query.order_by(
+            distance_miles_expr.asc(),
+            Store.manual_rank.asc().nullslast(),
+            rating_expr.desc(),
+        )
     else:
-        # Default: "recommended" - weighted hybrid score.
-        if stores_with_distance:
-            scored = []
-            for store, distance in stores_with_distance:
-                score = (
-                    0.55 * quality_score(store)
-                    + 0.30 * distance_score(distance)
-                    + 0.15 * manual_rank_score(store)
-                    + float(store.boost_score or 0.0)
-                    + featured_bonus(store)
-                )
-                store.recommended_score = round(score, 4)
-                scored.append((store, score))
-            scored.sort(key=lambda x: (-x[1], rank_value(x[0]), -x[0].rating))
-            sorted_stores = [s[0] for s in scored]
-            return sorted_stores[skip:skip+limit]
+        # Default: "recommended"
+        if has_location and distance_miles_expr is not None:
+            distance_score_expr = case(
+                (distance_miles_expr >= 20.0, 0.0),
+                else_=1.0 - (distance_miles_expr / 20.0),
+            )
+            recommended_score_expr = (
+                quality_score_expr * 0.55
+                + distance_score_expr * 0.30
+                + manual_rank_score_expr * 0.15
+                + boost_score_expr
+                + featured_bonus_expr
+            )
         else:
-            review_score = case(
-                (Store.review_count / 100.0 > 1.0, 1.0),
-                else_=Store.review_count / 100.0
+            # Keep pre-existing no-location ranking behavior for compatibility.
+            review_score_expr = case(
+                (review_count_expr / 100.0 > 1.0, 1.0),
+                else_=review_count_expr / 100.0,
             )
-            manual_rank_score_expr = case(
+            manual_rank_no_loc_expr = case(
                 (Store.manual_rank.is_(None), 0.0),
-                else_=1.0 - (Store.manual_rank / 200.0)
+                else_=1.0 - (Store.manual_rank / 200.0),
             )
-            query = query.order_by(
-                (Store.rating * 0.55 + review_score * 0.30 + manual_rank_score_expr * 0.15 + Store.boost_score).desc(),
-                Store.manual_rank.asc().nullslast()
+            recommended_score_expr = (
+                rating_expr * 0.55
+                + review_score_expr * 0.30
+                + manual_rank_no_loc_expr * 0.15
+                + boost_score_expr
             )
-            return query.offset(skip).limit(limit).all()
+        query = query.order_by(
+            recommended_score_expr.desc(),
+            Store.manual_rank.asc().nullslast(),
+            rating_expr.desc(),
+        )
+
+    stores = query.offset(skip).limit(limit).all()
+
+    if has_location:
+        lat1 = radians(float(user_lat))
+        lng1 = radians(float(user_lng))
+        for store in stores:
+            if store.latitude is None or store.longitude is None:
+                store.distance = None
+                continue
+
+            lat2 = radians(float(store.latitude))
+            lng2 = radians(float(store.longitude))
+            dlat = lat2 - lat1
+            dlng = lng2 - lng1
+            a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlng / 2) ** 2
+            c = 2 * asin(sqrt(a))
+            store.distance = round(3959 * c, 1)
+
+    return stores
 
 
 def create_store(db: Session, store: StoreCreate) -> Store:
