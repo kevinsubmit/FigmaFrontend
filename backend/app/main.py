@@ -14,6 +14,7 @@ from pathlib import Path
 from datetime import datetime
 import ipaddress
 import json
+import re
 import time
 import uuid
 from urllib.parse import parse_qsl, urlencode
@@ -40,6 +41,8 @@ _SENSITIVE_QUERY_KEYS = {
     "verification_code",
     "code",
 }
+_REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
+_CLIENT_PLATFORM_PATTERN = re.compile(r"^[a-z0-9._-]{1,32}$")
 
 
 @asynccontextmanager
@@ -99,10 +102,19 @@ def _extract_client_ip(request) -> str:
 
 
 def _extract_request_id(request) -> str:
-    incoming = request.headers.get("x-request-id")
-    if incoming and incoming.strip():
-        return incoming.strip()
+    incoming = _normalize_header_value(request.headers.get("x-request-id"), max_length=128)
+    if incoming and _REQUEST_ID_PATTERN.fullmatch(incoming):
+        return incoming
     return uuid.uuid4().hex
+
+
+def _normalize_header_value(raw_value: str | None, max_length: int) -> str:
+    if not raw_value:
+        return ""
+    normalized = raw_value.replace("\r", "").replace("\n", "").replace("\t", "").strip()
+    if len(normalized) > max_length:
+        normalized = normalized[:max_length]
+    return normalized
 
 
 def _is_sensitive_query_key(key: str) -> bool:
@@ -132,8 +144,12 @@ def _sanitize_query_string(raw_query: str | None) -> str:
 
 
 def _extract_client_meta(request) -> dict[str, str]:
-    platform = (request.headers.get("x-client-platform") or "").strip().lower()
-    version = (request.headers.get("x-client-version") or "").strip()
+    platform = _normalize_header_value(request.headers.get("x-client-platform"), max_length=32).lower()
+    version = _normalize_header_value(request.headers.get("x-client-version"), max_length=64)
+
+    if platform and not _CLIENT_PLATFORM_PATTERN.fullmatch(platform):
+        platform = ""
+
     meta: dict[str, str] = {}
     if platform:
         meta["client_platform"] = platform
