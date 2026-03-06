@@ -18,6 +18,7 @@ class Store(Base):
     zip_code = Column(String(20))
     latitude = Column(Float)
     longitude = Column(Float)
+    time_zone = Column(String(64), nullable=False, default="America/New_York")
     phone = Column(String(20))
     email = Column(String(255))
     is_visible = Column(Boolean, nullable=False, default=True, index=True)

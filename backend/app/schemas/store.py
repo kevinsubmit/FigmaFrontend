@@ -1,9 +1,10 @@
 """
 Store Schemas
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime, date, time
+from zoneinfo import ZoneInfo
 
 
 class StoreImageBase(BaseModel):
@@ -37,10 +38,23 @@ class StoreBase(BaseModel):
     zip_code: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    time_zone: str = "America/New_York"
     phone: Optional[str] = None
     email: Optional[str] = None
     description: Optional[str] = None
     opening_hours: Optional[str] = None
+
+    @field_validator("time_zone")
+    @classmethod
+    def validate_time_zone(cls, value: str) -> str:
+        normalized = (value or "").strip()
+        if not normalized:
+            normalized = "America/New_York"
+        try:
+            ZoneInfo(normalized)
+        except Exception as exc:
+            raise ValueError("time_zone must be a valid IANA timezone identifier") from exc
+        return normalized
 
 
 class StoreCreate(StoreBase):
@@ -57,10 +71,25 @@ class StoreUpdate(BaseModel):
     zip_code: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    time_zone: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
     description: Optional[str] = None
     opening_hours: Optional[str] = None
+
+    @field_validator("time_zone")
+    @classmethod
+    def validate_optional_time_zone(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("time_zone cannot be empty")
+        try:
+            ZoneInfo(normalized)
+        except Exception as exc:
+            raise ValueError("time_zone must be a valid IANA timezone identifier") from exc
+        return normalized
 
 
 class Store(StoreBase):

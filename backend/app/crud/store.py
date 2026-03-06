@@ -174,7 +174,10 @@ def get_stores(
 
 def create_store(db: Session, store: StoreCreate) -> Store:
     """Create new store"""
-    db_store = Store(**store.dict())
+    payload = store.model_dump()
+    if not payload.get("time_zone"):
+        payload["time_zone"] = "America/New_York"
+    db_store = Store(**payload)
     db.add(db_store)
     db.commit()
     db.refresh(db_store)
@@ -187,7 +190,9 @@ def update_store(db: Session, store_id: int, store: StoreUpdate) -> Optional[Sto
     if not db_store:
         return None
     
-    update_data = store.dict(exclude_unset=True)
+    update_data = store.model_dump(exclude_unset=True)
+    if "time_zone" in update_data and not update_data.get("time_zone"):
+        update_data["time_zone"] = "America/New_York"
     for field, value in update_data.items():
         setattr(db_store, field, value)
     

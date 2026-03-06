@@ -65,7 +65,8 @@ from app.crud import coupons as crud_coupons
 from app.utils.phone_privacy import mask_phone
 
 router = APIRouter()
-ET_TZ = ZoneInfo("America/New_York")
+DEFAULT_STORE_TIMEZONE = "America/New_York"
+DEFAULT_STORE_TZ = ZoneInfo(DEFAULT_STORE_TIMEZONE)
 logger = logging.getLogger(__name__)
 
 
@@ -160,9 +161,24 @@ def _resolve_guest_owner_user_id(db: Session, raw_phone: Optional[str], fallback
         return int(user.id)
     return fallback_user_id
 
-def _ensure_not_past_appointment(appointment_date, appointment_time):
-    appointment_datetime = datetime.combine(appointment_date, appointment_time).replace(tzinfo=ET_TZ)
-    now = datetime.now(ET_TZ)
+def _resolve_zoneinfo(time_zone_identifier: Optional[str]) -> ZoneInfo:
+    normalized = (time_zone_identifier or "").strip()
+    if not normalized:
+        return DEFAULT_STORE_TZ
+    try:
+        return ZoneInfo(normalized)
+    except Exception:
+        return DEFAULT_STORE_TZ
+
+
+def _resolve_store_timezone(db: Session, store_id: int) -> ZoneInfo:
+    value = db.query(Store.time_zone).filter(Store.id == store_id).scalar()
+    return _resolve_zoneinfo(value)
+
+
+def _ensure_not_past_appointment(appointment_date, appointment_time, store_timezone: ZoneInfo):
+    appointment_datetime = datetime.combine(appointment_date, appointment_time).replace(tzinfo=store_timezone)
+    now = datetime.now(store_timezone)
     if appointment_datetime <= now:
         raise HTTPException(
             status_code=400,
@@ -512,8 +528,17 @@ def create_appointment(
     Create a new appointment (requires authentication)
     """
     user_id = current_user.id
-    _ensure_not_past_appointment(appointment.appointment_date, appointment.appointment_time)
     ip_address = request.client.host if request.client else None
+
+    store = db.query(Store).filter(Store.id == appointment.store_id).first()
+    if not store or store.is_visible is False:
+        raise HTTPException(status_code=400, detail="Store is not available")
+    store_timezone = _resolve_zoneinfo(store.time_zone)
+    _ensure_not_past_appointment(
+        appointment.appointment_date,
+        appointment.appointment_time,
+        store_timezone=store_timezone,
+    )
 
     decision = risk_service.evaluate_booking_request(
         db,
@@ -553,10 +578,7 @@ def create_appointment(
         appointment_time=appointment.appointment_time,
         duration_minutes=service.duration_minutes,
     )
-    store = db.query(Store).filter(Store.id == appointment.store_id).first()
-    if not store or store.is_visible is False:
-        raise HTTPException(status_code=400, detail="Store is not available")
-    
+
     try:
         # Serialize booking checks for the same user/technician to narrow race windows.
         _lock_booking_subjects(
@@ -633,11 +655,16 @@ def _create_group_child_appointment(
     store_id: int,
     appointment_date,
     appointment_time,
+    store_timezone: ZoneInfo,
     item: AppointmentGroupGuestCreate,
     owner_user_id: Optional[int] = None,
     normalized_guest_phone: Optional[str] = None,
 ) -> AppointmentModel:
-    _ensure_not_past_appointment(appointment_date, appointment_time)
+    _ensure_not_past_appointment(
+        appointment_date,
+        appointment_time,
+        store_timezone=store_timezone,
+    )
     service = _validate_store_service_for_group(db, store_id, item.service_id)
     _ensure_within_store_business_hours(
         db=db,
@@ -711,10 +738,15 @@ def create_appointment_group(
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
-    _ensure_not_past_appointment(payload.appointment_date, payload.appointment_time)
     store = db.query(Store).filter(Store.id == payload.store_id).first()
     if not store or store.is_visible is False:
         raise HTTPException(status_code=400, detail="Store is not available")
+    store_timezone = _resolve_zoneinfo(store.time_zone)
+    _ensure_not_past_appointment(
+        payload.appointment_date,
+        payload.appointment_time,
+        store_timezone=store_timezone,
+    )
 
     host_service = _validate_store_service_for_group(db, payload.store_id, payload.host_service_id)
     _ensure_within_store_business_hours(
@@ -811,6 +843,7 @@ def create_appointment_group(
                 store_id=payload.store_id,
                 appointment_date=payload.appointment_date,
                 appointment_time=payload.appointment_time,
+                store_timezone=store_timezone,
                 item=data["item"],
                 owner_user_id=data["owner_user_id"],
                 normalized_guest_phone=data["normalized_guest_phone"],
@@ -856,6 +889,7 @@ def append_appointment_group_guests(
         raise HTTPException(status_code=403, detail="Not authorized to modify this appointment group")
     if host.status == AppointmentStatus.CANCELLED:
         raise HTTPException(status_code=400, detail="Cannot append guests to a cancelled group")
+    store_timezone = _resolve_store_timezone(db, group.store_id)
 
     guest_inputs = []
     for item in payload.guests:
@@ -886,6 +920,7 @@ def append_appointment_group_guests(
                 store_id=group.store_id,
                 appointment_date=group.appointment_date,
                 appointment_time=group.appointment_time,
+                store_timezone=store_timezone,
                 item=data["item"],
                 owner_user_id=data["owner_user_id"],
                 normalized_guest_phone=data["normalized_guest_phone"],
@@ -1189,7 +1224,11 @@ def update_appointment(
 
         new_date = appointment_update.appointment_date or appointment.appointment_date
         new_time = appointment_update.appointment_time or appointment.appointment_time
-        _ensure_not_past_appointment(new_date, new_time)
+        _ensure_not_past_appointment(
+            new_date,
+            new_time,
+            store_timezone=_resolve_store_timezone(db, appointment.store_id),
+        )
 
         service = db.query(Service).filter(Service.id == appointment.service_id).first()
         if not service:
@@ -1301,7 +1340,11 @@ def reschedule_appointment(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
-    _ensure_not_past_appointment(reschedule_data.new_date, reschedule_data.new_time)
+    _ensure_not_past_appointment(
+        reschedule_data.new_date,
+        reschedule_data.new_time,
+        store_timezone=_resolve_store_timezone(db, appointment.store_id),
+    )
     
     # Appointment owner can reschedule. Store admins can reschedule appointments in their store.
     if appointment.user_id != current_user.id:
