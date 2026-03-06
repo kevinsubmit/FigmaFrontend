@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { type AxiosRequestConfig } from 'axios';
 import { toast } from 'react-toastify';
 
 const API_BASE_URL =
@@ -15,6 +15,12 @@ export const api = axios.create({
 
 const MUTATION_METHODS = new Set(['post', 'put', 'patch', 'delete']);
 let isRedirectingToLogin = false;
+let refreshRequestPromise: Promise<string | null> | null = null;
+const REFRESH_REQUEST_TIMEOUT_MS = 15000;
+
+type RetryableRequestConfig = AxiosRequestConfig & {
+  _retryAfterRefresh?: boolean;
+};
 
 const generateRequestId = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -68,6 +74,59 @@ const withRequestReference = (message: string, requestReference: string | null):
   return `${normalizedMessage} [Ref: ${normalizedReference}]`;
 };
 
+const buildTraceHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = {
+    'X-Request-Id': generateRequestId(),
+    'X-Client-Platform': ADMIN_CLIENT_PLATFORM,
+  };
+  if (ADMIN_CLIENT_VERSION) {
+    headers['X-Client-Version'] = ADMIN_CLIENT_VERSION;
+  }
+  return headers;
+};
+
+const refreshAccessToken = async (): Promise<string | null> => {
+  if (refreshRequestPromise) {
+    return refreshRequestPromise;
+  }
+
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) {
+    return null;
+  }
+
+  refreshRequestPromise = (async () => {
+    try {
+      const response = await axios.post<{ access_token?: string; refresh_token?: string }>(
+        `${API_BASE_URL}/api/v1/auth/refresh`,
+        { refresh_token: refreshToken },
+        {
+          timeout: REFRESH_REQUEST_TIMEOUT_MS,
+          headers: {
+            'Content-Type': 'application/json',
+            ...buildTraceHeaders(),
+          },
+        },
+      );
+
+      const nextAccessToken = response.data?.access_token;
+      const nextRefreshToken = response.data?.refresh_token;
+      if (!nextAccessToken || !nextRefreshToken) {
+        return null;
+      }
+
+      setToken(nextAccessToken, nextRefreshToken);
+      return nextAccessToken;
+    } catch {
+      return null;
+    } finally {
+      refreshRequestPromise = null;
+    }
+  })();
+
+  return refreshRequestPromise;
+};
+
 const extractBackendMessage = (payload: any): string | null => {
   if (!payload) return null;
   if (typeof payload === 'string') return payload;
@@ -100,11 +159,7 @@ const extractBackendMessage = (payload: any): string | null => {
 
 api.interceptors.request.use((config) => {
   config.headers = config.headers ?? {};
-  config.headers['X-Request-Id'] = generateRequestId();
-  config.headers['X-Client-Platform'] = ADMIN_CLIENT_PLATFORM;
-  if (ADMIN_CLIENT_VERSION) {
-    config.headers['X-Client-Version'] = ADMIN_CLIENT_VERSION;
-  }
+  Object.assign(config.headers, buildTraceHeaders());
 
   const token = localStorage.getItem('access_token');
   if (token) {
@@ -127,10 +182,29 @@ api.interceptors.response.use(
   (error) => {
     const status = error?.response?.status;
     const requestUrl = String(error?.config?.url || '');
+    const originalRequest = error?.config as RetryableRequestConfig | undefined;
     const isAuthEndpoint =
       requestUrl.includes('/auth/login') ||
       requestUrl.includes('/auth/refresh') ||
       requestUrl.includes('/auth/register');
+
+    if (status === 401 && originalRequest && !originalRequest._retryAfterRefresh && !isAuthEndpoint) {
+      originalRequest._retryAfterRefresh = true;
+      return refreshAccessToken().then((nextToken) => {
+        if (!nextToken) {
+          clearToken();
+          if (!isRedirectingToLogin && window.location.pathname !== '/admin/login') {
+            isRedirectingToLogin = true;
+            toast.error('登录已过期，请重新登录');
+            window.location.replace('/admin/login');
+          }
+          return Promise.reject(error);
+        }
+        originalRequest.headers = originalRequest.headers ?? {};
+        originalRequest.headers.Authorization = `Bearer ${nextToken}`;
+        return api.request(originalRequest);
+      });
+    }
 
     if (status === 401 && !isAuthEndpoint) {
       clearToken();
@@ -162,6 +236,7 @@ api.interceptors.response.use(
 );
 
 export const setToken = (token: string, refreshToken?: string) => {
+  isRedirectingToLogin = false;
   localStorage.setItem('access_token', token);
   if (refreshToken) {
     localStorage.setItem('refresh_token', refreshToken);
