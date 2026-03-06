@@ -9,6 +9,8 @@ import { getApiBaseUrl } from '../utils/assetUrl';
 
 // API base URL from Vite env
 const API_BASE_URL = getApiBaseUrl();
+const WEB_CLIENT_PLATFORM = 'web-h5';
+const WEB_CLIENT_VERSION = (import.meta.env.VITE_APP_VERSION as string | undefined)?.trim() || 'web';
 
 interface RequestOptions extends RequestInit {
   requiresAuth?: boolean;
@@ -51,6 +53,13 @@ const withRequestReference = (message: string, requestReference: string | null):
     return normalizedMessage;
   }
   return `${normalizedMessage} [Ref: ${normalizedReference}]`;
+};
+
+const generateRequestId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 };
 
 class APIClient {
@@ -126,6 +135,12 @@ class APIClient {
         ...headers,
       },
     };
+    const normalizedHeaders = config.headers as Record<string, string>;
+    normalizedHeaders['X-Request-Id'] = generateRequestId();
+    normalizedHeaders['X-Client-Platform'] = WEB_CLIENT_PLATFORM;
+    if (WEB_CLIENT_VERSION) {
+      normalizedHeaders['X-Client-Version'] = WEB_CLIENT_VERSION;
+    }
     const method = (config.method || 'GET').toUpperCase();
 
     // If local token exists and caller did not provide Authorization, attach it.

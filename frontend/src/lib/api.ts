@@ -15,6 +15,8 @@ const READ_REQUEST_TIMEOUT_MS = 15000;
 const WRITE_REQUEST_TIMEOUT_MS = 20000;
 const UPLOAD_REQUEST_TIMEOUT_MS = 120000;
 const REFRESH_REQUEST_TIMEOUT_MS = 15000;
+const WEB_CLIENT_PLATFORM = 'web-h5';
+const WEB_CLIENT_VERSION = (import.meta.env.VITE_APP_VERSION as string | undefined)?.trim() || 'web';
 
 // 创建axios实例
 const apiClient = axios.create({
@@ -70,6 +72,38 @@ const normalizePath = (rawUrl?: string) => {
     const noQuery = rawUrl.split('?')[0].split('#')[0] || rawUrl;
     const path = noQuery.replace(/^https?:\/\/[^/]+/i, '').replace(/^\/api\/v1/, '');
     return path.startsWith('/') ? path : `/${path}`;
+  }
+};
+
+const generateRequestId = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
+const applyClientHeaders = (headers: unknown): void => {
+  const requestId = generateRequestId();
+  const candidate = headers as {
+    set?: (name: string, value: string) => void;
+    [key: string]: unknown;
+  } | undefined;
+
+  if (candidate && typeof candidate.set === 'function') {
+    candidate.set('X-Request-Id', requestId);
+    candidate.set('X-Client-Platform', WEB_CLIENT_PLATFORM);
+    if (WEB_CLIENT_VERSION) {
+      candidate.set('X-Client-Version', WEB_CLIENT_VERSION);
+    }
+    return;
+  }
+
+  if (candidate && typeof candidate === 'object') {
+    candidate['X-Request-Id'] = requestId;
+    candidate['X-Client-Platform'] = WEB_CLIENT_PLATFORM;
+    if (WEB_CLIENT_VERSION) {
+      candidate['X-Client-Version'] = WEB_CLIENT_VERSION;
+    }
   }
 };
 
@@ -181,6 +215,9 @@ const refreshAccessToken = async (): Promise<string | null> => {
           timeout: REFRESH_REQUEST_TIMEOUT_MS,
           headers: {
             'Content-Type': 'application/json',
+            'X-Request-Id': generateRequestId(),
+            'X-Client-Platform': WEB_CLIENT_PLATFORM,
+            ...(WEB_CLIENT_VERSION ? { 'X-Client-Version': WEB_CLIENT_VERSION } : {}),
           },
         },
       );
@@ -333,6 +370,7 @@ apiClient.get = (async <T = any, R = AxiosResponse<T>, D = any>(
 // 请求拦截器 - 添加Token
 apiClient.interceptors.request.use(
   (config) => {
+    applyClientHeaders(config.headers);
     const token = localStorage.getItem('access_token');
     if (token !== lastAuthToken) {
       clearGetCache();
