@@ -7,6 +7,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import json
+import logging
 
 from app.api.deps import get_db, get_current_user
 from app.crud import appointment as crud_appointment
@@ -65,6 +66,7 @@ from app.utils.phone_privacy import mask_phone
 
 router = APIRouter()
 ET_TZ = ZoneInfo("America/New_York")
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_VIP_LEVELS = [
@@ -226,6 +228,65 @@ def _ensure_not_blocked_by_store_slot(
                 status_code=400,
                 detail=f"This time slot is blocked by store{reason_text}. Please choose another time.",
             )
+
+
+def _lock_booking_subjects(
+    db: Session,
+    *,
+    user_ids: Optional[List[int]] = None,
+    technician_ids: Optional[List[Optional[int]]] = None,
+) -> None:
+    # Keep lock order deterministic to reduce deadlock risk.
+    for user_id in sorted({int(uid) for uid in (user_ids or []) if uid is not None}):
+        db.query(UserModel.id).filter(UserModel.id == user_id).with_for_update().first()
+    for technician_id in sorted({int(tid) for tid in (technician_ids or []) if tid is not None}):
+        db.query(Technician.id).filter(Technician.id == technician_id).with_for_update().first()
+
+
+def _run_appointment_creation_side_effects(
+    db: Session,
+    *,
+    appointment: AppointmentModel,
+    user_id: int,
+    ip_address: Optional[str],
+) -> None:
+    try:
+        risk_service.log_risk_event(
+            db,
+            user_id=user_id,
+            event_type="appointment_created",
+            appointment_id=appointment.id,
+            ip_address=ip_address,
+            meta={"appointment_date": str(appointment.appointment_date)},
+        )
+    except Exception as exc:
+        logger.warning(
+            "Risk event logging skipped for appointment_id=%s (%s)",
+            appointment.id,
+            exc,
+        )
+    try:
+        notification_service.notify_appointment_created(db, appointment)
+    except Exception as exc:
+        logger.warning(
+            "Appointment created notification skipped for appointment_id=%s (%s)",
+            appointment.id,
+            exc,
+        )
+    try:
+        reminder_service.create_reminders_on_appointment_creation(
+            db,
+            appointment.id,
+            user_id,
+            appointment.appointment_date,
+            appointment.appointment_time,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Reminder creation skipped for appointment_id=%s (%s)",
+            appointment.id,
+            exc,
+        )
 
 
 def _resolve_appointment_order_amount(appointment, service: Optional[Service]) -> float:
@@ -496,42 +557,38 @@ def create_appointment(
     if not store or store.is_visible is False:
         raise HTTPException(status_code=400, detail="Store is not available")
     
-    # Check for conflicts using improved conflict checker
-    conflict_result = crud_appointment.check_time_conflict(
-        db,
-        appointment_date=appointment.appointment_date,
-        appointment_time=appointment.appointment_time,
-        service_id=appointment.service_id,
-        technician_id=appointment.technician_id,
-        user_id=user_id
-    )
-    
-    if conflict_result["has_conflict"]:
-        raise HTTPException(
-            status_code=400,
-            detail=conflict_result["message"]
+    try:
+        # Serialize booking checks for the same user/technician to narrow race windows.
+        _lock_booking_subjects(
+            db,
+            user_ids=[user_id],
+            technician_ids=[appointment.technician_id],
         )
-    
-    db_appointment = crud_appointment.create_appointment(
-        db,
-        appointment=appointment,
-        user_id=user_id
-    )
-    if service.price is not None and db_appointment.order_amount is None:
-        db_appointment.order_amount = float(service.price)
-    if db_appointment.original_amount is None and db_appointment.order_amount is not None:
-        db_appointment.original_amount = float(db_appointment.order_amount)
-    if service.price is not None and db_appointment.original_amount is None:
-        db_appointment.original_amount = float(service.price)
-    if (
-        db_appointment.coupon_discount_amount is None
-        or db_appointment.gift_card_used_amount is None
-        or db_appointment.cash_paid_amount is None
-        or db_appointment.final_paid_amount is None
-        or db_appointment.points_earned is None
-        or db_appointment.points_reverted is None
-        or db_appointment.settlement_status is None
-    ):
+
+        # Check for conflicts using improved conflict checker
+        conflict_result = crud_appointment.check_time_conflict(
+            db,
+            appointment_date=appointment.appointment_date,
+            appointment_time=appointment.appointment_time,
+            service_id=appointment.service_id,
+            technician_id=appointment.technician_id,
+            user_id=user_id,
+        )
+        if conflict_result["has_conflict"]:
+            raise HTTPException(status_code=400, detail=conflict_result["message"])
+
+        db_appointment = crud_appointment.create_appointment(
+            db,
+            appointment=appointment,
+            user_id=user_id,
+            auto_commit=False,
+        )
+        if service.price is not None and db_appointment.order_amount is None:
+            db_appointment.order_amount = float(service.price)
+        if db_appointment.original_amount is None and db_appointment.order_amount is not None:
+            db_appointment.original_amount = float(db_appointment.order_amount)
+        if service.price is not None and db_appointment.original_amount is None:
+            db_appointment.original_amount = float(service.price)
         db_appointment.coupon_discount_amount = float(db_appointment.coupon_discount_amount or 0)
         db_appointment.gift_card_used_amount = float(db_appointment.gift_card_used_amount or 0)
         db_appointment.cash_paid_amount = float(db_appointment.cash_paid_amount or 0)
@@ -539,29 +596,23 @@ def create_appointment(
         db_appointment.points_earned = int(db_appointment.points_earned or 0)
         db_appointment.points_reverted = int(db_appointment.points_reverted or 0)
         db_appointment.settlement_status = db_appointment.settlement_status or "unsettled"
+
         db.commit()
         db.refresh(db_appointment)
-    risk_service.log_risk_event(
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        raise
+
+    _run_appointment_creation_side_effects(
         db,
+        appointment=db_appointment,
         user_id=user_id,
-        event_type="appointment_created",
-        appointment_id=db_appointment.id,
         ip_address=ip_address,
-        meta={"appointment_date": str(db_appointment.appointment_date)},
     )
-    
-    # Send notification to store admin
-    notification_service.notify_appointment_created(db, db_appointment)
-    
-    # Create reminders for the appointment
-    reminder_service.create_reminders_on_appointment_creation(
-        db,
-        db_appointment.id,
-        user_id,
-        db_appointment.appointment_date,
-        db_appointment.appointment_time
-    )
-    
+
     return db_appointment
 
 
@@ -583,6 +634,8 @@ def _create_group_child_appointment(
     appointment_date,
     appointment_time,
     item: AppointmentGroupGuestCreate,
+    owner_user_id: Optional[int] = None,
+    normalized_guest_phone: Optional[str] = None,
 ) -> AppointmentModel:
     _ensure_not_past_appointment(appointment_date, appointment_time)
     service = _validate_store_service_for_group(db, store_id, item.service_id)
@@ -600,17 +653,21 @@ def _create_group_child_appointment(
         appointment_time=appointment_time,
         duration_minutes=service.duration_minutes,
     )
-    normalized_guest_phone = _normalize_us_phone(item.guest_phone)
-    if item.guest_phone and not normalized_guest_phone:
+    resolved_guest_phone = normalized_guest_phone
+    if resolved_guest_phone is None:
+        resolved_guest_phone = _normalize_us_phone(item.guest_phone)
+    if item.guest_phone and not resolved_guest_phone:
         raise HTTPException(status_code=400, detail="Guest phone must be a valid US phone number")
-    owner_user_id = _resolve_guest_owner_user_id(db, normalized_guest_phone, user_id)
+    resolved_owner_user_id = owner_user_id
+    if resolved_owner_user_id is None:
+        resolved_owner_user_id = _resolve_guest_owner_user_id(db, resolved_guest_phone, user_id)
     conflict_result = crud_appointment.check_time_conflict(
         db,
         appointment_date=appointment_date,
         appointment_time=appointment_time,
         service_id=item.service_id,
         technician_id=item.technician_id,
-        user_id=owner_user_id if owner_user_id != user_id else None,
+        user_id=resolved_owner_user_id if resolved_owner_user_id != user_id else None,
     )
     if conflict_result["has_conflict"]:
         raise HTTPException(status_code=400, detail=conflict_result["message"])
@@ -624,11 +681,12 @@ def _create_group_child_appointment(
             appointment_time=appointment_time,
             notes=item.notes,
         ),
-        user_id=owner_user_id,
+        user_id=resolved_owner_user_id,
         booked_by_user_id=user_id,
+        auto_commit=False,
     )
     child.guest_name = item.guest_name
-    child.guest_phone = normalized_guest_phone
+    child.guest_phone = resolved_guest_phone
     if child.order_amount is None and service.price is not None:
         child.order_amount = float(service.price)
     if child.original_amount is None and child.order_amount is not None:
@@ -673,71 +731,101 @@ def create_appointment_group(
         appointment_time=payload.appointment_time,
         duration_minutes=host_service.duration_minutes,
     )
-    conflict_result = crud_appointment.check_time_conflict(
-        db,
-        appointment_date=payload.appointment_date,
-        appointment_time=payload.appointment_time,
-        service_id=payload.host_service_id,
-        technician_id=payload.host_technician_id,
-        user_id=current_user.id,
-    )
-    if conflict_result["has_conflict"]:
-        raise HTTPException(status_code=400, detail=conflict_result["message"])
-
-    host = crud_appointment.create_appointment(
-        db,
-        appointment=AppointmentCreate(
-            store_id=payload.store_id,
-            service_id=payload.host_service_id,
-            technician_id=payload.host_technician_id,
-            appointment_date=payload.appointment_date,
-            appointment_time=payload.appointment_time,
-            notes=payload.host_notes,
-        ),
-        user_id=current_user.id,
-    )
-    if host.order_amount is None and host_service.price is not None:
-        host.order_amount = float(host_service.price)
-    if host.original_amount is None and host.order_amount is not None:
-        host.original_amount = float(host.order_amount)
-    host.coupon_discount_amount = float(host.coupon_discount_amount or 0)
-    host.gift_card_used_amount = float(host.gift_card_used_amount or 0)
-    host.cash_paid_amount = float(host.cash_paid_amount or 0)
-    host.final_paid_amount = float(host.final_paid_amount or 0)
-    host.points_earned = int(host.points_earned or 0)
-    host.points_reverted = int(host.points_reverted or 0)
-    host.settlement_status = host.settlement_status or "unsettled"
-    host.is_group_host = True
-    host.payment_status = "unpaid"
-    host.paid_amount = 0.0
-
-    group = AppointmentGroup(
-        host_appointment_id=host.id,
-        store_id=payload.store_id,
-        appointment_date=payload.appointment_date,
-        appointment_time=payload.appointment_time,
-        created_by_user_id=current_user.id,
-    )
-    db.add(group)
-    db.flush()
-    group.group_code = f"GRP{payload.appointment_date.strftime('%y%m%d')}{group.id:06d}"
-    host.group_id = group.id
+    guest_inputs = []
+    for item in payload.guests:
+        normalized_guest_phone = _normalize_us_phone(item.guest_phone)
+        if item.guest_phone and not normalized_guest_phone:
+            raise HTTPException(status_code=400, detail="Guest phone must be a valid US phone number")
+        owner_user_id = _resolve_guest_owner_user_id(db, normalized_guest_phone, current_user.id)
+        guest_inputs.append(
+            {
+                "item": item,
+                "owner_user_id": owner_user_id,
+                "normalized_guest_phone": normalized_guest_phone,
+            }
+        )
 
     guest_appointments: List[AppointmentModel] = []
-    for item in payload.guests:
-        guest = _create_group_child_appointment(
-            db=db,
+    try:
+        _lock_booking_subjects(
+            db,
+            user_ids=[current_user.id] + [data["owner_user_id"] for data in guest_inputs],
+            technician_ids=[payload.host_technician_id] + [data["item"].technician_id for data in guest_inputs],
+        )
+
+        conflict_result = crud_appointment.check_time_conflict(
+            db,
+            appointment_date=payload.appointment_date,
+            appointment_time=payload.appointment_time,
+            service_id=payload.host_service_id,
+            technician_id=payload.host_technician_id,
             user_id=current_user.id,
+        )
+        if conflict_result["has_conflict"]:
+            raise HTTPException(status_code=400, detail=conflict_result["message"])
+
+        host = crud_appointment.create_appointment(
+            db,
+            appointment=AppointmentCreate(
+                store_id=payload.store_id,
+                service_id=payload.host_service_id,
+                technician_id=payload.host_technician_id,
+                appointment_date=payload.appointment_date,
+                appointment_time=payload.appointment_time,
+                notes=payload.host_notes,
+            ),
+            user_id=current_user.id,
+            auto_commit=False,
+        )
+        if host.order_amount is None and host_service.price is not None:
+            host.order_amount = float(host_service.price)
+        if host.original_amount is None and host.order_amount is not None:
+            host.original_amount = float(host.order_amount)
+        host.coupon_discount_amount = float(host.coupon_discount_amount or 0)
+        host.gift_card_used_amount = float(host.gift_card_used_amount or 0)
+        host.cash_paid_amount = float(host.cash_paid_amount or 0)
+        host.final_paid_amount = float(host.final_paid_amount or 0)
+        host.points_earned = int(host.points_earned or 0)
+        host.points_reverted = int(host.points_reverted or 0)
+        host.settlement_status = host.settlement_status or "unsettled"
+        host.is_group_host = True
+        host.payment_status = "unpaid"
+        host.paid_amount = 0.0
+
+        group = AppointmentGroup(
+            host_appointment_id=host.id,
             store_id=payload.store_id,
             appointment_date=payload.appointment_date,
             appointment_time=payload.appointment_time,
-            item=item,
+            created_by_user_id=current_user.id,
         )
-        guest.group_id = group.id
-        guest_appointments.append(guest)
+        db.add(group)
+        db.flush()
+        group.group_code = f"GRP{payload.appointment_date.strftime('%y%m%d')}{group.id:06d}"
+        host.group_id = group.id
 
-    _recompute_group_host_status(db, group.id)
-    db.commit()
+        for data in guest_inputs:
+            guest = _create_group_child_appointment(
+                db=db,
+                user_id=current_user.id,
+                store_id=payload.store_id,
+                appointment_date=payload.appointment_date,
+                appointment_time=payload.appointment_time,
+                item=data["item"],
+                owner_user_id=data["owner_user_id"],
+                normalized_guest_phone=data["normalized_guest_phone"],
+            )
+            guest.group_id = group.id
+            guest_appointments.append(guest)
+
+        _recompute_group_host_status(db, group.id)
+        db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        raise
 
     rows = _get_group_appointments_with_details(db, group_id=group.id)
     row_map = {row[0].id: row for row in rows}
@@ -758,10 +846,10 @@ def append_appointment_group_guests(
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
-    group = db.query(AppointmentGroup).filter(AppointmentGroup.id == group_id).first()
+    group = db.query(AppointmentGroup).filter(AppointmentGroup.id == group_id).with_for_update().first()
     if not group:
         raise HTTPException(status_code=404, detail="Appointment group not found")
-    host = db.query(AppointmentModel).filter(AppointmentModel.id == group.host_appointment_id).first()
+    host = db.query(AppointmentModel).filter(AppointmentModel.id == group.host_appointment_id).with_for_update().first()
     if not host:
         raise HTTPException(status_code=404, detail="Host appointment not found")
     if host.user_id != current_user.id and not current_user.is_admin:
@@ -769,21 +857,50 @@ def append_appointment_group_guests(
     if host.status == AppointmentStatus.CANCELLED:
         raise HTTPException(status_code=400, detail="Cannot append guests to a cancelled group")
 
-    guest_appointments: List[AppointmentModel] = []
+    guest_inputs = []
     for item in payload.guests:
-        guest = _create_group_child_appointment(
-            db=db,
-            user_id=host.user_id,
-            store_id=group.store_id,
-            appointment_date=group.appointment_date,
-            appointment_time=group.appointment_time,
-            item=item,
+        normalized_guest_phone = _normalize_us_phone(item.guest_phone)
+        if item.guest_phone and not normalized_guest_phone:
+            raise HTTPException(status_code=400, detail="Guest phone must be a valid US phone number")
+        owner_user_id = _resolve_guest_owner_user_id(db, normalized_guest_phone, host.user_id)
+        guest_inputs.append(
+            {
+                "item": item,
+                "owner_user_id": owner_user_id,
+                "normalized_guest_phone": normalized_guest_phone,
+            }
         )
-        guest.group_id = group.id
-        guest_appointments.append(guest)
 
-    _recompute_group_host_status(db, group.id)
-    db.commit()
+    guest_appointments: List[AppointmentModel] = []
+    try:
+        _lock_booking_subjects(
+            db,
+            user_ids=[host.user_id] + [data["owner_user_id"] for data in guest_inputs],
+            technician_ids=[data["item"].technician_id for data in guest_inputs],
+        )
+
+        for data in guest_inputs:
+            guest = _create_group_child_appointment(
+                db=db,
+                user_id=host.user_id,
+                store_id=group.store_id,
+                appointment_date=group.appointment_date,
+                appointment_time=group.appointment_time,
+                item=data["item"],
+                owner_user_id=data["owner_user_id"],
+                normalized_guest_phone=data["normalized_guest_phone"],
+            )
+            guest.group_id = group.id
+            guest_appointments.append(guest)
+
+        _recompute_group_host_status(db, group.id)
+        db.commit()
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        raise
 
     rows = _get_group_appointments_with_details(db, group_id=group.id)
     host_payload = None

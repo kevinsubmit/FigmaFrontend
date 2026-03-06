@@ -3,7 +3,7 @@ Appointment CRUD operations
 """
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from datetime import date, time, datetime, timedelta
+from datetime import date, time, datetime, timedelta, timezone
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.store import Store
 from app.models.service import Service
@@ -117,19 +117,21 @@ def create_appointment(
     appointment: AppointmentCreate,
     user_id: int,
     booked_by_user_id: Optional[int] = None,
+    auto_commit: bool = True,
 ) -> Appointment:
     """Create new appointment"""
     db_appointment = Appointment(
-        **appointment.dict(),
+        **appointment.model_dump(),
         user_id=user_id,
         booked_by_user_id=booked_by_user_id if booked_by_user_id is not None else user_id,
     )
     db.add(db_appointment)
-    db.commit()
-    db.refresh(db_appointment)
+    db.flush()
     if not db_appointment.order_number:
-        date_part = datetime.utcnow().strftime("%y%m%d")
+        date_part = datetime.now(timezone.utc).strftime("%y%m%d")
         db_appointment.order_number = f"ORD{date_part}{db_appointment.id:06d}"
+        db.flush()
+    if auto_commit:
         db.commit()
         db.refresh(db_appointment)
     return db_appointment
