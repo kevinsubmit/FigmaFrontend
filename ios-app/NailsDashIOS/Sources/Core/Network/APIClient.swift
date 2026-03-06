@@ -5,6 +5,7 @@ final class APIClient {
     private static let cacheInvalidatingMethods: Set<String> = ["POST", "PUT", "PATCH", "DELETE"]
     private static let responseCacheTTL: TimeInterval = 8
     private static let responseCacheMaxEntries = 120
+    private static let clientPlatform = "ios"
     private static let forceReloginKeywords: [String] = [
         "temporarily restricted",
         "restricted until",
@@ -31,6 +32,20 @@ final class APIClient {
     private static let writeTimeoutSeconds: TimeInterval = 20
     private static let uploadTimeoutSeconds: TimeInterval = 120
     private static let refreshTimeoutSeconds: TimeInterval = 15
+    private static let clientVersion: String? = {
+        let short = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+        switch (short?.trimmingCharacters(in: .whitespacesAndNewlines), build?.trimmingCharacters(in: .whitespacesAndNewlines)) {
+        case let (s?, b?) where !s.isEmpty && !b.isEmpty:
+            return "\(s) (\(b))"
+        case let (s?, _) where !s.isEmpty:
+            return s
+        case let (_, b?) where !b.isEmpty:
+            return b
+        default:
+            return nil
+        }
+    }()
 
     private init() {
         let configuredBaseURL = Self.resolveBaseURL()
@@ -129,6 +144,7 @@ final class APIClient {
         var request = URLRequest(url: url)
         request.httpMethod = normalizedMethod
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        applyClientHeaders(to: &request)
         request.timeoutInterval = timeoutInterval(for: path, method: normalizedMethod)
         if normalizedMethod != "GET" {
             request.cachePolicy = .reloadIgnoringLocalCacheData
@@ -269,6 +285,7 @@ final class APIClient {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        applyClientHeaders(to: &request)
         request.httpBody = try JSONSerialization.data(withJSONObject: ["refresh_token": refreshToken])
         request.timeoutInterval = Self.refreshTimeoutSeconds
         request.cachePolicy = .reloadIgnoringLocalCacheData
@@ -314,6 +331,14 @@ final class APIClient {
         hasher.combine(request.value(forHTTPHeaderField: "Authorization") ?? "")
         hasher.combine(request.value(forHTTPHeaderField: "Accept-Language") ?? "")
         return "GET-\(hasher.finalize())"
+    }
+
+    private func applyClientHeaders(to request: inout URLRequest) {
+        request.setValue(UUID().uuidString, forHTTPHeaderField: "X-Request-Id")
+        request.setValue(Self.clientPlatform, forHTTPHeaderField: "X-Client-Platform")
+        if let clientVersion = Self.clientVersion {
+            request.setValue(clientVersion, forHTTPHeaderField: "X-Client-Version")
+        }
     }
 
     private func timeoutInterval(for path: String, method: String) -> TimeInterval {

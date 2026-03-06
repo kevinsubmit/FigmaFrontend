@@ -131,6 +131,17 @@ def _sanitize_query_string(raw_query: str | None) -> str:
     return urlencode(sanitized_pairs, doseq=True)
 
 
+def _extract_client_meta(request) -> dict[str, str]:
+    platform = (request.headers.get("x-client-platform") or "").strip().lower()
+    version = (request.headers.get("x-client-version") or "").strip()
+    meta: dict[str, str] = {}
+    if platform:
+        meta["client_platform"] = platform
+    if version:
+        meta["client_version"] = version
+    return meta
+
+
 def _resolve_operator_user_id(db, request) -> int | None:
     auth_header = request.headers.get("authorization", "")
     if not auth_header.lower().startswith("bearer "):
@@ -237,6 +248,8 @@ async def security_ip_guard(request, call_next):
         user_id = _resolve_operator_user_id(db, request)
 
         sanitized_query = _sanitize_query_string(request.url.query)
+        client_meta = _extract_client_meta(request)
+        security_meta = {"query": sanitized_query, **client_meta}
         db.add(
             SecurityBlockLog(
                 ip_address=client_ip,
@@ -247,7 +260,7 @@ async def security_ip_guard(request, call_next):
                 block_reason="ip_deny",
                 user_id=user_id,
                 user_agent=request.headers.get("user-agent"),
-                meta_json=json.dumps({"query": sanitized_query}),
+                meta_json=json.dumps(security_meta),
             )
         )
         db.commit()
@@ -268,7 +281,7 @@ async def security_ip_guard(request, call_next):
             path=request.url.path,
             method=request.method,
             status_code=403,
-            meta={"scope": scope, "query": sanitized_query},
+            meta={"scope": scope, **security_meta},
         )
 
         return JSONResponse(
@@ -289,6 +302,8 @@ async def access_log_middleware(request, call_next):
     client_ip = _extract_client_ip(request)
     module = _extract_module(path)
     sanitized_query = _sanitize_query_string(request.url.query)
+    client_meta = _extract_client_meta(request)
+    access_meta = {"query": sanitized_query, **client_meta}
 
     # response default values
     status_code = 500
@@ -318,7 +333,7 @@ async def access_log_middleware(request, call_next):
                 method=method,
                 status_code=500,
                 latency_ms=latency_ms,
-                meta={"query": sanitized_query},
+                meta=access_meta,
             )
         finally:
             db.close()
@@ -345,7 +360,7 @@ async def access_log_middleware(request, call_next):
             method=method,
             status_code=status_code,
             latency_ms=latency_ms,
-            meta={"query": sanitized_query},
+            meta=access_meta,
         )
     finally:
         db.close()
