@@ -337,7 +337,11 @@ async def access_log_middleware(request, call_next):
             )
         finally:
             db.close()
-        raise
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error", "request_id": request_id},
+            headers={"X-Request-Id": request_id},
+        )
 
     latency_ms = int((time.perf_counter() - start_time) * 1000)
     db = SessionLocal()

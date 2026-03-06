@@ -23,6 +23,36 @@ interface RequestOptions extends RequestInit {
 
 type RequestConfig = boolean | RequestOptions;
 
+const extractRequestReferenceFromText = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const match = value.match(/\[Ref:\s*([^\]]+)\]/i);
+  const reference = match?.[1]?.trim();
+  return reference ? reference : null;
+};
+
+const extractRequestReference = (response: Response, payload: unknown): string | null => {
+  const fromHeader = response.headers.get('x-request-id')?.trim();
+  if (fromHeader) return fromHeader;
+
+  if (payload && typeof payload === 'object') {
+    const fromBody = (payload as Record<string, unknown>).request_id;
+    if (typeof fromBody === 'string' && fromBody.trim()) {
+      return fromBody.trim();
+    }
+  }
+  return null;
+};
+
+const withRequestReference = (message: string, requestReference: string | null): string => {
+  const normalizedMessage = (message || '').trim() || 'Request failed.';
+  const normalizedReference = (requestReference || '').trim();
+  if (!normalizedReference) return normalizedMessage;
+  if (normalizedMessage.toLowerCase().includes(normalizedReference.toLowerCase())) {
+    return normalizedMessage;
+  }
+  return `${normalizedMessage} [Ref: ${normalizedReference}]`;
+};
+
 class APIClient {
   private baseURL: string;
   private readonly getCache = new Map<string, { data: unknown; expiresAt: number }>();
@@ -157,7 +187,11 @@ class APIClient {
       // Handle non-OK responses
       if (!response.ok) {
         const errorPayload = await this.parseErrorPayload(response);
-        const message = getApiErrorMessageFromPayload(errorPayload, response.status, 'Request failed');
+        const requestReference = extractRequestReference(response, errorPayload);
+        const message = withRequestReference(
+          getApiErrorMessageFromPayload(errorPayload, response.status, 'Request failed'),
+          requestReference,
+        );
         if (shouldForceRelogin(response.status, errorPayload?.detail ?? errorPayload)) {
           forceRelogin(message, true);
         }
@@ -187,7 +221,10 @@ class APIClient {
       return result;
     } catch (error) {
       console.error('API Request Error:', error);
-      throw new Error(getApiErrorMessage(error, 'Request failed'));
+      const requestReference = extractRequestReferenceFromText(
+        error instanceof Error ? error.message : undefined,
+      );
+      throw new Error(withRequestReference(getApiErrorMessage(error, 'Request failed'), requestReference));
     } finally {
       if (method === 'GET' && dedupe) {
         this.inFlightGet.delete(requestCacheKey);

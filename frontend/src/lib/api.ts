@@ -78,6 +78,62 @@ const isAuthEntryRequest = (config?: AxiosRequestConfig) => {
   return AUTH_ENTRY_PATTERNS.some((pattern) => pattern.test(path));
 };
 
+const extractRequestReferenceFromText = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const match = value.match(/\[Ref:\s*([^\]]+)\]/i);
+  const reference = match?.[1]?.trim();
+  return reference ? reference : null;
+};
+
+const getHeaderValue = (headers: unknown, headerName: string): string | null => {
+  if (!headers || typeof headers !== 'object') return null;
+  const normalizedName = headerName.toLowerCase();
+  const headersRecord = headers as Record<string, unknown>;
+
+  const fromDirect = headersRecord[headerName] ?? headersRecord[normalizedName];
+  if (typeof fromDirect === 'string' && fromDirect.trim()) {
+    return fromDirect.trim();
+  }
+
+  const getter = (headersRecord as { get?: (name: string) => unknown }).get;
+  if (typeof getter === 'function') {
+    const fromGetter = getter(headerName) ?? getter(normalizedName);
+    if (typeof fromGetter === 'string' && fromGetter.trim()) {
+      return fromGetter.trim();
+    }
+  }
+
+  return null;
+};
+
+const extractRequestReferenceFromResponse = (response: unknown): string | null => {
+  if (!response || typeof response !== 'object') return null;
+  const responseRecord = response as Record<string, unknown>;
+
+  const fromHeaders = getHeaderValue(responseRecord.headers, 'x-request-id');
+  if (fromHeaders) return fromHeaders;
+
+  const data = responseRecord.data;
+  if (data && typeof data === 'object') {
+    const fromBody = (data as Record<string, unknown>).request_id;
+    if (typeof fromBody === 'string' && fromBody.trim()) {
+      return fromBody.trim();
+    }
+  }
+
+  return null;
+};
+
+const withRequestReference = (message: string, requestReference: string | null): string => {
+  const normalizedMessage = (message || '').trim() || 'Request failed.';
+  const normalizedReference = (requestReference || '').trim();
+  if (!normalizedReference) return normalizedMessage;
+  if (normalizedMessage.toLowerCase().includes(normalizedReference.toLowerCase())) {
+    return normalizedMessage;
+  }
+  return `${normalizedMessage} [Ref: ${normalizedReference}]`;
+};
+
 const isUploadPath = (rawUrl?: string) => {
   const path = normalizePath(rawUrl).toLowerCase();
   return path.includes('/upload/')
@@ -321,7 +377,9 @@ apiClient.interceptors.response.use(
     const status = error?.response?.status;
     const detail = error?.response?.data?.detail ?? error?.response?.data;
     const originalRequest = error?.config as RetryableAxiosRequestConfig | undefined;
-    const userMessage = getApiErrorMessage(error);
+    const requestReference = extractRequestReferenceFromResponse(error?.response)
+      ?? extractRequestReferenceFromText(error?.message);
+    const userMessage = withRequestReference(getApiErrorMessage(error), requestReference);
 
     if (
       status === 401
