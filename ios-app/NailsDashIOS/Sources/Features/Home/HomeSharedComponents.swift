@@ -3,7 +3,7 @@ import Foundation
 enum HomeDateFormatterCache {
     private static let posixLocale = Locale(identifier: "en_US_POSIX")
     private static let utcTimeZone = TimeZone(secondsFromGMT: 0)!
-    private static let newYorkTimeZone = TimeZone(identifier: "America/New_York")!
+    private static let newYorkTimeZone = TimeZone.autoupdatingCurrent
 
     private static let isoParserWithFraction: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()

@@ -3,51 +3,58 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
+		025A6767BB3AABD36467EF66 /* ProfileCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 467A87303A99C72B3929568E /* ProfileCenterView.swift */; };
 		09769325FBB26B532C0ED1C1 /* AppointmentsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62FEF46D46BA3679CBD5C6AD /* AppointmentsService.swift */; };
+		0C7971CFA3CC3CAD8E8D2B9D /* TokenStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B7BF7EFAEDFAF8793F0649A /* TokenStoreTests.swift */; };
+		154A3232C3DB41EA9F90D834 /* APIClientCachingAndConcurrency.swift in Sources */ = {isa = PBXBuildFile; fileRef = 428A15505279F698544F4AE6 /* APIClientCachingAndConcurrency.swift */; };
+		18908AAC022CFE91F8CD4424 /* APIClientPayloadValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10ED46752F090AF35D958CB5 /* APIClientPayloadValidation.swift */; };
+		28144A555460AF88D267DFD7 /* ProfileRewardsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C08BB341431E255CA22222C /* ProfileRewardsModels.swift */; };
 		29359FB573E617D7E0498D11 /* NailsDashApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD1C5C353519E7F91DDA17A /* NailsDashApp.swift */; };
+		32AEDE169B2CEEB8690C5A89 /* OrderHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6E63DB787DB1D2514FFF5F1 /* OrderHistoryView.swift */; };
+		341D2192ABBEBA7ECF2FCD4C /* TimeZoneResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A2CEF802D07A0FA6F33CEFB /* TimeZoneResolver.swift */; };
 		36ABAF8E177D9B071F3BC4D7 /* BookAppointmentViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A93FE0C0C05C49238A947AF /* BookAppointmentViewModel.swift */; };
+		3FF2554B605A2CF32DC3AC8D /* PhoneFormatterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B06449EB7B854FB01001BB1F /* PhoneFormatterTests.swift */; };
+		4458CA65A95D2517D40BF00E /* ProfileModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 325D1E2C4C1E425ECEC780CD /* ProfileModule.swift */; };
 		516B855BD37582763D9CA0D1 /* BookAppointmentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9545DF0A4ABD1935546B6A2 /* BookAppointmentView.swift */; };
+		518EE2A3E72A43BD5D3458D3 /* ProfileRewardsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02871CCE6D746DB532FD14AF /* ProfileRewardsModule.swift */; };
+		58AF2E01E6FC4C205057A0D0 /* SettingsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 758195EDF80F93E284E1910A /* SettingsModule.swift */; };
+		597C4EFBCDD7FC922B477CB2 /* PointsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F02EA01A0A15E72D843E28F6 /* PointsView.swift */; };
 		598A5611A236ECA5B26CF27A /* PhoneFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1643BED7FC99E52520186313 /* PhoneFormatter.swift */; };
 		5F1EE204041A11E05FC3E129 /* UserLocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C42A0DC81FEA66C97739EA76 /* UserLocationService.swift */; };
 		6460B7113D3C2D3F9D47F247 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48EDF5BB4443EAB30BB2CFAC /* AppState.swift */; };
 		6933756772F078B938769065 /* StoreModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E637FC76552DE0DB5F90C5E5 /* StoreModels.swift */; };
 		6E58B3D8F8633DED3017500E /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A71C8FD57CF3D60EC95B4C /* APIClient.swift */; };
-		8533FF84E1096435EB1FA763 /* NailsDashIOSTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0223719970CAFE1A510CB70 /* NailsDashIOSTests.swift */; };
+		6F3C41DBEB756A9B9777C1A4 /* CouponsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B59456F0E6CFEC79A2CD795 /* CouponsView.swift */; };
+		7B96E46122BD486394750AAF /* GiftCardsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A51B186C806822E226745F7 /* GiftCardsView.swift */; };
 		87185F16A1D7A5B0274718C7 /* StoresListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFC50FB29BFE863D2A9433C1 /* StoresListView.swift */; };
+		8B5A496AD82AE19067712B09 /* AppStateAuthPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E24857BBC2FF2869A80D414 /* AppStateAuthPolicyTests.swift */; };
 		8B76ADAB759AEE7C687A83A9 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50F645E1D2DEB975D8534F13 /* LoginView.swift */; };
 		8D3DDACAEE0DCEB24ADCC7C5 /* StoreDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C8A331C66095FDF04E81AF3 /* StoreDetailView.swift */; };
 		8D4DB742DF359AE373C1958D /* AuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33DAF15624B4E327D9378F81 /* AuthModels.swift */; };
 		915A910E62EFC74ED5F9CC07 /* StoresService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F1FA00668ACF5A4F9C8936D /* StoresService.swift */; };
+		916FAC331C34A42E4CC404A6 /* ProfileRewardsSharedUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 893BF41BBED1BCB5F0B2DEDD /* ProfileRewardsSharedUI.swift */; };
 		9940EC4C0B5582DD6EA8B730 /* TokenStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B79367B80E53991EA6A6E23 /* TokenStore.swift */; };
+		9A100CEC54DFB8F543588976 /* ProfileRewardsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F062D1580A10B1A1FAF43688 /* ProfileRewardsService.swift */; };
+		9CF1EA6084759CFE4D73D007 /* VipMembershipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23205BD26E05060006685862 /* VipMembershipView.swift */; };
+		9F237DE7AD200FEDC951FAD3 /* MyFavoritesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D06272D5E7667C6AE9E29041 /* MyFavoritesView.swift */; };
+		A0B187C2A0DD87A4C2CD2AED /* HomeSharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66EC9F4902E12D2D02EB7E26 /* HomeSharedComponents.swift */; };
+		A4F5843364698344239B7C12 /* APIClientPrimitives.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1612DB6AF66514513138169B /* APIClientPrimitives.swift */; };
+		A7F4CC0B1ADBC29458C1FA31 /* HomeFeedModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DFC957B138BA269A34965F9 /* HomeFeedModule.swift */; };
+		B5D6020DB834D9578EB567B0 /* ProfileRewardsViewModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79E533FF281FAE630A88F820 /* ProfileRewardsViewModels.swift */; };
+		BC411DAC5A148C49DB25CD25 /* NotificationsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5E1EFB099CE969802438BC4 /* NotificationsModule.swift */; };
+		C1724C2DD23B9A29F2300FE3 /* ReferAFriendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F901EDA4578C42EBD2B96F50 /* ReferAFriendView.swift */; };
 		C26E9BB373441BF4C009CDF2 /* AppointmentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 353835D4F888821BAA3D8DDC /* AppointmentModels.swift */; };
 		C84C1AFADA6A0BDF13EFA1DF /* StoresViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CBE6600EF1F41C68120D8D6 /* StoresViewModel.swift */; };
-		D1A2031425364758697A8B9D /* SettingsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5061728394A5B6C /* SettingsModule.swift */; };
-		E1F2031425364758697A8B9C /* ProfileModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* ProfileModule.swift */; };
-		B100000000000000000000001 /* ProfileCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000001 /* ProfileCenterView.swift */; };
-		B100000000000000000000002 /* VipMembershipView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000002 /* VipMembershipView.swift */; };
-		B100000000000000000000003 /* ReferAFriendView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000003 /* ReferAFriendView.swift */; };
-		B100000000000000000000004 /* NotificationsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000004 /* NotificationsModule.swift */; };
-		B100000000000000000000005 /* ProfileRewardsModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000005 /* ProfileRewardsModule.swift */; };
-		B100000000000000000000006 /* ProfileRewardsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000006 /* ProfileRewardsModels.swift */; };
-		B100000000000000000000007 /* ProfileRewardsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000007 /* ProfileRewardsService.swift */; };
-		B100000000000000000000008 /* ProfileRewardsViewModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000008 /* ProfileRewardsViewModels.swift */; };
-		B100000000000000000000009 /* ProfileRewardsSharedUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000009 /* ProfileRewardsSharedUI.swift */; };
-		B10000000000000000000000A /* ProfileRewardsHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000000A /* ProfileRewardsHelpers.swift */; };
-		B10000000000000000000000B /* PointsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000000B /* PointsView.swift */; };
-		B10000000000000000000000C /* CouponsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000000C /* CouponsView.swift */; };
-		B10000000000000000000000D /* GiftCardsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000000D /* GiftCardsView.swift */; };
-		B10000000000000000000000E /* OrderHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000000E /* OrderHistoryView.swift */; };
-		B10000000000000000000000F /* MyReviewsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10000000000000000000000F /* MyReviewsView.swift */; };
-		B100000000000000000000010 /* MyFavoritesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C100000000000000000000010 /* MyFavoritesView.swift */; };
-		B20000000000000000000001 /* HomeFeedModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000001 /* HomeFeedModule.swift */; };
-		B20000000000000000000002 /* PinDetailModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000002 /* PinDetailModule.swift */; };
-		B20000000000000000000003 /* HomeSharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000003 /* HomeSharedComponents.swift */; };
+		CEE7A03052E0600D4B55B11F /* ProfileRewardsHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC1546B955DCECB8AB5A3EFC /* ProfileRewardsHelpers.swift */; };
+		E4D000D6A5160F566AAA0AE6 /* PinDetailModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C7D16222E06C5B3DAEDAD66 /* PinDetailModule.swift */; };
+		E56085B63C2574D32EBC3E2D /* MyReviewsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 362CC32BB57A5FB0F5A21E03 /* MyReviewsView.swift */; };
 		E938B4A98D458A5C00ED4F65 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69971322EED483F5BA88EA3E /* HomeView.swift */; };
 		E97894949AFB6E70D0E37A14 /* MyAppointmentsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CABA11B03E51EF58C41B4813 /* MyAppointmentsView.swift */; };
+		EEF755A3AAE8A1F261111A3F /* BookAppointmentViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A556BD9A6557385D87A130B9 /* BookAppointmentViewModelTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -61,50 +68,57 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		02871CCE6D746DB532FD14AF /* ProfileRewardsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsModule.swift; sourceTree = "<group>"; };
 		0761888B7B591F6DD1A5B18B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		0C08BB341431E255CA22222C /* ProfileRewardsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsModels.swift; sourceTree = "<group>"; };
+		0C7D16222E06C5B3DAEDAD66 /* PinDetailModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinDetailModule.swift; sourceTree = "<group>"; };
+		10ED46752F090AF35D958CB5 /* APIClientPayloadValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientPayloadValidation.swift; sourceTree = "<group>"; };
+		1612DB6AF66514513138169B /* APIClientPrimitives.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientPrimitives.swift; sourceTree = "<group>"; };
 		1643BED7FC99E52520186313 /* PhoneFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneFormatter.swift; sourceTree = "<group>"; };
 		1B79367B80E53991EA6A6E23 /* TokenStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStore.swift; sourceTree = "<group>"; };
+		23205BD26E05060006685862 /* VipMembershipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VipMembershipView.swift; sourceTree = "<group>"; };
 		2A93FE0C0C05C49238A947AF /* BookAppointmentViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookAppointmentViewModel.swift; sourceTree = "<group>"; };
 		2C8A331C66095FDF04E81AF3 /* StoreDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreDetailView.swift; sourceTree = "<group>"; };
+		325D1E2C4C1E425ECEC780CD /* ProfileModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileModule.swift; sourceTree = "<group>"; };
 		33DAF15624B4E327D9378F81 /* AuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModels.swift; sourceTree = "<group>"; };
 		353835D4F888821BAA3D8DDC /* AppointmentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentModels.swift; sourceTree = "<group>"; };
+		362CC32BB57A5FB0F5A21E03 /* MyReviewsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyReviewsView.swift; sourceTree = "<group>"; };
+		3B7BF7EFAEDFAF8793F0649A /* TokenStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TokenStoreTests.swift; sourceTree = "<group>"; };
+		428A15505279F698544F4AE6 /* APIClientCachingAndConcurrency.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientCachingAndConcurrency.swift; sourceTree = "<group>"; };
+		467A87303A99C72B3929568E /* ProfileCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileCenterView.swift; sourceTree = "<group>"; };
 		48EDF5BB4443EAB30BB2CFAC /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		4B59456F0E6CFEC79A2CD795 /* CouponsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CouponsView.swift; sourceTree = "<group>"; };
+		4DFC957B138BA269A34965F9 /* HomeFeedModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeFeedModule.swift; sourceTree = "<group>"; };
+		4E24857BBC2FF2869A80D414 /* AppStateAuthPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStateAuthPolicyTests.swift; sourceTree = "<group>"; };
 		50F645E1D2DEB975D8534F13 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		5A51B186C806822E226745F7 /* GiftCardsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GiftCardsView.swift; sourceTree = "<group>"; };
 		62FEF46D46BA3679CBD5C6AD /* AppointmentsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppointmentsService.swift; sourceTree = "<group>"; };
+		66EC9F4902E12D2D02EB7E26 /* HomeSharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSharedComponents.swift; sourceTree = "<group>"; };
 		69971322EED483F5BA88EA3E /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		6A2CEF802D07A0FA6F33CEFB /* TimeZoneResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeZoneResolver.swift; sourceTree = "<group>"; };
 		6BD1C5C353519E7F91DDA17A /* NailsDashApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NailsDashApp.swift; sourceTree = "<group>"; };
+		758195EDF80F93E284E1910A /* SettingsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModule.swift; sourceTree = "<group>"; };
+		79E533FF281FAE630A88F820 /* ProfileRewardsViewModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsViewModels.swift; sourceTree = "<group>"; };
 		7CBE6600EF1F41C68120D8D6 /* StoresViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoresViewModel.swift; sourceTree = "<group>"; };
 		7F1FA00668ACF5A4F9C8936D /* StoresService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoresService.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4B5C /* ProfileModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileModule.swift; sourceTree = "<group>"; };
-		C100000000000000000000001 /* ProfileCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileCenterView.swift; sourceTree = "<group>"; };
-		C100000000000000000000002 /* VipMembershipView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VipMembershipView.swift; sourceTree = "<group>"; };
-		C100000000000000000000003 /* ReferAFriendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferAFriendView.swift; sourceTree = "<group>"; };
-		C100000000000000000000004 /* NotificationsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsModule.swift; sourceTree = "<group>"; };
-		C100000000000000000000005 /* ProfileRewardsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsModule.swift; sourceTree = "<group>"; };
-		C100000000000000000000006 /* ProfileRewardsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsModels.swift; sourceTree = "<group>"; };
-		C100000000000000000000007 /* ProfileRewardsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsService.swift; sourceTree = "<group>"; };
-		C100000000000000000000008 /* ProfileRewardsViewModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsViewModels.swift; sourceTree = "<group>"; };
-		C100000000000000000000009 /* ProfileRewardsSharedUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsSharedUI.swift; sourceTree = "<group>"; };
-		C10000000000000000000000A /* ProfileRewardsHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsHelpers.swift; sourceTree = "<group>"; };
-		C10000000000000000000000B /* PointsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointsView.swift; sourceTree = "<group>"; };
-		C10000000000000000000000C /* CouponsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CouponsView.swift; sourceTree = "<group>"; };
-		C10000000000000000000000D /* GiftCardsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GiftCardsView.swift; sourceTree = "<group>"; };
-		C10000000000000000000000E /* OrderHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrderHistoryView.swift; sourceTree = "<group>"; };
-		C10000000000000000000000F /* MyReviewsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyReviewsView.swift; sourceTree = "<group>"; };
-		C100000000000000000000010 /* MyFavoritesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyFavoritesView.swift; sourceTree = "<group>"; };
-		C20000000000000000000001 /* HomeFeedModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeFeedModule.swift; sourceTree = "<group>"; };
-		C20000000000000000000002 /* PinDetailModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinDetailModule.swift; sourceTree = "<group>"; };
-		C20000000000000000000003 /* HomeSharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSharedComponents.swift; sourceTree = "<group>"; };
-		B1C2D3E4F5061728394A5B6C /* SettingsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsModule.swift; sourceTree = "<group>"; };
+		893BF41BBED1BCB5F0B2DEDD /* ProfileRewardsSharedUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsSharedUI.swift; sourceTree = "<group>"; };
+		A556BD9A6557385D87A130B9 /* BookAppointmentViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookAppointmentViewModelTests.swift; sourceTree = "<group>"; };
+		B06449EB7B854FB01001BB1F /* PhoneFormatterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneFormatterTests.swift; sourceTree = "<group>"; };
+		B5E1EFB099CE969802438BC4 /* NotificationsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsModule.swift; sourceTree = "<group>"; };
 		C42A0DC81FEA66C97739EA76 /* UserLocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserLocationService.swift; sourceTree = "<group>"; };
+		C6E63DB787DB1D2514FFF5F1 /* OrderHistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrderHistoryView.swift; sourceTree = "<group>"; };
 		C8A71C8FD57CF3D60EC95B4C /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		C9545DF0A4ABD1935546B6A2 /* BookAppointmentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookAppointmentView.swift; sourceTree = "<group>"; };
 		C99C5C13D6058F84542D1B66 /* NailsDashIOSTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = NailsDashIOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CABA11B03E51EF58C41B4813 /* MyAppointmentsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyAppointmentsView.swift; sourceTree = "<group>"; };
+		D06272D5E7667C6AE9E29041 /* MyFavoritesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyFavoritesView.swift; sourceTree = "<group>"; };
 		DFC50FB29BFE863D2A9433C1 /* StoresListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoresListView.swift; sourceTree = "<group>"; };
-		E0223719970CAFE1A510CB70 /* NailsDashIOSTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NailsDashIOSTests.swift; sourceTree = "<group>"; };
 		E637FC76552DE0DB5F90C5E5 /* StoreModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreModels.swift; sourceTree = "<group>"; };
-		F0D75736C682585EE701A3DD /* NailsDashIOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NailsDashIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F02EA01A0A15E72D843E28F6 /* PointsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointsView.swift; sourceTree = "<group>"; };
+		F062D1580A10B1A1FAF43688 /* ProfileRewardsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsService.swift; sourceTree = "<group>"; };
+		F0D75736C682585EE701A3DD /* NailsDashIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NailsDashIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F901EDA4578C42EBD2B96F50 /* ReferAFriendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferAFriendView.swift; sourceTree = "<group>"; };
+		FC1546B955DCECB8AB5A3EFC /* ProfileRewardsHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsHelpers.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -150,18 +164,45 @@
 		3C8CBC1218D0207834AB5E2F /* Home */ = {
 			isa = PBXGroup;
 			children = (
+				4DFC957B138BA269A34965F9 /* HomeFeedModule.swift */,
+				66EC9F4902E12D2D02EB7E26 /* HomeSharedComponents.swift */,
 				69971322EED483F5BA88EA3E /* HomeView.swift */,
-				C20000000000000000000001 /* HomeFeedModule.swift */,
-				C20000000000000000000002 /* PinDetailModule.swift */,
-				C20000000000000000000003 /* HomeSharedComponents.swift */,
+				0C7D16222E06C5B3DAEDAD66 /* PinDetailModule.swift */,
 			);
 			path = Home;
+			sourceTree = "<group>";
+		};
+		467D8E86409D59441A4AAEC8 /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				4B59456F0E6CFEC79A2CD795 /* CouponsView.swift */,
+				5A51B186C806822E226745F7 /* GiftCardsView.swift */,
+				D06272D5E7667C6AE9E29041 /* MyFavoritesView.swift */,
+				362CC32BB57A5FB0F5A21E03 /* MyReviewsView.swift */,
+				B5E1EFB099CE969802438BC4 /* NotificationsModule.swift */,
+				C6E63DB787DB1D2514FFF5F1 /* OrderHistoryView.swift */,
+				F02EA01A0A15E72D843E28F6 /* PointsView.swift */,
+				467A87303A99C72B3929568E /* ProfileCenterView.swift */,
+				325D1E2C4C1E425ECEC780CD /* ProfileModule.swift */,
+				FC1546B955DCECB8AB5A3EFC /* ProfileRewardsHelpers.swift */,
+				0C08BB341431E255CA22222C /* ProfileRewardsModels.swift */,
+				02871CCE6D746DB532FD14AF /* ProfileRewardsModule.swift */,
+				F062D1580A10B1A1FAF43688 /* ProfileRewardsService.swift */,
+				893BF41BBED1BCB5F0B2DEDD /* ProfileRewardsSharedUI.swift */,
+				79E533FF281FAE630A88F820 /* ProfileRewardsViewModels.swift */,
+				F901EDA4578C42EBD2B96F50 /* ReferAFriendView.swift */,
+				23205BD26E05060006685862 /* VipMembershipView.swift */,
+			);
+			path = Profile;
 			sourceTree = "<group>";
 		};
 		51641077CCE7BC87070F43E8 /* NailsDashIOSTests */ = {
 			isa = PBXGroup;
 			children = (
-				E0223719970CAFE1A510CB70 /* NailsDashIOSTests.swift */,
+				4E24857BBC2FF2869A80D414 /* AppStateAuthPolicyTests.swift */,
+				A556BD9A6557385D87A130B9 /* BookAppointmentViewModelTests.swift */,
+				B06449EB7B854FB01001BB1F /* PhoneFormatterTests.swift */,
+				3B7BF7EFAEDFAF8793F0649A /* TokenStoreTests.swift */,
 			);
 			path = NailsDashIOSTests;
 			sourceTree = "<group>";
@@ -170,6 +211,9 @@
 			isa = PBXGroup;
 			children = (
 				C8A71C8FD57CF3D60EC95B4C /* APIClient.swift */,
+				428A15505279F698544F4AE6 /* APIClientCachingAndConcurrency.swift */,
+				10ED46752F090AF35D958CB5 /* APIClientPayloadValidation.swift */,
+				1612DB6AF66514513138169B /* APIClientPrimitives.swift */,
 			);
 			path = Network;
 			sourceTree = "<group>";
@@ -191,28 +235,12 @@
 			path = App;
 			sourceTree = "<group>";
 		};
-		C1D2E3F405162738495A6B7C /* Profile */ = {
+		C17B7452F549A4A0E9BDCE51 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
-				A1B2C3D4E5F60718293A4B5C /* ProfileModule.swift */,
-				C100000000000000000000001 /* ProfileCenterView.swift */,
-				C100000000000000000000002 /* VipMembershipView.swift */,
-				C100000000000000000000003 /* ReferAFriendView.swift */,
-				C100000000000000000000004 /* NotificationsModule.swift */,
-				C100000000000000000000005 /* ProfileRewardsModule.swift */,
-				C100000000000000000000006 /* ProfileRewardsModels.swift */,
-				C100000000000000000000007 /* ProfileRewardsService.swift */,
-				C100000000000000000000008 /* ProfileRewardsViewModels.swift */,
-				C100000000000000000000009 /* ProfileRewardsSharedUI.swift */,
-				C10000000000000000000000A /* ProfileRewardsHelpers.swift */,
-				C10000000000000000000000B /* PointsView.swift */,
-				C10000000000000000000000C /* CouponsView.swift */,
-				C10000000000000000000000D /* GiftCardsView.swift */,
-				C10000000000000000000000E /* OrderHistoryView.swift */,
-				C10000000000000000000000F /* MyReviewsView.swift */,
-				C100000000000000000000010 /* MyFavoritesView.swift */,
+				758195EDF80F93E284E1910A /* SettingsModule.swift */,
 			);
-			path = Profile;
+			path = Settings;
 			sourceTree = "<group>";
 		};
 		DA5134E5F1B122EEF7DA142A /* Features */ = {
@@ -221,19 +249,11 @@
 				F070DB808A156B50364E37F6 /* Appointments */,
 				5FD0DE029877C0E70ABC3ACC /* Auth */,
 				3C8CBC1218D0207834AB5E2F /* Home */,
-				C1D2E3F405162738495A6B7C /* Profile */,
-				D1E2F30415263748596A7B8C /* Settings */,
+				467D8E86409D59441A4AAEC8 /* Profile */,
+				C17B7452F549A4A0E9BDCE51 /* Settings */,
 				EE711A927730CC95175E4DFB /* Stores */,
 			);
 			path = Features;
-			sourceTree = "<group>";
-		};
-		D1E2F30415263748596A7B8C /* Settings */ = {
-			isa = PBXGroup;
-			children = (
-				B1C2D3E4F5061728394A5B6C /* SettingsModule.swift */,
-			);
-			path = Settings;
 			sourceTree = "<group>";
 		};
 		E5C76CD14CF5BB4109288BE0 /* Core */ = {
@@ -250,6 +270,7 @@
 			isa = PBXGroup;
 			children = (
 				1643BED7FC99E52520186313 /* PhoneFormatter.swift */,
+				6A2CEF802D07A0FA6F33CEFB /* TimeZoneResolver.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -336,6 +357,7 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					85A0E59EDA17344D9EF3E861 = {
+						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 					D8A3A5DAD63CBB07845CAA8B = {
@@ -354,6 +376,7 @@
 			);
 			mainGroup = 136E749B55E7AE897E5C5634;
 			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -368,7 +391,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8533FF84E1096435EB1FA763 /* NailsDashIOSTests.swift in Sources */,
+				8B5A496AD82AE19067712B09 /* AppStateAuthPolicyTests.swift in Sources */,
+				EEF755A3AAE8A1F261111A3F /* BookAppointmentViewModelTests.swift in Sources */,
+				3FF2554B605A2CF32DC3AC8D /* PhoneFormatterTests.swift in Sources */,
+				0C7971CFA3CC3CAD8E8D2B9D /* TokenStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -377,45 +403,49 @@
 			buildActionMask = 2147483647;
 			files = (
 				6E58B3D8F8633DED3017500E /* APIClient.swift in Sources */,
+				154A3232C3DB41EA9F90D834 /* APIClientCachingAndConcurrency.swift in Sources */,
+				18908AAC022CFE91F8CD4424 /* APIClientPayloadValidation.swift in Sources */,
+				A4F5843364698344239B7C12 /* APIClientPrimitives.swift in Sources */,
 				6460B7113D3C2D3F9D47F247 /* AppState.swift in Sources */,
 				C26E9BB373441BF4C009CDF2 /* AppointmentModels.swift in Sources */,
 				09769325FBB26B532C0ED1C1 /* AppointmentsService.swift in Sources */,
 				8D4DB742DF359AE373C1958D /* AuthModels.swift in Sources */,
 				516B855BD37582763D9CA0D1 /* BookAppointmentView.swift in Sources */,
 				36ABAF8E177D9B071F3BC4D7 /* BookAppointmentViewModel.swift in Sources */,
+				6F3C41DBEB756A9B9777C1A4 /* CouponsView.swift in Sources */,
+				7B96E46122BD486394750AAF /* GiftCardsView.swift in Sources */,
+				A7F4CC0B1ADBC29458C1FA31 /* HomeFeedModule.swift in Sources */,
+				A0B187C2A0DD87A4C2CD2AED /* HomeSharedComponents.swift in Sources */,
 				E938B4A98D458A5C00ED4F65 /* HomeView.swift in Sources */,
-				B20000000000000000000001 /* HomeFeedModule.swift in Sources */,
-				B20000000000000000000002 /* PinDetailModule.swift in Sources */,
-				B20000000000000000000003 /* HomeSharedComponents.swift in Sources */,
 				8B76ADAB759AEE7C687A83A9 /* LoginView.swift in Sources */,
 				E97894949AFB6E70D0E37A14 /* MyAppointmentsView.swift in Sources */,
+				9F237DE7AD200FEDC951FAD3 /* MyFavoritesView.swift in Sources */,
+				E56085B63C2574D32EBC3E2D /* MyReviewsView.swift in Sources */,
 				29359FB573E617D7E0498D11 /* NailsDashApp.swift in Sources */,
+				BC411DAC5A148C49DB25CD25 /* NotificationsModule.swift in Sources */,
+				32AEDE169B2CEEB8690C5A89 /* OrderHistoryView.swift in Sources */,
 				598A5611A236ECA5B26CF27A /* PhoneFormatter.swift in Sources */,
-				E1F2031425364758697A8B9C /* ProfileModule.swift in Sources */,
-				B100000000000000000000001 /* ProfileCenterView.swift in Sources */,
-				B100000000000000000000002 /* VipMembershipView.swift in Sources */,
-				B100000000000000000000003 /* ReferAFriendView.swift in Sources */,
-				B100000000000000000000004 /* NotificationsModule.swift in Sources */,
-				B100000000000000000000005 /* ProfileRewardsModule.swift in Sources */,
-				B100000000000000000000006 /* ProfileRewardsModels.swift in Sources */,
-				B100000000000000000000007 /* ProfileRewardsService.swift in Sources */,
-				B100000000000000000000008 /* ProfileRewardsViewModels.swift in Sources */,
-				B100000000000000000000009 /* ProfileRewardsSharedUI.swift in Sources */,
-				B10000000000000000000000A /* ProfileRewardsHelpers.swift in Sources */,
-				B10000000000000000000000B /* PointsView.swift in Sources */,
-				B10000000000000000000000C /* CouponsView.swift in Sources */,
-				B10000000000000000000000D /* GiftCardsView.swift in Sources */,
-				B10000000000000000000000E /* OrderHistoryView.swift in Sources */,
-				B10000000000000000000000F /* MyReviewsView.swift in Sources */,
-				B100000000000000000000010 /* MyFavoritesView.swift in Sources */,
-				D1A2031425364758697A8B9D /* SettingsModule.swift in Sources */,
+				E4D000D6A5160F566AAA0AE6 /* PinDetailModule.swift in Sources */,
+				597C4EFBCDD7FC922B477CB2 /* PointsView.swift in Sources */,
+				025A6767BB3AABD36467EF66 /* ProfileCenterView.swift in Sources */,
+				4458CA65A95D2517D40BF00E /* ProfileModule.swift in Sources */,
+				CEE7A03052E0600D4B55B11F /* ProfileRewardsHelpers.swift in Sources */,
+				28144A555460AF88D267DFD7 /* ProfileRewardsModels.swift in Sources */,
+				518EE2A3E72A43BD5D3458D3 /* ProfileRewardsModule.swift in Sources */,
+				9A100CEC54DFB8F543588976 /* ProfileRewardsService.swift in Sources */,
+				916FAC331C34A42E4CC404A6 /* ProfileRewardsSharedUI.swift in Sources */,
+				B5D6020DB834D9578EB567B0 /* ProfileRewardsViewModels.swift in Sources */,
+				C1724C2DD23B9A29F2300FE3 /* ReferAFriendView.swift in Sources */,
+				58AF2E01E6FC4C205057A0D0 /* SettingsModule.swift in Sources */,
 				8D3DDACAEE0DCEB24ADCC7C5 /* StoreDetailView.swift in Sources */,
 				6933756772F078B938769065 /* StoreModels.swift in Sources */,
 				87185F16A1D7A5B0274718C7 /* StoresListView.swift in Sources */,
 				915A910E62EFC74ED5F9CC07 /* StoresService.swift in Sources */,
 				C84C1AFADA6A0BDF13EFA1DF /* StoresViewModel.swift in Sources */,
+				341D2192ABBEBA7ECF2FCD4C /* TimeZoneResolver.swift in Sources */,
 				9940EC4C0B5582DD6EA8B730 /* TokenStore.swift in Sources */,
 				5F1EE204041A11E05FC3E129 /* UserLocationService.swift in Sources */,
+				9CF1EA6084759CFE4D73D007 /* VipMembershipView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -504,7 +534,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = Q5W8B7ZG46;
 				INFOPLIST_FILE = NailsDashIOS/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -538,7 +567,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = Q5W8B7ZG46;
 				INFOPLIST_FILE = NailsDashIOS/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

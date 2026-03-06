@@ -241,7 +241,7 @@ struct MyAppointmentsView: View {
         return Self.etCalendar.date(from: components)
     }
 
-    private static let etTimeZone = TimeZone(identifier: "America/New_York")!
+    private static let etTimeZone = TimeZone.autoupdatingCurrent
     private static var etCalendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = etTimeZone
@@ -1367,7 +1367,7 @@ private struct AppointmentDetailView: View {
         return Self.etCalendar.date(from: components)
     }
 
-    private static let etTimeZone = TimeZone(identifier: "America/New_York")!
+    private static let etTimeZone = TimeZone.autoupdatingCurrent
     private static var etCalendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = etTimeZone
@@ -1644,7 +1644,7 @@ private extension View {
 }
 
 private enum AppointmentDetailDateFormatter {
-    private static let etTimeZone = TimeZone(identifier: "America/New_York")!
+    private static let etTimeZone = TimeZone.autoupdatingCurrent
     private static let utcTimeZone = TimeZone(secondsFromGMT: 0)!
 
     private static let iso8601FractionalParser: ISO8601DateFormatter = {
@@ -1760,7 +1760,7 @@ private enum AppointmentSegment: CaseIterable {
 }
 
 private enum AppointmentLocalFormatter {
-    private static let etTimeZone = TimeZone(identifier: "America/New_York")!
+    private static let etTimeZone = TimeZone.autoupdatingCurrent
 
     private static let inputDateFormatter: DateFormatter = {
         let formatter = DateFormatter()

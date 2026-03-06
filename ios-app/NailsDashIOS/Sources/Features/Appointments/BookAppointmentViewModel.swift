@@ -24,6 +24,9 @@ final class BookAppointmentViewModel: ObservableObject {
 
     private let service: AppointmentsServiceProtocol
     let storeID: Int
+    var activeTimeZone: TimeZone {
+        TimeZoneResolver.resolve(storeIdentifier: storeDetail?.time_zone)
+    }
 
     init(storeID: Int, service: AppointmentsServiceProtocol = AppointmentsService()) {
         self.storeID = storeID
@@ -87,7 +90,7 @@ final class BookAppointmentViewModel: ObservableObject {
             store_id: storeID,
             service_id: serviceID,
             technician_id: selectedTechnicianID,
-            appointment_date: Self.dateFormatter.string(from: selectedDate),
+            appointment_date: formatDate(selectedDate),
             appointment_time: slotToRequestTime(slot),
             notes: notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : notes
         )
@@ -154,7 +157,7 @@ final class BookAppointmentViewModel: ObservableObject {
         }
         let request = AppointmentGroupCreateRequest(
             store_id: storeID,
-            appointment_date: Self.dateFormatter.string(from: selectedDate),
+            appointment_date: formatDate(selectedDate),
             appointment_time: slotToRequestTime(slot),
             host_service_id: hostServiceID,
             host_technician_id: selectedTechnicianID,
@@ -189,7 +192,7 @@ final class BookAppointmentViewModel: ObservableObject {
             return
         }
 
-        let dateText = Self.dateFormatter.string(from: selectedDate)
+        let dateText = formatDate(selectedDate)
         isLoadingSlots = true
         defer { isLoadingSlots = false }
         slotHintMessage = nil
@@ -324,65 +327,56 @@ final class BookAppointmentViewModel: ObservableObject {
     }
 
     private func dayIndexForStoreHours(_ date: Date) -> Int {
-        let weekday = Self.etCalendar.component(.weekday, from: date) // 1=Sun...7=Sat
+        let weekday = makeCalendar().component(.weekday, from: date) // 1=Sun...7=Sat
         return weekday == 1 ? 6 : weekday - 2 // 0=Mon...6=Sun
     }
 
-    private static let etTimeZone = TimeZone(identifier: "America/New_York")!
-    private static var etCalendar: Calendar {
+    private func makeCalendar() -> Calendar {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = etTimeZone
+        calendar.timeZone = activeTimeZone
         return calendar
     }
 
-    private static let dateFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.calendar = etCalendar
-        f.timeZone = etTimeZone
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "yyyy-MM-dd"
-        return f
-    }()
+    private func makeFormatter(format: String, locale: String) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.calendar = makeCalendar()
+        formatter.timeZone = activeTimeZone
+        formatter.locale = Locale(identifier: locale)
+        formatter.dateFormat = format
+        return formatter
+    }
 
-    private static let timeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.calendar = etCalendar
-        f.timeZone = etTimeZone
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "HH:mm:ss"
-        return f
-    }()
+    private func dateFormatter() -> DateFormatter {
+        makeFormatter(format: "yyyy-MM-dd", locale: "en_US_POSIX")
+    }
 
-    private static let slotFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.calendar = etCalendar
-        f.timeZone = etTimeZone
-        f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = "HH:mm"
-        return f
-    }()
+    private func slotFormatter() -> DateFormatter {
+        makeFormatter(format: "HH:mm", locale: "en_US_POSIX")
+    }
 
-    private static let slotDisplayFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US")
-        f.timeZone = etTimeZone
-        f.dateFormat = "h:mm a"
-        return f
-    }()
+    private func slotDisplayFormatter() -> DateFormatter {
+        makeFormatter(format: "h:mm a", locale: "en_US")
+    }
+
+    private func formatDate(_ date: Date) -> String {
+        dateFormatter().string(from: date)
+    }
 
     func displayTime(_ slot: String) -> String {
-        guard let date = Self.slotFormatter.date(from: slot) else { return slot }
-        return Self.slotDisplayFormatter.string(from: date)
+        let formatter = slotFormatter()
+        guard let date = formatter.date(from: slot) else { return slot }
+        return slotDisplayFormatter().string(from: date)
     }
 
     private func normalizeSlots(_ raw: [String]) -> [String] {
+        let formatter = slotFormatter()
         let set = Set(raw.compactMap { value -> String? in
-            if Self.slotFormatter.date(from: value) != nil {
+            if formatter.date(from: value) != nil {
                 return value
             }
             if value.count == 8, value.hasSuffix(":00") {
                 let hhmm = String(value.prefix(5))
-                if Self.slotFormatter.date(from: hhmm) != nil {
+                if formatter.date(from: hhmm) != nil {
                     return hhmm
                 }
             }
@@ -390,15 +384,15 @@ final class BookAppointmentViewModel: ObservableObject {
         })
         return set.sorted(by: { lhs, rhs in
             guard
-                let left = Self.slotFormatter.date(from: lhs),
-                let right = Self.slotFormatter.date(from: rhs)
+                let left = formatter.date(from: lhs),
+                let right = formatter.date(from: rhs)
             else { return lhs < rhs }
             return left < right
         })
     }
 
     private func filterPastSlots(_ slots: [String]) -> [String] {
-        let calendar = Self.etCalendar
+        let calendar = makeCalendar()
         let now = Date()
         if !calendar.isDate(selectedDate, inSameDayAs: now) {
             return slots
@@ -410,8 +404,9 @@ final class BookAppointmentViewModel: ObservableObject {
     }
 
     private func slotToDate(_ slot: String) -> Date {
-        guard let timeOnly = Self.slotFormatter.date(from: slot) else { return selectedDate }
-        let calendar = Self.etCalendar
+        let formatter = slotFormatter()
+        guard let timeOnly = formatter.date(from: slot) else { return selectedDate }
+        let calendar = makeCalendar()
         let datePart = calendar.dateComponents([.year, .month, .day], from: selectedDate)
         let timePart = calendar.dateComponents([.hour, .minute], from: timeOnly)
         var merged = DateComponents()
@@ -792,7 +787,7 @@ final class AppointmentDetailViewModel: ObservableObject {
         return f
     }()
 
-    private static let etTimeZone = TimeZone(identifier: "America/New_York")!
+    private static let etTimeZone = TimeZone.autoupdatingCurrent
     private static var etCalendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = etTimeZone

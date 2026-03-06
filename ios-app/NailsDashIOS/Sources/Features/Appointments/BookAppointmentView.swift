@@ -1216,7 +1216,7 @@ struct BookAppointmentView: View {
     }
 
     private var successTimeText: String {
-        let dateText = Self.successDateFormatter.string(from: viewModel.selectedDate)
+        let dateText = successDateFormatter().string(from: viewModel.selectedDate)
         let timeText = viewModel.selectedSlot ?? (selectedSlotDisplay ?? "Select date & time")
         return "\(dateText) at \(timeText)"
     }
@@ -1244,10 +1244,14 @@ struct BookAppointmentView: View {
         isBottomSheetPresentation ? "Confirm Appointment" : "Create Appointment"
     }
 
+    private var activeTimeZone: TimeZone {
+        viewModel.activeTimeZone
+    }
+
     private var calendar: Calendar {
         var cal = Calendar(identifier: .gregorian)
         cal.locale = Locale(identifier: "en_US_POSIX")
-        cal.timeZone = Self.etTimeZone
+        cal.timeZone = activeTimeZone
         cal.firstWeekday = 1 // Sunday
         return cal
     }
@@ -1257,7 +1261,7 @@ struct BookAppointmentView: View {
     }
 
     private var monthHeaderText: String {
-        Self.monthTitleFormatter.string(from: displayedMonthStart)
+        monthTitleFormatter().string(from: displayedMonthStart)
     }
 
     private var calendarDays: [Date?] {
@@ -1288,23 +1292,21 @@ struct BookAppointmentView: View {
         return calendar.startOfDay(for: previousMonthEnd) >= calendar.startOfDay(for: Date())
     }
 
-    private static let monthTitleFormatter: DateFormatter = {
+    private func monthTitleFormatter() -> DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = etTimeZone
+        formatter.timeZone = activeTimeZone
         formatter.dateFormat = "MMMM yyyy"
         return formatter
-    }()
+    }
 
-    private static let successDateFormatter: DateFormatter = {
+    private func successDateFormatter() -> DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = etTimeZone
+        formatter.timeZone = activeTimeZone
         formatter.dateFormat = "MMM d"
         return formatter
-    }()
-
-    private static let etTimeZone = TimeZone(identifier: "America/New_York")!
+    }
 
     private func shiftMonth(by offset: Int) {
         guard let next = calendar.date(byAdding: .month, value: offset, to: displayedMonthStart) else { return }

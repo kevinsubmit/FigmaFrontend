@@ -28,6 +28,7 @@ struct StoreDTO: Decodable, Identifiable {
     let zip_code: String?
     let latitude: Double?
     let longitude: Double?
+    let time_zone: String?
     let phone: String?
     let email: String?
     let description: String?
@@ -54,6 +55,7 @@ struct StoreDetailDTO: Decodable {
     let zip_code: String?
     let latitude: Double?
     let longitude: Double?
+    let time_zone: String?
     let phone: String?
     let email: String?
     let description: String?

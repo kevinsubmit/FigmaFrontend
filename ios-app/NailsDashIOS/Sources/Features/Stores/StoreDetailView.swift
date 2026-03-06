@@ -960,7 +960,7 @@ struct StoreDetailView: View {
     private func backendWeekdayIndex(_ date: Date) -> Int {
         // Swift weekday: 1=Sun ... 7=Sat -> backend: 0=Mon ... 6=Sun
         var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+        calendar.timeZone = TimeZoneResolver.resolve(storeIdentifier: viewModel.store?.time_zone)
         let weekday = calendar.component(.weekday, from: date)
         return (weekday + 5) % 7
     }
@@ -1312,7 +1312,7 @@ struct StoreDetailView: View {
 }
 
 private enum StoreDetailDateFormatter {
-    private static let etTimeZone = TimeZone(identifier: "America/New_York")!
+    private static let etTimeZone = TimeZone.autoupdatingCurrent
     private static let utcTimeZone = TimeZone(secondsFromGMT: 0)!
 
     private static let hmsParser: DateFormatter = {
