@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List, Optional
+from typing import Dict, List, Optional
 from app.db.session import get_db
 from app.models.review import Review
 from app.models.user import User
@@ -23,18 +23,36 @@ router = APIRouter()
 REVIEW_WINDOW_DAYS = 30
 
 
+def _build_reply_payload_map(db: Session, review_ids: List[int]) -> Dict[int, dict]:
+    if not review_ids:
+        return {}
+
+    replies = db.query(ReviewReply).filter(ReviewReply.review_id.in_(review_ids)).all()
+    if not replies:
+        return {}
+
+    admin_ids = {row.admin_id for row in replies if row.admin_id is not None}
+    admin_map = {}
+    if admin_ids:
+        admin_map = {
+            row.id: row.username
+            for row in db.query(User.id, User.username).filter(User.id.in_(admin_ids)).all()
+        }
+
+    payload_map: Dict[int, dict] = {}
+    for reply in replies:
+        payload_map[reply.review_id] = {
+            "id": reply.id,
+            "content": reply.content,
+            "admin_name": admin_map.get(reply.admin_id),
+            "created_at": reply.created_at.isoformat() if reply.created_at else None,
+            "updated_at": reply.updated_at.isoformat() if reply.updated_at else None,
+        }
+    return payload_map
+
+
 def _build_reply_payload(db: Session, review_id: int) -> Optional[dict]:
-    reply = db.query(ReviewReply).filter(ReviewReply.review_id == review_id).first()
-    if not reply:
-        return None
-    admin = db.query(User).filter(User.id == reply.admin_id).first()
-    return {
-        "id": reply.id,
-        "content": reply.content,
-        "admin_name": admin.username if admin else None,
-        "created_at": reply.created_at.isoformat(),
-        "updated_at": reply.updated_at.isoformat(),
-    }
+    return _build_reply_payload_map(db, [review_id]).get(review_id)
 
 
 def _refresh_store_rating_summary(db: Session, store_id: int) -> None:
@@ -194,12 +212,30 @@ def get_admin_reviews(
     total = query.count()
     rows = query.order_by(Review.created_at.desc()).offset(skip).limit(limit).all()
 
-    store_map = {row.id: row.name for row in db.query(Store.id, Store.name).all()}
-    user_map = {
-        row.id: row
-        for row in db.query(User.id, User.username, User.full_name, User.avatar_url, User.updated_at).all()
-    }
-    appt_map = {row.id: row.order_number for row in db.query(Appointment.id, Appointment.order_number).all()}
+    review_ids = [row.id for row in rows]
+    store_ids = {row.store_id for row in rows}
+    user_ids = {row.user_id for row in rows}
+    appointment_ids = {row.appointment_id for row in rows}
+
+    store_map = {}
+    if store_ids:
+        store_map = {
+            row.id: row.name
+            for row in db.query(Store.id, Store.name).filter(Store.id.in_(store_ids)).all()
+        }
+    user_map = {}
+    if user_ids:
+        user_map = {
+            row.id: row
+            for row in db.query(User.id, User.username, User.full_name, User.avatar_url, User.updated_at).filter(User.id.in_(user_ids)).all()
+        }
+    appt_map = {}
+    if appointment_ids:
+        appt_map = {
+            row.id: row.order_number
+            for row in db.query(Appointment.id, Appointment.order_number).filter(Appointment.id.in_(appointment_ids)).all()
+        }
+    reply_map = _build_reply_payload_map(db, review_ids)
 
     items: List[ReviewAdminItem] = []
     for row in rows:
@@ -211,7 +247,7 @@ def get_admin_reviews(
         payload.images = row.images or []
         payload.store_name = store_map.get(row.store_id)
         payload.order_number = appt_map.get(row.appointment_id)
-        payload.reply = _build_reply_payload(db, row.id)
+        payload.reply = reply_map.get(row.id)
         payload.has_reply = payload.reply is not None
         items.append(payload)
 
@@ -236,19 +272,26 @@ def get_store_reviews(
         Review.created_at.desc()
     ).offset(skip).limit(limit).all()
     
+    user_ids = {row.user_id for row in reviews}
+    user_map = {}
+    if user_ids:
+        user_map = {
+            row.id: row
+            for row in db.query(User.id, User.username, User.full_name, User.avatar_url, User.updated_at).filter(User.id.in_(user_ids)).all()
+        }
+    reply_map = _build_reply_payload_map(db, [row.id for row in reviews])
+
     # 填充用户信息和回复信息
     response_list = []
     for review in reviews:
-        user = db.query(User).filter(User.id == review.user_id).first()
+        user = user_map.get(review.user_id)
         review_response = ReviewResponse.from_orm(review)
         if user:
             review_response.user_name = user.full_name or user.username
             review_response.user_avatar = user.avatar_url
             review_response.user_avatar_updated_at = user.updated_at
         review_response.images = review.images or []
-        
-        # 获取回复信息
-        review_response.reply = _build_reply_payload(db, review.id)
+        review_response.reply = reply_map.get(review.id)
             
         response_list.append(review_response)
     
@@ -320,6 +363,8 @@ def get_my_reviews(
         Review.created_at.desc()
     ).offset(skip).limit(limit).all()
     
+    reply_map = _build_reply_payload_map(db, [row.id for row in reviews])
+
     # 填充用户信息和回复信息
     response_list = []
     for review in reviews:
@@ -328,9 +373,7 @@ def get_my_reviews(
         review_response.user_avatar = current_user.avatar_url
         review_response.user_avatar_updated_at = current_user.updated_at
         review_response.images = review.images or []
-        
-        # 获取回复信息
-        review_response.reply = _build_reply_payload(db, review.id)
+        review_response.reply = reply_map.get(review.id)
             
         response_list.append(review_response)
     

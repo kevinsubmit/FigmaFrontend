@@ -22,6 +22,7 @@ class User(Base):
     customer_tags = Column(Text, nullable=True)  # 客户自定义标签(JSON数组字符串)
     phone_verified = Column(Boolean, default=False, nullable=False)  # 手机号是否已验证
     push_notifications_enabled = Column(Boolean, default=True, nullable=False)  # 用户是否开启推送
+    preferred_language = Column(String(8), default="en", nullable=False)  # 用户语言偏好(en/zh)
     is_active = Column(Boolean, default=True, nullable=False)
     is_admin = Column(Boolean, default=False, nullable=False)  # 超级管理员
     store_id = Column(Integer, nullable=True, index=True)  # 店铺管理员关联的店铺ID

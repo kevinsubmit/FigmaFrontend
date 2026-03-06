@@ -12,6 +12,7 @@ from app.api.deps import get_current_user
 from app.models.user import User
 from app.crud import user as crud_user
 from app.crud import verification_code as crud_verification
+from app.crud import push_device_token as crud_push_device_token
 from app.core.security import verify_password, get_password_hash
 from app.schemas.user import UserResponse
 from app.utils.security_validation import sanitize_image_url
@@ -344,16 +345,30 @@ async def update_settings(
         Updated settings
         
     Note:
-        Settings are stored in a separate table or as JSON in user table
-        For now, we'll return mock data as settings table is not implemented
+        Settings are persisted on backend_users table.
     """
-    # TODO: Implement settings storage in database
-    # For now, return mock response
+    if request.notification_enabled is not None:
+        current_user.push_notifications_enabled = bool(request.notification_enabled)
+
+    if request.language is not None:
+        current_user.preferred_language = request.language
+
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+
+    if request.notification_enabled is False:
+        crud_push_device_token.deactivate_all_user_tokens(
+            db,
+            user_id=current_user.id,
+            platform="ios",
+        )
+
     settings = {
-        "notification_enabled": request.notification_enabled if request.notification_enabled is not None else True,
-        "language": request.language if request.language else "en"
+        "notification_enabled": bool(getattr(current_user, "push_notifications_enabled", True)),
+        "language": getattr(current_user, "preferred_language", "en") or "en",
     }
-    
+
     return {
         "message": "Settings updated successfully",
         "settings": settings
