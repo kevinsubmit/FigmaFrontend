@@ -2,14 +2,17 @@
 System logs admin endpoints.
 """
 from datetime import datetime
+import os
 import json
 import re
+from threading import Lock
+from time import monotonic
 from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import desc, func
+from sqlalchemy import desc, false, func, or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_admin_user, get_db
@@ -19,6 +22,10 @@ from app.models.user import User
 router = APIRouter()
 ET_TZ = ZoneInfo("America/New_York")
 UTC_TZ = ZoneInfo("UTC")
+_PHONE_STRIP_CHARS = (" ", "-", "(", ")", "+", ".", "/")
+_LOG_STATS_CACHE_TTL_SECONDS = max(1, int(os.getenv("LOG_STATS_CACHE_TTL_SECONDS", "15")))
+_LOG_STATS_CACHE_LOCK = Lock()
+_LOG_STATS_CACHE: Dict[str, Any] = {"expires_at": 0.0, "value": None}
 
 
 class SystemLogOut(BaseModel):
@@ -73,6 +80,22 @@ class SystemLogStatsOut(BaseModel):
     top_error_paths: List[Dict[str, Any]]
 
 
+def _get_cached_log_stats() -> Optional[SystemLogStatsOut]:
+    now = monotonic()
+    with _LOG_STATS_CACHE_LOCK:
+        expires_at = float(_LOG_STATS_CACHE.get("expires_at", 0.0))
+        value = _LOG_STATS_CACHE.get("value")
+        if value is None or now >= expires_at:
+            return None
+        return value
+
+
+def _set_cached_log_stats(value: SystemLogStatsOut) -> None:
+    with _LOG_STATS_CACHE_LOCK:
+        _LOG_STATS_CACHE["value"] = value
+        _LOG_STATS_CACHE["expires_at"] = monotonic() + _LOG_STATS_CACHE_TTL_SECONDS
+
+
 def _parse_json_text(text: Optional[str]) -> Optional[Any]:
     if not text:
         return None
@@ -88,6 +111,25 @@ def _build_operator_phone_map(db: Session, items: List[SystemLog]) -> Dict[int, 
         return {}
     rows = db.query(User.id, User.phone).filter(User.id.in_(operator_ids)).all()
     return {int(row.id): str(row.phone) for row in rows if row.phone}
+
+
+def _normalized_phone_sql(column):
+    expression = column
+    for strip_char in _PHONE_STRIP_CHARS:
+        expression = func.replace(expression, strip_char, "")
+    return expression
+
+
+def _phone_search_candidates(raw: str) -> List[str]:
+    digits = re.sub(r"\D", "", raw)
+    if not digits:
+        return []
+    candidates = {digits}
+    if len(digits) == 10:
+        candidates.add(f"1{digits}")
+    elif len(digits) == 11 and digits.startswith("1"):
+        candidates.add(digits[1:])
+    return sorted(candidates)
 
 
 @router.get("/admin", response_model=SystemLogListOut)
@@ -129,16 +171,19 @@ def list_logs_admin(
 
         # 数字输入视为精确匹配手机号(按数字归一化)或用户ID，避免误匹配其他操作者。
         if operator_text.isdigit():
-            normalized = operator_text
-            user_rows = db.query(User.id, User.phone).all()
-            for row in user_rows:
-                phone_digits = re.sub(r"\D", "", str(row.phone or ""))
-                if phone_digits == normalized:
-                    operator_ids.append(int(row.id))
-            operator_ids.extend(
-                [int(row.id) for row in db.query(User.id).filter(User.id == int(operator_text)).all()]
-            )
-            operator_ids = sorted(set(operator_ids))
+            candidates = _phone_search_candidates(operator_text)
+            exact_phone_match = User.phone.in_(candidates) if candidates else false()
+            normalized_phone_match = _normalized_phone_sql(User.phone).in_(candidates) if candidates else false()
+            operator_ids = [
+                int(row.id)
+                for row in db.query(User.id).filter(
+                    or_(
+                        User.id == int(operator_text),
+                        exact_phone_match,
+                        normalized_phone_match,
+                    )
+                ).all()
+            ]
         else:
             operator_ids = [
                 int(row.id)
@@ -193,6 +238,10 @@ def get_log_stats_admin(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_admin_user),
 ):
+    cached = _get_cached_log_stats()
+    if cached is not None:
+        return cached
+
     now_utc = datetime.now(UTC_TZ)
     now_et = now_utc.astimezone(ET_TZ)
     day_start_et = now_et.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -275,7 +324,7 @@ def get_log_stats_admin(
         .all()
     )
 
-    return SystemLogStatsOut(
+    result = SystemLogStatsOut(
         today_total=int(today_total),
         today_error_count=int(today_error_count),
         today_security_count=int(today_security_count),
@@ -285,6 +334,8 @@ def get_log_stats_admin(
         top_actions=[{"action": row.action, "count": int(row.count)} for row in top_actions_rows],
         top_error_paths=[{"path": row.path, "count": int(row.count)} for row in top_error_paths_rows],
     )
+    _set_cached_log_stats(result)
+    return result
 
 
 @router.get("/admin/{log_id}", response_model=SystemLogDetailOut)

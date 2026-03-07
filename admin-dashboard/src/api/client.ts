@@ -8,9 +8,15 @@ const API_BASE_URL =
 const ADMIN_CLIENT_PLATFORM = 'web-admin';
 const ADMIN_CLIENT_VERSION =
   (import.meta.env.VITE_ADMIN_APP_VERSION || import.meta.env.VITE_APP_VERSION || 'web-admin').trim();
+const API_REQUEST_TIMEOUT_MS = (() => {
+  const rawValue = Number(import.meta.env.VITE_ADMIN_API_TIMEOUT_MS || 15000);
+  if (!Number.isFinite(rawValue)) return 15000;
+  return Math.max(1000, Math.floor(rawValue));
+})();
 
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
+  timeout: API_REQUEST_TIMEOUT_MS,
 });
 
 const MUTATION_METHODS = new Set(['post', 'put', 'patch', 'delete']);

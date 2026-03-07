@@ -2,6 +2,7 @@
 Appointments API endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta
@@ -1091,7 +1092,7 @@ def get_admin_appointments(
         status=status_enum
     )
 
-    user_ids = sorted({int(appt.user_id) for appt, *_ in appointments_data if appt.user_id})
+    user_ids = sorted({int(appt.user_id) for appt, *_ in appointments_data if appt.user_id is not None})
     completed_user_ids = set()
     vip_level_map = {uid: 0 for uid in user_ids}
     customer_tags_map = {uid: [] for uid in user_ids}
@@ -1105,28 +1106,35 @@ def get_admin_appointments(
             int(user_id): _parse_customer_tags(raw_tags)
             for user_id, raw_tags in user_rows
         }
-        completed_rows = (
+        completed_stats_rows = (
             db.query(
-                AppointmentModel.user_id,
-                AppointmentModel.order_amount,
-                AppointmentModel.final_paid_amount,
+                AppointmentModel.user_id.label("user_id"),
+                func.count(AppointmentModel.id).label("completed_visits"),
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (AppointmentModel.final_paid_amount > 0, AppointmentModel.final_paid_amount),
+                            else_=func.coalesce(AppointmentModel.order_amount, 0.0),
+                        )
+                    ),
+                    0.0,
+                ).label("completed_spend"),
             )
             .filter(
                 AppointmentModel.user_id.in_(user_ids),
                 AppointmentModel.status == AppointmentStatus.COMPLETED,
             )
+            .group_by(AppointmentModel.user_id)
             .all()
         )
         levels = _load_vip_levels_for_appointments(db)
         stats_map = {uid: {"visits": 0, "spend": 0.0} for uid in user_ids}
-        for row_user_id, row_order_amount, row_final_paid_amount in completed_rows:
-            uid = int(row_user_id)
+        for row in completed_stats_rows:
+            uid = int(row.user_id)
             completed_user_ids.add(uid)
             current = stats_map.setdefault(uid, {"visits": 0, "spend": 0.0})
-            current["visits"] += 1
-            final_paid = float(row_final_paid_amount or 0)
-            order_amount = float(row_order_amount or 0)
-            current["spend"] += final_paid if final_paid > 0 else max(order_amount, 0)
+            current["visits"] = int(row.completed_visits or 0)
+            current["spend"] = float(row.completed_spend or 0.0)
         vip_level_map = {
             uid: _resolve_vip_level(total_spend=stats["spend"], total_visits=stats["visits"], levels=levels)
             for uid, stats in stats_map.items()
@@ -1134,6 +1142,7 @@ def get_admin_appointments(
 
     result = []
     for appt, store_name, store_address, service_name, service_price, service_duration, review_id, user_name, customer_name, customer_phone, technician_name in appointments_data:
+        user_id_value = int(appt.user_id) if appt.user_id is not None else None
         resolved_amount = appt.order_amount if appt.order_amount is not None else service_price
         resolved_customer_name = appt.guest_name or customer_name or user_name
         raw_customer_phone = appt.guest_phone or customer_phone
@@ -1150,10 +1159,10 @@ def get_admin_appointments(
             "user_name": user_name,
             "customer_name": resolved_customer_name,
             "customer_phone": resolved_customer_phone,
-            "customer_tags": customer_tags_map.get(int(appt.user_id), []),
+            "customer_tags": customer_tags_map.get(user_id_value, []) if user_id_value is not None else [],
             "technician_name": technician_name,
-            "is_new_customer": int(appt.user_id) not in completed_user_ids,
-            "customer_vip_level": vip_level_map.get(int(appt.user_id), 0),
+            "is_new_customer": (user_id_value not in completed_user_ids) if user_id_value is not None else True,
+            "customer_vip_level": vip_level_map.get(user_id_value, 0) if user_id_value is not None else 0,
         })
 
     if include_full_phone:

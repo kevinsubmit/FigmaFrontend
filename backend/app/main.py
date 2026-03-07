@@ -19,6 +19,7 @@ import json
 import re
 import time
 import uuid
+from threading import Lock
 from urllib.parse import parse_qsl, urlencode
 
 from app.core.security import decode_token
@@ -45,6 +46,9 @@ _SENSITIVE_QUERY_KEYS = {
 }
 _REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{8,128}$")
 _CLIENT_PLATFORM_PATTERN = re.compile(r"^[a-z0-9._-]{1,32}$")
+_SECURITY_RULE_CACHE_TTL_SECONDS = max(1.0, float(os.getenv("SECURITY_RULE_CACHE_TTL_SECONDS", "30")))
+_SECURITY_RULE_CACHE_LOCK = Lock()
+_SECURITY_RULE_CACHE: dict[str, dict[str, object]] = {}
 
 
 def _resolve_access_log_sample_rate() -> float:
@@ -245,6 +249,41 @@ def _rule_matches_ip(target_type: str, target_value: str, ip_value: str) -> bool
     return False
 
 
+def _load_active_security_rules(db, scope: str):
+    now_ts = time.time()
+    with _SECURITY_RULE_CACHE_LOCK:
+        cache_entry = _SECURITY_RULE_CACHE.get(scope)
+        if cache_entry and float(cache_entry.get("expires_at", 0)) > now_ts:
+            return cache_entry.get("rules", [])
+
+    rows = (
+        db.query(SecurityIPRule)
+        .filter(
+            SecurityIPRule.status == "active",
+            SecurityIPRule.scope.in_([scope, "all"]),
+        )
+        .all()
+    )
+    rules = [
+        {
+            "id": int(row.id),
+            "target_type": str(row.target_type),
+            "target_value": str(row.target_value),
+            "rule_type": str(row.rule_type),
+            "priority": int(row.priority),
+            "expires_at": row.expires_at,
+        }
+        for row in rows
+    ]
+
+    with _SECURITY_RULE_CACHE_LOCK:
+        _SECURITY_RULE_CACHE[scope] = {
+            "expires_at": now_ts + _SECURITY_RULE_CACHE_TTL_SECONDS,
+            "rules": rules,
+        }
+    return rules
+
+
 @app.middleware("http")
 async def security_ip_guard(request, call_next):
     scope = _determine_scope(request.url.path)
@@ -258,34 +297,27 @@ async def security_ip_guard(request, call_next):
     db = SessionLocal()
     try:
         now = datetime.utcnow()
-        rules = (
-            db.query(SecurityIPRule)
-            .filter(
-                SecurityIPRule.status == "active",
-                SecurityIPRule.scope.in_([scope, "all"]),
-            )
-            .all()
-        )
+        rules = _load_active_security_rules(db, scope)
         matched_rules = [
             rule
             for rule in rules
-            if (rule.expires_at is None or rule.expires_at > now)
-            and _rule_matches_ip(rule.target_type, rule.target_value, client_ip)
+            if (rule["expires_at"] is None or rule["expires_at"] > now)
+            and _rule_matches_ip(str(rule["target_type"]), str(rule["target_value"]), client_ip)
         ]
 
         if not matched_rules:
             return await call_next(request)
 
-        allow_priorities = [rule.priority for rule in matched_rules if rule.rule_type == "allow"]
-        deny_rules = [rule for rule in matched_rules if rule.rule_type == "deny"]
-        deny_priority = min((rule.priority for rule in deny_rules), default=None)
+        allow_priorities = [int(rule["priority"]) for rule in matched_rules if rule["rule_type"] == "allow"]
+        deny_rules = [rule for rule in matched_rules if rule["rule_type"] == "deny"]
+        deny_priority = min((int(rule["priority"]) for rule in deny_rules), default=None)
         allow_priority = min(allow_priorities) if allow_priorities else None
 
         is_allowed = allow_priority is not None and (deny_priority is None or allow_priority <= deny_priority)
         if is_allowed:
             return await call_next(request)
 
-        matched_rule = min(deny_rules, key=lambda item: item.priority) if deny_rules else None
+        matched_rule = min(deny_rules, key=lambda item: int(item["priority"])) if deny_rules else None
 
         user_id = _resolve_operator_user_id(db, request)
 
@@ -298,7 +330,7 @@ async def security_ip_guard(request, call_next):
                 path=request.url.path,
                 method=request.method,
                 scope=scope,
-                matched_rule_id=matched_rule.id if matched_rule else None,
+                matched_rule_id=int(matched_rule["id"]) if matched_rule else None,
                 block_reason="ip_deny",
                 user_id=user_id,
                 user_agent=request.headers.get("user-agent"),
@@ -316,7 +348,7 @@ async def security_ip_guard(request, call_next):
             message="请求被IP策略拦截",
             operator_user_id=user_id,
             target_type="security_ip_rule",
-            target_id=str(matched_rule.id) if matched_rule else None,
+            target_id=str(matched_rule["id"]) if matched_rule else None,
             request_id=request_id,
             ip_address=client_ip,
             user_agent=request.headers.get("user-agent"),

@@ -4,6 +4,7 @@ Centralized system log service.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from queue import Empty, Full, Queue
 from threading import Event, Lock, Thread
@@ -17,6 +18,7 @@ from app.models.system_log import SystemLog
 
 _ASYNC_LOG_QUEUE_SIZE = max(100, int(os.getenv("ASYNC_LOG_QUEUE_SIZE", "5000")))
 _ASYNC_LOG_POLL_SECONDS = 0.2
+logger = logging.getLogger(__name__)
 
 
 class _AsyncSystemLogWriter:
@@ -51,6 +53,7 @@ class _AsyncSystemLogWriter:
             self._queue.put_nowait(payload)
             return True
         except Full:
+            logger.warning("Async system log queue is full; dropping log event")
             return False
 
     def _run(self) -> None:
@@ -131,6 +134,14 @@ def create_system_log(
         return item
     except Exception:
         db.rollback()
+        logger.warning(
+            "Failed to persist system log (type=%s, level=%s, module=%s, action=%s)",
+            log_type,
+            level,
+            module,
+            action,
+            exc_info=True,
+        )
         return None
 
 

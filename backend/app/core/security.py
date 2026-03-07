@@ -2,12 +2,14 @@
 Security utilities for authentication and authorization
 """
 from datetime import datetime, timedelta
+import logging
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import HTTPException, status
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
 
 # Password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -48,10 +50,12 @@ def get_password_hash(password: str) -> str:
         
         # Hash the password
         return pwd_context.hash(password)
-    except Exception as e:
-        # Log the error for debugging
-        print(f"Error hashing password: {e}")
-        print(f"Password length: {len(password)} chars, {len(password.encode('utf-8'))} bytes")
+    except Exception:
+        logger.exception(
+            "Error hashing password (chars=%s, bytes=%s)",
+            len(password),
+            len(password.encode("utf-8")),
+        )
         raise
 
 

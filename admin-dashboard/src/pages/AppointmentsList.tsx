@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CalendarDays,
@@ -443,6 +443,10 @@ const AppointmentsList: React.FC = () => {
   }, [dateCursor]);
 
   const visibleDates = viewMode === 'week' ? weekDates : [dateCursor];
+  const visibleDateSet = useMemo(() => new Set(visibleDates), [visibleDates]);
+  const deferredKeyword = useDeferredValue(keyword);
+  const deferredOrderKeyword = useDeferredValue(orderKeyword);
+  const deferredStoreKeyword = useDeferredValue(storeKeyword);
 
   const serviceOptions = useMemo(() => {
     return catalogServiceNames;
@@ -455,12 +459,12 @@ const AppointmentsList: React.FC = () => {
   }, [appointments]);
 
   const filteredAppointments = useMemo(() => {
-    const lowerKeyword = keyword.trim().toLowerCase();
-    const lowerOrderKeyword = orderKeyword.trim().toLowerCase();
-    const lowerStoreKeyword = storeKeyword.trim().toLowerCase();
+    const lowerKeyword = deferredKeyword.trim().toLowerCase();
+    const lowerOrderKeyword = deferredOrderKeyword.trim().toLowerCase();
+    const lowerStoreKeyword = deferredStoreKeyword.trim().toLowerCase();
 
     return appointments
-      .filter((apt) => visibleDates.includes(apt.appointment_date))
+      .filter((apt) => visibleDateSet.has(apt.appointment_date))
       .filter((apt) => {
         const aptStatus = normalizeStatus(apt.status);
         if (status !== 'all' && aptStatus !== status) return false;
@@ -490,7 +494,17 @@ const AppointmentsList: React.FC = () => {
         if (a.appointment_date !== b.appointment_date) return a.appointment_date.localeCompare(b.appointment_date);
         return a.appointment_time.localeCompare(b.appointment_time);
       });
-  }, [appointments, visibleDates, status, serviceFilter, staffFilter, keyword, orderKeyword, role, storeKeyword]);
+  }, [
+    appointments,
+    visibleDateSet,
+    status,
+    serviceFilter,
+    staffFilter,
+    deferredKeyword,
+    deferredOrderKeyword,
+    role,
+    deferredStoreKeyword,
+  ]);
 
   const conflictInfo = useMemo(() => {
     const byKey: Record<string, Appointment[]> = {};

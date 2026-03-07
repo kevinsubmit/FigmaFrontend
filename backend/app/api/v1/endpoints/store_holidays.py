@@ -14,6 +14,24 @@ from app.schemas.store_holiday import StoreHoliday, StoreHolidayCreate, StoreHol
 router = APIRouter()
 
 
+def _ensure_can_manage_store_holiday(current_user: User, store_id: int) -> None:
+    if current_user.is_admin:
+        return
+
+    if not current_user.store_id:
+        raise HTTPException(
+            status_code=403,
+            detail="Only super admin or approved store admin can manage store holidays",
+        )
+    if current_user.store_admin_status != "approved":
+        raise HTTPException(status_code=403, detail="Store admin is not approved")
+    if int(current_user.store_id) != int(store_id):
+        raise HTTPException(
+            status_code=403,
+            detail="You can only manage holidays for your own store",
+        )
+
+
 @router.get("/{store_id}", response_model=List[StoreHoliday])
 def get_store_holidays(
     store_id: int,
@@ -65,8 +83,7 @@ def create_holiday(
     
     - **store_id**: Store ID
     """
-    # TODO: Add authorization check (only store manager/admin can create)
-    
+    _ensure_can_manage_store_holiday(current_user, store_id)
     holiday = crud_holiday.create_holiday(
         db,
         store_id=store_id,
@@ -87,17 +104,20 @@ def update_holiday(
     
     - **holiday_id**: Holiday ID
     """
-    # TODO: Add authorization check (only store manager/admin can update)
-    
+    existing = crud_holiday.get_holiday(db, holiday_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Holiday not found")
+    _ensure_can_manage_store_holiday(current_user, existing.store_id)
+
     holiday = crud_holiday.update_holiday(
         db,
         holiday_id=holiday_id,
         holiday_data=holiday_data
     )
-    
+
     if not holiday:
         raise HTTPException(status_code=404, detail="Holiday not found")
-    
+
     return holiday
 
 
@@ -112,8 +132,11 @@ def delete_holiday(
     
     - **holiday_id**: Holiday ID
     """
-    # TODO: Add authorization check (only store manager/admin can delete)
-    
+    existing = crud_holiday.get_holiday(db, holiday_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Holiday not found")
+    _ensure_can_manage_store_holiday(current_user, existing.store_id)
+
     success = crud_holiday.delete_holiday(db, holiday_id)
     if not success:
         raise HTTPException(status_code=404, detail="Holiday not found")
