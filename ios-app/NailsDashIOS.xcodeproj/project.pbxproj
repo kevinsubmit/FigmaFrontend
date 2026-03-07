@@ -3,12 +3,13 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 63;
 	objects = {
 
 /* Begin PBXBuildFile section */
 		025A6767BB3AABD36467EF66 /* ProfileCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 467A87303A99C72B3929568E /* ProfileCenterView.swift */; };
 		09769325FBB26B532C0ED1C1 /* AppointmentsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62FEF46D46BA3679CBD5C6AD /* AppointmentsService.swift */; };
+		1197BC9D99FF44629551F0F8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B358658B2E6A4A7A9D16F2A3 /* Assets.xcassets */; };
 		0C7971CFA3CC3CAD8E8D2B9D /* TokenStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B7BF7EFAEDFAF8793F0649A /* TokenStoreTests.swift */; };
 		154A3232C3DB41EA9F90D834 /* APIClientCachingAndConcurrency.swift in Sources */ = {isa = PBXBuildFile; fileRef = 428A15505279F698544F4AE6 /* APIClientCachingAndConcurrency.swift */; };
 		18908AAC022CFE91F8CD4424 /* APIClientPayloadValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10ED46752F090AF35D958CB5 /* APIClientPayloadValidation.swift */; };
@@ -70,6 +71,7 @@
 /* Begin PBXFileReference section */
 		02871CCE6D746DB532FD14AF /* ProfileRewardsModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsModule.swift; sourceTree = "<group>"; };
 		0761888B7B591F6DD1A5B18B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		B358658B2E6A4A7A9D16F2A3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0C08BB341431E255CA22222C /* ProfileRewardsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsModels.swift; sourceTree = "<group>"; };
 		0C7D16222E06C5B3DAEDAD66 /* PinDetailModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinDetailModule.swift; sourceTree = "<group>"; };
 		10ED46752F090AF35D958CB5 /* APIClientPayloadValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClientPayloadValidation.swift; sourceTree = "<group>"; };
@@ -116,7 +118,7 @@
 		E637FC76552DE0DB5F90C5E5 /* StoreModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreModels.swift; sourceTree = "<group>"; };
 		F02EA01A0A15E72D843E28F6 /* PointsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PointsView.swift; sourceTree = "<group>"; };
 		F062D1580A10B1A1FAF43688 /* ProfileRewardsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsService.swift; sourceTree = "<group>"; };
-		F0D75736C682585EE701A3DD /* NailsDashIOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = NailsDashIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F0D75736C682585EE701A3DD /* NailsDashIOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NailsDashIOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F901EDA4578C42EBD2B96F50 /* ReferAFriendView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReferAFriendView.swift; sourceTree = "<group>"; };
 		FC1546B955DCECB8AB5A3EFC /* ProfileRewardsHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRewardsHelpers.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -303,6 +305,7 @@
 		F98214D2EB95A33F05FF7D95 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				B358658B2E6A4A7A9D16F2A3 /* Assets.xcassets */,
 				0761888B7B591F6DD1A5B18B /* Info.plist */,
 			);
 			name = Resources;
@@ -317,6 +320,7 @@
 			buildConfigurationList = 1D92582003DF1815870FC080 /* Build configuration list for PBXNativeTarget "NailsDashIOS" */;
 			buildPhases = (
 				F36CD4E0C24683316AC2B715 /* Sources */,
+				3F47CDFC9CFA458D85FD44B3 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -357,7 +361,6 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					85A0E59EDA17344D9EF3E861 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 					D8A3A5DAD63CBB07845CAA8B = {
@@ -376,7 +379,6 @@
 			);
 			mainGroup = 136E749B55E7AE897E5C5634;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -385,6 +387,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		3F47CDFC9CFA458D85FD44B3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1197BC9D99FF44629551F0F8 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		156E105E787F2915CE7554B8 /* Sources */ = {
@@ -534,6 +547,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = Q5W8B7ZG46;
 				INFOPLIST_FILE = NailsDashIOS/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -567,6 +581,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = Q5W8B7ZG46;
 				INFOPLIST_FILE = NailsDashIOS/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
