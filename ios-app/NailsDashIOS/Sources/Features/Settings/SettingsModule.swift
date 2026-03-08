@@ -133,7 +133,7 @@ struct SettingsView: View {
                         Text("You will need to sign in again.")
                     }
 
-                    Text("Figma Make Beauty Platform • v1.2.0")
+                    Text("Figma Make Beauty Platform • \(AppVersionInfo.shortVersion)")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(Color.white.opacity(0.22))
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -1594,7 +1594,7 @@ private struct AboutUsView: View {
                     }
 
                     settingsCard {
-                        settingsStaticRow(label: "Version", value: "v1.2.0")
+                        settingsStaticRow(label: "Version", value: "v\(AppVersionInfo.shortVersion)")
                         settingsStaticRow(label: "Market", value: "United States")
                     }
                 }
@@ -1607,6 +1607,20 @@ private struct AboutUsView: View {
         .toolbar(.hidden, for: .tabBar)
         .background(Color.black)
         .tint(brandGold)
+    }
+}
+
+private enum AppVersionInfo {
+    static var shortVersion: String {
+        (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nonEmpty ?? "1.0.0"
+    }
+}
+
+private extension String {
+    var nonEmpty: String? {
+        isEmpty ? nil : self
     }
 }
 
