@@ -12,6 +12,10 @@ Nailsdashh5/
 │   ├── package.json  # 前端依赖
 │   └── README.md     # 前端文档
 │
+├── android-app/       # Android原生客户端（Kotlin + Jetpack Compose）
+│   ├── app/          # Android应用模块
+│   └── README.md     # Android端文档
+│
 ├── backend/          # FastAPI后端代码
 │   ├── app/         # 应用代码
 │   ├── alembic/     # 数据库迁移
@@ -30,6 +34,12 @@ Nailsdashh5/
 - **TypeScript** - 类型安全
 - **Vite** - 构建工具
 - **CSS** - 样式
+
+### Android 客户端
+- **Kotlin** - Android开发语言
+- **Jetpack Compose** - 声明式UI
+- **Navigation Compose** - 页面导航
+- **Retrofit + OkHttp + Moshi** - 网络与序列化
 
 ### 后端
 - **FastAPI** - Python Web框架
@@ -79,6 +89,15 @@ npm run dev
 ```
 
 访问：http://localhost:5173
+
+### Android 开发
+
+```bash
+cd android-app
+./gradlew tasks
+```
+
+在 Android Studio 中打开 `android-app` 目录后即可运行 `app` 模块。
 
 ### 后端开发
 

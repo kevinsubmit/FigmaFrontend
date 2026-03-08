@@ -37,3 +37,9 @@ admin-dashboard/*.pid
 
 # IDE/run configs
 .run/
+
+# Android
+android-app/.gradle/
+android-app/local.properties
+android-app/**/build/
+android-app/**/*.iml

@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '../layout/AdminLayout';
 import { TopBar } from '../layout/TopBar';
-import { Ticket, Gift, MessageSquare, LogOut, Scissors, ShieldAlert, Image, ChevronRight, Lock, ScrollText, Crown, BellRing } from 'lucide-react';
+import { Ticket, Gift, MessageSquare, LogOut, Scissors, ShieldAlert, Image, ChevronRight, Lock, ScrollText, Crown, BellRing, Smartphone } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const More: React.FC = () => {
@@ -59,6 +59,18 @@ const More: React.FC = () => {
             <div className="flex items-center gap-3">
               <BellRing className="w-5 h-5 text-gold-500" />
               <span className="text-slate-900">Push Center</span>
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-500" />
+          </button>
+        )}
+        {user?.is_admin && (
+          <button
+            onClick={() => navigate('/admin/version-center')}
+            className="w-full text-left card-surface p-4 flex items-center justify-between hover:bg-blue-50/40 text-slate-900"
+          >
+            <div className="flex items-center gap-3">
+              <Smartphone className="w-5 h-5 text-gold-500" />
+              <span className="text-slate-900">Version Center</span>
             </div>
             <ChevronRight className="h-4 w-4 text-slate-500" />
           </button>

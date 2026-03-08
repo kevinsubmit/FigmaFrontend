@@ -693,6 +693,8 @@ extension View {
 
 @main
 struct NailsDashApp: App {
+    @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
     @UIApplicationDelegateAdaptor(PushAppDelegate.self) private var pushAppDelegate
     @StateObject private var appState = AppState()
 
@@ -744,10 +746,17 @@ struct NailsDashApp: App {
             .preferredColorScheme(.dark)
             .task {
                 appState.bootstrap()
+                await appState.checkAppVersionIfNeeded(force: true)
                 PushNotificationManager.shared.syncForSession(
                     isLoggedIn: appState.isLoggedIn,
                     userID: appState.currentUser?.id
                 )
+            }
+            .onChange(of: scenePhase) { phase in
+                guard phase == .active else { return }
+                Task {
+                    await appState.checkAppVersionIfNeeded(force: true)
+                }
             }
             .onChange(of: appState.isLoggedIn) { isLoggedIn in
                 PushNotificationManager.shared.syncForSession(
@@ -768,6 +777,40 @@ struct NailsDashApp: App {
                 appState.resetBookNavigationStack()
                 appState.resetDealsNavigationStack()
             }
+            .alert(item: $appState.appVersionPrompt) { prompt in
+                let message = appVersionAlertMessage(for: prompt)
+                if prompt.forceUpdate {
+                    return Alert(
+                        title: Text(prompt.title),
+                        message: Text(message),
+                        dismissButton: .default(Text("Update Now")) {
+                            if let url = prompt.appStoreURL {
+                                openURL(url)
+                            }
+                            appState.clearAppVersionPromptWithoutPersisting()
+                        }
+                    )
+                }
+                return Alert(
+                    title: Text(prompt.title),
+                    message: Text(message),
+                    primaryButton: .default(Text("Update Now")) {
+                        if let url = prompt.appStoreURL {
+                            openURL(url)
+                        }
+                        appState.clearAppVersionPromptWithoutPersisting()
+                    },
+                    secondaryButton: .cancel(Text("Later")) {
+                        appState.dismissAppVersionPrompt()
+                    }
+                )
+            }
         }
+    }
+
+    private func appVersionAlertMessage(for prompt: AppVersionPrompt) -> String {
+        let trimmedNotes = prompt.releaseNotes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmedNotes.isEmpty else { return prompt.message }
+        return "\(prompt.message)\n\n\(trimmedNotes)"
     }
 }
