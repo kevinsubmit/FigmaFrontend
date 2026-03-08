@@ -1,16 +1,19 @@
 # Android App (Kotlin + Jetpack Compose)
 
-This directory contains the native Android client bootstrap for NailsDash.
+This directory contains the native Android client for NailsDash.
 
 ## Stack
 - Kotlin
 - Jetpack Compose + Material3
 - Navigation Compose
 - Retrofit + OkHttp + Moshi
+- AndroidViewModel + Coroutines
 
 ## Structure
-- `app/src/main/java/com/nailsdash/android/ui`: App shell, screens, theme
-- `app/src/main/java/com/nailsdash/android/data`: API and models
+- `app/src/main/java/com/nailsdash/android/ui`: app shell, navigation, screens, theme
+- `app/src/main/java/com/nailsdash/android/data`: network layer, repositories, models
+- `app/src/main/java/com/nailsdash/android/ui/state`: feature viewmodels and session state
+- `app/src/main/java/com/nailsdash/android/utils`: shared formatting / URL / helpers
 
 ## Prerequisites
 - Android Studio (Koala or newer)
@@ -26,7 +29,29 @@ This directory contains the native Android client bootstrap for NailsDash.
 - Debug build points to: `http://10.0.2.2:8000/api/v1/`
 - Release build currently uses a placeholder URL in `app/build.gradle.kts`
 
-## Next suggested steps
-1. Implement auth flow (`/auth/login`, token persistence).
-2. Add repository + viewmodel per feature.
-3. Start with Stores and Appointments modules to match existing backend APIs.
+## iOS parity status (current)
+- iOS-aligned app shell: `Home / Book / Appointments / Deals / Profile`
+- Login/session bootstrap + token refresh + auth gate
+- Home feed:
+  - search + tag filter + pagination
+  - pin detail page, favorite toggle, share, image download
+  - related pin recommendations
+- Book flow:
+  - store list, store detail tabs, booking form (service/technician/date/time/notes)
+  - booking success transition overlay and appointments jump
+  - style reference flow from Home -> Book (Step 01/02/03 reference card + notes auto-injection)
+- Appointments:
+  - list view + detail view
+  - integrated open-from-notification routing
+- Deals:
+  - segmented store/platform promotions
+  - rich promo cards + CTA routing
+- Profile:
+  - profile center overview + VIP/referral summary
+  - subpages: points, coupons, gift cards, order history, reviews, favorites, VIP, referral
+- Settings:
+  - settings hub + profile/password/phone/language/about/privacy/support/partnership pages
+
+## Remaining parity gaps
+- Fine-grained visual parity with iOS dark-gold design system (spacing, typography, motion, overlays)
+- Some advanced iOS interactions are still simplified on Android (gesture-driven detail interactions and complex transitions)

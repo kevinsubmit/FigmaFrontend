@@ -1,6 +1,5 @@
 package com.nailsdash.android.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -12,13 +11,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val LightColorScheme = lightColorScheme(
-    primary = BluePrimary,
-    onPrimary = BlueOnPrimary,
-    secondary = BlueSecondary,
-    background = BlueBackground,
+    primary = GoldPrimary,
+    onPrimary = GoldOnPrimary,
+    secondary = GoldSecondary,
+    background = DarkBackground,
+    surface = DarkSurface,
+    onSurface = DarkOnSurface,
 )
 
-private val DarkColorScheme = darkColorScheme()
+private val DarkColorScheme = darkColorScheme(
+    primary = GoldPrimary,
+    onPrimary = GoldOnPrimary,
+    secondary = GoldSecondary,
+    background = DarkBackground,
+    surface = DarkSurface,
+    onSurface = DarkOnSurface,
+)
 
 @Composable
 fun NailsDashTheme(

@@ -2,7 +2,9 @@ package com.nailsdash.android.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val BluePrimary = Color(0xFF2A5CAA)
-val BlueOnPrimary = Color(0xFFFFFFFF)
-val BlueSecondary = Color(0xFF4E6E9C)
-val BlueBackground = Color(0xFFF8FAFF)
+val GoldPrimary = Color(0xFFD4AF37)
+val GoldOnPrimary = Color(0xFF1A1A1A)
+val GoldSecondary = Color(0xFFB08D2D)
+val DarkBackground = Color(0xFF000000)
+val DarkSurface = Color(0xFF111111)
+val DarkOnSurface = Color(0xFFF4F4F4)
