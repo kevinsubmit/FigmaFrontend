@@ -8,9 +8,18 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -1021,6 +1030,17 @@ fun GiftCardsScreen(
         .filter { it.status.lowercase() == "active" }
         .sumOf { it.balance }
     val activeCount = sortedCards.count { it.status.lowercase() == "active" }
+    val claimSheetActionInteraction = remember { MutableInteractionSource() }
+    val claimSheetActionScale = rememberPressScale(
+        interactionSource = claimSheetActionInteraction,
+        pressedScale = 0.97f,
+    )
+    val sendSheetActionInteraction = remember { MutableInteractionSource() }
+    val sendSheetActionScale = rememberPressScale(
+        interactionSource = sendSheetActionInteraction,
+        pressedScale = 0.97f,
+    )
+
     if (showClaimDialog) {
         ModalBottomSheet(
             onDismissRequest = { showClaimDialog = false },
@@ -1091,7 +1111,10 @@ fun GiftCardsScreen(
                         }
                     },
                     enabled = !giftCardsViewModel.isClaiming,
-                    modifier = Modifier.fillMaxWidth(),
+                    interactionSource = claimSheetActionInteraction,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .scale(claimSheetActionScale),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = RewardsGold,
                         contentColor = Color.Black,
@@ -1219,7 +1242,10 @@ fun GiftCardsScreen(
                         }
                     },
                     enabled = giftCardsViewModel.sendingCardId != sendCard.id,
-                    modifier = Modifier.fillMaxWidth(),
+                    interactionSource = sendSheetActionInteraction,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .scale(sendSheetActionScale),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = RewardsGold,
                         contentColor = Color.Black,
@@ -3390,6 +3416,35 @@ private data class VipTierVisual(
 
 @Composable
 private fun VipHeroSection() {
+    val heroTransition = rememberInfiniteTransition(label = "vipHero")
+    val haloScale by heroTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.14f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2200),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "vipHeroHaloScale",
+    )
+    val haloAlpha by heroTransition.animateFloat(
+        initialValue = 0.12f,
+        targetValue = 0.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2200),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "vipHeroHaloAlpha",
+    )
+    val iconScale by heroTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2200),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "vipHeroIconScale",
+    )
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -3402,18 +3457,21 @@ private fun VipHeroSection() {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(RewardsGold.copy(alpha = 0.14f), CircleShape),
+                    .scale(haloScale)
+                    .background(RewardsGold.copy(alpha = haloAlpha), CircleShape),
             )
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .border(1.dp, RewardsGold.copy(alpha = 0.34f), CircleShape),
+                    .border(1.dp, RewardsGold.copy(alpha = 0.34f + (haloAlpha - 0.12f) * 0.9f), CircleShape),
             )
             Icon(
                 imageVector = Icons.Filled.AutoAwesome,
                 contentDescription = null,
                 tint = RewardsGold,
-                modifier = Modifier.size(30.dp),
+                modifier = Modifier
+                    .size(30.dp)
+                    .scale(iconScale),
             )
         }
 
@@ -3508,6 +3566,17 @@ private fun VipTierCard(tier: VipTierVisual) {
 
 @Composable
 private fun VipRedemptionCard() {
+    val redemptionTransition = rememberInfiniteTransition(label = "vipRedemption")
+    val redemptionGlowAlpha by redemptionTransition.animateFloat(
+        initialValue = 0.08f,
+        targetValue = 0.16f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2600),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "vipRedemptionGlow",
+    )
+
     Card(
         shape = RoundedCornerShape(18.dp),
         modifier = Modifier.fillMaxWidth(),
@@ -3520,7 +3589,7 @@ private fun VipRedemptionCard() {
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            RewardsGold.copy(alpha = 0.10f),
+                            RewardsGold.copy(alpha = redemptionGlowAlpha),
                             Color.Transparent,
                         ),
                     ),
@@ -3745,9 +3814,13 @@ fun ReferralScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.White.copy(alpha = 0.50f),
                         )
-                        copyNotice?.let { notice ->
+                        AnimatedVisibility(
+                            visible = !copyNotice.isNullOrBlank(),
+                            enter = fadeIn(tween(durationMillis = 140)) + expandVertically(tween(durationMillis = 140)),
+                            exit = fadeOut(tween(durationMillis = 140)) + shrinkVertically(tween(durationMillis = 140)),
+                        ) {
                             Text(
-                                text = notice,
+                                text = copyNotice.orEmpty(),
                                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
                                 color = RewardsGold,
                             )
