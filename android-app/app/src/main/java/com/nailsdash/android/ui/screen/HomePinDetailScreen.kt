@@ -9,36 +9,41 @@ import android.os.Build
 import android.provider.MediaStore
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,10 +53,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -62,12 +73,14 @@ import com.nailsdash.android.data.model.HomeFeedPin
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.HomePinDetailViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalMaterial3Api::class)
+private val PinDetailGold = Color(0xFFD4AF37)
+private val PinDetailCardBg = Color(0xFF111111)
+private val PinDetailSecondaryText = Color.White.copy(alpha = 0.64f)
+
 @Composable
 fun HomePinDetailScreen(
     pinId: Int,
@@ -80,12 +93,20 @@ fun HomePinDetailScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val bearerToken = sessionViewModel.accessTokenOrNull()
-    var isDownloading by remember { mutableStateOf(false) }
-    var utilityMessage by remember { mutableStateOf<String?>(null) }
-    var utilityMessageIsError by remember { mutableStateOf(false) }
+    var isDownloading by remember(pinId) { mutableStateOf(false) }
+    var showShareMenu by remember(pinId) { mutableStateOf(false) }
+    var toast by remember(pinId) { mutableStateOf<PinDetailToastPayload?>(null) }
+    var heroScale by remember(pinId) { mutableStateOf(1f) }
+    var heroOffset by remember(pinId) { mutableStateOf(Offset.Zero) }
+
+    fun showToast(message: String, isError: Boolean) {
+        toast = PinDetailToastPayload(message = message, isError = isError)
+    }
 
     LaunchedEffect(pinId) {
         homePinDetailViewModel.load(pinId = pinId)
+        heroScale = 1f
+        heroOffset = Offset.Zero
     }
 
     LaunchedEffect(pinId, bearerToken, homePinDetailViewModel.pin?.id) {
@@ -93,203 +114,70 @@ fun HomePinDetailScreen(
     }
 
     LaunchedEffect(homePinDetailViewModel.actionMessage) {
-        val message = homePinDetailViewModel.actionMessage ?: return@LaunchedEffect
-        delay(2000)
-        if (homePinDetailViewModel.actionMessage == message) {
+        val message = homePinDetailViewModel.actionMessage?.trim().orEmpty()
+        if (message.isNotEmpty()) {
+            showToast(message = message, isError = false)
             homePinDetailViewModel.consumeActionMessage()
         }
     }
 
-    LaunchedEffect(utilityMessage) {
-        val message = utilityMessage ?: return@LaunchedEffect
-        delay(2000)
-        if (utilityMessage == message) {
-            utilityMessage = null
+    LaunchedEffect(homePinDetailViewModel.errorMessage) {
+        val message = homePinDetailViewModel.errorMessage?.trim().orEmpty()
+        if (message.isNotEmpty()) {
+            showToast(message = message, isError = true)
+        }
+    }
+
+    LaunchedEffect(toast?.id) {
+        val payload = toast ?: return@LaunchedEffect
+        kotlinx.coroutines.delay(2000)
+        if (toast?.id == payload.id) {
+            toast = null
         }
     }
 
     val pin = homePinDetailViewModel.pin
+    val topControlPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 18.dp
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Design Detail") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            pin?.let { sharePin(context = context, pin = it) }
-                        },
-                        enabled = pin != null,
-                    ) {
-                        Icon(Icons.Filled.Share, contentDescription = "Share")
-                    }
-                    IconButton(
-                        onClick = {
-                            val currentPin = pin ?: return@IconButton
-                            if (isDownloading) return@IconButton
-                            isDownloading = true
-                            scope.launch {
-                                downloadPinImageToGallery(context = context, pin = currentPin)
-                                    .onSuccess {
-                                        utilityMessageIsError = false
-                                        utilityMessage = "Image downloaded."
-                                    }
-                                    .onFailure { err ->
-                                        utilityMessageIsError = true
-                                        utilityMessage = if (err is SecurityException) {
-                                            "Storage permission required on this Android version."
-                                        } else {
-                                            err.message ?: "Failed to download image."
-                                        }
-                                    }
-                                isDownloading = false
-                            }
-                        },
-                        enabled = pin != null && !isDownloading,
-                    ) {
-                        if (isDownloading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
-                            )
-                        } else {
-                            Icon(Icons.Filled.Download, contentDescription = "Download image")
-                        }
-                    }
-                    IconButton(
-                        onClick = {
-                            if (bearerToken == null) {
-                                sessionViewModel.updateAuthMessage("Please sign in to save favorites.")
-                            } else {
-                                homePinDetailViewModel.toggleFavorite(bearerToken)
-                            }
-                        },
-                        enabled = pin != null && !homePinDetailViewModel.isFavoriteLoading,
-                    ) {
-                        if (homePinDetailViewModel.isFavoriteLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
-                            )
-                        } else {
-                            Icon(
-                                imageVector = if (homePinDetailViewModel.isFavorited) {
-                                    Icons.Filled.Favorite
-                                } else {
-                                    Icons.Filled.FavoriteBorder
-                                },
-                                contentDescription = "Favorite",
-                                tint = if (homePinDetailViewModel.isFavorited) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                },
-                            )
-                        }
-                    }
-                },
-            )
-        },
-        bottomBar = {
-            Button(
-                onClick = {
-                    pin?.let(onChooseSalon)
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                enabled = pin != null,
-            ) {
-                Text("Choose a salon")
-            }
-        },
-    ) { innerPadding ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black),
+    ) {
         LazyColumn(
-            modifier = Modifier
-                .padding(innerPadding)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.fillMaxSize(),
+            userScrollEnabled = heroScale <= 1.01f,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            if (homePinDetailViewModel.isLoading && pin == null) {
+            if (pin != null) {
                 item {
-                    CircularProgressIndicator(modifier = Modifier.padding(8.dp))
-                }
-            }
-
-            homePinDetailViewModel.errorMessage?.let { message ->
-                item {
-                    Text(
-                        text = message,
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-            }
-
-            homePinDetailViewModel.actionMessage?.let { message ->
-                item {
-                    Text(
-                        text = message,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
-            }
-
-            utilityMessage?.let { message ->
-                item {
-                    Text(
-                        text = message,
-                        color = if (utilityMessageIsError) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.primary
+                    HeroImageSection(
+                        pin = pin,
+                        scale = heroScale,
+                        offset = heroOffset,
+                        onUpdateTransform = { nextScale, nextOffset ->
+                            heroScale = nextScale
+                            heroOffset = nextOffset
+                        },
+                        onResetTransform = {
+                            heroScale = 1f
+                            heroOffset = Offset.Zero
                         },
                     )
                 }
-            }
-
-            if (pin != null) {
-                item {
-                    HeroPinCard(pin = pin)
-                }
 
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = pin.title,
-                            style = MaterialTheme.typography.headlineSmall,
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-
-                        pin.description?.trim()?.takeIf { it.isNotEmpty() }?.let {
-                            Text(
-                                text = it,
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                        }
-
-                        if (pin.tags.isNotEmpty()) {
-                            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                items(pin.tags.filter { it.isNotBlank() }, key = { it }) { tag ->
-                                    AssistChip(
-                                        onClick = {},
-                                        enabled = false,
-                                        label = { Text(tag) },
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    PinTitleSection(pin = pin)
                 }
 
                 if (homePinDetailViewModel.relatedPins.isNotEmpty()) {
                     item {
-                        Text("Similar ideas", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            text = "Similar ideas",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 12.dp),
+                        )
                     }
 
                     items(
@@ -297,7 +185,9 @@ fun HomePinDetailScreen(
                         key = { row -> row.joinToString(separator = "-") { it.id.toString() } },
                     ) { row ->
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             row.forEach { related ->
@@ -313,9 +203,477 @@ fun HomePinDetailScreen(
                         }
                     }
                 }
+
+                item {
+                    Spacer(modifier = Modifier.height(108.dp))
+                }
+            } else {
+                item {
+                    Spacer(modifier = Modifier.height(360.dp))
+                }
+            }
+        }
+
+        PinDetailTopOverlay(
+            topPadding = topControlPadding,
+            isFavoriteLoading = homePinDetailViewModel.isFavoriteLoading,
+            isFavorited = homePinDetailViewModel.isFavorited,
+            isDownloading = isDownloading,
+            showShareMenu = showShareMenu,
+            onBack = onBack,
+            onOpenShareMenu = { showShareMenu = true },
+            onDismissShareMenu = { showShareMenu = false },
+            onShare = {
+                pin?.let { sharePin(context = context, pin = it) }
+            },
+            onDownload = {
+                val currentPin = pin ?: return@PinDetailTopOverlay
+                if (isDownloading) return@PinDetailTopOverlay
+                isDownloading = true
+                scope.launch {
+                    downloadPinImageToGallery(context = context, pin = currentPin)
+                        .onSuccess {
+                            showToast(message = "Image downloaded.", isError = false)
+                        }
+                        .onFailure { error ->
+                            showToast(
+                                message = if (error is SecurityException) {
+                                    "Please allow photo access."
+                                } else {
+                                    error.message ?: "Failed to download image."
+                                },
+                                isError = true,
+                            )
+                        }
+                    isDownloading = false
+                }
+            },
+            onToggleFavorite = {
+                if (bearerToken == null) {
+                    sessionViewModel.updateAuthMessage("Please sign in to save favorites.")
+                } else {
+                    homePinDetailViewModel.toggleFavorite(bearerToken)
+                }
+            },
+        )
+
+        if (homePinDetailViewModel.isLoading && pin == null) {
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.align(Alignment.Center),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .background(PinDetailCardBg)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = PinDetailGold,
+                    )
+                    Text("Loading design...", color = Color.White)
+                }
+            }
+        }
+
+        pin?.let { currentPin ->
+            FloatingBookNowStrip(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                onChooseSalon = { onChooseSalon(currentPin) },
+            )
+        }
+
+        toast?.let { payload ->
+            PinDetailToast(
+                payload = payload,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 56.dp, start = 12.dp, end = 12.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun HeroImageSection(
+    pin: HomeFeedPin,
+    scale: Float,
+    offset: Offset,
+    onUpdateTransform: (scale: Float, offset: Offset) -> Unit,
+    onResetTransform: () -> Unit,
+) {
+    BoxWithConstraints(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        val heroHeight = (maxWidth * 1.12f).coerceIn(360.dp, 500.dp)
+        var containerWidthPx by remember(pin.id) { mutableStateOf(0f) }
+        var containerHeightPx by remember(pin.id) { mutableStateOf(0f) }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(heroHeight)
+                .onSizeChanged { size ->
+                    containerWidthPx = size.width.toFloat()
+                    containerHeightPx = size.height.toFloat()
+                }
+                .pointerInput(scale, offset, containerWidthPx, containerHeightPx) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        if (containerWidthPx <= 0f || containerHeightPx <= 0f) return@detectTransformGestures
+                        val nextScale = (scale * zoom).coerceIn(1f, 4f)
+                        val rawOffset = if (nextScale <= 1.01f) {
+                            Offset.Zero
+                        } else {
+                            offset + pan
+                        }
+                        val clampedOffset = clampedHeroOffset(
+                            offset = rawOffset,
+                            scale = nextScale,
+                            containerWidthPx = containerWidthPx,
+                            containerHeightPx = containerHeightPx,
+                        )
+                        onUpdateTransform(nextScale, clampedOffset)
+                    }
+                }
+                .pointerInput(pin.id) {
+                    detectTapGestures(
+                        onDoubleTap = { onResetTransform() },
+                    )
+                },
+        ) {
+            AsyncImage(
+                model = remember(pin.image_url) { AssetUrlResolver.resolveURL(pin.image_url) },
+                contentDescription = pin.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offset.x
+                        translationY = offset.y
+                    },
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.72f)),
+                        ),
+                    ),
+            )
+        }
+    }
+}
+
+@Composable
+private fun PinTitleSection(pin: HomeFeedPin) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = "CHOSEN DESIGN",
+            style = MaterialTheme.typography.labelSmall,
+            color = Color.White.copy(alpha = 0.50f),
+            letterSpacing = androidx.compose.ui.unit.TextUnit.Unspecified,
+        )
+        Text(
+            text = pin.title,
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+            color = Color.White,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
+        pin.description?.trim()?.takeIf { it.isNotEmpty() }?.let { description ->
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = PinDetailSecondaryText,
+            )
+        }
+        if (pin.tags.isNotEmpty()) {
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(pin.tags.filter { it.isNotBlank() }, key = { it }) { tag ->
+                    Card(
+                        shape = RoundedCornerShape(999.dp),
+                        modifier = Modifier.height(30.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .background(Color.White.copy(alpha = 0.06f))
+                                .padding(horizontal = 12.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = tag,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color.White.copy(alpha = 0.86f),
+                            )
+                        }
+                    }
+                }
             }
         }
     }
+}
+
+@Composable
+private fun PinDetailTopOverlay(
+    topPadding: androidx.compose.ui.unit.Dp,
+    isFavoriteLoading: Boolean,
+    isFavorited: Boolean,
+    isDownloading: Boolean,
+    showShareMenu: Boolean,
+    onBack: () -> Unit,
+    onOpenShareMenu: () -> Unit,
+    onDismissShareMenu: () -> Unit,
+    onShare: () -> Unit,
+    onDownload: () -> Unit,
+    onToggleFavorite: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(130.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color.Black.copy(alpha = 0.75f), Color.Transparent),
+                    ),
+                ),
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+                .padding(top = topPadding),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FloatingControlButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White,
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            Box {
+                FloatingControlButton(onClick = onOpenShareMenu) {
+                    Icon(
+                        imageVector = Icons.Filled.Share,
+                        contentDescription = "Share",
+                        tint = Color.White,
+                    )
+                }
+                DropdownMenu(
+                    expanded = showShareMenu,
+                    onDismissRequest = onDismissShareMenu,
+                    containerColor = PinDetailCardBg,
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Share", color = Color.White) },
+                        onClick = {
+                            onDismissShareMenu()
+                            onShare()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = if (isDownloading) "Downloading..." else "Download image",
+                                color = if (isDownloading) Color.White.copy(alpha = 0.56f) else Color.White,
+                            )
+                        },
+                        enabled = !isDownloading,
+                        onClick = {
+                            onDismissShareMenu()
+                            onDownload()
+                        },
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            FloatingControlButton(
+                onClick = onToggleFavorite,
+                enabled = !isFavoriteLoading,
+            ) {
+                if (isFavoriteLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = Color.White,
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (isFavorited) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        contentDescription = "Favorite",
+                        tint = if (isFavorited) PinDetailGold else Color.White,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FloatingControlButton(
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+            .background(Color.Black.copy(alpha = 0.62f))
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun FloatingBookNowStrip(
+    modifier: Modifier = Modifier,
+    onChooseSalon: () -> Unit,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Color.Black.copy(alpha = 0.96f)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Color.White.copy(alpha = 0.10f)),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = "BOOK THIS LOOK",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.50f),
+                )
+                Text(
+                    text = "Find salons near you",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White,
+                )
+            }
+            Button(
+                onClick = onChooseSalon,
+                shape = RoundedCornerShape(999.dp),
+            ) {
+                Text(
+                    text = "Choose a salon",
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PinDetailToast(
+    payload: PinDetailToastPayload,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    if (payload.isError) Color(0xFFCC3D3D) else Color(0xFF2F9D57),
+                )
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = if (payload.isError) "!" else "✓",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = payload.message,
+                color = Color.White,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RelatedPinCard(
+    pin: HomeFeedPin,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        modifier = modifier.clickable(onClick = onClick),
+    ) {
+        AsyncImage(
+            model = remember(pin.image_url) { AssetUrlResolver.resolveURL(pin.image_url) },
+            contentDescription = pin.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(190.dp),
+        )
+    }
+}
+
+private fun clampedHeroOffset(
+    offset: Offset,
+    scale: Float,
+    containerWidthPx: Float,
+    containerHeightPx: Float,
+): Offset {
+    if (scale <= 1.01f) return Offset.Zero
+    val maxX = (((containerWidthPx * scale) - containerWidthPx) / 2f).coerceAtLeast(0f)
+    val maxY = (((containerHeightPx * scale) - containerHeightPx) / 2f).coerceAtLeast(0f)
+    return Offset(
+        x = offset.x.coerceIn(-maxX, maxX),
+        y = offset.y.coerceIn(-maxY, maxY),
+    )
 }
 
 private fun sharePin(context: Context, pin: HomeFeedPin) {
@@ -398,70 +756,8 @@ private fun sanitizeFileSegment(raw: String): String {
         .take(36)
 }
 
-@Composable
-private fun HeroPinCard(pin: HomeFeedPin) {
-    Card(
-        shape = RoundedCornerShape(22.dp),
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Box {
-            AsyncImage(
-                model = remember(pin.image_url) { AssetUrlResolver.resolveURL(pin.image_url) },
-                contentDescription = pin.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(360.dp),
-            )
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        brush = Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.68f)),
-                        ),
-                    ),
-            )
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = "CHOSEN DESIGN",
-                    color = Color.White.copy(alpha = 0.72f),
-                    style = MaterialTheme.typography.labelMedium,
-                )
-                Text(
-                    text = pin.title,
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleLarge,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun RelatedPinCard(
-    pin: HomeFeedPin,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        modifier = modifier.clickable(onClick = onClick),
-    ) {
-        AsyncImage(
-            model = remember(pin.image_url) { AssetUrlResolver.resolveURL(pin.image_url) },
-            contentDescription = pin.title,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(190.dp),
-        )
-    }
-}
+private data class PinDetailToastPayload(
+    val message: String,
+    val isError: Boolean,
+    val id: Long = System.currentTimeMillis(),
+)

@@ -184,6 +184,7 @@ fun NailsDashApp() {
                 StoreDetailScreen(
                     storeId = storeId,
                     sessionViewModel = sessionViewModel,
+                    onBack = { navController.navigateUp() },
                     onBookNow = { routeStoreId, preselectedServiceId ->
                         val serviceArg = preselectedServiceId ?: -1
                         navController.navigate("book/form/$routeStoreId?serviceId=$serviceArg")
@@ -220,6 +221,11 @@ fun NailsDashApp() {
                     sessionViewModel = sessionViewModel,
                     onOpenAppointment = { appointmentId ->
                         navController.navigate("appointments/detail/$appointmentId")
+                    },
+                    onOpenBook = {
+                        navController.navigate(MainDestination.Book.route) {
+                            launchSingleTop = true
+                        }
                     },
                 )
             }
@@ -277,7 +283,20 @@ fun NailsDashApp() {
                 ReviewsScreen(sessionViewModel = sessionViewModel)
             }
             composable("profile/favorites") {
-                FavoritesScreen(sessionViewModel = sessionViewModel)
+                FavoritesScreen(
+                    sessionViewModel = sessionViewModel,
+                    onBrowseSalons = {
+                        navController.navigate(MainDestination.Book.route) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onOpenPin = { pinId ->
+                        navController.navigate("home/pin/$pinId")
+                    },
+                    onOpenStore = { storeId ->
+                        navController.navigate("book/store/$storeId")
+                    },
+                )
             }
             composable("profile/vip") {
                 VipScreen(sessionViewModel = sessionViewModel)
@@ -288,6 +307,7 @@ fun NailsDashApp() {
             composable("profile/notifications") {
                 NotificationsScreen(
                     sessionViewModel = sessionViewModel,
+                    onBack = { navController.navigateUp() },
                     onOpenAppointment = { appointmentId ->
                         navController.navigate("appointments/detail/$appointmentId")
                     },

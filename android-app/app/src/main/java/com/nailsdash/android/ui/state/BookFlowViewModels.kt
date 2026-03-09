@@ -7,6 +7,8 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.nailsdash.android.data.model.AppointmentCreateRequest
+import com.nailsdash.android.data.model.AppointmentGroupCreateRequest
+import com.nailsdash.android.data.model.AppointmentGroupGuestCreateRequest
 import com.nailsdash.android.data.model.ServiceItem
 import com.nailsdash.android.data.model.StoreDetail
 import com.nailsdash.android.data.model.StoreHour
@@ -395,6 +397,88 @@ class BookAppointmentViewModel(application: Application) : AndroidViewModel(appl
                 request = request,
             ).onSuccess { created ->
                 successMessage = "Appointment created: #${created.order_number ?: created.id}"
+                errorMessage = null
+                slotHintMessage = null
+                onSuccess()
+            }.onFailure { err ->
+                errorMessage = err.message
+                slotHintMessage = slotHintFrom(err.message)
+                successMessage = null
+            }
+
+            isSubmitting = false
+        }
+    }
+
+    fun submitGroup(
+        bearerToken: String,
+        guestServiceIds: List<Int>,
+        onSuccess: () -> Unit,
+    ) {
+        val storeId = activeStoreId
+        val hostServiceId = selectedServiceId
+        val slot = selectedSlot ?: availableSlots.firstOrNull()
+
+        successMessage = null
+        errorMessage = null
+
+        if (storeId == null || hostServiceId == null) {
+            errorMessage = "Please select a service."
+            return
+        }
+
+        if (guestServiceIds.isEmpty()) {
+            errorMessage = "Please add at least one guest service for group booking."
+            return
+        }
+
+        if (slot == null) {
+            if (isStoreClosed(selectedDate)) {
+                val msg = "The salon is closed on this date."
+                slotHintMessage = msg
+                errorMessage = msg
+            } else {
+                val msg = "No available times for this date."
+                slotHintMessage = msg
+                errorMessage = msg
+            }
+            return
+        }
+
+        val slotDateTime = slotToDateTime(slot)
+        if (!slotDateTime.isAfter(LocalDateTime.now(activeZoneId))) {
+            val msg = "Past time cannot be booked. Please choose a future time."
+            slotHintMessage = msg
+            errorMessage = msg
+            return
+        }
+
+        isSubmitting = true
+        viewModelScope.launch {
+            val request = AppointmentGroupCreateRequest(
+                store_id = storeId,
+                appointment_date = selectedDate.format(DATE_FORMATTER),
+                appointment_time = slotToRequestTime(slot),
+                host_service_id = hostServiceId,
+                host_technician_id = selectedTechnicianId,
+                host_notes = notes.trim().takeIf { it.isNotEmpty() },
+                guests = guestServiceIds.map { guestServiceId ->
+                    AppointmentGroupGuestCreateRequest(
+                        service_id = guestServiceId,
+                        technician_id = null,
+                        notes = null,
+                        guest_name = null,
+                        guest_phone = null,
+                    )
+                },
+            )
+
+            appointmentsRepository.createAppointmentGroup(
+                bearerToken = bearerToken,
+                request = request,
+            ).onSuccess { createdGroup ->
+                val host = createdGroup.host_appointment
+                successMessage = "Group booking created: #${host.order_number ?: host.id}"
                 errorMessage = null
                 slotHintMessage = null
                 onSuccess()

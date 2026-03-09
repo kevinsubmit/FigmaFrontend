@@ -1,44 +1,110 @@
 package com.nailsdash.android.ui.screen
 
+import android.app.DatePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.animation.animateContentSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.nailsdash.android.BuildConfig
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.ChangePasswordViewModel
 import com.nailsdash.android.ui.state.LanguageSettingsViewModel
 import com.nailsdash.android.ui.state.PhoneNumberSettingsViewModel
 import com.nailsdash.android.ui.state.ProfileSettingsViewModel
+import java.time.LocalDate
 
-private data class SettingsMenuItem(val title: String, val onClick: () -> Unit)
+private data class SettingsMenuItem(
+    val title: String,
+    val icon: ImageVector,
+    val badge: String? = null,
+    val onClick: () -> Unit,
+)
+
 private data class SettingsMenuSection(val title: String, val items: List<SettingsMenuItem>)
+
+private val SettingsGold = Color(0xFFD4AF37)
+private val SettingsBackground = Color(0xFF000000)
+private val SettingsCardBackground = Color(0xFF111111)
+private val SettingsPrimaryText = Color.White
+private val SettingsSecondaryText = Color.White.copy(alpha = 0.68f)
+private const val SettingsMotionDurationMs = 220
 
 @Composable
 fun SettingsScreen(
@@ -54,61 +120,95 @@ fun SettingsScreen(
     onOpenPrivacySafety: () -> Unit,
     onOpenAboutUs: () -> Unit,
 ) {
+    val context = LocalContext.current
+    var showLogoutConfirm by remember { mutableStateOf(false) }
+    val languageOptions = listOf(
+        "en" to "English",
+        "es" to "Español",
+        "zh" to "中文",
+        "ko" to "한국어",
+        "fr" to "Français",
+        "vi" to "Tiếng Việt",
+    )
+    val selectedLanguageCode = context
+        .getSharedPreferences("nailsdash_settings", 0)
+        .getString("language", "en") ?: "en"
+    val selectedLanguageLabel = languageOptions.firstOrNull { it.first == selectedLanguageCode }?.second ?: "English"
+
     val sections = listOf(
         SettingsMenuSection(
             title = "ACCOUNT & PREFERENCES",
             items = listOf(
-                SettingsMenuItem("Profile Settings", onOpenProfileSettings),
-                SettingsMenuItem("Change Password", onOpenChangePassword),
-                SettingsMenuItem("Phone Number", onOpenPhoneSettings),
-                SettingsMenuItem("VIP Membership", onOpenVipMembership),
-                SettingsMenuItem("Language", onOpenLanguageSettings),
-                SettingsMenuItem("Notifications", onOpenNotifications),
+                SettingsMenuItem("Profile Settings", icon = Icons.Filled.Person, onClick = onOpenProfileSettings),
+                SettingsMenuItem("Change Password", icon = Icons.Filled.Lock, onClick = onOpenChangePassword),
+                SettingsMenuItem("Phone Number", icon = Icons.Filled.Phone, onClick = onOpenPhoneSettings),
+                SettingsMenuItem("VIP Membership", icon = Icons.Filled.Star, badge = "Rewards", onClick = onOpenVipMembership),
+                SettingsMenuItem("Language", icon = Icons.Filled.AutoAwesome, badge = selectedLanguageLabel, onClick = onOpenLanguageSettings),
+                SettingsMenuItem("Notifications", icon = Icons.Filled.Notifications, onClick = onOpenNotifications),
             ),
         ),
         SettingsMenuSection(
             title = "PLATFORM",
             items = listOf(
-                SettingsMenuItem("Feedback & Support", onOpenFeedbackSupport),
-                SettingsMenuItem("Partnership Inquiry", onOpenPartnershipInquiry),
-                SettingsMenuItem("Privacy & Safety", onOpenPrivacySafety),
+                SettingsMenuItem("Feedback & Support", icon = Icons.Filled.Edit, onClick = onOpenFeedbackSupport),
+                SettingsMenuItem("Partnership Inquiry", icon = Icons.Filled.Storefront, onClick = onOpenPartnershipInquiry),
+                SettingsMenuItem("Privacy & Safety", icon = Icons.Filled.Lock, onClick = onOpenPrivacySafety),
             ),
         ),
         SettingsMenuSection(
             title = "OTHERS",
             items = listOf(
-                SettingsMenuItem("About Us", onOpenAboutUs),
+                SettingsMenuItem("About Us", icon = Icons.Filled.History, onClick = onOpenAboutUs),
             ),
         ),
     )
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .background(SettingsBackground),
     ) {
-        Text("Settings", style = MaterialTheme.typography.headlineSmall)
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 26.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            item {
+                Text(
+                    text = "Settings",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = SettingsPrimaryText,
+                )
+            }
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(sections) { section ->
-                Text(section.title, style = MaterialTheme.typography.labelMedium)
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        section.items.forEachIndexed { index, item ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                            ) {
-                                Text(item.title)
-                                Button(onClick = item.onClick) {
-                                    Text("Open")
+            sections.forEach { section ->
+                item {
+                    Text(
+                        text = section.title,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 2.sp,
+                        ),
+                        color = Color.White.copy(alpha = 0.42f),
+                        modifier = Modifier.padding(start = 2.dp),
+                    )
+                }
+                item {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = SettingsCardBackground.copy(alpha = 0.94f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            section.items.forEachIndexed { index, item ->
+                                SettingsMenuRow(item = item)
+                                if (index < section.items.lastIndex) {
+                                    HorizontalDivider(
+                                        color = Color.White.copy(alpha = 0.10f),
+                                        modifier = Modifier.padding(horizontal = 14.dp),
+                                    )
                                 }
-                            }
-                            if (index < section.items.lastIndex) {
-                                HorizontalDivider()
                             }
                         }
                     }
@@ -116,11 +216,116 @@ fun SettingsScreen(
             }
 
             item {
-                Button(onClick = { sessionViewModel.logout() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Logout")
+                Button(
+                    onClick = { showLogoutConfirm = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = SettingsCardBackground.copy(alpha = 0.94f),
+                        contentColor = Color(0xFFFF7A7A),
+                    ),
+                    shape = RoundedCornerShape(20.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                ) {
+                    Text(
+                        text = "Logout",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    )
                 }
             }
+
+            item {
+                Text(
+                    text = "Figma Make Beauty Platform • ${BuildConfig.VERSION_NAME}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.22f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                )
+            }
         }
+
+        if (showLogoutConfirm) {
+            AlertDialog(
+                onDismissRequest = { showLogoutConfirm = false },
+                containerColor = SettingsCardBackground,
+                titleContentColor = SettingsPrimaryText,
+                textContentColor = SettingsSecondaryText,
+                title = { Text("Log out?") },
+                text = { Text("You will need to sign in again.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showLogoutConfirm = false
+                            sessionViewModel.logout()
+                        },
+                    ) {
+                        Text("Log out", color = Color(0xFFFF8A8A))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showLogoutConfirm = false }) {
+                        Text("Cancel", color = SettingsGold)
+                    }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsMenuRow(item: SettingsMenuItem) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = item.onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
+                .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = item.icon,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.68f),
+                modifier = Modifier.size(19.dp),
+            )
+        }
+
+        Text(
+            text = item.title,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+            color = SettingsPrimaryText,
+            modifier = Modifier.weight(1f),
+        )
+
+        item.badge?.takeIf { it.isNotBlank() }?.let { badge ->
+            Text(
+                text = badge,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                color = SettingsGold,
+                modifier = Modifier
+                    .background(SettingsGold.copy(alpha = 0.12f), CircleShape)
+                    .border(1.dp, SettingsGold.copy(alpha = 0.26f), CircleShape)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            )
+        }
+
+        Icon(
+            imageVector = Icons.Filled.ChevronRight,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.30f),
+            modifier = Modifier.size(18.dp),
+        )
     }
 }
 
@@ -131,10 +336,10 @@ fun ProfileSettingsScreen(
 ) {
     val context = LocalContext.current
     val bearerToken = sessionViewModel.accessTokenOrNull()
-
-    val selectedAvatarUri = remember { mutableStateOf<Uri?>(null) }
+    var selectedAvatarUri by remember { mutableStateOf<Uri?>(null) }
+    var showGenderPicker by remember { mutableStateOf(false) }
     val pickAvatarLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        selectedAvatarUri.value = uri
+        selectedAvatarUri = uri
         if (uri != null && bearerToken != null) {
             val bytes = runCatching {
                 context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
@@ -154,82 +359,279 @@ fun ProfileSettingsScreen(
         if (bearerToken != null) profileSettingsViewModel.load(bearerToken)
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .background(SettingsBackground),
     ) {
-        Text("Profile Settings", style = MaterialTheme.typography.headlineSmall)
-
-        if (profileSettingsViewModel.isLoading) {
-            CircularProgressIndicator()
-        }
-
-        profileSettingsViewModel.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        profileSettingsViewModel.actionMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-
-        Text("Username: ${profileSettingsViewModel.username}")
-        Text("Phone: ${profileSettingsViewModel.phone}")
-
-        profileSettingsViewModel.avatarURL?.takeIf { it.isNotBlank() }?.let {
-            Text("Avatar URL: $it", style = MaterialTheme.typography.bodySmall)
-        }
-
-        Button(
-            onClick = { pickAvatarLauncher.launch("image/*") },
-            enabled = !profileSettingsViewModel.isUploadingAvatar,
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(if (profileSettingsViewModel.isUploadingAvatar) "Uploading..." else "Upload Avatar")
-        }
+            item {
+                Text(
+                    text = "Profile Settings",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = SettingsPrimaryText,
+                )
+            }
+            item {
+                SettingsDescription("Keep your profile details up to date.")
+            }
+            item {
+                SettingsMessageBanner(
+                    error = profileSettingsViewModel.errorMessage,
+                    message = profileSettingsViewModel.actionMessage,
+                )
+            }
+            item {
+                SettingsStaticCard {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier.size(128.dp),
+                            contentAlignment = Alignment.BottomEnd,
+                        ) {
+                            val avatarModel: Any? = selectedAvatarUri ?: profileSettingsViewModel.avatarURL?.takeIf { it.isNotBlank() }
+                            if (avatarModel != null) {
+                                AsyncImage(
+                                    model = avatarModel,
+                                    contentDescription = "Avatar",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.06f))
+                                        .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape),
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.06f))
+                                        .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Person,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.35f),
+                                        modifier = Modifier.size(52.dp),
+                                    )
+                                }
+                            }
 
-        OutlinedTextField(
-            value = profileSettingsViewModel.fullName,
-            onValueChange = { profileSettingsViewModel.fullName = it },
-            label = { Text("Full Name") },
-            modifier = Modifier.fillMaxWidth(),
-        )
+                            Button(
+                                onClick = { pickAvatarLauncher.launch("image/*") },
+                                enabled = !profileSettingsViewModel.isUploadingAvatar,
+                                modifier = Modifier.size(36.dp),
+                                shape = CircleShape,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = SettingsGold,
+                                    contentColor = Color.Black,
+                                    disabledContainerColor = SettingsGold.copy(alpha = 0.45f),
+                                    disabledContentColor = Color.Black.copy(alpha = 0.5f),
+                                ),
+                                contentPadding = PaddingValues(0.dp),
+                            ) {
+                                if (profileSettingsViewModel.isUploadingAvatar) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(15.dp),
+                                        strokeWidth = 2.dp,
+                                        color = Color.Black,
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Filled.Edit,
+                                        contentDescription = "Change avatar",
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                }
+                            }
+                        }
 
-        if (profileSettingsViewModel.canEditGender) {
-            OutlinedTextField(
-                value = profileSettingsViewModel.gender,
-                onValueChange = { profileSettingsViewModel.gender = it },
-                label = { Text("Gender (male/female/other)") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-        } else {
-            Text("Gender: ${profileSettingsViewModel.gender}")
-        }
-
-        if (profileSettingsViewModel.canEditBirthday) {
-            OutlinedTextField(
-                value = profileSettingsViewModel.birthday.toString(),
-                onValueChange = {
-                    runCatching {
-                        java.time.LocalDate.parse(it)
-                    }.onSuccess { date ->
-                        profileSettingsViewModel.birthday = date
+                        Text(
+                            text = if (profileSettingsViewModel.isUploadingAvatar) {
+                                "Uploading avatar..."
+                            } else {
+                                "Tap icon to change avatar"
+                            },
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                            color = Color.White.copy(alpha = 0.55f),
+                        )
                     }
-                },
-                label = { Text("Birthday (yyyy-MM-dd)") },
-                modifier = Modifier.fillMaxWidth(),
-            )
-        } else {
-            Text("Birthday: ${profileSettingsViewModel.birthdayDisplay}")
-        }
 
-        Button(
-            onClick = {
-                if (bearerToken != null) {
-                    profileSettingsViewModel.save(bearerToken) {
-                        sessionViewModel.refreshSession()
+                    SettingsStaticInfo(label = "Username", value = profileSettingsViewModel.username)
+                    SettingsFieldLabel("Full Name")
+                    OutlinedTextField(
+                        value = profileSettingsViewModel.fullName,
+                        onValueChange = { profileSettingsViewModel.fullName = it },
+                        placeholder = { Text("Enter full name", color = Color.White.copy(alpha = 0.34f)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = settingsFieldColors(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                    )
+                    SettingsStaticInfo(label = "Phone Number", value = profileSettingsViewModel.phone)
+
+                    if (profileSettingsViewModel.canEditGender) {
+                        SettingsFieldLabel("Gender")
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(SettingsCardBackground, RoundedCornerShape(12.dp))
+                                .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(12.dp))
+                                .clickable { showGenderPicker = true }
+                                .padding(horizontal = 14.dp, vertical = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            val genderValue = profileSettingsViewModel.gender
+                                .replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                                .ifBlank { "Select gender" }
+                            Text(
+                                text = genderValue,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (profileSettingsViewModel.gender.isBlank()) {
+                                    Color.White.copy(alpha = 0.34f)
+                                } else {
+                                    SettingsPrimaryText
+                                },
+                            )
+                            Icon(
+                                imageVector = Icons.Filled.ChevronRight,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.30f),
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    } else {
+                        SettingsStaticInfo(
+                            label = "Gender",
+                            value = profileSettingsViewModel.gender
+                                .replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+                                .ifBlank { "-" },
+                        )
+                    }
+
+                    if (profileSettingsViewModel.canEditBirthday) {
+                        SettingsFieldLabel("Date of Birth")
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(SettingsCardBackground, RoundedCornerShape(12.dp))
+                                .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(12.dp))
+                                .clickable {
+                                    showSettingsDatePickerDialog(
+                                        context = context,
+                                        initial = profileSettingsViewModel.birthday,
+                                        onSelected = { date ->
+                                            profileSettingsViewModel.birthday = date
+                                        },
+                                    )
+                                }
+                                .padding(horizontal = 14.dp, vertical = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = profileSettingsViewModel.birthday.toString(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = SettingsPrimaryText,
+                            )
+                            Icon(
+                                imageVector = Icons.Filled.ChevronRight,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.30f),
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                    } else {
+                        SettingsStaticInfo(label = "Date of Birth", value = profileSettingsViewModel.birthdayDisplay)
+                    }
+
+                    if (showGenderPicker) {
+                        AlertDialog(
+                            onDismissRequest = { showGenderPicker = false },
+                            containerColor = SettingsCardBackground,
+                            titleContentColor = SettingsPrimaryText,
+                            textContentColor = SettingsSecondaryText,
+                            title = {
+                                Text(
+                                    text = "Select Gender",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                )
+                            },
+                            text = {
+                                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    listOf("male", "female", "other").forEach { option ->
+                                        TextButton(
+                                            onClick = {
+                                                profileSettingsViewModel.gender = option
+                                                showGenderPicker = false
+                                            },
+                                            modifier = Modifier.fillMaxWidth(),
+                                        ) {
+                                            Text(
+                                                text = option.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() },
+                                                color = SettingsPrimaryText,
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                            confirmButton = {
+                                TextButton(onClick = { showGenderPicker = false }) {
+                                    Text("Close", color = SettingsGold)
+                                }
+                            },
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            if (bearerToken != null) {
+                                profileSettingsViewModel.save(bearerToken) {
+                                    sessionViewModel.refreshSession()
+                                }
+                            }
+                        },
+                        enabled = !profileSettingsViewModel.isSaving,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = SettingsGold,
+                            contentColor = Color.Black,
+                            disabledContainerColor = SettingsGold.copy(alpha = 0.45f),
+                            disabledContentColor = Color.Black.copy(alpha = 0.50f),
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        if (profileSettingsViewModel.isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.Black,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(
+                            text = if (profileSettingsViewModel.isSaving) "Saving..." else "Save Changes",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        )
                     }
                 }
-            },
-            enabled = !profileSettingsViewModel.isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(if (profileSettingsViewModel.isSaving) "Saving..." else "Save Changes")
+            }
+        }
+
+        if (profileSettingsViewModel.isLoading) {
+            SettingsLoadingOverlay("Loading profile...")
         }
     }
 }
@@ -241,49 +643,111 @@ fun ChangePasswordScreen(
 ) {
     val bearerToken = sessionViewModel.accessTokenOrNull()
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .background(SettingsBackground),
     ) {
-        Text("Change Password", style = MaterialTheme.typography.headlineSmall)
-
-        changePasswordViewModel.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        changePasswordViewModel.actionMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-
-        OutlinedTextField(
-            value = changePasswordViewModel.currentPassword,
-            onValueChange = { changePasswordViewModel.currentPassword = it },
-            label = { Text("Current password") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            value = changePasswordViewModel.newPassword,
-            onValueChange = { changePasswordViewModel.newPassword = it },
-            label = { Text("New password") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
-        )
-        OutlinedTextField(
-            value = changePasswordViewModel.confirmPassword,
-            onValueChange = { changePasswordViewModel.confirmPassword = it },
-            label = { Text("Confirm new password") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Button(
-            onClick = {
-                if (bearerToken != null) {
-                    changePasswordViewModel.save(bearerToken)
-                }
-            },
-            enabled = !changePasswordViewModel.isSaving,
-            modifier = Modifier.fillMaxWidth(),
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(if (changePasswordViewModel.isSaving) "Saving..." else "Update Password")
+            item {
+                Text(
+                    text = "Change Password",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = SettingsPrimaryText,
+                )
+            }
+            item {
+                SettingsDescription("Use at least 8 characters and keep your account secure.")
+            }
+            item {
+                SettingsMessageBanner(
+                    error = changePasswordViewModel.errorMessage,
+                    message = changePasswordViewModel.actionMessage,
+                )
+            }
+            item {
+                SettingsStaticCard {
+                    SettingsInfoCard(
+                        title = "PASSWORD REQUIREMENTS",
+                        bullets = listOf(
+                            "At least 8 characters long",
+                            "Different from your current password",
+                        ),
+                    )
+
+                    SettingsFieldLabel("Current Password")
+                    OutlinedTextField(
+                        value = changePasswordViewModel.currentPassword,
+                        onValueChange = { changePasswordViewModel.currentPassword = it },
+                        placeholder = { Text("Enter current password", color = Color.White.copy(alpha = 0.34f)) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = settingsFieldColors(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                    )
+
+                    SettingsFieldLabel("New Password")
+                    OutlinedTextField(
+                        value = changePasswordViewModel.newPassword,
+                        onValueChange = { changePasswordViewModel.newPassword = it },
+                        placeholder = { Text("Enter new password", color = Color.White.copy(alpha = 0.34f)) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = settingsFieldColors(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                    )
+
+                    SettingsFieldLabel("Confirm Password")
+                    OutlinedTextField(
+                        value = changePasswordViewModel.confirmPassword,
+                        onValueChange = { changePasswordViewModel.confirmPassword = it },
+                        placeholder = { Text("Confirm new password", color = Color.White.copy(alpha = 0.34f)) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = settingsFieldColors(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                    )
+
+                    Button(
+                        onClick = {
+                            if (bearerToken != null) {
+                                changePasswordViewModel.save(bearerToken)
+                            }
+                        },
+                        enabled = !changePasswordViewModel.isSaving,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = SettingsGold,
+                            contentColor = Color.Black,
+                            disabledContainerColor = SettingsGold.copy(alpha = 0.45f),
+                            disabledContentColor = Color.Black.copy(alpha = 0.50f),
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        if (changePasswordViewModel.isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.Black,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(
+                            text = if (changePasswordViewModel.isSaving) "Updating..." else "Update Password",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -299,69 +763,168 @@ fun PhoneSettingsScreen(
         if (bearerToken != null) phoneNumberSettingsViewModel.load(bearerToken)
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .background(SettingsBackground),
     ) {
-        Text("Phone Number", style = MaterialTheme.typography.headlineSmall)
-        Text("Current: ${phoneNumberSettingsViewModel.currentPhone}")
-        Text(if (phoneNumberSettingsViewModel.isPhoneVerified) "Verified" else "Not verified")
-
-        phoneNumberSettingsViewModel.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        phoneNumberSettingsViewModel.actionMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-
-        OutlinedTextField(
-            value = phoneNumberSettingsViewModel.newPhone,
-            onValueChange = { phoneNumberSettingsViewModel.newPhone = it },
-            label = { Text("New US phone") },
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = phoneNumberSettingsViewModel.verificationCode,
-                onValueChange = {
-                    phoneNumberSettingsViewModel.verificationCode = it.filter(Char::isDigit).take(6)
-                },
-                label = { Text("Code") },
-                modifier = Modifier.weight(1f),
-            )
-            Button(
-                onClick = { phoneNumberSettingsViewModel.sendCode() },
-                enabled = phoneNumberSettingsViewModel.countdown == 0 && !phoneNumberSettingsViewModel.isSendingCode,
-            ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item {
                 Text(
-                    if (phoneNumberSettingsViewModel.countdown > 0) {
-                        "${phoneNumberSettingsViewModel.countdown}s"
-                    } else {
-                        "Send"
-                    },
+                    text = "Phone Number",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = SettingsPrimaryText,
                 )
             }
-        }
+            item {
+                SettingsDescription("Update your login phone with verification code and current password.")
+            }
+            item {
+                SettingsMessageBanner(
+                    error = phoneNumberSettingsViewModel.errorMessage,
+                    message = phoneNumberSettingsViewModel.actionMessage,
+                )
+            }
+            item {
+                SettingsStaticCard {
+                    SettingsInfoCard(
+                        title = "IMPORTANT",
+                        bullets = listOf(
+                            "You'll need to verify your new phone number",
+                            "Your current password is required for security",
+                            "This updates your login credentials",
+                        ),
+                    )
 
-        OutlinedTextField(
-            value = phoneNumberSettingsViewModel.currentPassword,
-            onValueChange = { phoneNumberSettingsViewModel.currentPassword = it },
-            label = { Text("Current password") },
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth(),
-        )
+                    SettingsStaticInfo(label = "Current Phone", value = phoneNumberSettingsViewModel.currentPhone)
+                    if (phoneNumberSettingsViewModel.isPhoneVerified) {
+                        Text(
+                            text = "Verified",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = Color(0xFF7DE39A),
+                            modifier = Modifier
+                                .background(Color(0xFF7DE39A).copy(alpha = 0.10f), CircleShape)
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                        )
+                    }
 
-        Button(
-            onClick = {
-                if (bearerToken != null) {
-                    phoneNumberSettingsViewModel.updatePhone(bearerToken) {
-                        sessionViewModel.refreshSession()
+                    SettingsFieldLabel("New Phone")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        OutlinedTextField(
+                            value = phoneNumberSettingsViewModel.newPhone,
+                            onValueChange = { phoneNumberSettingsViewModel.newPhone = it },
+                            placeholder = { Text("Enter new phone", color = Color.White.copy(alpha = 0.34f)) },
+                            modifier = Modifier.weight(1f),
+                            colors = settingsFieldColors(),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        )
+                        Button(
+                            onClick = { phoneNumberSettingsViewModel.sendCode() },
+                            enabled = !phoneNumberSettingsViewModel.isSendingCode && phoneNumberSettingsViewModel.countdown == 0,
+                            modifier = Modifier
+                                .width(92.dp)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (phoneNumberSettingsViewModel.isSendingCode || phoneNumberSettingsViewModel.countdown > 0) {
+                                    SettingsGold.copy(alpha = 0.50f)
+                                } else {
+                                    SettingsGold
+                                },
+                                contentColor = Color.Black,
+                            ),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(0.dp),
+                        ) {
+                            if (phoneNumberSettingsViewModel.isSendingCode) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color.Black,
+                                )
+                            } else {
+                                Text(
+                                    text = if (phoneNumberSettingsViewModel.countdown > 0) {
+                                        "${phoneNumberSettingsViewModel.countdown}s"
+                                    } else {
+                                        "Send"
+                                    },
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                                )
+                            }
+                        }
+                    }
+
+                    SettingsFieldLabel("Verification Code")
+                    OutlinedTextField(
+                        value = phoneNumberSettingsViewModel.verificationCode,
+                        onValueChange = {
+                            phoneNumberSettingsViewModel.verificationCode = it.filter(Char::isDigit).take(6)
+                        },
+                        placeholder = { Text("Enter 6-digit code", color = Color.White.copy(alpha = 0.34f)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = settingsFieldColors(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    )
+
+                    SettingsFieldLabel("Current Password")
+                    OutlinedTextField(
+                        value = phoneNumberSettingsViewModel.currentPassword,
+                        onValueChange = { phoneNumberSettingsViewModel.currentPassword = it },
+                        placeholder = { Text("Enter current password", color = Color.White.copy(alpha = 0.34f)) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = settingsFieldColors(),
+                        shape = RoundedCornerShape(12.dp),
+                        singleLine = true,
+                    )
+
+                    Button(
+                        onClick = {
+                            if (bearerToken != null) {
+                                phoneNumberSettingsViewModel.updatePhone(bearerToken) {
+                                    sessionViewModel.refreshSession()
+                                }
+                            }
+                        },
+                        enabled = !phoneNumberSettingsViewModel.isSaving,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = SettingsGold,
+                            contentColor = Color.Black,
+                            disabledContainerColor = SettingsGold.copy(alpha = 0.45f),
+                            disabledContentColor = Color.Black.copy(alpha = 0.50f),
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        if (phoneNumberSettingsViewModel.isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.Black,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(
+                            text = if (phoneNumberSettingsViewModel.isSaving) "Updating..." else "Update Phone Number",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        )
                     }
                 }
-            },
-            enabled = !phoneNumberSettingsViewModel.isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(if (phoneNumberSettingsViewModel.isSaving) "Saving..." else "Update Phone")
+            }
         }
     }
 }
@@ -385,78 +948,438 @@ fun LanguageSettingsScreen(
         languageSettingsViewModel.loadInitialLanguage()
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .background(SettingsBackground),
     ) {
-        Text("Language", style = MaterialTheme.typography.headlineSmall)
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item {
+                Text(
+                    text = "Language",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = SettingsPrimaryText,
+                )
+            }
+            item {
+                SettingsDescription("Choose your preferred app language.")
+            }
+            item {
+                SettingsMessageBanner(
+                    error = languageSettingsViewModel.errorMessage,
+                    message = languageSettingsViewModel.actionMessage,
+                )
+            }
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            options.chunked(2).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { (code, label) ->
-                        FilterChip(
-                            selected = languageSettingsViewModel.selectedLanguage == code,
-                            onClick = { languageSettingsViewModel.selectedLanguage = code },
-                            label = { Text(label) },
+            item {
+                SettingsStaticCard {
+                    options.forEachIndexed { index, (code, label) ->
+                        val selected = languageSettingsViewModel.selectedLanguage == code
+                        val rowBackground by animateColorAsState(
+                            targetValue = if (selected) {
+                                SettingsGold.copy(alpha = 0.12f)
+                            } else {
+                                Color.Transparent
+                            },
+                            animationSpec = tween(
+                                durationMillis = SettingsMotionDurationMs,
+                                easing = FastOutSlowInEasing,
+                            ),
+                            label = "language_row_background",
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { languageSettingsViewModel.selectedLanguage = code }
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(rowBackground)
+                                .animateContentSize(
+                                    animationSpec = tween(
+                                        durationMillis = SettingsMotionDurationMs,
+                                        easing = FastOutSlowInEasing,
+                                    ),
+                                )
+                                .padding(horizontal = 4.dp, vertical = 14.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                Text(
+                                    text = label,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = if (selected) SettingsGold else SettingsPrimaryText,
+                                )
+                                Text(
+                                    text = languageSubtitle(code),
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                                    color = Color.White.copy(alpha = 0.40f),
+                                )
+                            }
+                            Icon(
+                                imageVector = if (selected) Icons.Filled.CheckCircle else Icons.Filled.ChevronRight,
+                                contentDescription = null,
+                                tint = if (selected) SettingsGold else Color.White.copy(alpha = 0.26f),
+                                modifier = Modifier.size(if (selected) 18.dp else 16.dp),
+                            )
+                        }
+                        if (index < options.lastIndex) {
+                            HorizontalDivider(
+                                color = Color.White.copy(alpha = 0.10f),
+                                modifier = Modifier.padding(start = 14.dp),
+                            )
+                        }
+                    }
+
+                    Button(
+                        onClick = {
+                            if (bearerToken != null) languageSettingsViewModel.save(bearerToken)
+                        },
+                        enabled = !languageSettingsViewModel.isSaving,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .padding(top = 10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = SettingsGold,
+                            contentColor = Color.Black,
+                            disabledContainerColor = SettingsGold.copy(alpha = 0.45f),
+                            disabledContentColor = Color.Black.copy(alpha = 0.50f),
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        if (languageSettingsViewModel.isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.Black,
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(
+                            text = if (languageSettingsViewModel.isSaving) "Saving..." else "Save Language",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                         )
                     }
                 }
             }
         }
+    }
+}
 
-        Text("Current: ${options.firstOrNull { it.first == languageSettingsViewModel.selectedLanguage }?.second ?: "English"}")
+@Composable
+private fun SettingsDescription(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 18.sp),
+        color = Color.White.copy(alpha = 0.50f),
+    )
+}
 
-        languageSettingsViewModel.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        languageSettingsViewModel.actionMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+@Composable
+private fun SettingsFieldLabel(title: String) {
+    Text(
+        text = title.uppercase(),
+        style = MaterialTheme.typography.labelSmall.copy(
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 2.sp,
+        ),
+        color = Color.White.copy(alpha = 0.46f),
+    )
+}
 
-        Button(
-            onClick = {
-                if (bearerToken != null) languageSettingsViewModel.save(bearerToken)
-            },
-            enabled = !languageSettingsViewModel.isSaving,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(if (languageSettingsViewModel.isSaving) "Saving..." else "Save Language")
+@Composable
+private fun SettingsMessageBanner(
+    error: String?,
+    message: String?,
+) {
+    data class BannerState(
+        val text: String,
+        val isError: Boolean,
+    )
+
+    val state = when {
+        !error.isNullOrBlank() -> BannerState(text = error, isError = true)
+        !message.isNullOrBlank() -> BannerState(text = message, isError = false)
+        else -> null
+    }
+
+    AnimatedContent(
+        targetState = state,
+        transitionSpec = {
+            (
+                fadeIn(
+                    animationSpec = tween(
+                        durationMillis = SettingsMotionDurationMs,
+                        easing = FastOutSlowInEasing,
+                    ),
+                ) + expandVertically(
+                    animationSpec = tween(
+                        durationMillis = SettingsMotionDurationMs,
+                        easing = FastOutSlowInEasing,
+                    ),
+                )
+                ) togetherWith (
+                fadeOut(
+                    animationSpec = tween(
+                        durationMillis = SettingsMotionDurationMs,
+                        easing = FastOutSlowInEasing,
+                    ),
+                ) + shrinkVertically(
+                    animationSpec = tween(
+                        durationMillis = SettingsMotionDurationMs,
+                        easing = FastOutSlowInEasing,
+                    ),
+                )
+                )
+        },
+        label = "settings_message_banner",
+    ) { banner ->
+        if (banner != null) {
+            val tone = if (banner.isError) Color(0xFFFF8F8F) else Color(0xFF8BE3A6)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(tone.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+                    .border(1.dp, tone.copy(alpha = 0.24f), RoundedCornerShape(14.dp))
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = if (banner.isError) Icons.Filled.Error else Icons.Filled.CheckCircle,
+                    contentDescription = null,
+                    tint = tone,
+                    modifier = Modifier.size(16.dp),
+                )
+                Text(
+                    text = banner.text,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = tone,
+                )
+            }
+        } else {
+            Spacer(modifier = Modifier.height(0.dp))
         }
     }
+}
+
+@Composable
+private fun SettingsInfoCard(
+    title: String,
+    bullets: List<String>,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(SettingsCardBackground, RoundedCornerShape(12.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.8.sp,
+            ),
+            color = Color.White.copy(alpha = 0.52f),
+        )
+        bullets.forEach { line ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Text(
+                    text = "•",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    color = SettingsGold,
+                    modifier = Modifier.padding(top = 1.dp),
+                )
+                Text(
+                    text = line,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.62f),
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun settingsFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = SettingsPrimaryText,
+    unfocusedTextColor = SettingsPrimaryText,
+    disabledTextColor = SettingsPrimaryText.copy(alpha = 0.42f),
+    focusedContainerColor = SettingsCardBackground,
+    unfocusedContainerColor = SettingsCardBackground,
+    disabledContainerColor = SettingsCardBackground,
+    focusedBorderColor = SettingsGold.copy(alpha = 0.45f),
+    unfocusedBorderColor = Color.White.copy(alpha = 0.16f),
+    disabledBorderColor = Color.White.copy(alpha = 0.10f),
+    cursorColor = SettingsGold,
+)
+
+@Composable
+private fun SettingsLoadingOverlay(label: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.42f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Card(
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = SettingsCardBackground),
+            border = androidx.compose.foundation.BorderStroke(1.dp, SettingsGold.copy(alpha = 0.30f)),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = SettingsGold,
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = SettingsPrimaryText,
+                )
+            }
+        }
+    }
+}
+
+private fun languageSubtitle(code: String): String {
+    return when (code) {
+        "en" -> "English"
+        "es" -> "Spanish"
+        "zh" -> "Chinese"
+        "ko" -> "Korean"
+        "fr" -> "French"
+        "vi" -> "Vietnamese"
+        else -> "Language"
+    }
+}
+
+private fun showSettingsDatePickerDialog(
+    context: android.content.Context,
+    initial: LocalDate,
+    onSelected: (LocalDate) -> Unit,
+) {
+    DatePickerDialog(
+        context,
+        { _, year, month, dayOfMonth ->
+            onSelected(LocalDate.of(year, month + 1, dayOfMonth))
+        },
+        initial.year,
+        initial.monthValue - 1,
+        initial.dayOfMonth,
+    ).show()
 }
 
 @Composable
 fun FeedbackSupportScreen() {
     val uriHandler = LocalUriHandler.current
     val channels = listOf(
-        Triple("WhatsApp Support", "Fastest response time", "https://wa.me/14151234567"),
-        Triple("iMessage", "Standard for iPhone users", "sms:+14151234567"),
-        Triple("Instagram DM", "Follow us for nail inspo", "https://instagram.com"),
+        SupportChannel("WhatsApp Support", "Fastest response time", Icons.Filled.Phone, Color(0xFF5EDB89), "https://wa.me/14151234567"),
+        SupportChannel("iMessage", "Standard for iPhone users", Icons.Filled.Notifications, Color(0xFF79B5FF), "sms:+14151234567"),
+        SupportChannel("Instagram DM", "Follow us for nail inspo", Icons.Filled.Star, SettingsGold, "https://instagram.com"),
     )
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .background(SettingsBackground),
     ) {
-        Text("Feedback & Support", style = MaterialTheme.typography.headlineSmall)
-        Text("How can we help you today? Reach us through your preferred channel.")
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item {
+                Text(
+                    text = "Feedback & Support",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = SettingsPrimaryText,
+                )
+            }
+            item {
+                Text(
+                    text = "How can we help you today? Reach us through your preferred channel.",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 18.sp),
+                    color = Color.White.copy(alpha = 0.50f),
+                )
+            }
 
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(channels) { (title, subtitle, uri) ->
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(title, style = MaterialTheme.typography.titleMedium)
-                            Text(subtitle, style = MaterialTheme.typography.bodySmall)
-                        }
-                        Button(onClick = { uriHandler.openUri(uri) }) {
-                            Text("Open")
+            item {
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = SettingsCardBackground.copy(alpha = 0.94f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        channels.forEachIndexed { index, channel ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { uriHandler.openUri(channel.uri) }
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .background(channel.tint.copy(alpha = 0.12f), RoundedCornerShape(12.dp)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = channel.icon,
+                                        contentDescription = null,
+                                        tint = channel.tint,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
+                                    Text(
+                                        text = channel.title,
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        color = SettingsPrimaryText,
+                                    )
+                                    Text(
+                                        text = channel.subtitle,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.White.copy(alpha = 0.45f),
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.Filled.ChevronRight,
+                                    contentDescription = null,
+                                    tint = Color.White.copy(alpha = 0.30f),
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                            if (index < channels.lastIndex) {
+                                HorizontalDivider(
+                                    color = Color.White.copy(alpha = 0.10f),
+                                    modifier = Modifier.padding(horizontal = 14.dp),
+                                )
+                            }
                         }
                     }
                 }
@@ -469,39 +1392,171 @@ fun FeedbackSupportScreen() {
 fun PartnershipInquiryScreen() {
     val uriHandler = LocalUriHandler.current
     val highlights = listOf(
-        "List Your Salon - Get discovered by local beauty seekers",
-        "Advanced Booking - Manage appointments with ease",
+        Triple(Icons.Filled.Storefront, "List Your Salon", "Get discovered by local beauty seekers"),
+        Triple(Icons.Filled.AutoAwesome, "Advanced Booking", "Manage appointments with ease"),
     )
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .background(SettingsBackground),
     ) {
-        Text("Partner with Us", style = MaterialTheme.typography.headlineSmall)
-        Text("Join our salon network and reach more customers.")
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item {
+                Text(
+                    text = "Partner with Us",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = SettingsPrimaryText,
+                )
+            }
+            item {
+                Text(
+                    text = "Join our salon network and reach more customers.",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 18.sp),
+                    color = Color.White.copy(alpha = 0.50f),
+                )
+            }
 
-        Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                highlights.forEach { line ->
-                    Text(line, style = MaterialTheme.typography.bodyMedium)
+            item {
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = SettingsCardBackground.copy(alpha = 0.94f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        highlights.forEachIndexed { index, feature ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .background(SettingsCardBackground, RoundedCornerShape(12.dp)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = feature.first,
+                                        contentDescription = null,
+                                        tint = SettingsGold,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                                ) {
+                                    Text(
+                                        text = feature.second,
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        color = SettingsPrimaryText,
+                                    )
+                                    Text(
+                                        text = feature.third,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.White.copy(alpha = 0.45f),
+                                    )
+                                }
+                            }
+                            if (index < highlights.lastIndex) {
+                                HorizontalDivider(
+                                    color = Color.White.copy(alpha = 0.10f),
+                                    modifier = Modifier.padding(horizontal = 14.dp),
+                                )
+                            }
+                        }
+                    }
                 }
             }
-        }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(
-                onClick = { uriHandler.openUri("https://wa.me/14151234567") },
-                modifier = Modifier.weight(1f),
-            ) {
-                Text("WhatsApp")
-            }
-            Button(
-                onClick = { uriHandler.openUri("sms:+14151234567") },
-                modifier = Modifier.weight(1f),
-            ) {
-                Text("iMessage")
+            item {
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = SettingsCardBackground.copy(alpha = 0.94f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(
+                            text = "CONTACT OUR PARTNERSHIP TEAM",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp,
+                            ),
+                            color = Color.White.copy(alpha = 0.42f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Button(
+                                onClick = { uriHandler.openUri("https://wa.me/14151234567") },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(92.dp),
+                                shape = RoundedCornerShape(18.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = SettingsCardBackground.copy(alpha = 0.85f),
+                                    contentColor = SettingsPrimaryText,
+                                ),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Phone,
+                                        contentDescription = null,
+                                        tint = Color(0xFF5EDB89),
+                                        modifier = Modifier.size(22.dp),
+                                    )
+                                    Text("WhatsApp", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold))
+                                }
+                            }
+                            Button(
+                                onClick = { uriHandler.openUri("sms:+14151234567") },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(92.dp),
+                                shape = RoundedCornerShape(18.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = SettingsCardBackground.copy(alpha = 0.85f),
+                                    contentColor = SettingsPrimaryText,
+                                ),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Notifications,
+                                        contentDescription = null,
+                                        tint = Color(0xFF79B5FF),
+                                        modifier = Modifier.size(22.dp),
+                                    )
+                                    Text("iMessage", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold))
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -516,28 +1571,71 @@ fun PrivacySafetyScreen() {
         "Sensitive data is encrypted in transit.",
     )
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .background(SettingsBackground),
     ) {
-        Text("Privacy & Safety", style = MaterialTheme.typography.headlineSmall)
-
-        Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Your Data, Your Control", style = MaterialTheme.typography.titleMedium)
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item {
                 Text(
-                    "We only collect the information needed to manage bookings and improve your service experience.",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "Privacy & Safety",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = SettingsPrimaryText,
                 )
             }
-        }
 
-        Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                bullets.forEach { line ->
-                    Text("• $line")
+            item {
+                SettingsStaticCard {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Lock,
+                            contentDescription = null,
+                            tint = SettingsGold,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(
+                            text = "Your Data, Your Control",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = SettingsPrimaryText,
+                        )
+                    }
+                    Text(
+                        text = "We only collect the information needed to manage bookings and improve your service experience.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.55f),
+                    )
+                }
+            }
+
+            item {
+                SettingsStaticCard {
+                    bullets.forEach { line ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.Top,
+                        ) {
+                            Text(
+                                text = "•",
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = SettingsGold,
+                                modifier = Modifier.padding(top = 1.dp),
+                            )
+                            Text(
+                                text = line,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White.copy(alpha = 0.62f),
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -546,30 +1644,109 @@ fun PrivacySafetyScreen() {
 
 @Composable
 fun AboutUsScreen() {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .background(SettingsBackground),
     ) {
-        Text("About Us", style = MaterialTheme.typography.headlineSmall)
-
-        Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("NailsDash", style = MaterialTheme.typography.titleLarge)
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item {
                 Text(
-                    "NailsDash connects customers with top-rated nail salons. Discover styles, book appointments, and unlock exclusive deals in one place.",
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = "About Us",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = SettingsPrimaryText,
                 )
             }
-        }
 
-        Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Version: v${BuildConfig.VERSION_NAME}")
-                Text("Market: United States")
-                Text("Figma Make Beauty Platform")
+            item {
+                SettingsStaticCard {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.AutoAwesome,
+                            contentDescription = null,
+                            tint = SettingsGold,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text(
+                            text = "NailsDash",
+                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                            color = SettingsPrimaryText,
+                        )
+                    }
+                    Text(
+                        text = "NailsDash connects customers with top-rated nail salons. Discover styles, book appointments, and unlock exclusive deals in one place.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.55f),
+                    )
+                }
+            }
+
+            item {
+                SettingsStaticCard {
+                    SettingsStaticInfo(label = "Version", value = "v${BuildConfig.VERSION_NAME}")
+                    SettingsStaticInfo(label = "Market", value = "United States")
+                    SettingsStaticInfo(label = "Platform", value = "Figma Make Beauty Platform")
+                }
             }
         }
+    }
+}
+
+private data class SupportChannel(
+    val title: String,
+    val subtitle: String,
+    val icon: ImageVector,
+    val tint: Color,
+    val uri: String,
+)
+
+@Composable
+private fun SettingsStaticCard(
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = SettingsCardBackground.copy(alpha = 0.94f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = content,
+        )
+    }
+}
+
+@Composable
+private fun SettingsStaticInfo(
+    label: String,
+    value: String,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp,
+            ),
+            color = Color.White.copy(alpha = 0.46f),
+        )
+        Text(
+            text = value.ifBlank { "-" },
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = SettingsPrimaryText,
+        )
     }
 }

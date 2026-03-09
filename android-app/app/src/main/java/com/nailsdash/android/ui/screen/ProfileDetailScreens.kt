@@ -1,52 +1,113 @@
 package com.nailsdash.android.ui.screen
 
+import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ConfirmationNumber
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.nailsdash.android.BuildConfig
 import com.nailsdash.android.data.model.Appointment
 import com.nailsdash.android.data.model.CouponTemplate
+import com.nailsdash.android.data.model.GiftCard
+import com.nailsdash.android.data.model.HomeFeedPin
+import com.nailsdash.android.data.model.PointTransaction
+import com.nailsdash.android.data.model.ReviewUploadImagePayload
+import com.nailsdash.android.data.model.Store
 import com.nailsdash.android.data.model.UserReview
 import com.nailsdash.android.data.model.UserCoupon
 import com.nailsdash.android.ui.state.AppSessionViewModel
@@ -57,9 +118,35 @@ import com.nailsdash.android.ui.state.MyReviewsViewModel
 import com.nailsdash.android.ui.state.OrderHistoryViewModel
 import com.nailsdash.android.ui.state.PointsViewModel
 import com.nailsdash.android.ui.state.ReferralViewModel
-import com.nailsdash.android.ui.state.VipViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
+import java.io.ByteArrayOutputStream
 import java.time.LocalDate
+import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+private val RewardsGold = Color(0xFFD4AF37)
+private val RewardsPageBackground = Color(0xFF000000)
+private val RewardsCardBackground = Color(0xFF111111)
+private val RewardsPrimaryText = Color.White
+private val RewardsSecondaryText = Color.White.copy(alpha = 0.72f)
+private val RewardsMutedText = Color.White.copy(alpha = 0.52f)
+private val RewardsPagePadding = 12.dp
+
+@Composable
+private fun rememberPressScale(
+    interactionSource: MutableInteractionSource,
+    pressedScale: Float = 0.965f,
+): Float {
+    val pressed by interactionSource.collectIsPressedAsState()
+    return animateFloatAsState(
+        targetValue = if (pressed) pressedScale else 1f,
+        animationSpec = tween(durationMillis = 110),
+        label = "rewardsPressScale",
+    ).value
+}
 
 @Composable
 fun PointsScreen(
@@ -67,145 +154,500 @@ fun PointsScreen(
     pointsViewModel: PointsViewModel = viewModel(),
 ) {
     val token = sessionViewModel.accessTokenOrNull()
+    var noticeMessage by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(token) {
         if (token != null) pointsViewModel.load(token)
     }
+    LaunchedEffect(pointsViewModel.errorMessage, pointsViewModel.actionMessage) {
+        val message = pointsViewModel.errorMessage?.trim().takeIf { !it.isNullOrEmpty() }
+            ?: pointsViewModel.actionMessage?.trim().takeIf { !it.isNullOrEmpty() }
+        if (message != null) {
+            noticeMessage = message
+        }
+    }
 
-    LazyColumn(
+    val available = pointsViewModel.balance?.available_points ?: 0
+    val total = pointsViewModel.balance?.total_points ?: 0
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .background(RewardsPageBackground),
     ) {
-        item {
-            Text("My Points", style = MaterialTheme.typography.headlineSmall)
-        }
-
-        item {
-            val available = pointsViewModel.balance?.available_points ?: 0
-            val total = pointsViewModel.balance?.total_points ?: 0
-            Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(available.toString(), style = MaterialTheme.typography.displaySmall)
-                    Text("Available Points", style = MaterialTheme.typography.titleMedium)
-                    Text("Total Earned: $total", style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-        }
-
-        item {
-            pointsViewModel.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            pointsViewModel.actionMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-            if (pointsViewModel.isLoading) {
-                CircularProgressIndicator()
-            }
-        }
-
-        item {
-            Text("EXCHANGE COUPONS", style = MaterialTheme.typography.labelLarge)
-        }
-
-        if (!pointsViewModel.isLoading && pointsViewModel.exchangeables.isEmpty()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = RewardsPagePadding,
+                end = RewardsPagePadding,
+                top = 8.dp,
+                bottom = 26.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
             item {
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        "No exchangeable coupons right now.",
-                        modifier = Modifier.padding(12.dp),
-                    )
-                }
+                Text(
+                    text = "My Points",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = RewardsPrimaryText,
+                )
             }
-        } else {
-            items(pointsViewModel.exchangeables, key = { it.id }) { coupon ->
-                val required = coupon.points_required ?: 0
-                val canRedeem = (pointsViewModel.balance?.available_points ?: 0) >= required && required > 0
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    Row(
+
+            item {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.40f)),
+                ) {
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color(0xFF171717),
+                                        RewardsPageBackground,
+                                    ),
+                                ),
+                            )
+                            .padding(horizontal = 16.dp, vertical = 34.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
-                            Text(coupon.name, style = MaterialTheme.typography.titleMedium)
-                            coupon.description?.takeIf { it.isNotBlank() }?.let {
-                                Text(it, style = MaterialTheme.typography.bodySmall)
-                            }
-                            Text("Need $required pts", style = MaterialTheme.typography.labelLarge)
-                        }
-                        Button(
-                            onClick = { if (token != null) pointsViewModel.exchange(token, coupon.id) },
-                            enabled = canRedeem && pointsViewModel.isRedeemingCouponId != coupon.id,
+                        Box(
+                            modifier = Modifier.size(108.dp),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            val loading = pointsViewModel.isRedeemingCouponId == coupon.id
+                            Box(
+                                modifier = Modifier
+                                    .size(108.dp)
+                                    .border(
+                                        width = 1.dp,
+                                        color = Color.White.copy(alpha = 0.06f),
+                                        shape = CircleShape,
+                                    ),
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(96.dp)
+                                    .border(
+                                        width = 1.dp,
+                                        color = RewardsGold.copy(alpha = 0.45f),
+                                        shape = CircleShape,
+                                    ),
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(96.dp)
+                                    .background(RewardsGold.copy(alpha = 0.13f), CircleShape),
+                            )
+                            Icon(
+                                imageVector = Icons.Filled.AttachMoney,
+                                contentDescription = null,
+                                tint = RewardsGold,
+                                modifier = Modifier.size(42.dp),
+                            )
+                        }
+
+                        Text(
+                            text = available.toString(),
+                            style = MaterialTheme.typography.displayLarge.copy(
+                                fontWeight = FontWeight.Black,
+                                fontSize = 64.sp,
+                            ),
+                            color = RewardsGold,
+                            maxLines = 1,
+                        )
+
+                        Text(
+                            text = "Available Points",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                            color = RewardsPrimaryText.copy(alpha = 0.92f),
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .background(Color.Black.copy(alpha = 0.34f), RoundedCornerShape(999.dp))
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.AutoAwesome,
+                                contentDescription = null,
+                                tint = RewardsGold,
+                                modifier = Modifier.size(14.dp),
+                            )
                             Text(
-                                when {
-                                    loading -> "Exchanging..."
-                                    canRedeem -> "Exchange"
-                                    else -> "Locked"
-                                },
+                                text = "Total Earned: $total",
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = RewardsSecondaryText,
                             )
                         }
                     }
                 }
             }
-        }
 
-        item {
-            Text("HISTORY", style = MaterialTheme.typography.labelLarge)
-        }
-
-        if (!pointsViewModel.isLoading && pointsViewModel.transactions.isEmpty()) {
             item {
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        "No transactions yet.",
-                        modifier = Modifier.padding(12.dp),
+                RewardsSectionHeader(title = "EXCHANGE COUPONS")
+            }
+
+            if (!pointsViewModel.isLoading && pointsViewModel.exchangeables.isEmpty()) {
+                item {
+                    RewardsEmptyStateCard(
+                        icon = Icons.Filled.ConfirmationNumber,
+                        title = "No exchangeable coupons right now",
+                        subtitle = "More rewards will appear here.",
                     )
                 }
-            }
-        } else {
-            item {
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        pointsViewModel.transactions.forEachIndexed { index, item ->
-                            val isPositive = item.type.lowercase() == "earn" || item.amount >= 0
-                            Row(
+            } else {
+                items(pointsViewModel.exchangeables, key = { it.id }) { coupon ->
+                    val required = coupon.points_required ?: 0
+                    val canRedeem = (pointsViewModel.balance?.available_points ?: 0) >= required && required > 0
+                    val redeeming = pointsViewModel.isRedeemingCouponId == coupon.id
+                    val exchangeInteraction = remember(coupon.id) { MutableInteractionSource() }
+                    val exchangeScale = rememberPressScale(
+                        interactionSource = exchangeInteraction,
+                        pressedScale = 0.96f,
+                    )
+
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 168.dp)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(
+                                            RewardsGold.copy(alpha = 0.46f),
+                                            Color(0xFFAE8D2A).copy(alpha = 0.28f),
+                                        ),
+                                    ),
+                                )
+                                .padding(horizontal = RewardsPagePadding, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
+                                    .weight(1f)
+                                    .padding(end = 10.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
-                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(formattedPointsReason(item.reason), style = MaterialTheme.typography.titleSmall)
-                                    item.description?.takeIf { it.isNotBlank() }?.let {
-                                        Text(it, style = MaterialTheme.typography.bodySmall)
-                                    }
-                                    Text(displayDateOnly(item.created_at), style = MaterialTheme.typography.labelSmall)
-                                }
-                                Box {
-                                    val amountText = if (item.amount > 0) "+${item.amount}" else item.amount.toString()
-                                    Text(
-                                        amountText,
-                                        color = if (isPositive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                                        style = MaterialTheme.typography.titleMedium,
+                                Text(
+                                    text = couponDiscount(coupon),
+                                    style = MaterialTheme.typography.displayMedium.copy(
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 36.sp,
+                                    ),
+                                    color = RewardsPrimaryText,
+                                    maxLines = 1,
+                                )
+                                Text(
+                                    text = coupon.name,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = RewardsPrimaryText.copy(alpha = 0.94f),
+                                    maxLines = 1,
+                                )
+                                Text(
+                                    text = "Min. spend $${String.format("%.0f", coupon.min_amount)}",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                    color = RewardsPrimaryText.copy(alpha = 0.82f),
+                                )
+                                Text(
+                                    text = "Need $required pts",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = RewardsPrimaryText.copy(alpha = 0.9f),
+                                    modifier = Modifier
+                                        .background(Color.Black.copy(alpha = 0.26f), RoundedCornerShape(999.dp))
+                                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .width(1.dp)
+                                    .height(112.dp)
+                                    .background(Color.White.copy(alpha = 0.35f)),
+                            )
+
+                            Column(
+                                modifier = Modifier
+                                    .width(112.dp)
+                                    .padding(start = 10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                Text(
+                                    text = "Exchange",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                    color = RewardsPrimaryText.copy(alpha = 0.9f),
+                                )
+                                Text(
+                                    text = "$required pts",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = RewardsPrimaryText,
+                                    modifier = Modifier
+                                        .background(Color.Black.copy(alpha = 0.28f), RoundedCornerShape(10.dp))
+                                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                                )
+
+                                if (redeeming) {
+                                    CircularProgressIndicator(
+                                        color = RewardsPrimaryText,
+                                        modifier = Modifier.size(22.dp),
+                                        strokeWidth = 2.dp,
                                     )
+                                } else {
+                                    Button(
+                                        onClick = { if (token != null) pointsViewModel.exchange(token, coupon.id) },
+                                        enabled = canRedeem,
+                                        interactionSource = exchangeInteraction,
+                                        modifier = Modifier.scale(exchangeScale),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (canRedeem) Color.White else Color.White.copy(alpha = 0.12f),
+                                            contentColor = if (canRedeem) Color.Black else RewardsPrimaryText.copy(alpha = 0.45f),
+                                        ),
+                                    ) {
+                                        Text(if (canRedeem) "Exchange" else "Locked")
+                                    }
                                 }
                             }
-                            if (index < pointsViewModel.transactions.lastIndex) {
-                                HorizontalDivider()
+                        }
+                    }
+                }
+            }
+
+            item {
+                RewardsSectionHeader(title = "HISTORY")
+            }
+
+            if (!pointsViewModel.isLoading && pointsViewModel.transactions.isEmpty()) {
+                item {
+                    RewardsEmptyStateCard(
+                        icon = Icons.Filled.History,
+                        title = "No transactions yet",
+                        subtitle = "Your points activity will appear here.",
+                    )
+                }
+            } else {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.24f)),
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                        ) {
+                            pointsViewModel.transactions.forEachIndexed { index, item ->
+                                PointsHistoryRow(
+                                    item = item,
+                                    isLast = index == pointsViewModel.transactions.lastIndex,
+                                )
                             }
                         }
                     }
                 }
             }
         }
+
+        if (pointsViewModel.isLoading) {
+            RewardsLoadingOverlay()
+        }
+
+        noticeMessage?.let { message ->
+            RewardsNoticeDialog(
+                message = message,
+                onDismiss = { noticeMessage = null },
+            )
+        }
     }
+}
+
+@Composable
+private fun RewardsSectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelMedium.copy(
+            fontWeight = FontWeight.Black,
+            letterSpacing = 2.6.sp,
+        ),
+        color = RewardsGold,
+    )
+}
+
+@Composable
+private fun RewardsEmptyStateCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.18f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(Color.White.copy(alpha = 0.06f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(icon, contentDescription = null, tint = RewardsGold)
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = RewardsPrimaryText,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = RewardsMutedText,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PointsHistoryRow(
+    item: PointTransaction,
+    isLast: Boolean,
+) {
+    val isPositive = item.type.lowercase() == "earn" || item.amount >= 0
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(
+                    if (isPositive) Color(0xFF2D7A4A).copy(alpha = 0.22f) else Color(0xFF9F3A3A).copy(alpha = 0.22f),
+                    CircleShape,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = if (isPositive) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
+                contentDescription = null,
+                tint = if (isPositive) Color(0xFF7DE39A) else Color(0xFFFF8A8A),
+                modifier = Modifier.size(14.dp),
+            )
+        }
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = formattedPointsReason(item.reason),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                color = RewardsPrimaryText,
+                maxLines = 1,
+            )
+            item.description?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = RewardsSecondaryText,
+                    maxLines = 2,
+                )
+            }
+            Text(
+                text = displayDateOnly(item.created_at),
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                color = RewardsMutedText,
+            )
+        }
+
+        Text(
+            text = if (item.amount > 0) "+${item.amount}" else item.amount.toString(),
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            color = if (isPositive) Color(0xFF7DE39A) else RewardsPrimaryText.copy(alpha = 0.9f),
+            maxLines = 1,
+        )
+    }
+
+    if (!isLast) {
+        HorizontalDivider(
+            color = Color.White.copy(alpha = 0.10f),
+            modifier = Modifier.padding(start = 44.dp),
+        )
+    }
+}
+
+@Composable
+private fun RewardsLoadingOverlay() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.18f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = RewardsGold,
+                    strokeWidth = 2.2.dp,
+                )
+                Text(
+                    text = "Loading...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = RewardsPrimaryText,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RewardsNoticeDialog(
+    message: String,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Notice") },
+        text = { Text(message) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("OK")
+            }
+        },
+    )
 }
 
 private fun formattedPointsReason(raw: String): String {
@@ -298,122 +740,269 @@ fun CouponsScreen(
     couponsViewModel: CouponsViewModel = viewModel(),
 ) {
     val token = sessionViewModel.accessTokenOrNull()
-    var useCouponId by mutableStateOf<Int?>(null)
+    var useCouponId by remember { mutableStateOf<Int?>(null) }
+    var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(token, couponsViewModel.selectedStatus) {
         if (token != null) couponsViewModel.load(token)
     }
+    LaunchedEffect(couponsViewModel.errorMessage) {
+        val message = couponsViewModel.errorMessage?.trim().orEmpty()
+        if (message.isNotEmpty()) {
+            noticeMessage = message
+        }
+    }
 
     if (useCouponId != null) {
-        AlertDialog(
-            onDismissRequest = { useCouponId = null },
-            title = { Text("Coupon") },
-            text = { Text("User Coupon ID: #$useCouponId") },
-            confirmButton = {
-                TextButton(onClick = { useCouponId = null }) {
-                    Text("OK")
-                }
-            },
+        RewardsNoticeDialog(
+            message = "User Coupon ID: #$useCouponId",
+            onDismiss = { useCouponId = null },
         )
     }
 
-    LazyColumn(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .background(RewardsPageBackground),
     ) {
-        item {
-            Text("My Coupons", style = MaterialTheme.typography.headlineSmall)
-        }
-
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("available", "used", "expired").forEach { status ->
-                    FilterChip(
-                        selected = couponsViewModel.selectedStatus == status,
-                        onClick = { couponsViewModel.selectedStatus = status },
-                        label = { Text(couponStatusTitle(status)) },
-                    )
-                }
-            }
-        }
-
-        item {
-            if (couponsViewModel.isLoading) CircularProgressIndicator()
-            couponsViewModel.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        }
-
-        if (!couponsViewModel.isLoading && couponsViewModel.coupons.isEmpty()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = RewardsPagePadding,
+                end = RewardsPagePadding,
+                top = 8.dp,
+                bottom = 24.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             item {
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        "No ${couponStatusTitle(couponsViewModel.selectedStatus).lowercase()} coupons.",
-                        modifier = Modifier.padding(12.dp),
-                    )
-                }
+                Text(
+                    text = "My Coupons",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = RewardsPrimaryText,
+                )
             }
-        } else {
-            items(couponsViewModel.coupons, key = { it.id }) { item ->
-                val status = item.status.lowercase()
-                val isAvailable = status == "available"
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Text(couponDiscount(item.coupon), style = MaterialTheme.typography.headlineMedium)
-                            Text(couponSubtitle(item), style = MaterialTheme.typography.titleMedium)
+
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(14.dp))
+                        .padding(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf("available", "used", "expired").forEach { status ->
+                        val selected = couponsViewModel.selectedStatus == status
+                        val statusInteraction = remember(status) { MutableInteractionSource() }
+                        val statusScale = rememberPressScale(
+                            interactionSource = statusInteraction,
+                            pressedScale = 0.97f,
+                        )
+                        val statusContainerColor by animateColorAsState(
+                            targetValue = if (selected) RewardsGold else Color.White.copy(alpha = 0.03f),
+                            animationSpec = tween(durationMillis = 140),
+                            label = "couponStatusContainer",
+                        )
+                        val statusContentColor by animateColorAsState(
+                            targetValue = if (selected) Color.Black else RewardsPrimaryText.copy(alpha = 0.75f),
+                            animationSpec = tween(durationMillis = 140),
+                            label = "couponStatusContent",
+                        )
+                        Button(
+                            onClick = { couponsViewModel.selectedStatus = status },
+                            modifier = Modifier
+                                .weight(1f)
+                                .scale(statusScale),
+                            interactionSource = statusInteraction,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = statusContainerColor,
+                                contentColor = statusContentColor,
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                        ) {
                             Text(
-                                "Min. spend $${String.format("%.0f", item.coupon.min_amount)}",
-                                style = MaterialTheme.typography.bodyMedium,
+                                text = couponStatusTitle(status),
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                             )
                         }
+                    }
+                }
+            }
 
-                        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(
-                                if (status == "used") "Used" else "Expires",
-                                style = MaterialTheme.typography.labelMedium,
+            if (!couponsViewModel.isLoading && couponsViewModel.coupons.isEmpty()) {
+                item {
+                    RewardsEmptyStateCard(
+                        icon = Icons.Filled.ConfirmationNumber,
+                        title = "No ${couponStatusTitle(couponsViewModel.selectedStatus).lowercase()} coupons",
+                        subtitle = "Coupons from stores and rewards will appear here.",
+                    )
+                }
+            } else {
+                items(couponsViewModel.coupons, key = { it.id }) { item ->
+                    val status = item.status.lowercase()
+                    val isAvailable = status == "available"
+                    val useInteraction = remember(item.id) { MutableInteractionSource() }
+                    val useScale = rememberPressScale(
+                        interactionSource = useInteraction,
+                        pressedScale = 0.96f,
+                    )
+
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .alpha(if (isAvailable) 1f else 0.65f),
+                        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 170.dp)
+                                .background(Brush.horizontalGradient(couponGradientColors(item.coupon.category)))
+                                .padding(horizontal = RewardsPagePadding, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 10.dp),
+                                verticalArrangement = Arrangement.spacedBy(5.dp),
+                            ) {
+                                Text(
+                                    text = couponDiscount(item.coupon),
+                                    style = MaterialTheme.typography.displayMedium.copy(
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 44.sp,
+                                    ),
+                                    color = RewardsPrimaryText,
+                                    maxLines = 1,
+                                )
+                                Text(
+                                    text = couponSubtitle(item),
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = RewardsPrimaryText.copy(alpha = 0.94f),
+                                    maxLines = 1,
+                                )
+                                Text(
+                                    text = "Min. spend $${String.format("%.0f", item.coupon.min_amount)}",
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                    color = RewardsPrimaryText.copy(alpha = 0.80f),
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .width(1.dp)
+                                    .height(112.dp)
+                                    .background(Color.White.copy(alpha = 0.35f)),
                             )
-                            Text(couponDateLabel(item), style = MaterialTheme.typography.bodySmall)
-                            if (isAvailable) {
-                                Button(onClick = { useCouponId = item.id }) {
-                                    Text("Use")
+
+                            Column(
+                                modifier = Modifier
+                                    .width(102.dp)
+                                    .padding(start = 10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Text(
+                                    text = if (status == "used") "Used" else "Expires",
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                                    color = RewardsPrimaryText.copy(alpha = 0.90f),
+                                )
+                                Text(
+                                    text = couponDateLabel(item),
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = RewardsPrimaryText,
+                                    modifier = Modifier
+                                        .background(Color.Black.copy(alpha = 0.28f), RoundedCornerShape(10.dp))
+                                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                                )
+                                if (isAvailable) {
+                                    Button(
+                                        onClick = { useCouponId = item.id },
+                                        interactionSource = useInteraction,
+                                        modifier = Modifier.scale(useScale),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = Color.White,
+                                            contentColor = Color.Black,
+                                        ),
+                                    ) {
+                                        Text("Use")
+                                    }
+                                } else if (status == "expired") {
+                                    Text(
+                                        text = "Expired",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = Color(0xFFFF8A8A),
+                                    )
+                                } else {
+                                    Text(
+                                        text = "Used",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = RewardsPrimaryText.copy(alpha = 0.7f),
+                                    )
                                 }
-                            } else {
-                                Text(couponStatusTitle(status), style = MaterialTheme.typography.labelSmall)
                             }
                         }
                     }
                 }
             }
         }
+
+        if (couponsViewModel.isLoading) {
+            RewardsLoadingOverlay()
+        }
+
+        noticeMessage?.let { message ->
+            RewardsNoticeDialog(
+                message = message,
+                onDismiss = { noticeMessage = null },
+            )
+        }
     }
 }
 
+private fun couponGradientColors(category: String?): List<Color> {
+    return when (category?.lowercase().orEmpty()) {
+        "newcomer" -> listOf(Color(0xFF6F52B5).copy(alpha = 0.45f), Color(0xFF355CA8).copy(alpha = 0.30f))
+        "birthday" -> listOf(Color(0xFFB25087).copy(alpha = 0.45f), Color(0xFFB74646).copy(alpha = 0.30f))
+        "referral" -> listOf(Color(0xFF3C8A66).copy(alpha = 0.42f), Color(0xFF2A8D88).copy(alpha = 0.30f))
+        "activity" -> listOf(Color(0xFFB77935).copy(alpha = 0.45f), Color(0xFFC2A13B).copy(alpha = 0.30f))
+        else -> listOf(RewardsGold.copy(alpha = 0.45f), Color(0xFFB5952F).copy(alpha = 0.24f))
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GiftCardsScreen(
     sessionViewModel: AppSessionViewModel,
     giftCardsViewModel: GiftCardsViewModel = viewModel(),
 ) {
     val token = sessionViewModel.accessTokenOrNull()
-    var claimCode by mutableStateOf("")
-    var transferPhone by mutableStateOf("")
-    var transferMessage by mutableStateOf("")
-    var showClaimDialog by mutableStateOf(false)
-    var sendCardId by mutableStateOf<Int?>(null)
+    val clipboardManager = LocalClipboardManager.current
+    var claimCode by remember { mutableStateOf("") }
+    var transferPhone by remember { mutableStateOf("") }
+    var transferMessage by remember { mutableStateOf("") }
+    var showClaimDialog by remember { mutableStateOf(false) }
+    var sendCardId by remember { mutableStateOf<Int?>(null) }
+    var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(token) {
         if (token != null) giftCardsViewModel.load(token)
     }
+    LaunchedEffect(giftCardsViewModel.errorMessage) {
+        val message = giftCardsViewModel.errorMessage?.trim().orEmpty()
+        if (message.isNotEmpty()) {
+            noticeMessage = message
+        }
+    }
     LaunchedEffect(giftCardsViewModel.actionMessage) {
-        val hasMessage = giftCardsViewModel.actionMessage?.isNotBlank() == true
-        if (!hasMessage) return@LaunchedEffect
-        if (showClaimDialog) {
+        val message = giftCardsViewModel.actionMessage?.trim().orEmpty()
+        if (message.isEmpty()) return@LaunchedEffect
+        noticeMessage = message
+
+        if (showClaimDialog && !giftCardsViewModel.isClaiming) {
             showClaimDialog = false
             claimCode = ""
         }
@@ -424,23 +1013,74 @@ fun GiftCardsScreen(
         }
     }
 
+    val sortedCards = giftCardsViewModel.cards.sortedWith(
+        compareBy<GiftCard> { giftStatusPriority(it.status) }
+            .thenByDescending { it.created_at },
+    )
+    val totalBalance = sortedCards
+        .filter { it.status.lowercase() == "active" }
+        .sumOf { it.balance }
+    val activeCount = sortedCards.count { it.status.lowercase() == "active" }
     if (showClaimDialog) {
-        AlertDialog(
+        ModalBottomSheet(
             onDismissRequest = { showClaimDialog = false },
-            title = { Text("Claim a Gift") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = claimCode,
-                        onValueChange = { claimCode = it.uppercase() },
-                        label = { Text("Claim code") },
-                        modifier = Modifier.fillMaxWidth(),
+            containerColor = RewardsCardBackground,
+            contentColor = RewardsPrimaryText,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Claim a Gift",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = RewardsPrimaryText,
                     )
-                    Text("Enter the code from SMS to claim a transferred gift card.")
+                    IconButton(
+                        onClick = { showClaimDialog = false },
+                        modifier = Modifier.background(Color.White.copy(alpha = 0.08f), CircleShape),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Close",
+                            tint = RewardsGold,
+                        )
+                    }
                 }
-            },
-            confirmButton = {
-                TextButton(
+
+                Text(
+                    text = "Enter claim code",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.6.sp,
+                    ),
+                    color = RewardsSecondaryText,
+                )
+
+                OutlinedTextField(
+                    value = claimCode,
+                    onValueChange = { claimCode = it.uppercase() },
+                    label = { Text("Claim code") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = RewardsPrimaryText,
+                        unfocusedTextColor = RewardsPrimaryText,
+                        focusedBorderColor = RewardsGold.copy(alpha = 0.45f),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.08f),
+                        cursorColor = RewardsGold,
+                        focusedLabelColor = RewardsGold,
+                        unfocusedLabelColor = RewardsSecondaryText,
+                    ),
+                )
+
+                Button(
                     onClick = {
                         if (token != null) {
                             giftCardsViewModel.claim(token, claimCode)
@@ -451,42 +1091,118 @@ fun GiftCardsScreen(
                         }
                     },
                     enabled = !giftCardsViewModel.isClaiming,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = RewardsGold,
+                        contentColor = Color.Black,
+                    ),
                 ) {
-                    Text(if (giftCardsViewModel.isClaiming) "Claiming..." else "Claim")
+                    Text(if (giftCardsViewModel.isClaiming) "Claiming..." else "Claim Gift Card")
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClaimDialog = false }) {
-                    Text("Close")
-                }
-            },
-        )
+
+                Text(
+                    text = "Enter the code from SMS to claim a transferred gift card.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = RewardsSecondaryText,
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
     }
 
-    val sendCard = giftCardsViewModel.cards.firstOrNull { it.id == sendCardId }
+    val sendCard = sortedCards.firstOrNull { it.id == sendCardId }
     if (sendCardId != null && sendCard != null) {
-        AlertDialog(
+        ModalBottomSheet(
             onDismissRequest = { sendCardId = null },
-            title = { Text("Send Gift Card") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Balance: $${String.format("%.2f", sendCard.balance)}")
-                    OutlinedTextField(
-                        value = transferPhone,
-                        onValueChange = { transferPhone = it },
-                        label = { Text("Recipient US phone") },
-                        modifier = Modifier.fillMaxWidth(),
+            containerColor = RewardsCardBackground,
+            contentColor = RewardsPrimaryText,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Send Gift Card",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = RewardsPrimaryText,
                     )
-                    OutlinedTextField(
-                        value = transferMessage,
-                        onValueChange = { transferMessage = it },
-                        label = { Text("Message (Optional)") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    IconButton(
+                        onClick = { sendCardId = null },
+                        modifier = Modifier.background(Color.White.copy(alpha = 0.08f), CircleShape),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Close",
+                            tint = RewardsGold,
+                        )
+                    }
                 }
-            },
-            confirmButton = {
-                TextButton(
+
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.36f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "Balance",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = RewardsSecondaryText,
+                        )
+                        Text(
+                            text = "$${String.format("%.2f", sendCard.balance)}",
+                            color = RewardsGold,
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
+                        )
+                    }
+                }
+
+                OutlinedTextField(
+                    value = transferPhone,
+                    onValueChange = { transferPhone = it },
+                    label = { Text("Recipient US phone") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = RewardsPrimaryText,
+                        unfocusedTextColor = RewardsPrimaryText,
+                        focusedBorderColor = RewardsGold.copy(alpha = 0.45f),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.08f),
+                        cursorColor = RewardsGold,
+                        focusedLabelColor = RewardsGold,
+                        unfocusedLabelColor = RewardsSecondaryText,
+                    ),
+                )
+                OutlinedTextField(
+                    value = transferMessage,
+                    onValueChange = { transferMessage = it },
+                    label = { Text("Message (Optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = RewardsPrimaryText,
+                        unfocusedTextColor = RewardsPrimaryText,
+                        focusedBorderColor = RewardsGold.copy(alpha = 0.45f),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.08f),
+                        cursorColor = RewardsGold,
+                        focusedLabelColor = RewardsGold,
+                        unfocusedLabelColor = RewardsSecondaryText,
+                    ),
+                )
+
+                Button(
                     onClick = {
                         if (token != null) {
                             giftCardsViewModel.transfer(
@@ -503,131 +1219,1080 @@ fun GiftCardsScreen(
                         }
                     },
                     enabled = giftCardsViewModel.sendingCardId != sendCard.id,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = RewardsGold,
+                        contentColor = Color.Black,
+                    ),
                 ) {
-                    Text(if (giftCardsViewModel.sendingCardId == sendCard.id) "Sending..." else "Send")
+                    Text(
+                        if (giftCardsViewModel.sendingCardId == sendCard.id) {
+                            "Sending..."
+                        } else {
+                            "Send Digital Gift Card"
+                        },
+                    )
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { sendCardId = null }) {
-                    Text("Close")
-                }
-            },
-        )
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
     }
 
-    val sortedCards = giftCardsViewModel.cards.sortedWith(
-        compareBy<com.nailsdash.android.data.model.GiftCard> { giftStatusPriority(it.status) }
-            .thenByDescending { it.created_at },
-    )
-    val totalBalance = sortedCards
-        .filter { it.status.lowercase() == "active" }
-        .sumOf { it.balance }
-    val activeCount = sortedCards.count { it.status.lowercase() == "active" }
-
-    LazyColumn(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .background(RewardsPageBackground),
     ) {
-        item {
-            Text("My Gift Cards", style = MaterialTheme.typography.headlineSmall)
-        }
-
-        item {
-            Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("TOTAL BALANCE", style = MaterialTheme.typography.labelLarge)
-                    Text("$${String.format("%.2f", totalBalance)}", style = MaterialTheme.typography.displaySmall)
-                    Text("$activeCount Active | ${sortedCards.size} Total", style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-        }
-
-        item {
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text("${sortedCards.size} cards", style = MaterialTheme.typography.bodySmall)
-                Button(onClick = { showClaimDialog = true }) {
-                    Text("Claim")
-                }
-            }
-        }
-
-        item {
-            giftCardsViewModel.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            giftCardsViewModel.actionMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-            if (giftCardsViewModel.isLoading) CircularProgressIndicator()
-        }
-
-        if (!giftCardsViewModel.isLoading && sortedCards.isEmpty()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = RewardsPagePadding,
+                end = RewardsPagePadding,
+                top = 8.dp,
+                bottom = 24.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             item {
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "My Gift Cards",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = RewardsPrimaryText,
+                )
+            }
+
+            item {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(RewardsGold, CircleShape),
+                    )
                     Text(
-                        "No gift cards found. Claim or receive gift cards to see them here.",
-                        modifier = Modifier.padding(12.dp),
+                        text = "DIGITAL ASSETS PURCHASED IN-SALON",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.6.sp,
+                        ),
+                        color = RewardsSecondaryText,
                     )
                 }
             }
-        } else {
-            items(sortedCards, key = { it.id }) { card ->
-                val status = card.status.lowercase()
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                            Text("GIFT CARD", style = MaterialTheme.typography.labelMedium)
-                            Text(giftStatusLabel(status), style = MaterialTheme.typography.labelSmall)
+
+            item {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.40f)),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.linearGradient(
+                                    colors = listOf(
+                                        Color(0xFF1A1A1A),
+                                        Color(0xFF252525),
+                                    ),
+                                ),
+                            )
+                            .padding(vertical = 28.dp, horizontal = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.CardGiftcard,
+                                contentDescription = null,
+                                tint = RewardsGold,
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Text(
+                                text = "GIFT CARD WALLET",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 2.2.sp,
+                                ),
+                                color = RewardsSecondaryText,
+                            )
                         }
 
-                        Text("$${String.format("%.2f", card.balance)}", style = MaterialTheme.typography.headlineMedium)
-                        Text("Card: ${card.card_number}", style = MaterialTheme.typography.bodySmall)
-                        Text("Issued ${displayDateOnly(card.created_at)}", style = MaterialTheme.typography.bodySmall)
-                        card.expires_at?.let {
-                            Text("Exp ${displayDateOnly(it)}", style = MaterialTheme.typography.bodySmall)
-                        }
-                        card.recipient_phone?.takeIf { it.isNotBlank() }?.let {
-                            Text("Recipient ${maskPhone(it)}", style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            text = "TOTAL BALANCE",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.4.sp,
+                            ),
+                            color = RewardsGold,
+                        )
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalAlignment = Alignment.Bottom,
+                        ) {
+                            Text(
+                                text = "$",
+                                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
+                                color = RewardsGold,
+                            )
+                            Text(
+                                text = String.format("%.2f", totalBalance),
+                                style = MaterialTheme.typography.displayMedium.copy(
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 46.sp,
+                                ),
+                                color = RewardsPrimaryText,
+                                maxLines = 1,
+                            )
                         }
 
-                        when (status) {
-                            "active" -> {
-                                Button(
-                                    onClick = {
-                                        sendCardId = card.id
-                                        transferPhone = ""
-                                        transferMessage = ""
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text("Send this card")
-                                }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .background(Color.Black.copy(alpha = 0.35f), RoundedCornerShape(999.dp))
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.CheckCircle,
+                                contentDescription = null,
+                                tint = RewardsGold,
+                                modifier = Modifier.size(12.dp),
+                            )
+                            Text(
+                                text = "$activeCount Active",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = RewardsSecondaryText,
+                            )
+                            Text(
+                                text = "•",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = RewardsMutedText,
+                            )
+                            Text(
+                                text = "${sortedCards.size} Total",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = RewardsSecondaryText,
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                RewardsSectionHeader(title = "MY COLLECTION")
+            }
+
+            item {
+                val claimInteraction = remember { MutableInteractionSource() }
+                val claimScale = rememberPressScale(
+                    interactionSource = claimInteraction,
+                    pressedScale = 0.94f,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "${sortedCards.size} cards",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = RewardsSecondaryText,
+                    )
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Button(
+                        onClick = { showClaimDialog = true },
+                        interactionSource = claimInteraction,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Black.copy(alpha = 0.45f),
+                            contentColor = RewardsGold,
+                        ),
+                        shape = RoundedCornerShape(999.dp),
+                        modifier = Modifier
+                            .scale(claimScale)
+                            .border(
+                                width = 1.dp,
+                                color = RewardsGold.copy(alpha = 0.35f),
+                                shape = RoundedCornerShape(999.dp),
+                            ),
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.ConfirmationNumber,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                            )
+                            Text(
+                                text = "Claim",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.1.sp,
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (!giftCardsViewModel.isLoading && sortedCards.isEmpty()) {
+                item {
+                    RewardsEmptyStateCard(
+                        icon = Icons.Filled.CardGiftcard,
+                        title = "No gift cards found",
+                        subtitle = "Claim or receive gift cards to see them here.",
+                    )
+                }
+            } else {
+                items(sortedCards, key = { it.id }) { card ->
+                    GiftCardCollectionCard(
+                        card = card,
+                        sendingCardId = giftCardsViewModel.sendingCardId,
+                        revokingCardId = giftCardsViewModel.revokingCardId,
+                        onCopyCode = { code ->
+                            clipboardManager.setText(AnnotatedString(code))
+                            noticeMessage = "Card code copied."
+                        },
+                        onSend = {
+                            sendCardId = card.id
+                            transferPhone = ""
+                            transferMessage = ""
+                        },
+                        onRevoke = {
+                            if (token != null) {
+                                giftCardsViewModel.revoke(token, card.id)
                             }
+                        },
+                    )
+                }
+            }
 
-                            "pending_transfer" -> {
-                                Button(
-                                    onClick = { if (token != null) giftCardsViewModel.revoke(token, card.id) },
-                                    enabled = giftCardsViewModel.revokingCardId != card.id,
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    Text(
-                                        if (giftCardsViewModel.revokingCardId == card.id) {
-                                            "Canceling..."
-                                        } else {
-                                            "Cancel transfer"
-                                        },
-                                    )
-                                }
-                            }
+            item {
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = RewardsGold.copy(alpha = 0.08f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.18f)),
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .background(RewardsGold.copy(alpha = 0.12f), CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.CheckCircle,
+                                contentDescription = null,
+                                tint = RewardsGold,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text(
+                                text = "IN-STORE REDEMPTION",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.6.sp,
+                                ),
+                                color = RewardsGold,
+                            )
+                            Text(
+                                text = "Show your gift card code to the receptionist at checkout and the amount will be deducted from your final bill.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = RewardsSecondaryText,
+                            )
                         }
                     }
                 }
             }
         }
 
-        item {
-            Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+        if (giftCardsViewModel.isLoading) {
+            RewardsLoadingOverlay()
+        }
+
+        noticeMessage?.let { message ->
+            RewardsNoticeDialog(
+                message = message,
+                onDismiss = { noticeMessage = null },
+            )
+        }
+    }
+}
+
+@Composable
+private fun GiftCardCollectionCard(
+    card: GiftCard,
+    sendingCardId: Int?,
+    revokingCardId: Int?,
+    onCopyCode: (String) -> Unit,
+    onSend: () -> Unit,
+    onRevoke: () -> Unit,
+) {
+    val status = card.status.lowercase()
+    val statusColor = giftStatusToneColor(status)
+    val copyInteraction = remember(card.id) { MutableInteractionSource() }
+    val copyScale = rememberPressScale(
+        interactionSource = copyInteraction,
+        pressedScale = 0.9f,
+    )
+    val sendInteraction = remember(card.id) { MutableInteractionSource() }
+    val sendScale = rememberPressScale(
+        interactionSource = sendInteraction,
+        pressedScale = 0.97f,
+    )
+    val revokeInteraction = remember(card.id) { MutableInteractionSource() }
+    val revokeScale = rememberPressScale(
+        interactionSource = revokeInteraction,
+        pressedScale = 0.97f,
+    )
+
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.32f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Brush.linearGradient(giftCardSurfaceGradient(status)))
+                .padding(horizontal = RewardsPagePadding, vertical = 13.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CardGiftcard,
+                        contentDescription = null,
+                        tint = RewardsGold,
+                        modifier = Modifier.size(13.dp),
+                    )
+                    Text(
+                        text = "GIFT CARD",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.4.sp,
+                        ),
+                        color = RewardsSecondaryText,
+                    )
+                }
                 Text(
-                    "Show your gift card code to the receptionist at checkout and the amount will be deducted from your final bill.",
-                    modifier = Modifier.padding(12.dp),
+                    text = giftStatusLabel(status),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = statusColor,
+                    modifier = Modifier
+                        .background(statusColor.copy(alpha = 0.18f), RoundedCornerShape(999.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                Text(
+                    text = "$",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
+                    color = RewardsGold,
+                )
+                Text(
+                    text = String.format("%.2f", card.balance),
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 38.sp,
+                    ),
+                    color = RewardsPrimaryText,
+                    maxLines = 1,
+                )
+            }
+
+            Text(
+                text = "Available Balance",
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                color = RewardsSecondaryText,
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.44f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ConfirmationNumber,
+                    contentDescription = null,
+                    tint = RewardsGold,
+                    modifier = Modifier.size(14.dp),
+                )
+                Text(
+                    text = card.card_number,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontFamily = FontFamily.Monospace,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = RewardsGold,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 8.dp),
+                    maxLines = 1,
+                )
+                Box(
+                    modifier = Modifier
+                        .scale(copyScale)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.White.copy(alpha = 0.08f))
+                        .clickable(
+                            interactionSource = copyInteraction,
+                            indication = null,
+                        ) { onCopyCode(card.card_number) }
+                        .padding(7.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.ContentCopy,
+                        contentDescription = "Copy card code",
+                        tint = RewardsPrimaryText.copy(alpha = 0.9f),
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CalendarMonth,
+                        contentDescription = null,
+                        tint = RewardsSecondaryText,
+                        modifier = Modifier.size(12.dp),
+                    )
+                    Text(
+                        text = "Issued ${displayDateOnly(card.created_at)}",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = RewardsSecondaryText,
+                    )
+                }
+
+                card.expires_at?.let { expires ->
+                    Text(
+                        text = "•",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = RewardsMutedText,
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.History,
+                            contentDescription = null,
+                            tint = RewardsSecondaryText,
+                            modifier = Modifier.size(12.dp),
+                        )
+                        Text(
+                            text = "Exp ${displayDateOnly(expires)}",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = RewardsSecondaryText,
+                        )
+                    }
+                }
+            }
+
+            card.recipient_phone?.takeIf { it.isNotBlank() }?.let { recipient ->
+                Text(
+                    text = "Recipient ${maskPhone(recipient)}",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = RewardsSecondaryText,
+                )
+            }
+
+            when (status) {
+                "active" -> {
+                    Button(
+                        onClick = onSend,
+                        enabled = sendingCardId == null,
+                        interactionSource = sendInteraction,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .scale(sendScale)
+                            .border(
+                                width = 1.dp,
+                                color = RewardsGold.copy(alpha = 0.35f),
+                                shape = RoundedCornerShape(12.dp),
+                            ),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Black.copy(alpha = 0.42f),
+                            contentColor = RewardsGold,
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Text(
+                            text = "Send this card",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.8.sp,
+                            ),
+                        )
+                    }
+                }
+
+                "pending_transfer" -> {
+                    Button(
+                        onClick = onRevoke,
+                        enabled = revokingCardId != card.id,
+                        interactionSource = revokeInteraction,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .scale(revokeScale)
+                            .border(
+                                width = 1.dp,
+                                color = Color(0xFFFF8A8A).copy(alpha = 0.45f),
+                                shape = RoundedCornerShape(12.dp),
+                            ),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFFF8A8A).copy(alpha = 0.10f),
+                            contentColor = Color(0xFFFF8A8A),
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        if (revokingCardId == card.id) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                strokeWidth = 1.8.dp,
+                                color = Color(0xFFFF8A8A),
+                            )
+                            Text(
+                                text = "  Canceling...",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.8.sp,
+                                ),
+                            )
+                        } else {
+                            Text(
+                                text = "Cancel transfer",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.8.sp,
+                                ),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun giftCardSurfaceGradient(status: String): List<Color> {
+    return when (status) {
+        "pending_transfer" -> listOf(RewardsCardBackground, Color(0xFF2F2612))
+        "active" -> listOf(RewardsCardBackground, Color(0xFF1E1B13))
+        "revoked" -> listOf(RewardsCardBackground, Color(0xFF2A1A1A))
+        else -> listOf(RewardsCardBackground, Color(0xFF1B1B1B))
+    }
+}
+
+private fun giftStatusToneColor(status: String): Color {
+    return when (status) {
+        "pending_transfer" -> RewardsGold
+        "active" -> Color(0xFF7DE39A)
+        "used" -> Color(0xFFFFC36A)
+        "revoked" -> Color(0xFFFF8A8A)
+        "expired" -> Color(0xFFB2B2B2)
+        else -> RewardsSecondaryText
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun OrderHistoryScreen(
+    sessionViewModel: AppSessionViewModel,
+    orderHistoryViewModel: OrderHistoryViewModel = viewModel(),
+) {
+    val context = LocalContext.current
+    val uiScope = rememberCoroutineScope()
+    val token = sessionViewModel.accessTokenOrNull()
+    var reviewingItem by remember { mutableStateOf<Appointment?>(null) }
+    var reviewRating by remember { mutableStateOf(5) }
+    var reviewComment by remember { mutableStateOf("") }
+    var reviewDraftImages by remember { mutableStateOf(emptyList<ReviewDraftImage>()) }
+    var noticeMessage by remember { mutableStateOf<String?>(null) }
+    val reviewImagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents(),
+    ) { uris ->
+        if (uris.isEmpty()) return@rememberLauncherForActivityResult
+        uiScope.launch {
+            val remainingSlots = (MaxReviewImageCount - reviewDraftImages.size).coerceAtLeast(0)
+            if (remainingSlots <= 0) {
+                noticeMessage = "Maximum 5 images allowed."
+                return@launch
+            }
+
+            val selectedUris = uris.take(remainingSlots)
+            val newDrafts = withContext(Dispatchers.IO) {
+                selectedUris.mapNotNull { uri ->
+                    loadReviewDraftImage(context = context, uri = uri)
+                }
+            }
+            if (newDrafts.isNotEmpty()) {
+                reviewDraftImages = reviewDraftImages + newDrafts
+            }
+            if (newDrafts.size < selectedUris.size) {
+                noticeMessage = "Some images couldn't be processed. Use images under 5MB."
+            }
+            if (uris.size > remainingSlots) {
+                noticeMessage = "Maximum 5 images allowed."
+            }
+        }
+    }
+
+    LaunchedEffect(token) {
+        if (token != null) orderHistoryViewModel.load(token)
+    }
+    LaunchedEffect(orderHistoryViewModel.errorMessage, orderHistoryViewModel.actionMessage) {
+        val message = orderHistoryViewModel.errorMessage?.trim().takeIf { !it.isNullOrEmpty() }
+            ?: orderHistoryViewModel.actionMessage?.trim().takeIf { !it.isNullOrEmpty() }
+        if (message != null) {
+            noticeMessage = message
+        }
+    }
+
+    if (reviewingItem != null) {
+        val current = reviewingItem
+        ModalBottomSheet(
+            onDismissRequest = {
+                reviewingItem = null
+                reviewDraftImages = emptyList()
+            },
+            containerColor = RewardsCardBackground,
+            contentColor = RewardsPrimaryText,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Write a Review",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = RewardsPrimaryText,
+                    )
+                    IconButton(
+                        onClick = {
+                            reviewingItem = null
+                            reviewDraftImages = emptyList()
+                        },
+                        modifier = Modifier.background(Color.White.copy(alpha = 0.08f), CircleShape),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Close",
+                            tint = RewardsSecondaryText,
+                        )
+                    }
+                }
+
+                Text(
+                    text = "Reviews are available within 30 days after your appointment.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = RewardsSecondaryText,
+                )
+
+                if (current != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.36f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
+                        shape = RoundedCornerShape(12.dp),
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                current.store_name ?: "Salon",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = RewardsPrimaryText,
+                            )
+                            Text(
+                                current.service_name ?: "Service",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = RewardsSecondaryText,
+                            )
+                        }
+                    }
+                }
+
+                Text("Rating", color = RewardsPrimaryText.copy(alpha = 0.62f))
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    (1..5).forEach { star ->
+                        IconButton(onClick = { reviewRating = star }) {
+                            Icon(
+                                imageVector = if (star <= reviewRating) Icons.Filled.Star else Icons.Filled.StarBorder,
+                                contentDescription = null,
+                                tint = if (star <= reviewRating) RewardsGold else Color.White.copy(alpha = 0.34f),
+                            )
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = reviewComment,
+                    onValueChange = { reviewComment = it },
+                    label = { Text("Comment (Optional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 4,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = RewardsPrimaryText,
+                        unfocusedTextColor = RewardsPrimaryText,
+                        focusedBorderColor = RewardsGold.copy(alpha = 0.45f),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.12f),
+                        cursorColor = RewardsGold,
+                        focusedLabelColor = RewardsGold,
+                        unfocusedLabelColor = RewardsSecondaryText,
+                    ),
+                )
+
+                Text(
+                    text = "Photos (Optional, max 5)",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = RewardsPrimaryText.copy(alpha = 0.62f),
+                )
+
+                if (reviewDraftImages.isNotEmpty()) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 220.dp),
+                    ) {
+                        gridItems(reviewDraftImages, key = { it.id }) { item ->
+                            Box(
+                                modifier = Modifier
+                                    .aspectRatio(1f)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Color.Black.copy(alpha = 0.22f)),
+                            ) {
+                                AsyncImage(
+                                    model = item.uri,
+                                    contentDescription = "Selected photo",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                                IconButton(
+                                    onClick = {
+                                        reviewDraftImages = reviewDraftImages.filterNot { it.id == item.id }
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(4.dp)
+                                        .size(24.dp)
+                                        .background(Color.Black.copy(alpha = 0.65f), CircleShape),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Close,
+                                        contentDescription = "Remove image",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (reviewDraftImages.size < MaxReviewImageCount) {
+                    Button(
+                        onClick = { reviewImagePickerLauncher.launch("image/*") },
+                        enabled = !orderHistoryViewModel.isUploadingReviewImages,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White.copy(alpha = 0.08f),
+                            contentColor = RewardsPrimaryText.copy(alpha = 0.86f),
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.PhotoLibrary,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Add Photos (${reviewDraftImages.size}/$MaxReviewImageCount)",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Button(
+                        onClick = {
+                            reviewingItem = null
+                            reviewDraftImages = emptyList()
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White.copy(alpha = 0.08f),
+                            contentColor = RewardsPrimaryText.copy(alpha = 0.86f),
+                        ),
+                    ) {
+                        Text("Cancel")
+                    }
+                    Button(
+                        onClick = {
+                            val appointment = current ?: return@Button
+                            if (token != null) {
+                                orderHistoryViewModel.createReview(
+                                    bearerToken = token,
+                                    appointmentId = appointment.id,
+                                    rating = reviewRating.toDouble(),
+                                    comment = reviewComment.takeIf { it.isNotBlank() },
+                                    imageFiles = reviewDraftImages.map { image ->
+                                        ReviewUploadImagePayload(
+                                            imageData = image.data,
+                                            fileName = image.fileName,
+                                            mimeType = image.mimeType,
+                                        )
+                                    },
+                                    onCreated = {
+                                        reviewingItem = null
+                                        reviewComment = ""
+                                        reviewRating = 5
+                                        reviewDraftImages = emptyList()
+                                    },
+                                )
+                            }
+                        },
+                        enabled = current != null &&
+                            orderHistoryViewModel.submittingReviewAppointmentId != current.id &&
+                            !orderHistoryViewModel.isUploadingReviewImages,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = RewardsGold,
+                            contentColor = Color.Black,
+                        ),
+                    ) {
+                        val label = when {
+                            current != null &&
+                                orderHistoryViewModel.submittingReviewAppointmentId == current.id &&
+                                orderHistoryViewModel.isUploadingReviewImages -> "Uploading..."
+
+                            current != null &&
+                                orderHistoryViewModel.submittingReviewAppointmentId == current.id -> "Submitting..."
+
+                            else -> "Submit"
+                        }
+                        Text(label)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+
+    val totalSpend = orderHistoryViewModel.items.sumOf { maxOf(it.service_price ?: 0.0, 0.0) }
+    val completedCount = orderHistoryViewModel.items.size
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(RewardsPageBackground),
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = RewardsPagePadding,
+                end = RewardsPagePadding,
+                top = 8.dp,
+                bottom = 24.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Text(
+                    text = "Transaction History",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = RewardsPrimaryText,
+                )
+            }
+
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    OrderHistorySummaryMetric(
+                        title = "Total Spend",
+                        value = "$${String.format("%.2f", totalSpend)}",
+                        icon = Icons.Filled.AttachMoney,
+                        highlighted = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OrderHistorySummaryMetric(
+                        title = "Total Visits",
+                        value = completedCount.toString(),
+                        icon = Icons.Filled.CalendarMonth,
+                        highlighted = false,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "RECENT ACTIVITY",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 2.2.sp,
+                        ),
+                        color = RewardsGold,
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    if (completedCount > 0) {
+                        Text(
+                            text = "$completedCount completed",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = RewardsSecondaryText,
+                        )
+                    }
+                }
+            }
+
+            if (!orderHistoryViewModel.isLoading && orderHistoryViewModel.items.isEmpty()) {
+                item {
+                    RewardsEmptyStateCard(
+                        icon = Icons.Filled.History,
+                        title = "No transactions yet",
+                        subtitle = "Completed orders will appear here.",
+                    )
+                }
+            } else {
+                items(orderHistoryViewModel.items, key = { it.id }) { item ->
+                    OrderHistoryActivityCard(
+                        item = item,
+                        onReview = {
+                            reviewingItem = item
+                            reviewRating = 5
+                            reviewComment = ""
+                            reviewDraftImages = emptyList()
+                        },
+                    )
+                }
+            }
+        }
+
+        if (orderHistoryViewModel.isLoading) {
+            RewardsLoadingOverlay()
+        }
+
+        noticeMessage?.let { message ->
+            RewardsNoticeDialog(
+                message = message,
+                onDismiss = { noticeMessage = null },
+            )
+        }
+    }
+}
+
+@Composable
+private fun OrderHistorySummaryMetric(
+    title: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    highlighted: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.18f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = title.uppercase(),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.6.sp,
+                ),
+                color = RewardsSecondaryText,
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
+                color = if (highlighted) RewardsGold else RewardsPrimaryText,
+                maxLines = 1,
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = RewardsGold,
+                    modifier = Modifier.size(12.dp),
+                )
+                Text(
+                    text = "Completed orders",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = RewardsSecondaryText,
                 )
             }
         }
@@ -635,207 +2300,242 @@ fun GiftCardsScreen(
 }
 
 @Composable
-fun OrderHistoryScreen(
-    sessionViewModel: AppSessionViewModel,
-    orderHistoryViewModel: OrderHistoryViewModel = viewModel(),
+private fun OrderHistoryActivityCard(
+    item: Appointment,
+    onReview: () -> Unit,
 ) {
-    val token = sessionViewModel.accessTokenOrNull()
-    var reviewingItem by mutableStateOf<Appointment?>(null)
-    var reviewRating by mutableStateOf(5)
-    var reviewComment by mutableStateOf("")
+    val canReview = canReviewAppointment(item)
+    val amount = maxOf(item.service_price ?: 0.0, 0.0)
 
-    LaunchedEffect(token) {
-        if (token != null) orderHistoryViewModel.load(token)
-    }
-
-    if (reviewingItem != null) {
-        val current = reviewingItem
-        AlertDialog(
-            onDismissRequest = { reviewingItem = null },
-            title = { Text("Write a Review") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(current?.store_name ?: "Salon", style = MaterialTheme.typography.titleSmall)
-                    Text(current?.service_name ?: "Service", style = MaterialTheme.typography.bodySmall)
-                    Text("Rating")
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        (1..5).forEach { star ->
-                            IconButton(onClick = { reviewRating = star }) {
-                                Icon(
-                                    imageVector = if (star <= reviewRating) Icons.Filled.Star else Icons.Filled.StarBorder,
-                                    contentDescription = null,
-                                )
-                            }
-                        }
-                    }
-                    OutlinedTextField(
-                        value = reviewComment,
-                        onValueChange = { reviewComment = it },
-                        label = { Text("Comment") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val appointment = current ?: return@TextButton
-                        if (token != null) {
-                            orderHistoryViewModel.createReview(
-                                bearerToken = token,
-                                appointmentId = appointment.id,
-                                rating = reviewRating.toDouble(),
-                                comment = reviewComment.takeIf { it.isNotBlank() },
-                                onCreated = {
-                                    reviewingItem = null
-                                    reviewComment = ""
-                                    reviewRating = 5
-                                },
-                            )
-                        }
-                    },
-                    enabled = current != null &&
-                        orderHistoryViewModel.submittingReviewAppointmentId != current.id,
-                ) {
-                    val label = if (
-                        current != null &&
-                        orderHistoryViewModel.submittingReviewAppointmentId == current.id
-                    ) {
-                        "Submitting..."
-                    } else {
-                        "Submit"
-                    }
-                    Text(label)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { reviewingItem = null }) {
-                    Text("Cancel")
-                }
-            },
-        )
-    }
-
-    val totalSpend = orderHistoryViewModel.items.sumOf { maxOf(it.service_price ?: 0.0, 0.0) }
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.16f)),
     ) {
-        item {
-            Text("Transaction History", style = MaterialTheme.typography.headlineSmall)
-        }
-
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("TOTAL SPEND", style = MaterialTheme.typography.labelMedium)
-                        Text("$${String.format("%.2f", totalSpend)}", style = MaterialTheme.typography.titleLarge)
-                        Text("Completed orders", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("TOTAL VISITS", style = MaterialTheme.typography.labelMedium)
-                        Text(orderHistoryViewModel.items.size.toString(), style = MaterialTheme.typography.titleLarge)
-                        Text("Completed orders", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            }
-        }
-
-        item {
-            orderHistoryViewModel.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            orderHistoryViewModel.actionMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-            if (orderHistoryViewModel.isLoading) CircularProgressIndicator()
-        }
-
-        item {
-            Text(
-                "RECENT ACTIVITY (${orderHistoryViewModel.items.size} completed)",
-                style = MaterialTheme.typography.labelLarge,
-            )
-        }
-
-        if (!orderHistoryViewModel.isLoading && orderHistoryViewModel.items.isEmpty()) {
-            item {
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
                     Text(
-                        "No transactions yet. Completed orders will appear here.",
-                        modifier = Modifier.padding(12.dp),
+                        text = item.store_name ?: "Salon",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = RewardsPrimaryText,
+                        maxLines = 1,
                     )
+                    item.order_number?.takeIf { it.isNotBlank() }?.let { order ->
+                        Text(
+                            text = "Order $order",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                letterSpacing = 1.1.sp,
+                            ),
+                            color = Color.White.copy(alpha = 0.55f),
+                            maxLines = 1,
+                        )
+                    }
+                    item.store_address?.trim()?.takeIf { it.isNotEmpty() }?.let { address ->
+                        Text(
+                            text = address,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.60f),
+                            maxLines = 1,
+                        )
+                    }
                 }
+
+                Text(
+                    text = "$${String.format("%.2f", amount)}",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = RewardsGold,
+                )
             }
-        } else {
-            items(orderHistoryViewModel.items, key = { it.id }) { item ->
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top,
-                        ) {
-                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(item.store_name ?: "Salon", style = MaterialTheme.typography.titleMedium)
-                                item.order_number?.takeIf { it.isNotBlank() }?.let {
-                                    Text("Order $it", style = MaterialTheme.typography.labelSmall)
-                                }
-                                item.store_address?.takeIf { it.isNotBlank() }?.let {
-                                    Text(it, style = MaterialTheme.typography.bodySmall)
+
+            HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = item.service_name ?: "Service",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                    color = Color.White.copy(alpha = 0.88f),
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = "${displayDateOnly(item.appointment_date)} · ${item.appointment_time}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = RewardsSecondaryText,
+                    maxLines = 1,
+                )
+            }
+
+            if (item.status.lowercase() == "completed") {
+                HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Review",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = Color.White.copy(alpha = 0.68f),
+                    )
+
+                    when {
+                        canReview -> {
+                            Button(
+                                onClick = onReview,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = RewardsGold.copy(alpha = 0.12f),
+                                    contentColor = RewardsGold,
+                                ),
+                                shape = RoundedCornerShape(999.dp),
+                                modifier = Modifier.border(
+                                    width = 1.dp,
+                                    color = RewardsGold.copy(alpha = 0.42f),
+                                    shape = RoundedCornerShape(999.dp),
+                                ),
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Star,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(11.dp),
+                                    )
+                                    Text(
+                                        text = "Review",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    )
                                 }
                             }
+                        }
+
+                        item.review_id != null -> {
                             Text(
-                                "$${String.format("%.2f", maxOf(item.service_price ?: 0.0, 0.0))}",
-                                style = MaterialTheme.typography.titleMedium,
+                                text = "Reviewed",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = RewardsGold,
                             )
                         }
 
-                        HorizontalDivider()
-                        Text(item.service_name ?: "Service", style = MaterialTheme.typography.bodyMedium)
-                        Text(
-                            "${displayDateOnly(item.appointment_date)} - ${item.appointment_time}",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-
-                        if (item.status.lowercase() == "completed") {
-                            HorizontalDivider()
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text("Review", style = MaterialTheme.typography.labelMedium)
-                                when {
-                                    canReviewAppointment(item) -> {
-                                        Button(
-                                            onClick = {
-                                                reviewingItem = item
-                                                reviewRating = 5
-                                                reviewComment = ""
-                                            },
-                                        ) {
-                                            Text("Review")
-                                        }
-                                    }
-
-                                    item.review_id != null -> {
-                                        Text("Reviewed", style = MaterialTheme.typography.labelMedium)
-                                    }
-
-                                    else -> {
-                                        Text("Review window closed", style = MaterialTheme.typography.labelMedium)
-                                    }
-                                }
-                            }
+                        else -> {
+                            Text(
+                                text = "Review window closed",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = Color.White.copy(alpha = 0.56f),
+                            )
                         }
                     }
                 }
             }
         }
     }
+}
+
+private const val MaxReviewImageCount = 5
+private const val MaxReviewImageBytes = 5 * 1024 * 1024
+
+private data class ReviewDraftImage(
+    val id: String = UUID.randomUUID().toString(),
+    val uri: Uri,
+    val data: ByteArray,
+    val fileName: String,
+    val mimeType: String = "image/jpeg",
+)
+
+private fun loadReviewDraftImage(context: Context, uri: Uri): ReviewDraftImage? {
+    val rawData = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
+    val optimizedData = optimizeReviewImageData(rawData) ?: return null
+    return ReviewDraftImage(
+        uri = uri,
+        data = optimizedData,
+        fileName = resolveReviewImageFileName(context, uri),
+    )
+}
+
+private fun resolveReviewImageFileName(context: Context, uri: Uri): String {
+    val displayName = context.contentResolver.query(
+        uri,
+        arrayOf(OpenableColumns.DISPLAY_NAME),
+        null,
+        null,
+        null,
+    )?.use { cursor ->
+        val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
+    }
+    val baseName = displayName
+        ?.substringBeforeLast('.')
+        ?.trim()
+        .orEmpty()
+        .ifBlank { "review_${System.currentTimeMillis()}" }
+        .replace(Regex("[^A-Za-z0-9_-]"), "_")
+    return "${baseName}_${UUID.randomUUID().toString().take(8)}.jpg"
+}
+
+private fun optimizeReviewImageData(rawData: ByteArray): ByteArray? {
+    val bitmap = BitmapFactory.decodeByteArray(rawData, 0, rawData.size) ?: return null
+    return try {
+        compressBitmapUnderLimit(bitmap = bitmap, maxBytes = MaxReviewImageBytes)
+    } finally {
+        if (!bitmap.isRecycled) {
+            bitmap.recycle()
+        }
+    }
+}
+
+private fun compressBitmapUnderLimit(bitmap: Bitmap, maxBytes: Int): ByteArray? {
+    val qualityLevels = intArrayOf(90, 82, 74, 66, 58, 50, 42)
+    var currentBitmap = bitmap
+    var attempt = 0
+    while (attempt < 5) {
+        for (quality in qualityLevels) {
+            val output = ByteArrayOutputStream()
+            val compressed = currentBitmap.compress(Bitmap.CompressFormat.JPEG, quality, output)
+            if (!compressed) continue
+            val bytes = output.toByteArray()
+            if (bytes.size <= maxBytes) {
+                if (currentBitmap !== bitmap && !currentBitmap.isRecycled) {
+                    currentBitmap.recycle()
+                }
+                return bytes
+            }
+        }
+
+        val nextWidth = (currentBitmap.width * 0.85f).toInt()
+        val nextHeight = (currentBitmap.height * 0.85f).toInt()
+        if (nextWidth < 240 || nextHeight < 240) break
+
+        val scaled = Bitmap.createScaledBitmap(currentBitmap, nextWidth, nextHeight, true)
+        if (currentBitmap !== bitmap && !currentBitmap.isRecycled) {
+            currentBitmap.recycle()
+        }
+        currentBitmap = scaled
+        attempt += 1
+    }
+
+    if (currentBitmap !== bitmap && !currentBitmap.isRecycled) {
+        currentBitmap.recycle()
+    }
+    return null
 }
 
 private fun canReviewAppointment(item: Appointment): Boolean {
@@ -850,177 +2550,346 @@ private fun isReviewWindowOpen(appointmentDate: String, reviewWindowDays: Long):
     return LocalDate.now() <= cutoff
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReviewsScreen(
     sessionViewModel: AppSessionViewModel,
     myReviewsViewModel: MyReviewsViewModel = viewModel(),
 ) {
     val token = sessionViewModel.accessTokenOrNull()
-    var showEditDialog by mutableStateOf(false)
-    var editingReview by mutableStateOf<UserReview?>(null)
-    var editRating by mutableStateOf(5)
-    var editComment by mutableStateOf("")
+    var showEditDialog by remember { mutableStateOf(false) }
+    var editingReview by remember { mutableStateOf<UserReview?>(null) }
+    var editRating by remember { mutableStateOf(5) }
+    var editComment by remember { mutableStateOf("") }
+    var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(token) {
         if (token != null) myReviewsViewModel.load(token)
     }
+    LaunchedEffect(myReviewsViewModel.errorMessage, myReviewsViewModel.actionMessage) {
+        val message = myReviewsViewModel.errorMessage?.trim().takeIf { !it.isNullOrEmpty() }
+            ?: myReviewsViewModel.actionMessage?.trim().takeIf { !it.isNullOrEmpty() }
+        if (message != null) {
+            noticeMessage = message
+        }
+    }
 
     if (showEditDialog && editingReview != null) {
         val current = editingReview
-        AlertDialog(
+        ModalBottomSheet(
             onDismissRequest = {
                 showEditDialog = false
                 editingReview = null
             },
-            title = { Text("Edit Review") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Rating")
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        (1..5).forEach { star ->
-                            IconButton(onClick = { editRating = star }) {
-                                Icon(
-                                    imageVector = if (star <= editRating) Icons.Filled.Star else Icons.Filled.StarBorder,
-                                    contentDescription = null,
-                                )
-                            }
-                        }
-                    }
-                    OutlinedTextField(
-                        value = editComment,
-                        onValueChange = { editComment = it },
-                        label = { Text("Comment") },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val review = current ?: return@TextButton
-                        val appointmentId = review.appointment_id ?: return@TextButton
-                        if (token != null) {
-                            myReviewsViewModel.updateReview(
-                                bearerToken = token,
-                                reviewId = review.id,
-                                appointmentId = appointmentId,
-                                rating = editRating.toDouble(),
-                                comment = editComment,
-                                images = review.images,
-                                onUpdated = {
-                                    showEditDialog = false
-                                    editingReview = null
-                                },
-                            )
-                        }
-                    },
-                    enabled = current != null && myReviewsViewModel.updatingReviewId != current.id,
+            containerColor = RewardsCardBackground,
+            contentColor = RewardsPrimaryText,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    val label = if (current != null && myReviewsViewModel.updatingReviewId == current.id) {
-                        "Updating..."
-                    } else {
-                        "Update"
-                    }
-                    Text(label)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showEditDialog = false
-                    editingReview = null
-                }) {
-                    Text("Cancel")
-                }
-            },
-        )
-    }
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        item {
-            Text("My Reviews", style = MaterialTheme.typography.headlineSmall)
-        }
-        item {
-            myReviewsViewModel.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            myReviewsViewModel.actionMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-            if (myReviewsViewModel.isLoading) CircularProgressIndicator()
-        }
-
-        if (!myReviewsViewModel.isLoading && myReviewsViewModel.items.isEmpty()) {
-            item {
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        "No reviews yet. Complete an appointment and share your experience.",
-                        modifier = Modifier.padding(12.dp),
+                        text = "Edit Review",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = RewardsPrimaryText,
                     )
+                    IconButton(
+                        onClick = {
+                            showEditDialog = false
+                            editingReview = null
+                        },
+                        modifier = Modifier.background(Color.White.copy(alpha = 0.08f), CircleShape),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Close",
+                            tint = RewardsSecondaryText,
+                        )
+                    }
                 }
-            }
-        } else {
-            items(myReviewsViewModel.items, key = { it.id }) { review ->
-                val rating = review.rating ?: 0.0
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top,
-                        ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
-                                Text(
-                                    review.store_name ?: "Store #${review.store_id ?: 0}",
-                                    style = MaterialTheme.typography.titleMedium,
-                                )
-                                ReviewStars(rating = rating)
-                            }
-                            Text(
-                                displayDateOnly(review.created_at.orEmpty()),
-                                style = MaterialTheme.typography.labelSmall,
+
+                Text("Rating", color = RewardsPrimaryText.copy(alpha = 0.62f))
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    (1..5).forEach { star ->
+                        IconButton(onClick = { editRating = star }) {
+                            Icon(
+                                imageVector = if (star <= editRating) Icons.Filled.Star else Icons.Filled.StarBorder,
+                                contentDescription = null,
+                                tint = if (star <= editRating) RewardsGold else Color.White.copy(alpha = 0.34f),
                             )
                         }
+                    }
+                }
 
-                        Text(
-                            review.comment?.takeIf { it.isNotBlank() } ?: "No written comment",
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
+                OutlinedTextField(
+                    value = editComment,
+                    onValueChange = { editComment = it },
+                    label = { Text("Comment") },
+                    minLines = 4,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = RewardsPrimaryText,
+                        unfocusedTextColor = RewardsPrimaryText,
+                        focusedBorderColor = RewardsGold.copy(alpha = 0.45f),
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.12f),
+                        cursorColor = RewardsGold,
+                        focusedLabelColor = RewardsGold,
+                        unfocusedLabelColor = RewardsSecondaryText,
+                    ),
+                )
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            Button(
-                                onClick = {
-                                    if (review.appointment_id != null) {
-                                        editingReview = review
-                                        editComment = review.comment.orEmpty()
-                                        editRating = (review.rating ?: 5.0).toInt().coerceIn(1, 5)
-                                        showEditDialog = true
-                                    }
-                                },
-                                enabled = review.appointment_id != null,
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text("Edit")
-                            }
-                            Button(
-                                onClick = {
-                                    if (token != null) myReviewsViewModel.deleteReview(token, review.id)
-                                },
-                                enabled = myReviewsViewModel.deletingReviewId != review.id,
-                                modifier = Modifier.weight(1f),
-                            ) {
-                                Text(
-                                    if (myReviewsViewModel.deletingReviewId == review.id) {
-                                        "Deleting..."
-                                    } else {
-                                        "Delete"
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Button(
+                        onClick = {
+                            showEditDialog = false
+                            editingReview = null
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White.copy(alpha = 0.08f),
+                            contentColor = RewardsPrimaryText.copy(alpha = 0.86f),
+                        ),
+                    ) {
+                        Text("Cancel")
+                    }
+                    Button(
+                        onClick = {
+                            val review = current ?: return@Button
+                            val appointmentId = review.appointment_id ?: return@Button
+                            if (token != null) {
+                                myReviewsViewModel.updateReview(
+                                    bearerToken = token,
+                                    reviewId = review.id,
+                                    appointmentId = appointmentId,
+                                    rating = editRating.toDouble(),
+                                    comment = editComment,
+                                    images = review.images,
+                                    onUpdated = {
+                                        showEditDialog = false
+                                        editingReview = null
                                     },
                                 )
                             }
+                        },
+                        enabled = current != null && myReviewsViewModel.updatingReviewId != current.id,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = RewardsGold,
+                            contentColor = Color.Black,
+                        ),
+                    ) {
+                        val label = if (current != null && myReviewsViewModel.updatingReviewId == current.id) {
+                            "Updating..."
+                        } else {
+                            "Update"
+                        }
+                        Text(label)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(RewardsPageBackground),
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = RewardsPagePadding,
+                end = RewardsPagePadding,
+                top = 8.dp,
+                bottom = 24.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            item {
+                Text(
+                    text = "My Reviews",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = RewardsPrimaryText,
+                )
+            }
+
+            if (!myReviewsViewModel.isLoading && myReviewsViewModel.items.isEmpty()) {
+                item {
+                    RewardsEmptyStateCard(
+                        icon = Icons.Filled.Star,
+                        title = "No reviews yet",
+                        subtitle = "Complete an appointment and share your experience.",
+                    )
+                }
+            } else {
+                items(myReviewsViewModel.items, key = { it.id }) { review ->
+                    val rating = review.rating ?: 0.0
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.16f)),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top,
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Text(
+                                        text = review.store_name?.takeIf { it.isNotBlank() } ?: "Salon",
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        color = RewardsPrimaryText,
+                                        maxLines = 1,
+                                    )
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        ReviewStars(rating = rating)
+                                        Text(
+                                            text = String.format("%.1f", rating),
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                            color = Color.White.copy(alpha = 0.68f),
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = displayDateOnly(review.created_at.orEmpty()),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = RewardsSecondaryText,
+                                )
+                            }
+
+                            Text(
+                                text = review.comment?.takeIf { it.isNotBlank() } ?: "No written comment",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (review.comment.isNullOrBlank()) RewardsSecondaryText else Color.White.copy(alpha = 0.82f),
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                val canEdit = review.appointment_id != null
+                                val editInteraction = remember(review.id) { MutableInteractionSource() }
+                                val editScale = rememberPressScale(
+                                    interactionSource = editInteraction,
+                                    pressedScale = 0.97f,
+                                )
+                                val deleteInteraction = remember(review.id) { MutableInteractionSource() }
+                                val deleteScale = rememberPressScale(
+                                    interactionSource = deleteInteraction,
+                                    pressedScale = 0.97f,
+                                )
+                                Button(
+                                    onClick = {
+                                        if (canEdit) {
+                                            editingReview = review
+                                            editComment = review.comment.orEmpty()
+                                            editRating = (review.rating ?: 5.0).toInt().coerceIn(1, 5)
+                                            showEditDialog = true
+                                        } else {
+                                            noticeMessage = "This review cannot be edited right now."
+                                        }
+                                    },
+                                    enabled = canEdit,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .scale(editScale)
+                                        .alpha(if (canEdit) 1f else 0.45f),
+                                    interactionSource = editInteraction,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color.White.copy(alpha = 0.06f),
+                                        contentColor = Color.White.copy(alpha = 0.92f),
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                ) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Edit,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(12.dp),
+                                        )
+                                        Text("Edit")
+                                    }
+                                }
+                                Button(
+                                    onClick = {
+                                        if (token != null) {
+                                            myReviewsViewModel.deleteReview(token, review.id)
+                                        }
+                                    },
+                                    enabled = myReviewsViewModel.deletingReviewId != review.id,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .scale(deleteScale),
+                                    interactionSource = deleteInteraction,
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFFF6E6E).copy(alpha = 0.12f),
+                                        contentColor = Color(0xFFFF8A8A),
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                ) {
+                                    if (myReviewsViewModel.deletingReviewId == review.id) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(14.dp),
+                                            strokeWidth = 1.8.dp,
+                                            color = Color(0xFFFF8A8A),
+                                        )
+                                        Text("  Deleting...")
+                                    } else {
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Delete,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(12.dp),
+                                            )
+                                            Text("Delete")
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+
+        if (myReviewsViewModel.isLoading) {
+            RewardsLoadingOverlay()
+        }
+
+        noticeMessage?.let { message ->
+            RewardsNoticeDialog(
+                message = message,
+                onDismiss = { noticeMessage = null },
+            )
         }
     }
 }
@@ -1033,6 +2902,8 @@ private fun ReviewStars(rating: Double) {
             Icon(
                 imageVector = if (index < normalized) Icons.Filled.Star else Icons.Filled.StarBorder,
                 contentDescription = null,
+                tint = if (index < normalized) RewardsGold else Color.White.copy(alpha = 0.28f),
+                modifier = Modifier.size(12.dp),
             )
         }
     }
@@ -1041,139 +2912,362 @@ private fun ReviewStars(rating: Double) {
 @Composable
 fun FavoritesScreen(
     sessionViewModel: AppSessionViewModel,
+    onBrowseSalons: () -> Unit = {},
+    onOpenPin: (Int) -> Unit = {},
+    onOpenStore: (Int) -> Unit = {},
     myFavoritesViewModel: MyFavoritesViewModel = viewModel(),
 ) {
     val token = sessionViewModel.accessTokenOrNull()
+    var noticeMessage by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(token) {
         if (token != null) myFavoritesViewModel.load(token)
     }
+    LaunchedEffect(myFavoritesViewModel.errorMessage, myFavoritesViewModel.actionMessage) {
+        val message = myFavoritesViewModel.errorMessage?.trim().takeIf { !it.isNullOrEmpty() }
+            ?: myFavoritesViewModel.actionMessage?.trim().takeIf { !it.isNullOrEmpty() }
+        if (message != null) {
+            noticeMessage = message
+        }
+    }
 
-    LazyColumn(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+            .background(RewardsPageBackground),
     ) {
-        item {
-            Text("My Favorites", style = MaterialTheme.typography.headlineSmall)
-        }
-
-        item {
-            Text(
-                "${myFavoritesViewModel.favoriteStores.size} salons | ${myFavoritesViewModel.favoritePins.size} designs",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            myFavoritesViewModel.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            myFavoritesViewModel.actionMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
-            if (myFavoritesViewModel.isLoading) CircularProgressIndicator()
-        }
-
-        if (!myFavoritesViewModel.isLoading &&
-            myFavoritesViewModel.favoriteStores.isEmpty() &&
-            myFavoritesViewModel.favoritePins.isEmpty()
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = RewardsPagePadding,
+                end = RewardsPagePadding,
+                top = 8.dp,
+                bottom = 26.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             item {
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        "No favorites yet. Save salons and designs to revisit them quickly.",
-                        modifier = Modifier.padding(12.dp),
+                Text(
+                    text = "My Favorites",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = RewardsPrimaryText,
+                )
+            }
+
+            item {
+                Text(
+                    text = "${myFavoritesViewModel.favoriteStores.size} salons · ${myFavoritesViewModel.favoritePins.size} designs",
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = RewardsSecondaryText,
+                )
+            }
+
+            if (!myFavoritesViewModel.isLoading &&
+                myFavoritesViewModel.favoriteStores.isEmpty() &&
+                myFavoritesViewModel.favoritePins.isEmpty()
+            ) {
+                item {
+                    RewardsEmptyStateCard(
+                        icon = Icons.Filled.Favorite,
+                        title = "No favorites yet",
+                        subtitle = "Save salons and designs to revisit them quickly.",
                     )
                 }
-            }
-        } else {
-            if (myFavoritesViewModel.favoritePins.isNotEmpty()) {
-                item { Text("FAVORITE DESIGNS", style = MaterialTheme.typography.labelLarge) }
-                myFavoritesViewModel.favoritePins.chunked(2).forEach { pinRow ->
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            pinRow.forEach { pin ->
-                                Card(
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { },
-                                ) {
-                                    Column {
-                                        AsyncImage(
-                                            model = AssetUrlResolver.resolveURL(pin.image_url),
-                                            contentDescription = pin.title,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(140.dp),
-                                            contentScale = ContentScale.Crop,
-                                        )
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(10.dp),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            Text(
-                                                pin.title,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                modifier = Modifier.weight(1f),
-                                            )
-                                            TextButton(
-                                                onClick = {
-                                                    if (token != null) {
-                                                        myFavoritesViewModel.removePin(token, pin.id)
-                                                    }
-                                                },
-                                                enabled = myFavoritesViewModel.deletingPinId != pin.id,
-                                            ) {
-                                                Text("Remove")
+                item {
+                    Button(
+                        onClick = onBrowseSalons,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = RewardsGold,
+                            contentColor = Color.Black,
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                    ) {
+                        Text(
+                            "Browse Salons",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        )
+                    }
+                }
+            } else {
+                if (myFavoritesViewModel.favoritePins.isNotEmpty()) {
+                    item { RewardsSectionHeader(title = "FAVORITE DESIGNS") }
+                    myFavoritesViewModel.favoritePins.chunked(2).forEach { pinRow ->
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                pinRow.forEach { pin ->
+                                    FavoritePinCard(
+                                        pin = pin,
+                                        isDeleting = myFavoritesViewModel.deletingPinId == pin.id,
+                                        onOpen = { onOpenPin(pin.id) },
+                                        onRemove = {
+                                            if (token != null) {
+                                                myFavoritesViewModel.removePin(token, pin.id)
                                             }
-                                        }
-                                    }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                    )
                                 }
-                            }
-                            if (pinRow.size == 1) {
-                                Spacer(modifier = Modifier.weight(1f))
+                                if (pinRow.size == 1) {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
                             }
                         }
                     }
                 }
+
+                if (myFavoritesViewModel.favoriteStores.isNotEmpty()) {
+                    item { RewardsSectionHeader(title = "FAVORITE SALONS") }
+                    items(myFavoritesViewModel.favoriteStores, key = { it.id }) { store ->
+                        FavoriteStoreCard(
+                            store = store,
+                            isDeleting = myFavoritesViewModel.deletingStoreId == store.id,
+                            onOpen = { onOpenStore(store.id) },
+                            onRemove = {
+                                if (token != null) {
+                                    myFavoritesViewModel.removeStore(token, store.id)
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+        }
+
+        if (myFavoritesViewModel.isLoading) {
+            RewardsLoadingOverlay()
+        }
+
+        noticeMessage?.let { message ->
+            RewardsNoticeDialog(
+                message = message,
+                onDismiss = { noticeMessage = null },
+            )
+        }
+    }
+}
+
+@Composable
+private fun FavoritePinCard(
+    pin: HomeFeedPin,
+    isDeleting: Boolean,
+    onOpen: () -> Unit,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val openInteraction = remember(pin.id) { MutableInteractionSource() }
+    val openScale = rememberPressScale(
+        interactionSource = openInteraction,
+        pressedScale = 0.975f,
+    )
+    val removeInteraction = remember(pin.id) { MutableInteractionSource() }
+    val removeScale = rememberPressScale(
+        interactionSource = removeInteraction,
+        pressedScale = 0.9f,
+    )
+
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.75f)
+                .scale(openScale)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color.White.copy(alpha = 0.08f))
+                .clickable(
+                    interactionSource = openInteraction,
+                    indication = null,
+                    onClick = onOpen,
+                ),
+        ) {
+            AsyncImage(
+                model = AssetUrlResolver.resolveURL(pin.image_url),
+                contentDescription = pin.title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.14f),
+                            ),
+                        ),
+                    ),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(12.dp)
+                .size(30.dp)
+                .scale(removeScale)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.66f))
+                .clickable(
+                    enabled = !isDeleting,
+                    interactionSource = removeInteraction,
+                    indication = null,
+                    onClick = onRemove,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (isDeleting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(14.dp),
+                    strokeWidth = 1.8.dp,
+                    color = Color.White.copy(alpha = 0.92f),
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Filled.Favorite,
+                    contentDescription = "Remove favorite",
+                    tint = RewardsGold,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FavoriteStoreCard(
+    store: Store,
+    isDeleting: Boolean,
+    onOpen: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    val openInteraction = remember(store.id) { MutableInteractionSource() }
+    val openScale = rememberPressScale(
+        interactionSource = openInteraction,
+        pressedScale = 0.985f,
+    )
+    val removeInteraction = remember(store.id) { MutableInteractionSource() }
+    val removeScale = rememberPressScale(
+        interactionSource = removeInteraction,
+        pressedScale = 0.9f,
+    )
+
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.16f)),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .scale(openScale)
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable(
+                        interactionSource = openInteraction,
+                        indication = null,
+                        onClick = onOpen,
+                    )
+                    .padding(2.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                AsyncImage(
+                    model = AssetUrlResolver.resolveURL(store.image_url),
+                    contentDescription = store.name,
+                    modifier = Modifier
+                        .size(84.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color.White.copy(alpha = 0.12f)),
+                    contentScale = ContentScale.Crop,
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = store.name,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = RewardsPrimaryText,
+                        maxLines = 1,
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.LocationOn,
+                            contentDescription = null,
+                            tint = RewardsGold,
+                            modifier = Modifier.size(12.dp),
+                        )
+                        Text(
+                            text = store.formattedAddress,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = RewardsSecondaryText,
+                            maxLines = 2,
+                        )
+                    }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Star,
+                            contentDescription = null,
+                            tint = RewardsGold,
+                            modifier = Modifier.size(12.dp),
+                        )
+                        Text(
+                            text = String.format("%.1f", store.rating),
+                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = RewardsPrimaryText.copy(alpha = 0.76f),
+                        )
+                        Text(
+                            text = "(${store.review_count} reviews)",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = RewardsSecondaryText,
+                        )
+                    }
+                }
             }
 
-            if (myFavoritesViewModel.favoriteStores.isNotEmpty()) {
-                item { Text("FAVORITE SALONS", style = MaterialTheme.typography.labelLarge) }
-                items(myFavoritesViewModel.favoriteStores, key = { it.id }) { store ->
-                    Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier.padding(10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            AsyncImage(
-                                model = AssetUrlResolver.resolveURL(store.image_url),
-                                contentDescription = store.name,
-                                modifier = Modifier.size(84.dp),
-                                contentScale = ContentScale.Crop,
-                            )
-
-                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(store.name, style = MaterialTheme.typography.titleSmall)
-                                Text(store.formattedAddress, style = MaterialTheme.typography.bodySmall)
-                                Text(
-                                    "Rating ${String.format("%.1f", store.rating)} (${store.review_count} reviews)",
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                            }
-
-                            TextButton(
-                                onClick = {
-                                    if (token != null) myFavoritesViewModel.removeStore(token, store.id)
-                                },
-                                enabled = myFavoritesViewModel.deletingStoreId != store.id,
-                            ) {
-                                Text("Remove")
-                            }
-                        }
-                    }
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .scale(removeScale)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.40f))
+                    .clickable(
+                        enabled = !isDeleting,
+                        interactionSource = removeInteraction,
+                        indication = null,
+                        onClick = onRemove,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isDeleting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(14.dp),
+                        strokeWidth = 1.8.dp,
+                        color = Color.White.copy(alpha = 0.90f),
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.Favorite,
+                        contentDescription = "Remove favorite",
+                        tint = RewardsGold,
+                        modifier = Modifier.size(17.dp),
+                    )
                 }
             }
         }
@@ -1183,105 +3277,282 @@ fun FavoritesScreen(
 @Composable
 fun VipScreen(
     sessionViewModel: AppSessionViewModel,
-    vipViewModel: VipViewModel = viewModel(),
 ) {
-    val token = sessionViewModel.accessTokenOrNull()
-    LaunchedEffect(token) {
-        if (token != null) vipViewModel.load(token)
+    if (!sessionViewModel.isLoggedIn) return
+
+    val tiers = remember {
+        listOf(
+            VipTierVisual(
+                level = "VIP 1-3",
+                title = "Silver Perks",
+                icon = Icons.Filled.CheckCircle,
+                iconTint = Color(0xFFB7BDC9),
+                benefits = listOf(
+                    "5% off all services",
+                    "Birthday gift coupon",
+                    "Member-only events",
+                ),
+            ),
+            VipTierVisual(
+                level = "VIP 4-6",
+                title = "Gold Status",
+                icon = Icons.Filled.Star,
+                iconTint = RewardsGold,
+                benefits = listOf(
+                    "10% off all services",
+                    "Priority booking",
+                    "Free soak-off service",
+                ),
+            ),
+            VipTierVisual(
+                level = "VIP 7-9",
+                title = "Platinum Luxe",
+                icon = Icons.Filled.AutoAwesome,
+                iconTint = Color(0xFF99C7FF),
+                benefits = listOf(
+                    "15% off all services",
+                    "Free hand mask with every visit",
+                    "Skip the line queue",
+                ),
+            ),
+            VipTierVisual(
+                level = "VIP 10",
+                title = "Diamond Elite",
+                icon = Icons.Filled.AutoAwesome,
+                iconTint = RewardsGold,
+                benefits = listOf(
+                    "20% off all services",
+                    "Personal style consultant",
+                    "Free premium drink & snacks",
+                ),
+            ),
+        )
     }
 
-    val tiers = listOf(
-        Triple("VIP 1-3", "Silver Perks", listOf("5% off all services", "Birthday gift coupon", "Member-only events")),
-        Triple("VIP 4-6", "Gold Status", listOf("10% off all services", "Priority booking", "Free soak-off service")),
-        Triple("VIP 7-9", "Platinum Luxe", listOf("15% off all services", "Free hand mask with every visit", "Skip the line queue")),
-        Triple("VIP 10", "Diamond Elite", listOf("20% off all services", "Personal style consultant", "Free premium drink & snacks")),
-    )
-
-    LazyColumn(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
+            .background(RewardsPageBackground),
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = RewardsPagePadding,
+                end = RewardsPagePadding,
+                top = 8.dp,
+                bottom = 28.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            item {
+                Text(
+                    text = "VIP Membership",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = RewardsPrimaryText,
+                )
+            }
+
+            item {
+                VipHeroSection()
+            }
+
+            items(tiers, key = { it.level }) { tier ->
+                VipTierCard(tier = tier)
+            }
+
+            item {
+                VipRedemptionCard()
+            }
+
+            item {
+                Text(
+                    text = "Figma Make Nails • Exclusive American Salon Program",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 1.8.sp,
+                    ),
+                    color = Color.White.copy(alpha = 0.32f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+}
+
+private data class VipTierVisual(
+    val level: String,
+    val title: String,
+    val icon: ImageVector,
+    val iconTint: Color,
+    val benefits: List<String>,
+)
+
+@Composable
+private fun VipHeroSection() {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
-            Text("VIP Membership", style = MaterialTheme.typography.headlineSmall)
+        Box(
+            modifier = Modifier.size(72.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(RewardsGold.copy(alpha = 0.14f), CircleShape),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .border(1.dp, RewardsGold.copy(alpha = 0.34f), CircleShape),
+            )
+            Icon(
+                imageVector = Icons.Filled.AutoAwesome,
+                contentDescription = null,
+                tint = RewardsGold,
+                modifier = Modifier.size(30.dp),
+            )
         }
-        item {
-            Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text("VIP", style = MaterialTheme.typography.displaySmall)
-                    Text("Elite Rewards Program", style = MaterialTheme.typography.titleLarge)
+
+        Text(
+            text = "ELITE REWARDS PROGRAM",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 1.8.sp,
+            ),
+            color = RewardsPrimaryText,
+            textAlign = TextAlign.Center,
+        )
+
+        Text(
+            text = "Elevate your experience with our tiered rewards. The more you pamper yourself, the more exclusive your benefits become.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.White.copy(alpha = 0.58f),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 10.dp),
+        )
+    }
+}
+
+@Composable
+private fun VipTierCard(tier: VipTierVisual) {
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        "Elevate your experience with our tiered rewards. The more you pamper yourself, the more exclusive your benefits become.",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = tier.level,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            fontStyle = FontStyle.Italic,
+                        ),
+                        color = RewardsGold,
+                    )
+                    Text(
+                        text = tier.title,
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.4.sp,
+                        ),
+                        color = Color.White.copy(alpha = 0.48f),
                     )
                 }
+                Icon(
+                    imageVector = tier.icon,
+                    contentDescription = null,
+                    tint = tier.iconTint,
+                    modifier = Modifier.size(18.dp),
+                )
             }
-        }
 
-        item {
-            vipViewModel.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            if (vipViewModel.isLoading) CircularProgressIndicator()
-        }
-
-        vipViewModel.vipStatus?.let { status ->
-            item {
-                Card(shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Current: VIP ${status.current_level.level}", style = MaterialTheme.typography.titleMedium)
-                        Text(status.current_level.benefit, style = MaterialTheme.typography.bodyMedium)
-                        Text("Total Spend: $${String.format("%.2f", status.total_spend)}")
-                        Text("Total Visits: ${status.total_visits}")
-                        Text("Next: VIP ${status.next_level?.level ?: "MAX"}")
-
-                        Text(
-                            "Spend ${status.spend_progress.current.toInt()} / ${status.spend_progress.required.toInt()}",
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                        LinearProgressIndicator(
-                            progress = { (status.spend_progress.percent / 100.0).toFloat().coerceIn(0f, 1f) },
-                            modifier = Modifier.fillMaxWidth(),
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                tier.benefits.forEach { benefit ->
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.AutoAwesome,
+                            contentDescription = null,
+                            tint = RewardsGold,
+                            modifier = Modifier
+                                .size(12.dp)
+                                .padding(top = 2.dp),
                         )
                         Text(
-                            "Visits ${status.visits_progress.current.toInt()} / ${status.visits_progress.required.toInt()}",
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                        LinearProgressIndicator(
-                            progress = { (status.visits_progress.percent / 100.0).toFloat().coerceIn(0f, 1f) },
-                            modifier = Modifier.fillMaxWidth(),
+                            text = benefit,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.72f),
                         )
                     }
                 }
             }
         }
+    }
+}
 
-        item { Text("VIP TIERS", style = MaterialTheme.typography.labelLarge) }
-        items(tiers) { tier ->
-            Card(shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(tier.first, style = MaterialTheme.typography.titleMedium)
-                    Text(tier.second, style = MaterialTheme.typography.labelLarge)
-                    tier.third.forEach { benefit ->
-                        Text("- $benefit", style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
+@Composable
+private fun VipRedemptionCard() {
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.28f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            RewardsGold.copy(alpha = 0.10f),
+                            Color.Transparent,
+                        ),
+                    ),
+                )
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.AutoAwesome,
+                    contentDescription = null,
+                    tint = RewardsGold,
+                    modifier = Modifier.size(12.dp),
+                )
+                Text(
+                    text = "REDEMPTION LOGIC",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.2.sp,
+                    ),
+                    color = RewardsGold,
+                )
             }
-        }
 
-        item {
-            Card(shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("REDEMPTION LOGIC", style = MaterialTheme.typography.labelLarge)
-                    Text(
-                        "Points are accumulated automatically with every visit. To redeem your benefits, present your digital membership card during checkout. All vouchers and tier rewards are redeemed in-store.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
+            Text(
+                text = "\"Points are accumulated automatically with every visit. To redeem your benefits, simply present your digital membership card to your technician during checkout. All vouchers and tier rewards must be redeemed in-store.\"",
+                style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
+                color = Color.White.copy(alpha = 0.68f),
+            )
         }
     }
 }
@@ -1294,147 +3565,415 @@ fun ReferralScreen(
     val token = sessionViewModel.accessTokenOrNull()
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
-    var copied by mutableStateOf(false)
+    var copied by remember { mutableStateOf(false) }
+    var copyNotice by remember { mutableStateOf<String?>(null) }
+    var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(token) {
         if (token != null) referralViewModel.load(token)
     }
-
-    val referralCode = referralViewModel.referralCode?.trim().orEmpty()
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            Text("Refer a Friend", style = MaterialTheme.typography.headlineSmall)
-        }
-
-        item {
-            Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text("Gift", style = MaterialTheme.typography.displaySmall)
-                    Text("Refer a Friend", style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        "Share the glow! Both you and your friend receive one free coupon (\$10 value) right after successful registration.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-            }
-        }
-
-        item {
-            Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("YOUR REFERRAL CODE", style = MaterialTheme.typography.labelLarge)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            if (referralCode.isBlank()) "-" else referralCode,
-                            style = MaterialTheme.typography.headlineMedium,
-                        )
-                        Button(
-                            onClick = {
-                                if (referralCode.isNotBlank()) {
-                                    clipboardManager.setText(AnnotatedString(referralCode))
-                                    copied = true
-                                }
-                            },
-                            enabled = referralCode.isNotBlank(),
-                        ) {
-                            Text(if (copied) "Copied" else "Copy")
-                        }
-                    }
-                    Text("Your code is unique and stays the same.", style = MaterialTheme.typography.bodySmall)
-                }
-            }
-        }
-
-        item {
-            Button(
-                onClick = {
-                    if (referralCode.isBlank()) return@Button
-                    val shareText =
-                        "Join me on Nails Booking! Use my referral code $referralCode and get a \$10 coupon right after registration!"
-                    val intent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(Intent.EXTRA_TEXT, shareText)
-                    }
-                    context.startActivity(Intent.createChooser(intent, "Share with Friends"))
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = referralCode.isNotBlank(),
-            ) {
-                Text("Share with Friends")
-            }
-        }
-
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) {
-                    Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Referrals", style = MaterialTheme.typography.labelMedium)
-                        Text((referralViewModel.stats?.total_referrals ?: 0).toString())
-                    }
-                }
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.weight(1f)) {
-                    Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Coupons Earned", style = MaterialTheme.typography.labelMedium)
-                        Text((referralViewModel.stats?.total_rewards_earned ?: 0).toString())
-                    }
-                }
-            }
-        }
-
-        item {
-            referralViewModel.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            if (referralViewModel.isLoading) CircularProgressIndicator()
-        }
-
-        if (!referralViewModel.isLoading && referralViewModel.items.isEmpty()) {
-            item {
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        "No referrals yet. Start inviting friends!",
-                        modifier = Modifier.padding(12.dp),
-                    )
-                }
-            }
-        } else {
-            item { Text("REFERRAL HISTORY", style = MaterialTheme.typography.labelLarge) }
-            items(referralViewModel.items, key = { it.id }) { item ->
-                Card(shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                item.referee_name.ifBlank { "User" },
-                                style = MaterialTheme.typography.titleSmall,
-                            )
-                            Text(maskPhone(item.referee_phone), style = MaterialTheme.typography.bodySmall)
-                            Text("Joined: ${displayDateOnly(item.created_at)}", style = MaterialTheme.typography.labelSmall)
-                        }
-                        Text(
-                            if (item.referrer_reward_given) "Rewarded" else "Pending",
-                            style = MaterialTheme.typography.labelMedium,
-                        )
-                    }
-                }
-            }
+    LaunchedEffect(referralViewModel.errorMessage) {
+        val message = referralViewModel.errorMessage?.trim().takeIf { !it.isNullOrEmpty() }
+        if (message != null) {
+            noticeMessage = message
         }
     }
+    LaunchedEffect(copied) {
+        if (copied) {
+            delay(2_000)
+            copied = false
+            copyNotice = null
+        }
+    }
+
+    val referralCode = referralViewModel.referralCode?.trim().orEmpty()
+    val totalReferrals = referralViewModel.stats?.total_referrals ?: 0
+    val totalRewards = referralViewModel.stats?.total_rewards_earned ?: 0
+    val referralCopyInteraction = remember { MutableInteractionSource() }
+    val referralCopyScale = rememberPressScale(
+        interactionSource = referralCopyInteraction,
+        pressedScale = 0.93f,
+    )
+    val referralShareInteraction = remember { MutableInteractionSource() }
+    val referralShareScale = rememberPressScale(
+        interactionSource = referralShareInteraction,
+        pressedScale = 0.97f,
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(RewardsPageBackground),
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = RewardsPagePadding,
+                end = RewardsPagePadding,
+                top = 8.dp,
+                bottom = 24.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            item {
+                Text(
+                    text = "Refer a Friend",
+                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                    color = RewardsPrimaryText,
+                )
+            }
+
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Box(
+                        modifier = Modifier.size(80.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(RewardsGold.copy(alpha = 0.12f), CircleShape),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .border(1.dp, RewardsGold.copy(alpha = 0.24f), CircleShape),
+                        )
+                        Icon(
+                            imageVector = Icons.Filled.CardGiftcard,
+                            contentDescription = null,
+                            tint = RewardsGold,
+                            modifier = Modifier.size(36.dp),
+                        )
+                    }
+
+                    Text(
+                        text = "Refer a Friend",
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                        color = RewardsPrimaryText,
+                    )
+                    Text(
+                        text = "Share the glow! Both you and your friend will receive 1 Free Coupon (\$10 value) immediately after successful registration.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.68f),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+
+            item {
+                Card(
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text(
+                            text = "YOUR REFERRAL CODE",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.8.sp,
+                            ),
+                            color = Color.White.copy(alpha = 0.48f),
+                            modifier = Modifier.padding(top = 16.dp),
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .background(Color.Black, RoundedCornerShape(14.dp))
+                                .border(
+                                    width = 1.dp,
+                                    color = Color.White.copy(alpha = 0.12f),
+                                    shape = RoundedCornerShape(14.dp),
+                                )
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = if (referralCode.isBlank()) "—" else referralCode,
+                                style = MaterialTheme.typography.headlineMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 5.2.sp,
+                                ),
+                                color = RewardsGold,
+                                maxLines = 1,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Button(
+                                onClick = {
+                                    if (referralCode.isBlank()) return@Button
+                                    clipboardManager.setText(AnnotatedString(referralCode))
+                                    copied = true
+                                    copyNotice = "Referral code copied"
+                                },
+                                enabled = referralCode.isNotBlank(),
+                                interactionSource = referralCopyInteraction,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = RewardsGold,
+                                    contentColor = Color.Black,
+                                    disabledContainerColor = RewardsGold.copy(alpha = 0.45f),
+                                    disabledContentColor = Color.Black.copy(alpha = 0.5f),
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(0.dp),
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .scale(referralCopyScale),
+                            ) {
+                                Icon(
+                                    imageVector = if (copied) Icons.Filled.CheckCircle else Icons.Filled.ContentCopy,
+                                    contentDescription = if (copied) "Copied" else "Copy referral code",
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            }
+                        }
+
+                        Text(
+                            text = "Your code is unique and stays the same.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.50f),
+                        )
+                        copyNotice?.let { notice ->
+                            Text(
+                                text = notice,
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                                color = RewardsGold,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+                    }
+                }
+            }
+
+            item {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Button(
+                        onClick = {
+                            if (referralCode.isBlank()) return@Button
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, referralSharePayload(referralCode))
+                            }
+                            context.startActivity(Intent.createChooser(intent, "Share with Friends"))
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                            .scale(referralShareScale),
+                        enabled = referralCode.isNotBlank(),
+                        interactionSource = referralShareInteraction,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = Color.Black,
+                            disabledContainerColor = Color.White.copy(alpha = 0.45f),
+                            disabledContentColor = Color.Black.copy(alpha = 0.5f),
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.ArrowUpward,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(
+                                text = "Share with Friends",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        ReferralStatChip(
+                            icon = Icons.Filled.AutoAwesome,
+                            text = "$totalReferrals Referrals",
+                            tint = Color.White.copy(alpha = 0.62f),
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(3.dp)
+                                .background(Color.White.copy(alpha = 0.28f), CircleShape),
+                        )
+                        ReferralStatChip(
+                            icon = Icons.Filled.Star,
+                            text = "$totalRewards Coupons Earned",
+                            tint = RewardsGold,
+                        )
+                    }
+                }
+            }
+
+            if (!referralViewModel.isLoading && referralViewModel.items.isEmpty()) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp, horizontal = 16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.History,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.34f),
+                                modifier = Modifier.size(42.dp),
+                            )
+                            Text(
+                                text = "No referrals yet. Start inviting friends!",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = Color.White.copy(alpha = 0.58f),
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                }
+            } else {
+                item {
+                    Text(
+                        text = "REFERRAL HISTORY",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.8.sp,
+                        ),
+                        color = Color.White.copy(alpha = 0.52f),
+                    )
+                }
+                items(referralViewModel.items, key = { it.id }) { item ->
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(3.dp),
+                            ) {
+                                Text(
+                                    text = item.referee_name.ifBlank { "User" },
+                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = RewardsPrimaryText,
+                                )
+                                Text(
+                                    text = maskPhone(item.referee_phone),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.58f),
+                                )
+                                Text(
+                                    text = "Joined: ${displayDateOnly(item.created_at)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White.copy(alpha = 0.42f),
+                                )
+                            }
+                            if (item.referrer_reward_given) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.CheckCircle,
+                                        contentDescription = null,
+                                        tint = Color(0xFF7DE39A),
+                                        modifier = Modifier.size(12.dp),
+                                    )
+                                    Text(
+                                        text = "Rewarded",
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        color = Color(0xFF7DE39A),
+                                    )
+                                }
+                            } else {
+                                Text(
+                                    text = "Pending",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = RewardsGold,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (referralViewModel.isLoading) {
+            RewardsLoadingOverlay()
+        }
+
+        noticeMessage?.let { message ->
+            RewardsNoticeDialog(
+                message = message,
+                onDismiss = { noticeMessage = null },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReferralStatChip(
+    icon: ImageVector,
+    text: String,
+    tint: Color,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(11.dp),
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+            color = tint,
+        )
+    }
+}
+
+private fun referralSharePayload(referralCode: String): String {
+    val code = referralCode.trim()
+    if (code.isEmpty()) return ""
+    val shareText = "Join me on Nails Booking! Use my referral code $code and get a \$10 coupon right after registration!"
+    val apiBase = BuildConfig.API_BASE_URL.trim().trimEnd('/')
+    val webBase = if (apiBase.endsWith("/api")) apiBase.removeSuffix("/api") else apiBase
+    val referralLink = "$webBase/register?ref=$code"
+    return "$shareText\n$referralLink"
 }

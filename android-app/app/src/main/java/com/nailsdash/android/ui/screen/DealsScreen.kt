@@ -1,30 +1,57 @@
 package com.nailsdash.android.ui.screen
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.nailsdash.android.data.model.Promotion
@@ -32,6 +59,15 @@ import com.nailsdash.android.data.model.Store
 import com.nailsdash.android.ui.state.DealsSegment
 import com.nailsdash.android.ui.state.DealsViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
+import java.time.LocalDate
+import java.time.OffsetDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlin.math.ceil
+
+private val DealsGold = Color(0xFFD4AF37)
+private val DealsBackground = Color.Black
+private val DealsCardBackground = Color(0xFF111111)
 
 @Composable
 fun DealsScreen(
@@ -45,52 +81,137 @@ fun DealsScreen(
 
     val rows = dealsViewModel.filteredPromotions()
 
-    Column(
-        modifier = Modifier.padding(horizontal = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DealsBackground),
     ) {
-        Text(
-            "Limited-time offers",
-            style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.padding(top = 4.dp),
-        )
+        Column(modifier = Modifier.fillMaxSize()) {
+            DealsHeader(
+                selectedSegment = dealsViewModel.selectedSegment,
+                onSelectSegment = { dealsViewModel.selectedSegment = it },
+            )
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            DealsSegment.entries.forEach { segment ->
-                FilterChip(
-                    selected = dealsViewModel.selectedSegment == segment,
-                    onClick = { dealsViewModel.selectedSegment = segment },
-                    label = { Text(segment.label) },
-                )
-            }
-        }
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                dealsViewModel.errorMessage?.let { message ->
+                    item {
+                        DealsErrorCard(message = message)
+                    }
+                }
 
-        dealsViewModel.errorMessage?.let {
-            Text(it, color = MaterialTheme.colorScheme.error)
-        }
-
-        if (dealsViewModel.isLoading && dealsViewModel.promotions.isEmpty()) {
-            CircularProgressIndicator()
-        }
-
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (!dealsViewModel.isLoading && rows.isEmpty()) {
-                item {
-                    Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            "No active deals right now. Check back soon for new offers.",
-                            modifier = Modifier.padding(14.dp),
+                if (!dealsViewModel.isLoading && rows.isEmpty()) {
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(18.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = DealsCardBackground),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, DealsGold.copy(alpha = 0.18f)),
+                        ) {
+                            Text(
+                                text = "No active deals right now. Check back soon for new offers.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White.copy(alpha = 0.78f),
+                                modifier = Modifier.padding(14.dp),
+                            )
+                        }
+                    }
+                } else {
+                    itemsIndexed(
+                        items = rows,
+                        key = { _, item -> item.id },
+                    ) { index, promotion ->
+                        val store = promotion.store_id?.let { dealsViewModel.storesById[it] }
+                        DealCard(
+                            promotion = promotion,
+                            store = store,
+                            index = index,
+                            totalCount = rows.size,
+                            onOpenStore = onOpenStore,
+                            onBrowseStores = onBrowseStores,
                         )
                     }
                 }
-            } else {
-                itemsIndexed(rows, key = { _, item -> item.id }) { index, promotion ->
-                    val store = promotion.store_id?.let { dealsViewModel.storesById[it] }
-                    DealCard(
-                        promotion = promotion,
-                        store = store,
-                        onOpenStore = onOpenStore,
-                        onBrowseStores = onBrowseStores,
+            }
+        }
+
+        if (dealsViewModel.isLoading) {
+            DealsLoadingOverlay()
+        }
+    }
+}
+
+@Composable
+private fun DealsHeader(
+    selectedSegment: DealsSegment,
+    onSelectSegment: (DealsSegment) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color.Black, Color.Black.copy(alpha = 0.96f)),
+                ),
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            text = "Limited-time offers",
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 30.sp,
+            ),
+            color = Color.White,
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White.copy(alpha = 0.04f), RoundedCornerShape(12.dp))
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            DealsSegment.entries.forEach { segment ->
+                val selected = selectedSegment == segment
+                val chipScale by animateFloatAsState(
+                    targetValue = if (selected) 1f else 0.97f,
+                    animationSpec = spring(dampingRatio = 0.78f, stiffness = 520f),
+                    label = "dealsSegmentScale",
+                )
+                val chipBg by animateColorAsState(
+                    targetValue = if (selected) DealsGold else Color.Transparent,
+                    animationSpec = tween(durationMillis = 180),
+                    label = "dealsSegmentBg",
+                )
+                val chipText by animateColorAsState(
+                    targetValue = if (selected) Color.Black else Color.White.copy(alpha = 0.86f),
+                    animationSpec = tween(durationMillis = 180),
+                    label = "dealsSegmentText",
+                )
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(36.dp)
+                        .scale(chipScale)
+                        .background(chipBg, RoundedCornerShape(10.dp))
+                        .border(
+                            width = 1.dp,
+                            color = if (selected) Color.Transparent else DealsGold.copy(alpha = 0.24f),
+                            shape = RoundedCornerShape(10.dp),
+                        )
+                        .clickable { onSelectSegment(segment) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = segment.label,
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                        color = chipText,
                     )
                 }
             }
@@ -99,24 +220,63 @@ fun DealsScreen(
 }
 
 @Composable
+private fun DealsErrorCard(message: String) {
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A1414)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF8D8D).copy(alpha = 0.42f)),
+    ) {
+        Text(
+            text = message,
+            color = Color(0xFFFFB4B4),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+        )
+    }
+}
+
+@Composable
 private fun DealCard(
     promotion: Promotion,
     store: Store?,
+    index: Int,
+    totalCount: Int,
     onOpenStore: (Int) -> Unit,
     onBrowseStores: () -> Unit,
 ) {
     val hasStoreTarget = promotion.store_id != null
     val cover = AssetUrlResolver.resolveURL(promotion.image_url ?: store?.image_url)
     val scopeLabel = if (hasStoreTarget) "STORE DEAL" else "PLATFORM DEAL"
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val cardScale by animateFloatAsState(
+        targetValue = if (pressed) 0.988f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "dealCardScale",
+    )
 
     Card(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(18.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.Transparent),
+            .scale(cardScale)
+            .zIndex((totalCount - index).toFloat()),
+        colors = CardDefaults.cardColors(containerColor = DealsCardBackground),
+        border = androidx.compose.foundation.BorderStroke(1.dp, DealsGold.copy(alpha = 0.20f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (pressed) 3.dp else 7.dp),
     ) {
         Column {
-            Box(modifier = Modifier.fillMaxWidth().height(176.dp)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(196.dp)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = {},
+                    ),
+            ) {
                 if (cover != null) {
                     AsyncImage(
                         model = cover,
@@ -145,70 +305,136 @@ private fun DealCard(
                         .matchParentSize()
                         .background(
                             brush = Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.65f)),
+                                colors = listOf(Color.Black.copy(alpha = 0.06f), Color.Black.copy(alpha = 0.82f)),
                             ),
                         ),
                 )
 
                 Text(
                     text = formatOffer(promotion),
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                     color = Color.Black,
                     modifier = Modifier
                         .padding(10.dp)
-                        .background(Color(0xFFE6C46A), shape = RoundedCornerShape(20.dp))
+                        .background(DealsGold, CircleShape)
                         .padding(horizontal = 10.dp, vertical = 5.dp),
                 )
             }
 
             Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.Top,
                 ) {
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Text(promotion.title, style = MaterialTheme.typography.titleMedium)
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
                         Text(
-                            if (hasStoreTarget) store?.name ?: "Store Offer" else "Platform Offer",
-                            style = MaterialTheme.typography.bodyMedium,
+                            text = promotion.title,
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = if (hasStoreTarget) store?.name ?: "Store Offer" else "Platform Offer",
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = Color.White.copy(alpha = 0.78f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    Text(scopeLabel, style = MaterialTheme.typography.labelSmall)
+                    DealPill(
+                        text = scopeLabel,
+                        textColor = Color.White.copy(alpha = 0.72f),
+                    )
                 }
 
-                Text(formatExpiry(promotion.end_at), style = MaterialTheme.typography.bodySmall)
-                store?.formattedAddress?.takeIf { it.isNotBlank() }?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall)
+                DealMetaRow(
+                    icon = Icons.Filled.AccessTime,
+                    text = formatExpiry(promotion.end_at),
+                    iconTint = Color.White.copy(alpha = 0.74f),
+                    textColor = Color.White.copy(alpha = 0.74f),
+                )
+
+                store?.formattedAddress?.takeIf { it.isNotBlank() }?.let { address ->
+                    DealMetaRow(
+                        icon = Icons.Filled.LocationOn,
+                        text = address,
+                        iconTint = DealsGold,
+                        textColor = Color.White.copy(alpha = 0.72f),
+                    )
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     promotion.service_rules.firstOrNull()?.let { firstRule ->
                         DealPill(text = formatPriceRange(firstRule.min_price, firstRule.max_price))
                     }
-                    DealPill(text = promotion.type.uppercase())
+                    DealPill(
+                        text = promotion.type.uppercase(Locale.US),
+                        textColor = Color.White.copy(alpha = 0.68f),
+                    )
                 }
 
-                promotion.rules?.takeIf { it.isNotBlank() }?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall)
+                promotion.rules?.takeIf { it.isNotBlank() }?.let { rulesText ->
+                    Text(
+                        text = rulesText.trim(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.66f),
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
 
                 if (hasStoreTarget) {
                     Button(
                         onClick = { promotion.store_id?.let(onOpenStore) },
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(999.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = DealsGold,
+                            contentColor = Color.Black,
+                        ),
                     ) {
-                        Text("Book Now")
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("Book Now", fontWeight = FontWeight.SemiBold)
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
                     }
                 } else {
                     Button(
                         onClick = onBrowseStores,
                         modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(999.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White.copy(alpha = 0.04f),
+                            contentColor = DealsGold,
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, DealsGold.copy(alpha = 0.28f)),
                     ) {
-                        Text("Browse Stores")
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("Browse Stores", fontWeight = FontWeight.SemiBold)
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -217,24 +443,88 @@ private fun DealCard(
 }
 
 @Composable
-private fun DealPill(text: String) {
+private fun DealMetaRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    iconTint: Color,
+    textColor: Color,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .background(Color.White.copy(alpha = 0.04f), RoundedCornerShape(999.dp))
+            .padding(horizontal = 9.dp, vertical = 4.dp),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = iconTint,
+            modifier = Modifier.size(12.dp),
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = textColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
+private fun DealPill(
+    text: String,
+    textColor: Color = Color.White,
+) {
     Text(
         text = text,
-        style = MaterialTheme.typography.labelSmall,
+        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+        color = textColor,
         modifier = Modifier
-            .background(
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = RoundedCornerShape(999.dp),
-            )
+            .background(Color.White.copy(alpha = 0.04f), RoundedCornerShape(999.dp))
             .padding(horizontal = 10.dp, vertical = 5.dp),
     )
+}
+
+@Composable
+private fun DealsLoadingOverlay() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.42f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Card(
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = DealsCardBackground),
+            border = androidx.compose.foundation.BorderStroke(1.dp, DealsGold.copy(alpha = 0.30f)),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = DealsGold,
+                )
+                Text(
+                    text = "Loading deals...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White,
+                )
+            }
+        }
+    }
 }
 
 private fun formatOffer(promotion: Promotion): String {
     return if (promotion.discount_type.lowercase() == "percentage") {
         "${promotion.discount_value.toInt()}% OFF"
     } else {
-        "$${String.format("%.0f", promotion.discount_value)} OFF"
+        "$${String.format(Locale.US, "%.0f", promotion.discount_value)} OFF"
     }
 }
 
@@ -246,6 +536,26 @@ private fun formatPriceRange(min: Double?, max: Double?): String {
 }
 
 private fun formatExpiry(endAt: String): String {
-    val datePart = endAt.trim().take(10)
-    return if (datePart.length == 10) "Ends on $datePart" else "Ends soon"
+    val endDate = parsePromotionEndDate(endAt) ?: return "Ends soon"
+    val now = LocalDate.now()
+    val diffDays = java.time.temporal.ChronoUnit.DAYS.between(now, endDate).toInt()
+    if (diffDays < 0) return "Expired"
+    if (diffDays == 0) return "Ends today"
+    if (diffDays < 7) return "Ends in ${ceil(diffDays.toDouble()).toInt()} days"
+    return "Ends on ${endDate.format(DEAL_MONTH_DAY_FORMATTER)}"
 }
+
+private fun parsePromotionEndDate(raw: String): LocalDate? {
+    val value = raw.trim()
+    if (value.isEmpty()) return null
+
+    runCatching { OffsetDateTime.parse(value).toLocalDate() }
+        .getOrNull()
+        ?.let { return it }
+
+    val datePart = value.take(10)
+    return runCatching { LocalDate.parse(datePart) }.getOrNull()
+}
+
+private val DEAL_MONTH_DAY_FORMATTER: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("MMM d", Locale.US)

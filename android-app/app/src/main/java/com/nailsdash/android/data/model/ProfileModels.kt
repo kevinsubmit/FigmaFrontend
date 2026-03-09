@@ -107,6 +107,12 @@ data class ReviewUpsertRequest(
     val images: List<String>? = null,
 )
 
+data class ReviewUploadImagePayload(
+    val imageData: ByteArray,
+    val fileName: String,
+    val mimeType: String = "image/jpeg",
+)
+
 data class CountDTO(
     val count: Int,
 )

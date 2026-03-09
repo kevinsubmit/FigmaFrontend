@@ -4,7 +4,14 @@ import com.nailsdash.android.core.network.toUserMessage
 import com.nailsdash.android.data.model.AuthUser
 import com.nailsdash.android.data.model.LoginRequest
 import com.nailsdash.android.data.model.RefreshTokenRequest
+import com.nailsdash.android.data.model.RegisterRequest
+import com.nailsdash.android.data.model.SendVerificationCodeRequest
+import com.nailsdash.android.data.model.SendVerificationCodeResponse
+import com.nailsdash.android.data.model.VerificationPurpose
+import com.nailsdash.android.data.model.VerifyCodeRequest
+import com.nailsdash.android.data.model.VerifyCodeResponse
 import com.nailsdash.android.data.network.ServiceLocator
+import retrofit2.HttpException
 
 class AuthRepository {
     private val api get() = ServiceLocator.api
@@ -16,8 +23,48 @@ class AuthRepository {
             tokenStore.saveTokens(token.access_token, token.refresh_token)
             val me = api.getMe("Bearer ${token.access_token}")
             me
-        }.mapFailure()
+        }.mapFailure(unauthorizedMessage = "Incorrect phone number or password.")
     }
+
+    suspend fun sendVerificationCode(
+        phone: String,
+        purpose: VerificationPurpose,
+    ): Result<SendVerificationCodeResponse> = runCatching {
+        api.sendVerificationCode(
+            SendVerificationCodeRequest(phone = phone, purpose = purpose),
+        )
+    }.mapFailure()
+
+    suspend fun verifyCode(
+        phone: String,
+        code: String,
+        purpose: VerificationPurpose,
+    ): Result<VerifyCodeResponse> = runCatching {
+        api.verifyCode(
+            VerifyCodeRequest(phone = phone, code = code, purpose = purpose),
+        )
+    }.mapFailure()
+
+    suspend fun register(
+        phone: String,
+        verificationCode: String,
+        username: String,
+        password: String,
+        fullName: String?,
+        referralCode: String?,
+    ): Result<AuthUser> = runCatching {
+        api.register(
+            RegisterRequest(
+                phone = phone,
+                verification_code = verificationCode,
+                username = username,
+                password = password,
+                full_name = fullName,
+                referral_code = referralCode,
+            ),
+        )
+    }
+        .mapFailure()
 
     suspend fun refreshSession(): Result<AuthUser> {
         val access = tokenStore.accessToken()
@@ -41,8 +88,11 @@ class AuthRepository {
         tokenStore.clear()
     }
 
-    private fun <T> Result<T>.mapFailure(): Result<T> {
-        exceptionOrNull() ?: return this
-        return Result.failure(IllegalStateException(exceptionOrNull()?.toUserMessage() ?: "Request failed."))
+    private fun <T> Result<T>.mapFailure(unauthorizedMessage: String? = null): Result<T> {
+        val throwable = exceptionOrNull() ?: return this
+        if (unauthorizedMessage != null && throwable is HttpException && throwable.code() == 401) {
+            return Result.failure(IllegalStateException(unauthorizedMessage))
+        }
+        return Result.failure(IllegalStateException(throwable.toUserMessage()))
     }
 }

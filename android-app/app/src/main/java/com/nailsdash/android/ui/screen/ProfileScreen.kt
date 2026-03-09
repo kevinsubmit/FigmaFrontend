@@ -1,48 +1,97 @@
 package com.nailsdash.android.ui.screen
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ConfirmationNumber
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.ProfileCenterViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
+import java.util.Locale
 
-private data class ProfileOverviewItem(
+private data class ProfileStatItem(
     val title: String,
     val value: String,
+    val icon: ImageVector,
+    val emphasizedLabel: Boolean = false,
     val onClick: () -> Unit,
 )
+
+private val ProfileGold = Color(0xFFD4AF37)
+private val ProfilePageBackground = Color(0xFF000000)
+private val ProfileCardBackground = Color(0xFF111111)
+private val ProfilePrimaryText = Color.White
+private val ProfileSecondaryText = Color.White.copy(alpha = 0.72f)
+private val ProfileMutedText = Color.White.copy(alpha = 0.50f)
+private val ProfileHairline = Color.White.copy(alpha = 0.08f)
+private val ProfilePagePadding = 12.dp
 
 @Composable
 fun ProfileScreen(
@@ -60,10 +109,17 @@ fun ProfileScreen(
     profileCenterViewModel: ProfileCenterViewModel = viewModel(),
 ) {
     val bearerToken = sessionViewModel.accessTokenOrNull()
+    var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(bearerToken) {
         if (bearerToken != null) {
             profileCenterViewModel.load(bearerToken)
+        }
+    }
+    LaunchedEffect(profileCenterViewModel.errorMessage) {
+        val message = profileCenterViewModel.errorMessage?.trim().orEmpty()
+        if (message.isNotEmpty()) {
+            noticeMessage = message
         }
     }
 
@@ -87,190 +143,177 @@ fun ProfileScreen(
         0.0,
     )
     val spendRequired = maxOf(profileCenterViewModel.vipStatus?.spend_progress?.required ?: 1000.0, 1.0)
+    val spendProgress = (spendCurrent / spendRequired).toFloat().coerceIn(0f, 1f)
+
     val visitsCurrent = maxOf(
         profileCenterViewModel.vipStatus?.visits_progress?.current
             ?: profileCenterViewModel.completedOrders.toDouble(),
         0.0,
     )
     val visitsRequired = maxOf(profileCenterViewModel.vipStatus?.visits_progress?.required ?: 15.0, 1.0)
+    val visitsProgress = (visitsCurrent / visitsRequired).toFloat().coerceIn(0f, 1f)
 
-    val overviewItems = listOf(
-        ProfileOverviewItem("TOTAL POINTS", profileCenterViewModel.points.toString(), onOpenPoints),
-        ProfileOverviewItem("COUPONS", profileCenterViewModel.couponCount.toString(), onOpenCoupons),
-        ProfileOverviewItem("GIFT CARDS", String.format("$%.2f", profileCenterViewModel.giftBalance), onOpenGiftCards),
-        ProfileOverviewItem("ORDERS", profileCenterViewModel.completedOrders.toString(), onOpenOrders),
-        ProfileOverviewItem("REVIEWS", profileCenterViewModel.reviewCount.toString(), onOpenReviews),
-        ProfileOverviewItem("FAVORITES", profileCenterViewModel.favoriteCount.toString(), onOpenFavorites),
+    val statItems = listOf(
+        ProfileStatItem("TOTAL POINTS", profileCenterViewModel.points.toString(), Icons.Filled.AutoAwesome, onClick = onOpenPoints),
+        ProfileStatItem("COUPONS", profileCenterViewModel.couponCount.toString(), Icons.Filled.ConfirmationNumber, onClick = onOpenCoupons),
+        ProfileStatItem(
+            "GIFT CARDS",
+            String.format(Locale.US, "$%.2f", profileCenterViewModel.giftBalance),
+            Icons.Filled.CardGiftcard,
+            emphasizedLabel = true,
+            onClick = onOpenGiftCards,
+        ),
+        ProfileStatItem("ORDERS", profileCenterViewModel.completedOrders.toString(), Icons.AutoMirrored.Filled.ReceiptLong, onClick = onOpenOrders),
+        ProfileStatItem("REVIEWS", profileCenterViewModel.reviewCount.toString(), Icons.Filled.Star, onClick = onOpenReviews),
+        ProfileStatItem("FAVORITES", profileCenterViewModel.favoriteCount.toString(), Icons.Filled.Favorite, onClick = onOpenFavorites),
     )
 
-    LazyColumn(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .background(ProfilePageBackground),
     ) {
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                ProfileActionButton(
-                    unreadCount = profileCenterViewModel.unreadCount,
-                    onClick = onOpenNotifications,
-                )
-                ProfileActionButton(
-                    unreadCount = 0,
-                    onClick = onOpenSettings,
-                    isSettings = true,
-                )
-            }
-        }
+        Column(modifier = Modifier.fillMaxSize()) {
+            ProfileTopBar(
+                unreadCount = profileCenterViewModel.unreadCount,
+                onOpenNotifications = onOpenNotifications,
+                onOpenSettings = onOpenSettings,
+            )
 
-        item {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = ProfilePagePadding,
+                    end = ProfilePagePadding,
+                    top = 10.dp,
+                    bottom = 28.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                ProfileAvatar(avatarUrl = avatarUrl, userName = userName)
-                Text(userName, style = MaterialTheme.typography.headlineMedium)
-                Text(maskedPhone, style = MaterialTheme.typography.bodyMedium)
-            }
-        }
-
-        item {
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onOpenVip() },
-            ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("VIP $currentVipLevel", style = MaterialTheme.typography.headlineSmall)
-                        Text("CURRENT", style = MaterialTheme.typography.labelSmall)
-                    }
-                    Text(vipBenefit, style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        "Spend: ${String.format("$%.2f", spendCurrent)} / ${String.format("$%.2f", spendRequired)}",
-                        style = MaterialTheme.typography.bodyMedium,
+                item {
+                    ProfileHeaderCard(
+                        userName = userName,
+                        maskedPhone = maskedPhone,
+                        avatarUrl = avatarUrl,
                     )
-                    Text(
-                        "Visits: ${visitsCurrent.toInt()} / ${visitsRequired.toInt()}",
-                        style = MaterialTheme.typography.bodyMedium,
+                }
+
+                item {
+                    ProfileVipCard(
+                        currentVipLevel = currentVipLevel,
+                        nextVipLevel = nextVipLevel,
+                        vipBenefit = vipBenefit,
+                        spendCurrent = spendCurrent,
+                        spendRequired = spendRequired,
+                        spendProgress = spendProgress,
+                        visitsCurrent = visitsCurrent,
+                        visitsRequired = visitsRequired,
+                        visitsProgress = visitsProgress,
+                        onClick = onOpenVip,
                     )
-                    Text("Next level to VIP $nextVipLevel", style = MaterialTheme.typography.labelLarge)
                 }
-            }
-        }
 
-        item {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onOpenReferral() },
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Invite Friends, Get $10", style = MaterialTheme.typography.titleMedium)
-                        Text("Share your love for nails and save", style = MaterialTheme.typography.bodyMedium)
-                    }
-                    Text("Open", style = MaterialTheme.typography.labelLarge)
+                item {
+                    ProfileInviteCard(onClick = onOpenReferral)
                 }
-            }
-        }
 
-        item {
-            if (profileCenterViewModel.isLoading) {
-                CircularProgressIndicator()
-            }
-            profileCenterViewModel.errorMessage?.let {
-                Text(it, color = MaterialTheme.colorScheme.error)
-            }
-        }
-
-        item {
-            Text("Overview", style = MaterialTheme.typography.titleMedium)
-            Spacer(modifier = Modifier.height(2.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                overviewItems.chunked(2).forEach { rowItems ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        rowItems.forEach { item ->
-                            ProfileOverviewCard(
-                                title = item.title,
-                                value = item.value,
-                                onClick = item.onClick,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                        if (rowItems.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        statItems.chunked(2).forEach { rowItems ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
+                                rowItems.forEach { stat ->
+                                    ProfileStatCard(
+                                        title = stat.title,
+                                        value = stat.value,
+                                        icon = stat.icon,
+                                        emphasizedLabel = stat.emphasizedLabel,
+                                        onClick = stat.onClick,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             }
         }
 
-        item {
-            Card(shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    ProfileShortcutRow("VIP Membership", onOpenVip)
-                    ProfileShortcutRow("Notifications", onOpenNotifications)
-                    ProfileShortcutRow("Settings", onOpenSettings)
-                }
-            }
+        if (profileCenterViewModel.isLoading) {
+            ProfileLoadingOverlay()
         }
 
-        item {
-            TextButton(onClick = { sessionViewModel.logout() }, modifier = Modifier.fillMaxWidth()) {
-                Text("Logout")
-            }
+        if (noticeMessage != null) {
+            AlertDialog(
+                onDismissRequest = { noticeMessage = null },
+                title = { Text("Notice") },
+                text = { Text(noticeMessage.orEmpty()) },
+                confirmButton = {
+                    TextButton(onClick = { noticeMessage = null }) {
+                        Text("OK")
+                    }
+                },
+            )
         }
     }
 }
 
 @Composable
-private fun ProfileActionButton(
+private fun ProfileTopBar(
+    unreadCount: Int,
+    onOpenNotifications: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = ProfilePagePadding, vertical = 10.dp),
+        horizontalArrangement = Arrangement.End,
+    ) {
+        ProfileTopActionButton(
+            icon = Icons.Filled.Notifications,
+            unreadCount = unreadCount,
+            onClick = onOpenNotifications,
+        )
+        ProfileTopActionButton(
+            icon = Icons.Filled.Settings,
+            unreadCount = 0,
+            onClick = onOpenSettings,
+        )
+    }
+}
+
+@Composable
+private fun ProfileTopActionButton(
+    icon: ImageVector,
     unreadCount: Int,
     onClick: () -> Unit,
-    isSettings: Boolean = false,
 ) {
-    Box {
-        IconButton(onClick = onClick) {
-            Icon(
-                imageVector = if (isSettings) Icons.Filled.Settings else Icons.Filled.Notifications,
-                contentDescription = null,
-            )
+    Box(modifier = Modifier.padding(start = 10.dp)) {
+        IconButton(
+            onClick = onClick,
+            modifier = Modifier
+                .size(40.dp)
+                .background(Color.White.copy(alpha = 0.05f), CircleShape)
+                .border(BorderStroke(1.dp, ProfileGold.copy(alpha = 0.28f)), CircleShape),
+        ) {
+            Icon(icon, contentDescription = null, tint = ProfilePrimaryText)
         }
-        if (!isSettings && unreadCount > 0) {
+        if (unreadCount > 0 && icon == Icons.Filled.Notifications) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .size(18.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary),
-                contentAlignment = Alignment.Center,
+                    .padding(end = 1.dp)
+                    .padding(top = 1.dp)
+                    .background(ProfileGold, RoundedCornerShape(999.dp))
+                    .padding(horizontal = 5.dp, vertical = 1.dp),
             ) {
                 Text(
                     text = if (unreadCount > 99) "99+" else unreadCount.toString(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onPrimary,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = Color.Black,
                 )
             }
         }
@@ -278,65 +321,452 @@ private fun ProfileActionButton(
 }
 
 @Composable
-private fun ProfileAvatar(avatarUrl: String?, userName: String) {
-    Box(
+private fun ProfileHeaderCard(
+    userName: String,
+    maskedPhone: String,
+    avatarUrl: String?,
+) {
+    Column(
         modifier = Modifier
-            .size(116.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-        contentAlignment = Alignment.Center,
+            .fillMaxWidth()
+            .padding(top = 4.dp, bottom = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        if (avatarUrl != null) {
-            AsyncImage(
-                model = avatarUrl,
-                contentDescription = "Avatar",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
+        Box(
+            modifier = Modifier
+                .size(116.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.08f))
+                .border(BorderStroke(3.dp, ProfileGold), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (avatarUrl != null) {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = "Avatar",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            } else {
+                Text(
+                    initials(userName),
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = ProfileGold,
+                )
+            }
+        }
+
+        Text(
+            text = userName,
+            style = MaterialTheme.typography.headlineLarge.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 40.sp,
+            ),
+            color = ProfilePrimaryText,
+            maxLines = 1,
+        )
+        Text(
+            text = maskedPhone,
+            style = MaterialTheme.typography.bodyMedium,
+            color = ProfileSecondaryText,
+        )
+    }
+}
+
+@Composable
+private fun ProfileVipCard(
+    currentVipLevel: Int,
+    nextVipLevel: Int,
+    vipBenefit: String,
+    spendCurrent: Double,
+    spendRequired: Double,
+    spendProgress: Float,
+    visitsCurrent: Double,
+    visitsRequired: Double,
+    visitsProgress: Float,
+    onClick: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = ProfileCardBackground),
+        border = BorderStroke(1.dp, ProfileGold.copy(alpha = 0.2f)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            ProfileCardBackground.copy(alpha = 0.98f),
+                            Color(0xFF2B2922),
+                        ),
+                    ),
+                ),
+        ) {
+            VipCardGoldSweep(modifier = Modifier.fillMaxSize())
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(ProfileGold.copy(alpha = 0.44f))
+                    .align(Alignment.TopCenter),
             )
-        } else {
-            Text(initials(userName), style = MaterialTheme.typography.headlineMedium)
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(verticalAlignment = Alignment.Top) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "VIP $currentVipLevel",
+                            style = MaterialTheme.typography.displaySmall.copy(
+                                fontWeight = FontWeight.Black,
+                                fontSize = 36.sp,
+                            ),
+                            color = ProfilePrimaryText,
+                        )
+                        Text(
+                            text = "CURRENT",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold, letterSpacing = 1.sp),
+                            color = Color.Black,
+                            modifier = Modifier
+                                .background(ProfileGold, RoundedCornerShape(8.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                        )
+                    }
+                    RotatingCrownIcon(size = 40.dp)
+                }
+
+                Text(
+                    text = vipBenefit,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                    color = ProfileGold,
+                )
+
+                ProfileMetricBar(
+                    title = "Spend Amount",
+                    value = "${String.format(Locale.US, "$%.2f", spendCurrent)} / ${String.format(Locale.US, "$%.2f", spendRequired)}",
+                    progress = spendProgress,
+                )
+
+                ProfileMetricBar(
+                    title = "Visits",
+                    value = "${visitsCurrent.toInt()} / ${visitsRequired.toInt()}",
+                    progress = visitsProgress,
+                )
+
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Color.White.copy(alpha = 0.52f))
+                    Text(
+                        text = "Next level to VIP $nextVipLevel",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White.copy(alpha = 0.52f),
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun ProfileOverviewCard(
+private fun ProfileMetricBar(
     title: String,
     value: String,
+    progress: Float,
+) {
+    val safeProgress = progress.coerceIn(0.02f, 1f)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(title, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.70f))
+            Text(value, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.76f))
+        }
+        LinearProgressIndicator(
+            progress = { safeProgress },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(7.dp)
+                .clip(RoundedCornerShape(999.dp)),
+            color = ProfileGold,
+            trackColor = Color.White.copy(alpha = 0.12f),
+        )
+    }
+}
+
+@Composable
+private fun ProfileInviteCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = ProfileCardBackground),
+        border = BorderStroke(1.dp, ProfileGold.copy(alpha = 0.16f)),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            ProfileCardBackground.copy(alpha = 0.98f),
+                            Color.White.copy(alpha = 0.02f),
+                        ),
+                    ),
+                )
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .background(ProfileGold.copy(alpha = 0.14f), RoundedCornerShape(14.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.CardGiftcard,
+                    contentDescription = null,
+                    tint = ProfileGold,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = "Invite Friends, Get $10",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold, fontSize = 18.sp),
+                    color = ProfilePrimaryText,
+                )
+                Text(
+                    text = "Share your love for nails and save",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
+                    color = Color.White.copy(alpha = 0.64f),
+                )
+            }
+
+            Icon(
+                imageVector = Icons.Filled.ChevronRight,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.42f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProfileStatCard(
+    title: String,
+    value: String,
+    icon: ImageVector,
+    emphasizedLabel: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
-        shape = RoundedCornerShape(16.dp),
         modifier = modifier
-            .height(132.dp)
+            .heightIn(min = 206.dp)
             .clickable { onClick() },
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = ProfileCardBackground),
+        border = BorderStroke(
+            1.dp,
+            ProfileGold.copy(alpha = if (emphasizedLabel) 0.32f else 0.18f),
+        ),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(
+                            ProfileCardBackground,
+                            Color.White.copy(alpha = 0.02f),
+                        ),
+                    ),
+                )
+                .padding(horizontal = 10.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
         ) {
-            Text(value, style = MaterialTheme.typography.headlineMedium)
-            Text(title, style = MaterialTheme.typography.labelMedium)
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(18.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(icon, contentDescription = null, tint = ProfileGold, modifier = Modifier.size(24.dp))
+            }
+
+            Text(
+                text = value,
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontWeight = FontWeight.Black,
+                    fontSize = 44.sp,
+                ),
+                color = ProfilePrimaryText,
+                maxLines = 1,
+                textAlign = TextAlign.Center,
+            )
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Black,
+                    fontSize = 10.sp,
+                    letterSpacing = 3.2.sp,
+                ),
+                color = if (emphasizedLabel) ProfileGold else ProfileMutedText,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+            )
         }
     }
 }
 
 @Composable
-private fun ProfileShortcutRow(label: String, onClick: () -> Unit) {
-    Row(
+private fun RotatingCrownIcon(size: Dp) {
+    val transition = rememberInfiniteTransition(label = "profileCrown")
+    val rotationY by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 8000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "profileCrownRotationY",
+    )
+    val density = LocalDensity.current
+
+    Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(horizontal = 4.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
+            .size(size)
+            .shadow(6.dp, CircleShape, clip = false)
+            .graphicsLayer {
+                this.rotationY = rotationY
+                cameraDistance = with(density) { 28.dp.toPx() }
+            }
+            .background(ProfileGold.copy(alpha = 0.10f), CircleShape)
+            .border(BorderStroke(1.dp, ProfileGold.copy(alpha = 0.30f)), CircleShape),
+        contentAlignment = Alignment.Center,
     ) {
-        Text(label)
-        Text("Open", style = MaterialTheme.typography.labelLarge)
+        Icon(
+            imageVector = Icons.Filled.WorkspacePremium,
+            contentDescription = null,
+            tint = ProfileGold.copy(alpha = 0.22f),
+            modifier = Modifier.size(size * 0.50f),
+        )
+        Icon(
+            imageVector = Icons.Filled.WorkspacePremium,
+            contentDescription = null,
+            tint = ProfileGold,
+            modifier = Modifier.size(size * 0.50f),
+        )
+    }
+}
+
+@Composable
+private fun VipCardGoldSweep(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "vipCardSweep")
+    val sweepPhase by transition.animateFloat(
+        initialValue = -1f,
+        targetValue = 2f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                durationMillis = 7000
+                -1f at 0
+                2f at 3000
+                2f at 7000
+            },
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "vipCardSweepPhase",
+    )
+    val glowScale by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "vipCardGlowScale",
+    )
+    val glowAlpha by transition.animateFloat(
+        initialValue = 0.05f,
+        targetValue = 0.10f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 4000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "vipCardGlowAlpha",
+    )
+
+    Canvas(modifier = modifier) {
+        val glowBaseRadius = 64.dp.toPx()
+        drawCircle(
+            color = ProfileGold.copy(alpha = glowAlpha),
+            radius = glowBaseRadius * glowScale,
+            center = androidx.compose.ui.geometry.Offset(
+                x = size.width + 40.dp.toPx(),
+                y = -40.dp.toPx(),
+            ),
+            blendMode = BlendMode.SrcOver,
+        )
+
+        val startX = sweepPhase * size.width
+        drawRect(
+            brush = Brush.linearGradient(
+                colors = listOf(
+                    Color.Transparent,
+                    ProfileGold.copy(alpha = 0.10f),
+                    Color.Transparent,
+                ),
+                start = androidx.compose.ui.geometry.Offset(startX, 0f),
+                end = androidx.compose.ui.geometry.Offset(startX + size.width * 0.35f, size.height),
+            ),
+            size = size,
+        )
+    }
+}
+
+@Composable
+private fun ProfileLoadingOverlay() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.18f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = ProfileCardBackground),
+            border = BorderStroke(1.dp, ProfileHairline),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(2.dp),
+                    color = ProfileGold,
+                )
+                Text("Loading...", style = MaterialTheme.typography.bodyMedium, color = ProfilePrimaryText)
+            }
+        }
     }
 }
 

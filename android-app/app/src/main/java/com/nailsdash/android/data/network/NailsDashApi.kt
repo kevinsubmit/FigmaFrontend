@@ -25,6 +25,7 @@ import com.nailsdash.android.data.model.NotificationPreferencesUpdateRequest
 import com.nailsdash.android.data.model.PointTransaction
 import com.nailsdash.android.data.model.PointsBalance
 import com.nailsdash.android.data.model.Promotion
+import com.nailsdash.android.data.model.RegisterRequest
 import com.nailsdash.android.data.model.ReferralCode
 import com.nailsdash.android.data.model.ReferralListItem
 import com.nailsdash.android.data.model.ReferralStats
@@ -73,6 +74,9 @@ import retrofit2.http.Query
 interface NailsDashApi {
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): TokenResponse
+
+    @POST("auth/register")
+    suspend fun register(@Body request: RegisterRequest): AuthUser
 
     @POST("auth/refresh")
     suspend fun refresh(@Body request: RefreshTokenRequest): TokenResponse
@@ -363,6 +367,13 @@ interface NailsDashApi {
         @Header("Authorization") bearerToken: String,
         @Body request: ReviewUpsertRequest,
     ): UserReview
+
+    @Multipart
+    @POST("upload/images")
+    suspend fun uploadReviewImages(
+        @Header("Authorization") bearerToken: String,
+        @Part files: List<MultipartBody.Part>,
+    ): List<String>
 
     @PUT("reviews/{reviewId}")
     suspend fun updateReview(

@@ -1,0 +1,46 @@
+# Android <-> iOS Parity Tracker
+
+Last updated: 2026-03-09
+
+## Status legend
+- `DONE`: UI + core behavior aligned
+- `IN_PROGRESS`: major flow available, fine-grained parity pending
+- `TODO`: not aligned yet
+
+## Home
+- `DONE` Home feed list (`HomeFeedModule.swift` -> `HomeScreen.kt`)
+- `DONE` Pin detail (`PinDetailModule.swift` -> `HomePinDetailScreen.kt`)
+  - done: favorite, share, download, related pins, choose salon, advanced hero interactions (pinch-zoom + drag + double-tap reset + zoom-state scroll lock), floating top controls parity (left back + right share/favorite controls with gradient overlay), and iOS-like floating bottom booking strip + toast feedback
+- `DONE` Deals tab (`HomeView.swift DealsView` -> `DealsScreen.kt`)
+  - done: segmented store/platform deals and CTA routing, plus exact visual hierarchy/motion parity (black-gold header/segment container, layered offer cards, scope/price/meta pills, differentiated store/platform CTA styling, card press feedback, loading overlay)
+
+## Book
+- `DONE` Store list (`StoresListView.swift` -> `StoresScreen.kt`)
+  - done: sorting + bottom reference-look bar + location bootstrap (runtime permission + nearby coordinate injection + nearest fallback messaging) + full map chooser bottom-sheet entry on store cards + iOS-like step header/sort pills/dark-gold media card hierarchy + interaction/motion polish (animated sort pill color/scale transitions, card press scale/elevation feedback)
+- `DONE` Store detail (`StoreDetailView.swift` -> `StoreDetailScreen` in `BookFlowScreens.kt`)
+  - done: services/reviews/portfolio/details tabs + book action, enhanced store identity card, iOS-like tab underline bar with transitions, refined service rows/add states, hero media carousel with auto-rotate + indicator jump, unified map chooser bottom-sheet integration + map-open fallback messaging, richer reviews/portfolio cards, top back control parity, final gesture-level polish (iOS-style STEP top bar, hero floating favorite control, tab/service press feedback, details contact-hours expandable interaction + call/email actions)
+- `DONE` Booking form (`BookAppointmentView.swift` -> `BookAppointmentScreen`)
+  - done: service/technician/date/time/notes, style reference note auto-injection, success overlay transition, step header + card-based sections, sticky bottom summary/confirm bar, month calendar date picker, single/group toggle + guest service rows + group booking submit, pay-at-salon detailed module (safe badge shimmer + payment badges), black-gold typography/spacing polish for section titles/cards/chips/notes/bottom bar/calendar/summary overlay, micro-motion parity pass (group section animated expand/collapse, booking-type spring emphasis, calendar day animated state transitions, summary/CTA text transitions, success overlay fade+scale)
+
+## Appointments
+- `DONE` My appointments (`MyAppointmentsView.swift` -> `AppointmentsScreen.kt`)
+  - done: upcoming/past segmented view, status capsules, empty states, map open with map-app chooser sheet (Google Maps / Waze / system app), iOS-style header/segment typography, layered appointment cards, loading overlay, fine-grained color/opacity tuning
+- `DONE` Appointment detail (`AppointmentDetailView` -> `AppointmentDetailScreen.kt`)
+  - done: card-based detail, map open with map-app chooser sheet, status display, iOS-like top close action, bottom action bar helper text, dedicated cancel/reschedule action sheets, picker-based reschedule date/time, top auto-dismiss toast, loading overlay, fine-grained visual styling (dark + gold card system, action bar, sheets)
+
+## Profile & Rewards
+- `DONE` Profile center (`ProfileCenterView.swift` -> `ProfileScreen.kt`)
+  - done: black+gold visual system, top action buttons with unread badge, centered avatar/name/phone, VIP card with rotating crown + gold sweep animation + progress bars, invite card, 2-column stats grid, loading overlay, error notice dialog
+- `IN_PROGRESS` Rewards pages (`Points/Coupons/GiftCards/OrderHistory/MyReviews/MyFavorites/VIP/Referral`)
+  - done: API-backed pages and core actions; Points/Coupons/GiftCards/OrderHistory/MyReviews/MyFavorites/VIP/Referral upgraded to iOS-like black+gold visual system (hero cards, status tabs, ticket cards, gift wallet summary, gift collection cards, copy/send/claim/revoke actions, transaction summary/activity cards, review list/edit/delete styling, favorites grid/store cards, browse CTA, VIP hero+tier+redemption modules, referral hero+code card+share/history modules, unified loading/notice), plus advanced sheet interactions parity pass (GiftCards claim/send converted to bottom sheets, OrderHistory write-review converted to bottom sheet flow, MyReviews edit-review converted to bottom sheet flow), OrderHistory review image composer parity (multi-select, local preview/remove, <=5 upload optimization, `/upload/images` integration before review submit), rewards micro-motion pass #1 (MyReviews edit/delete CTA press-scale feedback + MyFavorites card/remove-CTA press-scale feedback), and rewards micro-motion pass #2 (Points exchange CTA press feedback, Coupons status-tab animated color/scale transitions + Use CTA press feedback, GiftCards claim/copy/send/revoke press feedback, Referral copy/share CTA press feedback)
+  - pending: remaining cross-page micro-motion detail parity for VIP/secondary surfaces
+- `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
+  - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
+
+## Settings
+- `DONE` Settings hub + subpages (`SettingsModule.swift` -> `SettingsScreens.kt`)
+  - done: profile/password/phone/language/support/privacy/about/partnership flows; Settings hub + all major subpages upgraded to iOS-like black+gold grouped cards and form modules (avatar section, message banners, info cards, field labels, CTA states, logout confirmation, version footer), plus profile gender dialog picker + birthday date picker + language checkmark selection interaction; message banner animated transitions + icon states; language row selection background animation/content-size transition and unified timing/easing polish
+
+## Auth
+- `DONE` Login/register (`LoginView.swift` -> `LoginScreen.kt`)
+  - done: black+gold auth layout; animated login/register screen switch; password/SMS login switcher with animated content transitions; SMS send-code countdown; inline auth error banner + iOS-style Notice alert dialog; sign-up entry + 2-step register flow (verify phone -> complete profile) with animated step transition; register submit with auto-login and session handoff; refined switcher/button border system + step-indicator geometry + title typography + auth logo icon parity; final per-element spacing and font hierarchy polish

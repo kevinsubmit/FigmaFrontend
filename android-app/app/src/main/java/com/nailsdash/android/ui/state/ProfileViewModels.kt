@@ -13,6 +13,7 @@ import com.nailsdash.android.data.model.PointTransaction
 import com.nailsdash.android.data.model.PointsBalance
 import com.nailsdash.android.data.model.ReferralListItem
 import com.nailsdash.android.data.model.ReferralStats
+import com.nailsdash.android.data.model.ReviewUploadImagePayload
 import com.nailsdash.android.data.model.UserCoupon
 import com.nailsdash.android.data.model.UserReview
 import com.nailsdash.android.data.model.VipStatus
@@ -336,6 +337,9 @@ class OrderHistoryViewModel(application: Application) : AndroidViewModel(applica
     var submittingReviewAppointmentId by mutableStateOf<Int?>(null)
         private set
 
+    var isUploadingReviewImages by mutableStateOf(false)
+        private set
+
     fun load(bearerToken: String) {
         isLoading = true
         viewModelScope.launch {
@@ -357,16 +361,33 @@ class OrderHistoryViewModel(application: Application) : AndroidViewModel(applica
         appointmentId: Int,
         rating: Double,
         comment: String?,
+        imageFiles: List<ReviewUploadImagePayload> = emptyList(),
         onCreated: () -> Unit = {},
     ) {
         submittingReviewAppointmentId = appointmentId
         viewModelScope.launch {
+            val uploadedImagePaths = if (imageFiles.isNotEmpty()) {
+                isUploadingReviewImages = true
+                val result = profileRepository.uploadReviewImages(
+                    bearerToken = bearerToken,
+                    files = imageFiles,
+                )
+                isUploadingReviewImages = false
+                result.getOrElse { err ->
+                    errorMessage = err.message
+                    submittingReviewAppointmentId = null
+                    return@launch
+                }
+            } else {
+                emptyList()
+            }
+
             profileRepository.createReview(
                 bearerToken = bearerToken,
                 appointmentId = appointmentId,
                 rating = rating,
                 comment = comment,
-                images = null,
+                images = uploadedImagePaths.ifEmpty { null },
             ).onSuccess { review ->
                 items = items.map { item ->
                     if (item.id == appointmentId) item.copy(review_id = review.id) else item
@@ -377,6 +398,7 @@ class OrderHistoryViewModel(application: Application) : AndroidViewModel(applica
             }.onFailure { err ->
                 errorMessage = err.message
             }
+            isUploadingReviewImages = false
             submittingReviewAppointmentId = null
         }
     }

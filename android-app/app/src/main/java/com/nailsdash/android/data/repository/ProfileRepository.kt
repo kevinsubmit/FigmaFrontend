@@ -12,12 +12,16 @@ import com.nailsdash.android.data.model.PointsBalance
 import com.nailsdash.android.data.model.ReferralCode
 import com.nailsdash.android.data.model.ReferralListItem
 import com.nailsdash.android.data.model.ReferralStats
+import com.nailsdash.android.data.model.ReviewUploadImagePayload
 import com.nailsdash.android.data.model.ReviewUpsertRequest
 import com.nailsdash.android.data.model.UnreadCount
 import com.nailsdash.android.data.model.UserCoupon
 import com.nailsdash.android.data.model.UserReview
 import com.nailsdash.android.data.model.VipStatus
 import com.nailsdash.android.data.network.ServiceLocator
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class ProfileRepository {
     private val api get() = ServiceLocator.api
@@ -101,6 +105,28 @@ class ProfileRepository {
                 images = images,
             ),
         )
+    }.mapFailure()
+
+    suspend fun uploadReviewImages(
+        bearerToken: String,
+        files: List<ReviewUploadImagePayload>,
+    ): Result<List<String>> = runCatching {
+        if (files.isEmpty()) {
+            emptyList()
+        } else {
+            val parts = files.map { file ->
+                val requestBody = file.imageData.toRequestBody(file.mimeType.toMediaTypeOrNull())
+                MultipartBody.Part.createFormData(
+                    name = "files",
+                    filename = file.fileName,
+                    body = requestBody,
+                )
+            }
+            api.uploadReviewImages(
+                bearerToken = bearerToken,
+                files = parts,
+            )
+        }
     }.mapFailure()
 
     suspend fun updateReview(

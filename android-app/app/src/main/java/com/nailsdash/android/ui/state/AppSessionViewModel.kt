@@ -8,6 +8,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.nailsdash.android.data.model.AuthUser
 import com.nailsdash.android.data.model.HomeFeedPin
+import com.nailsdash.android.data.model.SendVerificationCodeResponse
+import com.nailsdash.android.data.model.VerificationPurpose
+import com.nailsdash.android.data.model.VerifyCodeResponse
 import com.nailsdash.android.data.network.ServiceLocator
 import com.nailsdash.android.data.repository.AuthRepository
 import com.nailsdash.android.utils.PhoneFormatter
@@ -83,21 +86,104 @@ class AppSessionViewModel(application: Application) : AndroidViewModel(applicati
 
     fun login(phone: String, password: String) {
         val normalizedPhone = PhoneFormatter.normalizeUSPhone(phone)
-        if (normalizedPhone.isBlank() || password.isBlank()) {
+        if (!isValidUSPhone(phone) || password.isBlank()) {
             authMessage = "Please enter phone and password."
             return
         }
 
         viewModelScope.launch {
+            performLogin(normalizedPhone, password)
+        }
+    }
+
+    suspend fun sendVerificationCode(
+        phone: String,
+        purpose: VerificationPurpose,
+    ): Result<SendVerificationCodeResponse> {
+        if (!isValidUSPhone(phone)) {
+            return validationFailure("Please enter a valid US phone number.")
+        }
+        val normalizedPhone = PhoneFormatter.normalizeUSPhone(phone)
+        val result = authRepository.sendVerificationCode(normalizedPhone, purpose)
+        result.onSuccess {
+            authMessage = null
+        }.onFailure { error ->
+            authMessage = error.message
+        }
+        return result
+    }
+
+    suspend fun verifyCode(
+        phone: String,
+        code: String,
+        purpose: VerificationPurpose,
+    ): Result<VerifyCodeResponse> {
+        if (!isValidUSPhone(phone)) {
+            return validationFailure("Please enter a valid US phone number.")
+        }
+        val trimmedCode = code.trim()
+        if (trimmedCode.length != 6 || trimmedCode.any { !it.isDigit() }) {
+            return validationFailure("Please enter a valid 6-digit verification code.")
+        }
+
+        val normalizedPhone = PhoneFormatter.normalizeUSPhone(phone)
+        val result = authRepository.verifyCode(normalizedPhone, trimmedCode, purpose)
+        result.onSuccess {
+            authMessage = null
+        }.onFailure { error ->
+            authMessage = error.message
+        }
+        return result
+    }
+
+    fun register(
+        phone: String,
+        verificationCode: String,
+        username: String,
+        password: String,
+        fullName: String?,
+        referralCode: String?,
+    ) {
+        if (!isValidUSPhone(phone)) {
+            authMessage = "Please enter a valid US phone number."
+            return
+        }
+
+        val trimmedCode = verificationCode.trim()
+        val trimmedUsername = username.trim()
+        val trimmedPassword = password.trim()
+        val trimmedFullName = fullName?.trim().orEmpty().ifBlank { null }
+        val trimmedReferralCode = referralCode?.trim().orEmpty().ifBlank { null }
+
+        if (trimmedCode.isBlank() || trimmedUsername.isBlank() || trimmedPassword.isBlank()) {
+            authMessage = "Please fill all required fields."
+            return
+        }
+
+        val normalizedPhone = PhoneFormatter.normalizeUSPhone(phone)
+        viewModelScope.launch {
             isLoadingAuth = true
-            val result = authRepository.login(normalizedPhone, password)
+            val registerResult = authRepository.register(
+                phone = normalizedPhone,
+                verificationCode = trimmedCode,
+                username = trimmedUsername,
+                password = trimmedPassword,
+                fullName = trimmedFullName,
+                referralCode = trimmedReferralCode,
+            )
+
+            if (registerResult.isFailure) {
+                isLoadingAuth = false
+                authMessage = registerResult.exceptionOrNull()?.message
+                return@launch
+            }
+
+            val loginResult = authRepository.login(normalizedPhone, trimmedPassword)
             isLoadingAuth = false
-            result.onSuccess { user ->
-                currentUser = user
-                isLoggedIn = true
-                authMessage = null
-            }.onFailure { err ->
-                authMessage = err.message
+            loginResult.onSuccess { user ->
+                applyAuthenticatedUser(user)
+            }.onFailure { error ->
+                authMessage = error.message
             }
         }
     }
@@ -137,5 +223,32 @@ class AppSessionViewModel(application: Application) : AndroidViewModel(applicati
 
     fun resetBookFlowSource() {
         bookOpenedFromStyleReference = false
+    }
+
+    private suspend fun performLogin(phone: String, password: String) {
+        isLoadingAuth = true
+        val result = authRepository.login(phone, password)
+        isLoadingAuth = false
+        result.onSuccess { user ->
+            applyAuthenticatedUser(user)
+        }.onFailure { err ->
+            authMessage = err.message
+        }
+    }
+
+    private fun applyAuthenticatedUser(user: AuthUser) {
+        currentUser = user
+        isLoggedIn = true
+        authMessage = null
+    }
+
+    private fun <T> validationFailure(message: String): Result<T> {
+        authMessage = message
+        return Result.failure(IllegalStateException(message))
+    }
+
+    private fun isValidUSPhone(input: String): Boolean {
+        val digits = input.filter(Char::isDigit)
+        return digits.length == 10 || (digits.length == 11 && digits.startsWith("1"))
     }
 }
