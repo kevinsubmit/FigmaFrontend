@@ -187,15 +187,24 @@ private fun RewardsTopBar(
     title: String,
     onBack: () -> Unit,
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black,
+                        Color.Black.copy(alpha = 0.96f),
+                    ),
+                ),
+            ),
     ) {
-        Box(
-            modifier = Modifier.width(76.dp),
-            contentAlignment = Alignment.CenterStart,
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = RewardsPagePadding, end = RewardsPagePadding, top = 4.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             IconButton(
                 onClick = onBack,
@@ -207,21 +216,24 @@ private fun RewardsTopBar(
                     imageVector = Icons.Filled.ChevronLeft,
                     contentDescription = "Back",
                     tint = RewardsPrimaryText,
+                    modifier = Modifier.size(16.dp),
                 )
             }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = RewardsPrimaryText,
+                textAlign = TextAlign.Center,
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.size(38.dp))
         }
-
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            color = RewardsPrimaryText,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.weight(1f),
-        )
-
-        Spacer(modifier = Modifier.width(76.dp))
+        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
     }
-    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
 }
 
 @Composable
