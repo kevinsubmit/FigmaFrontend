@@ -2715,16 +2715,23 @@ fun OrderHistoryScreen(
                     )
                 }
             } else {
-                items(orderHistoryViewModel.items, key = { it.id }) { item ->
-                    OrderHistoryActivityCard(
-                        item = item,
-                        onReview = {
-                            reviewingItem = item
-                            reviewRating = 5
-                            reviewComment = ""
-                            reviewDraftImages = emptyList()
-                        },
-                    )
+                item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        orderHistoryViewModel.items.forEach { item ->
+                            OrderHistoryActivityCard(
+                                item = item,
+                                onReview = {
+                                    reviewingItem = item
+                                    reviewRating = 5
+                                    reviewComment = ""
+                                    reviewDraftImages = emptyList()
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }
