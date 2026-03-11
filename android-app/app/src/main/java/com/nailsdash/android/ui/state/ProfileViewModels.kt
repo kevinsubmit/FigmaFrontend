@@ -21,6 +21,8 @@ import com.nailsdash.android.data.repository.AppointmentsRepository
 import com.nailsdash.android.data.repository.ProfileRepository
 import com.nailsdash.android.data.repository.StoresRepository
 import com.nailsdash.android.utils.PhoneFormatter
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -322,6 +324,8 @@ class GiftCardsViewModel(application: Application) : AndroidViewModel(applicatio
 class OrderHistoryViewModel(application: Application) : AndroidViewModel(application) {
     private val appointmentsRepository = AppointmentsRepository()
     private val profileRepository = ProfileRepository()
+    private val appointmentDateTimeSecondFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+    private val appointmentDateTimeMinuteFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
 
     var items by mutableStateOf(emptyList<Appointment>())
         private set
@@ -346,7 +350,9 @@ class OrderHistoryViewModel(application: Application) : AndroidViewModel(applica
         viewModelScope.launch {
             appointmentsRepository.getMyAppointments(bearerToken, limit = 100)
                 .onSuccess { rows ->
-                    items = rows.filter { it.status.lowercase() == "completed" }
+                    items = rows
+                        .filter { it.status.lowercase() == "completed" }
+                        .sortedByDescending { appointmentDateTime(it) }
                     errorMessage = null
                 }
                 .onFailure { err ->
@@ -354,6 +360,17 @@ class OrderHistoryViewModel(application: Application) : AndroidViewModel(applica
                     errorMessage = err.message
                 }
             isLoading = false
+        }
+    }
+
+    private fun appointmentDateTime(item: Appointment): LocalDateTime {
+        val raw = "${item.appointment_date}T${item.appointment_time}".trim()
+        return runCatching {
+            LocalDateTime.parse(raw, appointmentDateTimeSecondFormatter)
+        }.recoverCatching {
+            LocalDateTime.parse(raw, appointmentDateTimeMinuteFormatter)
+        }.getOrElse {
+            LocalDateTime.MIN
         }
     }
 
