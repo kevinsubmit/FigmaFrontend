@@ -1326,6 +1326,7 @@ fun GiftCardsScreen(
         .filter { it.status.lowercase() == "active" }
         .sumOf { it.balance }
     val activeCount = sortedCards.count { it.status.lowercase() == "active" }
+    val firstCardId = sortedCards.firstOrNull()?.id
     val claimSheetActionInteraction = remember { MutableInteractionSource() }
     val claimSheetActionScale = rememberPressScale(
         interactionSource = claimSheetActionInteraction,
@@ -1609,7 +1610,12 @@ fun GiftCardsScreen(
                     shape = RoundedCornerShape(18.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(12.dp, RoundedCornerShape(18.dp)),
+                        .shadow(
+                            elevation = 12.dp,
+                            shape = RoundedCornerShape(18.dp),
+                            ambientColor = Color.Black.copy(alpha = 0.35f),
+                            spotColor = Color.Black.copy(alpha = 0.35f),
+                        ),
                     colors = CardDefaults.cardColors(containerColor = Color.Transparent),
                     border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.20f)),
                 ) {
@@ -1730,14 +1736,14 @@ fun GiftCardsScreen(
                                     modifier = Modifier.size(12.dp),
                                 )
                                 Text(
-                                    text = "$activeCount Active",
+                                    text = "${activeCount} Active",
                                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                                     color = RewardsSecondaryText,
                                 )
                                 Text(
                                     text = "•",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = RewardsMutedText,
+                                    color = RewardsSecondaryText.copy(alpha = 0.6f),
                                 )
                                 Text(
                                     text = "${sortedCards.size} Total",
@@ -1828,6 +1834,11 @@ fun GiftCardsScreen(
             } else {
                 items(sortedCards, key = { it.id }) { card ->
                     GiftCardCollectionCard(
+                        modifier = Modifier.padding(
+                            start = 1.dp,
+                            end = 1.dp,
+                            top = if (card.id == firstCardId) 3.dp else 0.dp,
+                        ),
                         card = card,
                         sendingCardId = giftCardsViewModel.sendingCardId,
                         revokingCardId = giftCardsViewModel.revokingCardId,
@@ -1912,6 +1923,7 @@ fun GiftCardsScreen(
 
 @Composable
 private fun GiftCardCollectionCard(
+    modifier: Modifier = Modifier,
     card: GiftCard,
     sendingCardId: Int?,
     revokingCardId: Int?,
@@ -1939,9 +1951,14 @@ private fun GiftCardCollectionCard(
 
     Card(
         shape = RoundedCornerShape(18.dp),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .shadow(8.dp, RoundedCornerShape(18.dp)),
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(18.dp),
+                ambientColor = Color.Black.copy(alpha = 0.25f),
+                spotColor = Color.Black.copy(alpha = 0.25f),
+            ),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
         border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.20f)),
     ) {
