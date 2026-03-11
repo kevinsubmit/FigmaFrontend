@@ -58,11 +58,13 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.AlertDialog
@@ -3966,7 +3968,7 @@ fun ReferralScreen(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.ArrowUpward,
+                                imageVector = Icons.Filled.Share,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
                             )
@@ -3983,7 +3985,7 @@ fun ReferralScreen(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         ReferralStatChip(
-                            icon = Icons.Filled.AutoAwesome,
+                            icon = Icons.Filled.Group,
                             text = "$totalReferrals Referrals",
                             tint = Color.White.copy(alpha = 0.62f),
                         )
@@ -4017,7 +4019,7 @@ fun ReferralScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.History,
+                                imageVector = Icons.Filled.Group,
                                 contentDescription = null,
                                 tint = Color.White.copy(alpha = 0.34f),
                                 modifier = Modifier.size(42.dp),
