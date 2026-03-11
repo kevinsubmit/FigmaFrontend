@@ -92,8 +92,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -3175,22 +3173,33 @@ fun ReviewsScreen(
                     }
                 }
 
-                OutlinedTextField(
-                    value = editComment,
-                    onValueChange = { editComment = it },
-                    label = { Text("Comment") },
-                    minLines = 4,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = RewardsPrimaryText,
-                        unfocusedTextColor = RewardsPrimaryText,
-                        focusedBorderColor = RewardsGold.copy(alpha = 0.45f),
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.12f),
-                        cursorColor = RewardsGold,
-                        focusedLabelColor = RewardsGold,
-                        unfocusedLabelColor = RewardsSecondaryText,
-                    ),
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Comment",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = RewardsPrimaryText.copy(alpha = 0.62f),
+                    )
+                    BasicTextField(
+                        value = editComment,
+                        onValueChange = { editComment = it },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = RewardsPrimaryText),
+                        cursorBrush = SolidColor(RewardsGold),
+                        modifier = Modifier.fillMaxWidth(),
+                        decorationBox = { innerTextField ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 120.dp, max = 180.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(RewardsCardBackground)
+                                    .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                                    .padding(8.dp),
+                            ) {
+                                innerTextField()
+                            }
+                        },
+                    )
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
