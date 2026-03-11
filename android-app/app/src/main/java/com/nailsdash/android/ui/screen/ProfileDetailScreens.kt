@@ -368,7 +368,7 @@ fun PointsScreen(
                                 verticalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 Text(
-                                    text = couponDiscount(coupon),
+                                    text = pointsCouponDiscount(coupon),
                                     style = MaterialTheme.typography.displayMedium.copy(
                                         fontWeight = FontWeight.Black,
                                         fontSize = 36.sp,
@@ -737,6 +737,14 @@ private fun couponDiscount(coupon: CouponTemplate): String {
         "${coupon.discount_value.toInt()}% OFF"
     } else {
         "$${String.format("%.0f", coupon.discount_value)} OFF"
+    }
+}
+
+private fun pointsCouponDiscount(coupon: CouponTemplate): String {
+    return if (coupon.type.lowercase() == "percentage") {
+        "${coupon.discount_value.toInt()}% OFF"
+    } else {
+        "$${String.format("%.2f", coupon.discount_value)} OFF"
     }
 }
 
