@@ -142,6 +142,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
 
 private val RewardsGold = Color(0xFFD4AF37)
 private val RewardsPageBackground = Color(0xFF000000)
@@ -2931,7 +2932,7 @@ fun ReviewsScreen(
                                         if (canEdit) {
                                             editingReview = review
                                             editComment = review.comment.orEmpty()
-                                            editRating = (review.rating ?: 5.0).toInt().coerceIn(1, 5)
+                                            editRating = (review.rating ?: 5.0).roundToInt().coerceIn(1, 5)
                                             showEditDialog = true
                                         } else {
                                             noticeMessage = "This review cannot be edited right now."
@@ -3021,7 +3022,7 @@ fun ReviewsScreen(
 
 @Composable
 private fun ReviewStars(rating: Double) {
-    val normalized = rating.toInt().coerceIn(0, 5)
+    val normalized = rating.roundToInt().coerceIn(0, 5)
     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         repeat(5) { index ->
             Icon(
