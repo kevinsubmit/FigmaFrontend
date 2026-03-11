@@ -268,23 +268,39 @@ fun NailsDashApp() {
                 )
             }
             composable("profile/points") {
-                PointsScreen(sessionViewModel = sessionViewModel)
+                PointsScreen(
+                    sessionViewModel = sessionViewModel,
+                    onBack = { navController.navigateUp() },
+                )
             }
             composable("profile/coupons") {
-                CouponsScreen(sessionViewModel = sessionViewModel)
+                CouponsScreen(
+                    sessionViewModel = sessionViewModel,
+                    onBack = { navController.navigateUp() },
+                )
             }
             composable("profile/giftcards") {
-                GiftCardsScreen(sessionViewModel = sessionViewModel)
+                GiftCardsScreen(
+                    sessionViewModel = sessionViewModel,
+                    onBack = { navController.navigateUp() },
+                )
             }
             composable("profile/orders") {
-                OrderHistoryScreen(sessionViewModel = sessionViewModel)
+                OrderHistoryScreen(
+                    sessionViewModel = sessionViewModel,
+                    onBack = { navController.navigateUp() },
+                )
             }
             composable("profile/reviews") {
-                ReviewsScreen(sessionViewModel = sessionViewModel)
+                ReviewsScreen(
+                    sessionViewModel = sessionViewModel,
+                    onBack = { navController.navigateUp() },
+                )
             }
             composable("profile/favorites") {
                 FavoritesScreen(
                     sessionViewModel = sessionViewModel,
+                    onBack = { navController.navigateUp() },
                     onBrowseSalons = {
                         navController.navigate(MainDestination.Book.route) {
                             launchSingleTop = true
@@ -299,10 +315,16 @@ fun NailsDashApp() {
                 )
             }
             composable("profile/vip") {
-                VipScreen(sessionViewModel = sessionViewModel)
+                VipScreen(
+                    sessionViewModel = sessionViewModel,
+                    onBack = { navController.navigateUp() },
+                )
             }
             composable("profile/referral") {
-                ReferralScreen(sessionViewModel = sessionViewModel)
+                ReferralScreen(
+                    sessionViewModel = sessionViewModel,
+                    onBack = { navController.navigateUp() },
+                )
             }
             composable("profile/notifications") {
                 NotificationsScreen(

@@ -53,6 +53,7 @@ import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ConfirmationNumber
@@ -182,8 +183,51 @@ private fun rememberPressScale(
 }
 
 @Composable
+private fun RewardsTopBar(
+    title: String,
+    onBack: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.width(76.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .size(38.dp)
+                    .background(Color.White.copy(alpha = 0.07f), CircleShape),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ChevronLeft,
+                    contentDescription = "Back",
+                    tint = RewardsPrimaryText,
+                )
+            }
+        }
+
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            color = RewardsPrimaryText,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f),
+        )
+
+        Spacer(modifier = Modifier.width(76.dp))
+    }
+    HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+}
+
+@Composable
 fun PointsScreen(
     sessionViewModel: AppSessionViewModel,
+    onBack: () -> Unit = {},
     pointsViewModel: PointsViewModel = viewModel(),
 ) {
     val token = sessionViewModel.accessTokenOrNull()
@@ -208,134 +252,129 @@ fun PointsScreen(
             .fillMaxSize()
             .background(RewardsPageBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = RewardsPagePadding,
-                end = RewardsPagePadding,
-                top = 8.dp,
-                bottom = 26.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            item {
-                Text(
-                    text = "My Points",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = RewardsPrimaryText,
-                )
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
+            RewardsTopBar(title = "My Points", onBack = onBack)
 
-            item {
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.40f)),
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color(0xFF171717),
-                                        RewardsPageBackground,
-                                    ),
-                                ),
-                            )
-                            .padding(horizontal = 16.dp, vertical = 34.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(14.dp),
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = RewardsPagePadding,
+                    end = RewardsPagePadding,
+                    top = 8.dp,
+                    bottom = 26.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.40f)),
                     ) {
-                        Box(
-                            modifier = Modifier.size(108.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(108.dp)
-                                    .border(
-                                        width = 1.dp,
-                                        color = Color.White.copy(alpha = 0.06f),
-                                        shape = CircleShape,
-                                    ),
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(96.dp)
-                                    .border(
-                                        width = 1.dp,
-                                        color = RewardsGold.copy(alpha = 0.45f),
-                                        shape = CircleShape,
-                                    ),
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(96.dp)
-                                    .background(RewardsGold.copy(alpha = 0.13f), CircleShape),
-                            )
-                            Icon(
-                                imageVector = Icons.Filled.AttachMoney,
-                                contentDescription = null,
-                                tint = RewardsGold,
-                                modifier = Modifier.size(42.dp),
-                            )
-                        }
-
-                        Text(
-                            text = available.toString(),
-                            style = MaterialTheme.typography.displayLarge.copy(
-                                fontWeight = FontWeight.Black,
-                                fontSize = 64.sp,
-                            ),
-                            color = RewardsGold,
-                            maxLines = 1,
-                        )
-
-                        Text(
-                            text = "Available Points",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                            color = RewardsPrimaryText.copy(alpha = 0.92f),
-                        )
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                        Column(
                             modifier = Modifier
-                                .background(Color.Black.copy(alpha = 0.34f), RoundedCornerShape(999.dp))
-                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                                .fillMaxWidth()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color(0xFF171717),
+                                            RewardsPageBackground,
+                                        ),
+                                    ),
+                                )
+                                .padding(horizontal = 16.dp, vertical = 34.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(14.dp),
                         ) {
-                            Icon(
-                                imageVector = Icons.Filled.AutoAwesome,
-                                contentDescription = null,
-                                tint = RewardsGold,
-                                modifier = Modifier.size(14.dp),
-                            )
+                            Box(
+                                modifier = Modifier.size(108.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(108.dp)
+                                        .border(
+                                            width = 1.dp,
+                                            color = Color.White.copy(alpha = 0.06f),
+                                            shape = CircleShape,
+                                        ),
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(96.dp)
+                                        .border(
+                                            width = 1.dp,
+                                            color = RewardsGold.copy(alpha = 0.45f),
+                                            shape = CircleShape,
+                                        ),
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(96.dp)
+                                        .background(RewardsGold.copy(alpha = 0.13f), CircleShape),
+                                )
+                                Icon(
+                                    imageVector = Icons.Filled.AttachMoney,
+                                    contentDescription = null,
+                                    tint = RewardsGold,
+                                    modifier = Modifier.size(42.dp),
+                                )
+                            }
+
                             Text(
-                                text = "Total Earned: $total",
-                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = RewardsSecondaryText,
+                                text = available.toString(),
+                                style = MaterialTheme.typography.displayLarge.copy(
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 64.sp,
+                                ),
+                                color = RewardsGold,
+                                maxLines = 1,
                             )
+
+                            Text(
+                                text = "Available Points",
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                                color = RewardsPrimaryText.copy(alpha = 0.92f),
+                            )
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .background(Color.Black.copy(alpha = 0.34f), RoundedCornerShape(999.dp))
+                                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = RewardsGold,
+                                    modifier = Modifier.size(14.dp),
+                                )
+                                Text(
+                                    text = "Total Earned: $total",
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = RewardsSecondaryText,
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            item {
-                RewardsSectionHeader(title = "EXCHANGE COUPONS")
-            }
-
-            if (!pointsViewModel.isLoading && pointsViewModel.exchangeables.isEmpty()) {
                 item {
-                    RewardsEmptyStateCard(
-                        icon = Icons.Filled.ConfirmationNumber,
-                        title = "No exchangeable coupons right now",
-                        subtitle = "More rewards will appear here.",
-                    )
+                    RewardsSectionHeader(title = "EXCHANGE COUPONS")
                 }
-            } else {
-                items(pointsViewModel.exchangeables, key = { it.id }) { coupon ->
+
+                if (!pointsViewModel.isLoading && pointsViewModel.exchangeables.isEmpty()) {
+                    item {
+                        RewardsEmptyStateCard(
+                            icon = Icons.Filled.ConfirmationNumber,
+                            title = "No exchangeable coupons right now",
+                            subtitle = "More rewards will appear here.",
+                        )
+                    }
+                } else {
+                    items(pointsViewModel.exchangeables, key = { it.id }) { coupon ->
                     val required = coupon.points_required ?: 0
                     val canRedeem = coupon.points_required != null &&
                         (pointsViewModel.balance?.available_points ?: 0) >= required
@@ -454,39 +493,40 @@ fun PointsScreen(
                             }
                         }
                     }
+                    }
                 }
-            }
 
-            item {
-                RewardsSectionHeader(title = "HISTORY")
-            }
-
-            if (!pointsViewModel.isLoading && pointsViewModel.transactions.isEmpty()) {
                 item {
-                    RewardsEmptyStateCard(
-                        icon = Icons.Filled.History,
-                        title = "No transactions yet",
-                        subtitle = "Your points activity will appear here.",
-                    )
+                    RewardsSectionHeader(title = "HISTORY")
                 }
-            } else {
-                item {
-                    Card(
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.24f)),
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 12.dp),
+
+                if (!pointsViewModel.isLoading && pointsViewModel.transactions.isEmpty()) {
+                    item {
+                        RewardsEmptyStateCard(
+                            icon = Icons.Filled.History,
+                            title = "No transactions yet",
+                            subtitle = "Your points activity will appear here.",
+                        )
+                    }
+                } else {
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.24f)),
                         ) {
-                            pointsViewModel.transactions.forEachIndexed { index, item ->
-                                PointsHistoryRow(
-                                    item = item,
-                                    isLast = index == pointsViewModel.transactions.lastIndex,
-                                )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                            ) {
+                                pointsViewModel.transactions.forEachIndexed { index, item ->
+                                    PointsHistoryRow(
+                                        item = item,
+                                        isLast = index == pointsViewModel.transactions.lastIndex,
+                                    )
+                                }
                             }
                         }
                     }
@@ -806,6 +846,7 @@ private fun maskPhone(raw: String): String {
 @Composable
 fun CouponsScreen(
     sessionViewModel: AppSessionViewModel,
+    onBack: () -> Unit = {},
     couponsViewModel: CouponsViewModel = viewModel(),
 ) {
     val token = sessionViewModel.accessTokenOrNull()
@@ -834,80 +875,76 @@ fun CouponsScreen(
             .fillMaxSize()
             .background(RewardsPageBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = RewardsPagePadding,
-                end = RewardsPagePadding,
-                top = 8.dp,
-                bottom = 24.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item {
-                Text(
-                    text = "My Coupons",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = RewardsPrimaryText,
-                )
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
+            RewardsTopBar(title = "My Coupons", onBack = onBack)
 
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(14.dp))
-                        .padding(6.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    listOf("available", "used", "expired").forEach { status ->
-                        val selected = couponsViewModel.selectedStatus == status
-                        val statusInteraction = remember(status) { MutableInteractionSource() }
-                        val statusScale = rememberPressScale(
-                            interactionSource = statusInteraction,
-                            pressedScale = 0.97f,
-                        )
-                        val statusContainerColor by animateColorAsState(
-                            targetValue = if (selected) RewardsGold else Color.White.copy(alpha = 0.03f),
-                            animationSpec = tween(durationMillis = 140),
-                            label = "couponStatusContainer",
-                        )
-                        val statusContentColor by animateColorAsState(
-                            targetValue = if (selected) Color.Black else RewardsPrimaryText.copy(alpha = 0.75f),
-                            animationSpec = tween(durationMillis = 140),
-                            label = "couponStatusContent",
-                        )
-                        Button(
-                            onClick = { couponsViewModel.selectedStatus = status },
-                            modifier = Modifier
-                                .weight(1f)
-                                .scale(statusScale),
-                            interactionSource = statusInteraction,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = statusContainerColor,
-                                contentColor = statusContentColor,
-                            ),
-                            shape = RoundedCornerShape(10.dp),
-                        ) {
-                            Text(
-                                text = couponStatusTitle(status),
-                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = RewardsPagePadding,
+                    end = RewardsPagePadding,
+                    top = 8.dp,
+                    bottom = 24.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(14.dp))
+                            .padding(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        listOf("available", "used", "expired").forEach { status ->
+                            val selected = couponsViewModel.selectedStatus == status
+                            val statusInteraction = remember(status) { MutableInteractionSource() }
+                            val statusScale = rememberPressScale(
+                                interactionSource = statusInteraction,
+                                pressedScale = 0.97f,
                             )
+                            val statusContainerColor by animateColorAsState(
+                                targetValue = if (selected) RewardsGold else Color.White.copy(alpha = 0.03f),
+                                animationSpec = tween(durationMillis = 140),
+                                label = "couponStatusContainer",
+                            )
+                            val statusContentColor by animateColorAsState(
+                                targetValue = if (selected) Color.Black else RewardsPrimaryText.copy(alpha = 0.75f),
+                                animationSpec = tween(durationMillis = 140),
+                                label = "couponStatusContent",
+                            )
+                            Button(
+                                onClick = { couponsViewModel.selectedStatus = status },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .scale(statusScale),
+                                interactionSource = statusInteraction,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = statusContainerColor,
+                                    contentColor = statusContentColor,
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                            ) {
+                                Text(
+                                    text = couponStatusTitle(status),
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            if (!couponsViewModel.isLoading && couponsViewModel.coupons.isEmpty()) {
-                item {
-                    RewardsEmptyStateCard(
-                        icon = Icons.Filled.ConfirmationNumber,
-                        title = "No ${couponStatusTitle(couponsViewModel.selectedStatus).lowercase()} coupons",
-                        subtitle = "Coupons from stores and rewards will appear here.",
-                    )
-                }
-            } else {
-                items(couponsViewModel.coupons, key = { it.id }) { item ->
+                if (!couponsViewModel.isLoading && couponsViewModel.coupons.isEmpty()) {
+                    item {
+                        RewardsEmptyStateCard(
+                            icon = Icons.Filled.ConfirmationNumber,
+                            title = "No ${couponStatusTitle(couponsViewModel.selectedStatus).lowercase()} coupons",
+                            subtitle = "Coupons from stores and rewards will appear here.",
+                        )
+                    }
+                } else {
+                    items(couponsViewModel.coupons, key = { it.id }) { item ->
                     val status = item.status.lowercase()
                     val isAvailable = status == "available"
                     val useInteraction = remember(item.id) { MutableInteractionSource() }
@@ -1015,6 +1052,7 @@ fun CouponsScreen(
                             }
                         }
                     }
+                    }
                 }
             }
         }
@@ -1046,6 +1084,7 @@ private fun couponGradientColors(category: String?): List<Color> {
 @Composable
 fun GiftCardsScreen(
     sessionViewModel: AppSessionViewModel,
+    onBack: () -> Unit = {},
     giftCardsViewModel: GiftCardsViewModel = viewModel(),
 ) {
     val token = sessionViewModel.accessTokenOrNull()
@@ -1330,23 +1369,19 @@ fun GiftCardsScreen(
             .fillMaxSize()
             .background(RewardsPageBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = RewardsPagePadding,
-                end = RewardsPagePadding,
-                top = 8.dp,
-                bottom = 24.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item {
-                Text(
-                    text = "My Gift Cards",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = RewardsPrimaryText,
-                )
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
+            RewardsTopBar(title = "My Gift Cards", onBack = onBack)
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = RewardsPagePadding,
+                    end = RewardsPagePadding,
+                    top = 8.dp,
+                    bottom = 24.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
 
             item {
                 Row(
@@ -1622,6 +1657,7 @@ fun GiftCardsScreen(
             )
         }
     }
+}
 }
 
 @Composable
@@ -1927,6 +1963,7 @@ private fun giftStatusToneColor(status: String): Color {
 @Composable
 fun OrderHistoryScreen(
     sessionViewModel: AppSessionViewModel,
+    onBack: () -> Unit = {},
     orderHistoryViewModel: OrderHistoryViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -2233,23 +2270,19 @@ fun OrderHistoryScreen(
             .fillMaxSize()
             .background(RewardsPageBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = RewardsPagePadding,
-                end = RewardsPagePadding,
-                top = 8.dp,
-                bottom = 24.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item {
-                Text(
-                    text = "Transaction History",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = RewardsPrimaryText,
-                )
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
+            RewardsTopBar(title = "Transaction History", onBack = onBack)
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = RewardsPagePadding,
+                    end = RewardsPagePadding,
+                    top = 8.dp,
+                    bottom = 24.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
 
             item {
                 Row(
@@ -2331,6 +2364,7 @@ fun OrderHistoryScreen(
             )
         }
     }
+}
 }
 
 @Composable
@@ -2678,6 +2712,7 @@ private fun formatAppointmentTime(raw: String): String {
 @Composable
 fun ReviewsScreen(
     sessionViewModel: AppSessionViewModel,
+    onBack: () -> Unit = {},
     myReviewsViewModel: MyReviewsViewModel = viewModel(),
 ) {
     val token = sessionViewModel.accessTokenOrNull()
@@ -2831,23 +2866,19 @@ fun ReviewsScreen(
             .fillMaxSize()
             .background(RewardsPageBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = RewardsPagePadding,
-                end = RewardsPagePadding,
-                top = 8.dp,
-                bottom = 24.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            item {
-                Text(
-                    text = "My Reviews",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = RewardsPrimaryText,
-                )
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
+            RewardsTopBar(title = "My Reviews", onBack = onBack)
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = RewardsPagePadding,
+                    end = RewardsPagePadding,
+                    top = 8.dp,
+                    bottom = 24.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
 
             if (!myReviewsViewModel.isLoading && myReviewsViewModel.items.isEmpty()) {
                 item {
@@ -3024,6 +3055,7 @@ fun ReviewsScreen(
         }
     }
 }
+}
 
 @Composable
 private fun ReviewStars(rating: Double) {
@@ -3043,6 +3075,7 @@ private fun ReviewStars(rating: Double) {
 @Composable
 fun FavoritesScreen(
     sessionViewModel: AppSessionViewModel,
+    onBack: () -> Unit = {},
     onBrowseSalons: () -> Unit = {},
     onOpenPin: (Int) -> Unit = {},
     onOpenStore: (Int) -> Unit = {},
@@ -3067,23 +3100,19 @@ fun FavoritesScreen(
             .fillMaxSize()
             .background(RewardsPageBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = RewardsPagePadding,
-                end = RewardsPagePadding,
-                top = 8.dp,
-                bottom = 26.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            item {
-                Text(
-                    text = "My Favorites",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = RewardsPrimaryText,
-                )
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
+            RewardsTopBar(title = "My Favorites", onBack = onBack)
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = RewardsPagePadding,
+                    end = RewardsPagePadding,
+                    top = 8.dp,
+                    bottom = 26.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
 
             item {
                 Text(
@@ -3180,6 +3209,7 @@ fun FavoritesScreen(
             )
         }
     }
+}
 }
 
 @Composable
@@ -3410,6 +3440,7 @@ private fun FavoriteStoreCard(
 @Composable
 fun VipScreen(
     sessionViewModel: AppSessionViewModel,
+    onBack: () -> Unit = {},
 ) {
     if (!sessionViewModel.isLoggedIn) return
 
@@ -3467,23 +3498,19 @@ fun VipScreen(
             .fillMaxSize()
             .background(RewardsPageBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = RewardsPagePadding,
-                end = RewardsPagePadding,
-                top = 8.dp,
-                bottom = 28.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            item {
-                Text(
-                    text = "VIP Membership",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = RewardsPrimaryText,
-                )
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
+            RewardsTopBar(title = "VIP Membership", onBack = onBack)
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = RewardsPagePadding,
+                    end = RewardsPagePadding,
+                    top = 8.dp,
+                    bottom = 28.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
 
             item {
                 VipHeroSection()
@@ -3511,6 +3538,7 @@ fun VipScreen(
             }
         }
     }
+}
 }
 
 private data class VipTierVisual(
@@ -3736,6 +3764,7 @@ private fun VipRedemptionCard() {
 @Composable
 fun ReferralScreen(
     sessionViewModel: AppSessionViewModel,
+    onBack: () -> Unit = {},
     referralViewModel: ReferralViewModel = viewModel(),
 ) {
     val token = sessionViewModel.accessTokenOrNull()
@@ -3781,23 +3810,19 @@ fun ReferralScreen(
             .fillMaxSize()
             .background(RewardsPageBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = RewardsPagePadding,
-                end = RewardsPagePadding,
-                top = 8.dp,
-                bottom = 24.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            item {
-                Text(
-                    text = "Refer a Friend",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = RewardsPrimaryText,
-                )
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
+            RewardsTopBar(title = "Refer a Friend", onBack = onBack)
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = RewardsPagePadding,
+                    end = RewardsPagePadding,
+                    top = 8.dp,
+                    bottom = 24.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
 
             item {
                 Column(
@@ -4122,6 +4147,7 @@ fun ReferralScreen(
             )
         }
     }
+}
 }
 
 @Composable
