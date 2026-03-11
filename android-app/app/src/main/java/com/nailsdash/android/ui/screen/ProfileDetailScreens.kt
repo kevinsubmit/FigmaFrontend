@@ -397,7 +397,7 @@ fun PointsScreen(
                 }
 
                 item {
-                    RewardsSectionHeader(title = "EXCHANGE COUPONS")
+                    RewardsUnifiedSectionHeader(title = "EXCHANGE COUPONS")
                 }
 
                 if (!pointsViewModel.isLoading && pointsViewModel.exchangeables.isEmpty()) {
@@ -532,7 +532,7 @@ fun PointsScreen(
                 }
 
                 item {
-                    RewardsSectionHeader(title = "HISTORY")
+                    RewardsUnifiedSectionHeader(title = "HISTORY")
                 }
 
                 if (!pointsViewModel.isLoading && pointsViewModel.transactions.isEmpty()) {
@@ -580,18 +580,6 @@ fun PointsScreen(
             )
         }
     }
-}
-
-@Composable
-private fun RewardsSectionHeader(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.labelMedium.copy(
-            fontWeight = FontWeight.Black,
-            letterSpacing = 2.6.sp,
-        ),
-        color = RewardsGold,
-    )
 }
 
 @Composable
@@ -3617,7 +3605,7 @@ fun FavoritesScreen(
                 if (myFavoritesViewModel.favoritePins.isNotEmpty()) {
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            RewardsSectionHeader(title = "FAVORITE DESIGNS")
+                            RewardsUnifiedSectionHeader(title = "FAVORITE DESIGNS")
                             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                 myFavoritesViewModel.favoritePins.chunked(2).forEach { pinRow ->
                                     Row(
@@ -3650,7 +3638,7 @@ fun FavoritesScreen(
                 if (myFavoritesViewModel.favoriteStores.isNotEmpty()) {
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            RewardsSectionHeader(title = "FAVORITE SALONS")
+                            RewardsUnifiedSectionHeader(title = "FAVORITE SALONS")
                             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 myFavoritesViewModel.favoriteStores.forEach { store ->
                                     FavoriteStoreCard(
