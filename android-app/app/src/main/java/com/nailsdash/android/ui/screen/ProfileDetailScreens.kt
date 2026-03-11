@@ -129,9 +129,12 @@ import com.nailsdash.android.ui.state.PointsViewModel
 import com.nailsdash.android.ui.state.ReferralViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
 import java.io.ByteArrayOutputStream
+import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
@@ -147,6 +150,17 @@ private val RewardsPrimaryText = Color.White
 private val RewardsSecondaryText = Color.White.copy(alpha = 0.72f)
 private val RewardsMutedText = Color.White.copy(alpha = 0.52f)
 private val RewardsPagePadding = 12.dp
+private val RewardsShortDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M/d/yy", Locale.US)
+private val RewardsNaiveDateTimeParsers: List<DateTimeFormatter> = listOf(
+    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS"),
+    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS"),
+    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"),
+    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"),
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS"),
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"),
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),
+)
 
 @Composable
 private fun rememberPressScale(
@@ -678,7 +692,27 @@ private fun formattedPointsReason(raw: String): String {
 
 private fun displayDateOnly(raw: String): String {
     val value = raw.trim()
-    return if (value.length >= 10) value.substring(0, 10) else value
+    if (value.isBlank()) return value
+    val localDate = parseRewardsLocalDate(value) ?: return value
+    return runCatching { localDate.format(RewardsShortDateFormatter) }.getOrElse { value }
+}
+
+private fun parseRewardsLocalDate(raw: String): LocalDate? {
+    runCatching { OffsetDateTime.parse(raw).toLocalDate() }.getOrNull()?.let { return it }
+    runCatching { Instant.parse(raw).atZone(ZoneId.systemDefault()).toLocalDate() }.getOrNull()?.let { return it }
+    runCatching { LocalDate.parse(raw) }.getOrNull()?.let { return it }
+
+    val candidates = listOf(raw, raw.replace(' ', 'T'))
+    candidates.forEach { candidate ->
+        RewardsNaiveDateTimeParsers.forEach { formatter ->
+            runCatching { LocalDateTime.parse(candidate, formatter).toLocalDate() }.getOrNull()?.let { return it }
+        }
+    }
+
+    if (raw.length >= 10) {
+        runCatching { LocalDate.parse(raw.substring(0, 10)) }.getOrNull()?.let { return it }
+    }
+    return null
 }
 
 private fun couponStatusTitle(value: String): String {
