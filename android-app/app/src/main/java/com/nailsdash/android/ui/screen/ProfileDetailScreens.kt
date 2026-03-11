@@ -337,7 +337,8 @@ fun PointsScreen(
             } else {
                 items(pointsViewModel.exchangeables, key = { it.id }) { coupon ->
                     val required = coupon.points_required ?: 0
-                    val canRedeem = (pointsViewModel.balance?.available_points ?: 0) >= required
+                    val canRedeem = coupon.points_required != null &&
+                        (pointsViewModel.balance?.available_points ?: 0) >= required
                     val redeeming = pointsViewModel.isRedeemingCouponId == coupon.id
                     val exchangeInteraction = remember(coupon.id) { MutableInteractionSource() }
                     val exchangeScale = rememberPressScale(
@@ -3582,7 +3583,7 @@ private fun VipHeroSection() {
         }
 
         Text(
-            text = "Elite Rewards Program",
+            text = "ELITE REWARDS PROGRAM",
             style = MaterialTheme.typography.headlineSmall.copy(
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 1.8.sp,
