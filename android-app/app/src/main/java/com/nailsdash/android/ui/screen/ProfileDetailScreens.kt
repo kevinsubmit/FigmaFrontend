@@ -50,6 +50,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -121,6 +122,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -873,6 +875,53 @@ private fun maskPhone(raw: String): String {
 }
 
 @Composable
+private fun GiftSheetLabel(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+        color = RewardsSecondaryText,
+    )
+}
+
+@Composable
+private fun GiftSheetInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    singleLine: Boolean = true,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+) {
+    BasicTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = singleLine,
+        keyboardOptions = keyboardOptions,
+        textStyle = MaterialTheme.typography.bodyMedium.copy(color = RewardsPrimaryText),
+        cursorBrush = SolidColor(RewardsGold),
+        modifier = modifier.fillMaxWidth(),
+        decorationBox = { innerTextField ->
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.42f), RoundedCornerShape(12.dp))
+                    .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+            ) {
+                if (value.isBlank()) {
+                    Text(
+                        text = placeholder,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = RewardsSecondaryText.copy(alpha = 0.82f),
+                    )
+                }
+                innerTextField()
+            }
+        },
+    )
+}
+
+@Composable
 fun CouponsScreen(
     sessionViewModel: AppSessionViewModel,
     onBack: () -> Unit = {},
@@ -1230,7 +1279,7 @@ fun GiftCardsScreen(
     if (showClaimDialog) {
         ModalBottomSheet(
             onDismissRequest = { showClaimDialog = false },
-            containerColor = RewardsCardBackground,
+            containerColor = Color.Black,
             contentColor = RewardsPrimaryText,
         ) {
             Column(
@@ -1246,67 +1295,70 @@ fun GiftCardsScreen(
                 ) {
                     Text(
                         text = "Claim a Gift",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = RewardsPrimaryText,
                     )
-                    IconButton(
+                    TextButton(
                         onClick = { showClaimDialog = false },
-                        modifier = Modifier.background(Color.White.copy(alpha = 0.08f), CircleShape),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = RewardsGold,
+                        ),
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Close",
-                            tint = RewardsGold,
+                        Text(
+                            text = "Close",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                         )
                     }
                 }
 
-                Text(
-                    text = "Enter claim code",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.6.sp,
-                    ),
-                    color = RewardsSecondaryText,
-                )
+                GiftSheetLabel(text = "Enter claim code")
 
-                OutlinedTextField(
+                GiftSheetInputField(
                     value = claimCode,
                     onValueChange = { claimCode = it.uppercase() },
-                    label = { Text("Claim code") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = RewardsPrimaryText,
-                        unfocusedTextColor = RewardsPrimaryText,
-                        focusedBorderColor = RewardsGold.copy(alpha = 0.45f),
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.08f),
-                        cursorColor = RewardsGold,
-                        focusedLabelColor = RewardsGold,
-                        unfocusedLabelColor = RewardsSecondaryText,
-                    ),
+                    placeholder = "Claim code",
                 )
 
                 Button(
                     onClick = {
                         if (token != null) {
                             giftCardsViewModel.claim(token, claimCode)
-                            if (!giftCardsViewModel.isClaiming) {
-                                claimCode = ""
-                                showClaimDialog = false
-                            }
                         }
                     },
                     enabled = !giftCardsViewModel.isClaiming,
                     interactionSource = claimSheetActionInteraction,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .scale(claimSheetActionScale),
+                        .scale(claimSheetActionScale)
+                        .heightIn(min = 44.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = RewardsGold,
                         contentColor = Color.Black,
                     ),
+                    shape = RoundedCornerShape(14.dp),
                 ) {
-                    Text(if (giftCardsViewModel.isClaiming) "Claiming..." else "Claim Gift Card")
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (giftCardsViewModel.isClaiming) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                color = Color.Black,
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Filled.CheckCircle,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
+                        Text(
+                            text = if (giftCardsViewModel.isClaiming) "Claiming..." else "Claim Gift Card",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        )
+                    }
                 }
 
                 Text(
@@ -1324,7 +1376,7 @@ fun GiftCardsScreen(
     if (sendCardId != null && sendCard != null) {
         ModalBottomSheet(
             onDismissRequest = { sendCardId = null },
-            containerColor = RewardsCardBackground,
+            containerColor = Color.Black,
             contentColor = RewardsPrimaryText,
         ) {
             Column(
@@ -1340,24 +1392,24 @@ fun GiftCardsScreen(
                 ) {
                     Text(
                         text = "Send Gift Card",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = RewardsPrimaryText,
                     )
-                    IconButton(
+                    TextButton(
                         onClick = { sendCardId = null },
-                        modifier = Modifier.background(Color.White.copy(alpha = 0.08f), CircleShape),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = RewardsGold,
+                        ),
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Close",
-                            tint = RewardsGold,
+                        Text(
+                            text = "Close",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                         )
                     }
                 }
 
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.36f)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                    colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
                     shape = RoundedCornerShape(12.dp),
                 ) {
                     Row(
@@ -1380,35 +1432,19 @@ fun GiftCardsScreen(
                     }
                 }
 
-                OutlinedTextField(
+                GiftSheetLabel(text = "Recipient Phone")
+                GiftSheetInputField(
                     value = transferPhone,
                     onValueChange = { transferPhone = it },
-                    label = { Text("Recipient US phone") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = RewardsPrimaryText,
-                        unfocusedTextColor = RewardsPrimaryText,
-                        focusedBorderColor = RewardsGold.copy(alpha = 0.45f),
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.08f),
-                        cursorColor = RewardsGold,
-                        focusedLabelColor = RewardsGold,
-                        unfocusedLabelColor = RewardsSecondaryText,
-                    ),
+                    placeholder = "Enter US phone",
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 )
-                OutlinedTextField(
+
+                GiftSheetLabel(text = "Message (Optional)")
+                GiftSheetInputField(
                     value = transferMessage,
                     onValueChange = { transferMessage = it },
-                    label = { Text("Message (Optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = RewardsPrimaryText,
-                        unfocusedTextColor = RewardsPrimaryText,
-                        focusedBorderColor = RewardsGold.copy(alpha = 0.45f),
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.08f),
-                        cursorColor = RewardsGold,
-                        focusedLabelColor = RewardsGold,
-                        unfocusedLabelColor = RewardsSecondaryText,
-                    ),
+                    placeholder = "Write a message",
                 )
 
                 Button(
@@ -1420,30 +1456,46 @@ fun GiftCardsScreen(
                                 recipientPhone = transferPhone,
                                 message = transferMessage.takeIf { it.isNotBlank() },
                             )
-                            if (giftCardsViewModel.sendingCardId == null) {
-                                sendCardId = null
-                                transferPhone = ""
-                                transferMessage = ""
-                            }
                         }
                     },
                     enabled = giftCardsViewModel.sendingCardId != sendCard.id,
                     interactionSource = sendSheetActionInteraction,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .scale(sendSheetActionScale),
+                        .scale(sendSheetActionScale)
+                        .heightIn(min = 44.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = RewardsGold,
                         contentColor = Color.Black,
                     ),
+                    shape = RoundedCornerShape(14.dp),
                 ) {
-                    Text(
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         if (giftCardsViewModel.sendingCardId == sendCard.id) {
-                            "Sending..."
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                color = Color.Black,
+                                strokeWidth = 2.dp,
+                            )
                         } else {
-                            "Send Digital Gift Card"
-                        },
-                    )
+                            Icon(
+                                imageVector = Icons.Filled.Share,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                            )
+                        }
+                        Text(
+                            text = if (giftCardsViewModel.sendingCardId == sendCard.id) {
+                                "Sending..."
+                            } else {
+                                "Send Digital Gift Card"
+                            },
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -1656,11 +1708,15 @@ fun GiftCardsScreen(
 
             if (!giftCardsViewModel.isLoading && sortedCards.isEmpty()) {
                 item {
-                    RewardsEmptyStateCard(
-                        icon = Icons.Filled.CardGiftcard,
-                        title = "No gift cards found",
-                        subtitle = "Claim or receive gift cards to see them here.",
-                    )
+                    Box(
+                        modifier = Modifier.padding(top = 16.dp, bottom = 8.dp),
+                    ) {
+                        RewardsEmptyStateCard(
+                            icon = Icons.Filled.CardGiftcard,
+                            title = "No gift cards found",
+                            subtitle = "Claim or receive gift cards to see them here.",
+                        )
+                    }
                 }
             } else {
                 items(sortedCards, key = { it.id }) { card ->
