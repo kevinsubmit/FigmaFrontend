@@ -1326,7 +1326,6 @@ fun GiftCardsScreen(
         .filter { it.status.lowercase() == "active" }
         .sumOf { it.balance }
     val activeCount = sortedCards.count { it.status.lowercase() == "active" }
-    val firstCardId = sortedCards.firstOrNull()?.id
     val claimSheetActionInteraction = remember { MutableInteractionSource() }
     val claimSheetActionScale = rememberPressScale(
         interactionSource = claimSheetActionInteraction,
@@ -1832,31 +1831,35 @@ fun GiftCardsScreen(
                     }
                 }
             } else {
-                items(sortedCards, key = { it.id }) { card ->
-                    GiftCardCollectionCard(
-                        modifier = Modifier.padding(
-                            start = 1.dp,
-                            end = 1.dp,
-                            top = if (card.id == firstCardId) 3.dp else 0.dp,
-                        ),
-                        card = card,
-                        sendingCardId = giftCardsViewModel.sendingCardId,
-                        revokingCardId = giftCardsViewModel.revokingCardId,
-                        onCopyCode = { code ->
-                            clipboardManager.setText(AnnotatedString(code))
-                            noticeMessage = "Card code copied."
-                        },
-                        onSend = {
-                            sendCardId = card.id
-                            transferPhone = ""
-                            transferMessage = ""
-                        },
-                        onRevoke = {
-                            if (token != null) {
-                                giftCardsViewModel.revoke(token, card.id)
-                            }
-                        },
-                    )
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 1.dp, end = 1.dp, top = 3.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        sortedCards.forEach { card ->
+                            GiftCardCollectionCard(
+                                card = card,
+                                sendingCardId = giftCardsViewModel.sendingCardId,
+                                revokingCardId = giftCardsViewModel.revokingCardId,
+                                onCopyCode = { code ->
+                                    clipboardManager.setText(AnnotatedString(code))
+                                    noticeMessage = "Card code copied."
+                                },
+                                onSend = {
+                                    sendCardId = card.id
+                                    transferPhone = ""
+                                    transferMessage = ""
+                                },
+                                onRevoke = {
+                                    if (token != null) {
+                                        giftCardsViewModel.revoke(token, card.id)
+                                    }
+                                },
+                            )
+                        }
+                    }
                 }
             }
 
@@ -2067,7 +2070,7 @@ private fun GiftCardCollectionCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color.Black.copy(alpha = 0.44f), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
