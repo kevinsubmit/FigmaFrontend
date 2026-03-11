@@ -1333,7 +1333,7 @@ fun GiftCardsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -3160,14 +3160,24 @@ fun ReviewsScreen(
                     }
                 }
 
-                Text("Rating", color = RewardsPrimaryText.copy(alpha = 0.62f))
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "Rating",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = RewardsPrimaryText.copy(alpha = 0.62f),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     (1..5).forEach { star ->
-                        IconButton(onClick = { editRating = star }) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clickable { editRating = star },
+                            contentAlignment = Alignment.Center,
+                        ) {
                             Icon(
                                 imageVector = if (star <= editRating) Icons.Filled.Star else Icons.Filled.StarBorder,
                                 contentDescription = null,
                                 tint = if (star <= editRating) RewardsGold else Color.White.copy(alpha = 0.34f),
+                                modifier = Modifier.size(20.dp),
                             )
                         }
                     }
@@ -3205,18 +3215,25 @@ fun ReviewsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    val isUpdating = current != null && myReviewsViewModel.updatingReviewId == current.id
                     Button(
                         onClick = {
                             showEditDialog = false
                             editingReview = null
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 46.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.White.copy(alpha = 0.08f),
-                            contentColor = RewardsPrimaryText.copy(alpha = 0.86f),
+                            contentColor = RewardsPrimaryText.copy(alpha = 0.80f),
                         ),
+                        shape = RoundedCornerShape(12.dp),
                     ) {
-                        Text("Cancel")
+                        Text(
+                            text = "Cancel",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        )
                     }
                     Button(
                         onClick = {
@@ -3237,19 +3254,30 @@ fun ReviewsScreen(
                                 )
                             }
                         },
-                        enabled = current != null && myReviewsViewModel.updatingReviewId != current.id,
-                        modifier = Modifier.weight(1f),
+                        enabled = current != null && !isUpdating,
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 46.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = RewardsGold,
                             contentColor = Color.Black,
+                            disabledContainerColor = RewardsGold.copy(alpha = 0.42f),
+                            disabledContentColor = Color.Black.copy(alpha = 0.72f),
                         ),
+                        shape = RoundedCornerShape(12.dp),
                     ) {
-                        val label = if (current != null && myReviewsViewModel.updatingReviewId == current.id) {
-                            "Updating..."
+                        if (isUpdating) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = Color.Black.copy(alpha = 0.82f),
+                                strokeWidth = 2.dp,
+                            )
                         } else {
-                            "Update"
+                            Text(
+                                text = "Update",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            )
                         }
-                        Text(label)
                     }
                 }
 
