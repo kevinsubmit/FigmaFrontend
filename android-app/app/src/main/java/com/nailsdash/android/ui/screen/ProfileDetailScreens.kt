@@ -595,6 +595,63 @@ private fun RewardsSectionHeader(title: String) {
 }
 
 @Composable
+private fun RewardsUnifiedSectionHeader(
+    title: String,
+    trailing: String? = null,
+    showsDivider: Boolean = false,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(if (showsDivider) 7.dp else 0.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(5.dp)
+                    .background(RewardsGold, CircleShape),
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                ),
+                color = RewardsSecondaryText,
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            trailing?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = RewardsSecondaryText,
+                )
+            }
+        }
+
+        if (showsDivider) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                RewardsGold.copy(alpha = 0.22f),
+                                Color.White.copy(alpha = 0.04f),
+                            ),
+                        ),
+                    ),
+            )
+        }
+    }
+}
+
+@Composable
 private fun RewardsEmptyStateCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
@@ -1549,12 +1606,14 @@ fun GiftCardsScreen(
 
             item {
                 Card(
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.40f)),
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(12.dp, RoundedCornerShape(18.dp)),
+                    colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.20f)),
                 ) {
-                    Column(
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
@@ -1565,94 +1624,136 @@ fun GiftCardsScreen(
                                     ),
                                 ),
                             )
-                            .padding(vertical = 28.dp, horizontal = 16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.CardGiftcard,
-                                contentDescription = null,
-                                tint = RewardsGold,
-                                modifier = Modifier.size(14.dp),
-                            )
-                            Text(
-                                text = "GIFT CARD WALLET",
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 2.2.sp,
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .drawBehind {
+                                    drawRect(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                RewardsGold.copy(alpha = 0.22f),
+                                                Color.Transparent,
+                                            ),
+                                            center = Offset(x = size.width / 2f, y = 0f),
+                                            radius = size.maxDimension * 1.05f,
+                                        ),
+                                    )
+                                },
+                        )
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .fillMaxWidth()
+                                .height(32.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.White.copy(alpha = 0.12f),
+                                            Color.Transparent,
+                                        ),
+                                    ),
                                 ),
-                                color = RewardsSecondaryText,
-                            )
-                        }
-
-                        Text(
-                            text = "TOTAL BALANCE",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.4.sp,
-                            ),
-                            color = RewardsGold,
                         )
 
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            verticalAlignment = Alignment.Bottom,
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 28.dp, horizontal = 16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.CardGiftcard,
+                                    contentDescription = null,
+                                    tint = RewardsGold,
+                                    modifier = Modifier.size(14.dp),
+                                )
+                                Text(
+                                    text = "GIFT CARD WALLET",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 2.2.sp,
+                                    ),
+                                    color = RewardsSecondaryText,
+                                )
+                            }
+
                             Text(
-                                text = "$",
-                                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Black),
+                                text = "TOTAL BALANCE",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 2.4.sp,
+                                ),
                                 color = RewardsGold,
                             )
-                            Text(
-                                text = String.format("%.2f", totalBalance),
-                                style = MaterialTheme.typography.displayMedium.copy(
-                                    fontWeight = FontWeight.Black,
-                                    fontSize = 46.sp,
-                                ),
-                                color = RewardsPrimaryText,
-                                maxLines = 1,
-                            )
-                        }
 
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .background(Color.Black.copy(alpha = 0.35f), RoundedCornerShape(999.dp))
-                                .padding(horizontal = 10.dp, vertical = 4.dp),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.CheckCircle,
-                                contentDescription = null,
-                                tint = RewardsGold,
-                                modifier = Modifier.size(12.dp),
-                            )
-                            Text(
-                                text = "$activeCount Active",
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                color = RewardsSecondaryText,
-                            )
-                            Text(
-                                text = "•",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = RewardsMutedText,
-                            )
-                            Text(
-                                text = "${sortedCards.size} Total",
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                color = RewardsSecondaryText,
-                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.Bottom,
+                            ) {
+                                Text(
+                                    text = "$",
+                                    style = MaterialTheme.typography.headlineMedium.copy(
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 30.sp,
+                                    ),
+                                    color = RewardsGold,
+                                    modifier = Modifier.alignByBaseline(),
+                                )
+                                Text(
+                                    text = String.format("%.2f", totalBalance),
+                                    style = MaterialTheme.typography.displayMedium.copy(
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 46.sp,
+                                    ),
+                                    color = RewardsPrimaryText,
+                                    maxLines = 1,
+                                    modifier = Modifier.alignByBaseline(),
+                                )
+                            }
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .background(Color.Black.copy(alpha = 0.35f), RoundedCornerShape(999.dp))
+                                    .padding(horizontal = 12.dp, vertical = 7.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.CheckCircle,
+                                    contentDescription = null,
+                                    tint = RewardsGold,
+                                    modifier = Modifier.size(12.dp),
+                                )
+                                Text(
+                                    text = "$activeCount Active",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = RewardsSecondaryText,
+                                )
+                                Text(
+                                    text = "•",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = RewardsMutedText,
+                                )
+                                Text(
+                                    text = "${sortedCards.size} Total",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    color = RewardsSecondaryText,
+                                )
+                            }
                         }
                     }
                 }
             }
 
             item {
-                RewardsSectionHeader(title = "MY COLLECTION")
+                Box(modifier = Modifier.padding(top = 2.dp)) {
+                    RewardsUnifiedSectionHeader(title = "MY COLLECTION", showsDivider = true)
+                }
             }
 
             item {
@@ -1662,7 +1763,9 @@ fun GiftCardsScreen(
                     pressedScale = 0.94f,
                 )
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 1.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
