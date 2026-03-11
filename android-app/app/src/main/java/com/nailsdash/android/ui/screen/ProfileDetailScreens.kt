@@ -155,7 +155,7 @@ private val RewardsCardBackground = Color(0xFF111111)
 private val RewardsPrimaryText = Color.White
 private val RewardsSecondaryText = Color.White.copy(alpha = 0.72f)
 private val RewardsMutedText = Color.White.copy(alpha = 0.52f)
-private val RewardsPagePadding = 12.dp
+private val RewardsPagePadding = 16.dp
 private val RewardsShortDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M/d/yy", Locale.US)
 private val RewardsJoinedDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
 private val RewardsNaiveDateTimeParsers: List<DateTimeFormatter> = listOf(
@@ -224,9 +224,13 @@ private fun RewardsTopBar(
 
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                ),
                 color = RewardsPrimaryText,
                 textAlign = TextAlign.Center,
+                maxLines = 1,
             )
 
             Spacer(modifier = Modifier.weight(1f))
