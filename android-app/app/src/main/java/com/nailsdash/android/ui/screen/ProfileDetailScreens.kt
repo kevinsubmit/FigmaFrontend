@@ -300,12 +300,19 @@ fun PointsScreen(
             ) {
                 item {
                     Card(
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.40f)),
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(
+                                elevation = 14.dp,
+                                shape = RoundedCornerShape(18.dp),
+                                ambientColor = Color.Black.copy(alpha = 0.35f),
+                                spotColor = Color.Black.copy(alpha = 0.35f),
+                            ),
+                        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.20f)),
                     ) {
-                        Column(
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(
@@ -316,79 +323,121 @@ fun PointsScreen(
                                         ),
                                     ),
                                 )
-                                .padding(horizontal = 16.dp, vertical = 34.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(14.dp),
                         ) {
                             Box(
-                                modifier = Modifier.size(108.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(108.dp)
-                                        .border(
-                                            width = 1.dp,
-                                            color = Color.White.copy(alpha = 0.06f),
-                                            shape = CircleShape,
-                                        ),
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .size(96.dp)
-                                        .border(
-                                            width = 1.dp,
-                                            color = RewardsGold.copy(alpha = 0.45f),
-                                            shape = CircleShape,
-                                        ),
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .size(96.dp)
-                                        .background(RewardsGold.copy(alpha = 0.13f), CircleShape),
-                                )
-                                Icon(
-                                    imageVector = Icons.Filled.AttachMoney,
-                                    contentDescription = null,
-                                    tint = RewardsGold,
-                                    modifier = Modifier.size(42.dp),
-                                )
-                            }
-
-                            Text(
-                                text = available.toString(),
-                                style = MaterialTheme.typography.displayLarge.copy(
-                                    fontWeight = FontWeight.Black,
-                                    fontSize = 64.sp,
-                                ),
-                                color = RewardsGold,
-                                maxLines = 1,
-                            )
-
-                            Text(
-                                text = "Available Points",
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                                color = RewardsPrimaryText.copy(alpha = 0.92f),
-                            )
-
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
-                                    .background(Color.Black.copy(alpha = 0.34f), RoundedCornerShape(999.dp))
-                                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                                    .fillMaxSize()
+                                    .drawBehind {
+                                        drawRect(
+                                            brush = Brush.radialGradient(
+                                                colors = listOf(
+                                                    RewardsGold.copy(alpha = 0.24f),
+                                                    Color.Transparent,
+                                                ),
+                                                center = Offset(x = size.width / 2f, y = 0f),
+                                                radius = size.maxDimension * 1.1f,
+                                            ),
+                                        )
+                                    },
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .fillMaxWidth()
+                                    .height(36.dp)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color.White.copy(alpha = 0.12f),
+                                                Color.Transparent,
+                                            ),
+                                        ),
+                                    ),
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 34.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(14.dp),
                             ) {
-                                Icon(
-                                    imageVector = Icons.Filled.AutoAwesome,
-                                    contentDescription = null,
-                                    tint = RewardsGold,
-                                    modifier = Modifier.size(14.dp),
-                                )
+                                Box(
+                                    modifier = Modifier.size(108.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(108.dp)
+                                            .border(
+                                                width = 1.dp,
+                                                color = Color.White.copy(alpha = 0.06f),
+                                                shape = CircleShape,
+                                            ),
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(96.dp)
+                                            .border(
+                                                width = 1.dp,
+                                                color = RewardsGold.copy(alpha = 0.45f),
+                                                shape = CircleShape,
+                                            ),
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .size(96.dp)
+                                            .background(RewardsGold.copy(alpha = 0.13f), CircleShape),
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Filled.AttachMoney,
+                                        contentDescription = null,
+                                        tint = RewardsGold,
+                                        modifier = Modifier.size(42.dp),
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 10.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = available.toString(),
+                                        style = MaterialTheme.typography.displayLarge.copy(
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 64.sp,
+                                        ),
+                                        color = RewardsGold,
+                                        maxLines = 1,
+                                    )
+                                }
+
                                 Text(
-                                    text = "Total Earned: $total",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                    color = RewardsSecondaryText,
+                                    text = "Available Points",
+                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                                    color = RewardsPrimaryText.copy(alpha = 0.92f),
                                 )
+
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .background(Color.Black.copy(alpha = 0.34f), RoundedCornerShape(999.dp))
+                                        .padding(horizontal = 12.dp, vertical = 7.dp),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.AutoAwesome,
+                                        contentDescription = null,
+                                        tint = RewardsGold,
+                                        modifier = Modifier.size(12.dp),
+                                    )
+                                    Text(
+                                        text = "Total Earned: $total",
+                                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                        color = RewardsSecondaryText,
+                                    )
+                                }
                             }
                         }
                     }
@@ -404,6 +453,7 @@ fun PointsScreen(
                             icon = Icons.Filled.ConfirmationNumber,
                             title = "No exchangeable coupons right now",
                             subtitle = "More rewards will appear here.",
+                            compact = true,
                         )
                     }
                 } else {
@@ -424,141 +474,202 @@ fun PointsScreen(
                         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 168.dp)
-                                .background(
-                                    Brush.horizontalGradient(
-                                        colors = listOf(
-                                            RewardsGold.copy(alpha = 0.46f),
-                                            Color(0xFFAE8D2A).copy(alpha = 0.28f),
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 168.dp)
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            colors = listOf(
+                                                RewardsGold.copy(alpha = 0.46f),
+                                                Color(0xFFAE8D2A).copy(alpha = 0.28f),
+                                            ),
                                         ),
-                                    ),
-                                )
-                                .padding(horizontal = RewardsPagePadding, vertical = 14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .padding(end = 10.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                Text(
-                                    text = pointsCouponDiscount(coupon),
-                                    style = MaterialTheme.typography.displayMedium.copy(
-                                        fontWeight = FontWeight.Black,
-                                        fontSize = 36.sp,
-                                    ),
-                                    color = RewardsPrimaryText,
-                                    maxLines = 1,
-                                )
-                                Text(
-                                    text = coupon.name,
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = RewardsPrimaryText.copy(alpha = 0.94f),
-                                    maxLines = 1,
-                                )
-                                Text(
-                                    text = "Min. spend $${String.format("%.0f", coupon.min_amount)}",
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                                    color = RewardsPrimaryText.copy(alpha = 0.82f),
-                                )
-                                Text(
-                                    text = "Need $required pts",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                    color = RewardsPrimaryText.copy(alpha = 0.9f),
-                                    modifier = Modifier
-                                        .background(Color.Black.copy(alpha = 0.26f), RoundedCornerShape(999.dp))
-                                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                                )
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .width(1.dp)
-                                    .height(112.dp)
-                                    .background(Color.White.copy(alpha = 0.35f)),
-                            )
-
-                            Column(
-                                modifier = Modifier
-                                    .width(112.dp)
-                                    .padding(start = 10.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                Text(
-                                    text = "Exchange",
-                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                                    color = RewardsPrimaryText.copy(alpha = 0.9f),
-                                )
-                                Text(
-                                    text = "$required pts",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                    color = RewardsPrimaryText,
-                                    modifier = Modifier
-                                        .background(Color.Black.copy(alpha = 0.28f), RoundedCornerShape(10.dp))
-                                        .padding(horizontal = 10.dp, vertical = 5.dp),
-                                )
-
-                                if (redeeming) {
-                                    CircularProgressIndicator(
-                                        color = RewardsPrimaryText,
-                                        modifier = Modifier.size(22.dp),
-                                        strokeWidth = 2.dp,
                                     )
-                                } else {
-                                    Button(
-                                        onClick = { if (token != null) pointsViewModel.exchange(token, coupon.id) },
-                                        enabled = canRedeem,
-                                        interactionSource = exchangeInteraction,
-                                        modifier = Modifier.scale(exchangeScale),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = if (canRedeem) Color.White else Color.White.copy(alpha = 0.12f),
-                                            contentColor = if (canRedeem) Color.Black else RewardsPrimaryText.copy(alpha = 0.45f),
+                                    .padding(horizontal = RewardsPagePadding, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .padding(start = 2.dp, end = 10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Text(
+                                        text = pointsCouponDiscount(coupon),
+                                        style = MaterialTheme.typography.displayMedium.copy(
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 36.sp,
                                         ),
-                                    ) {
-                                        Text(if (canRedeem) "Exchange" else "Locked")
+                                        color = RewardsPrimaryText,
+                                        maxLines = 1,
+                                    )
+                                    Text(
+                                        text = coupon.name,
+                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = RewardsPrimaryText.copy(alpha = 0.94f),
+                                        maxLines = 1,
+                                    )
+                                    Text(
+                                        text = "Min. spend $${String.format("%.0f", coupon.min_amount)}",
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                        color = RewardsPrimaryText.copy(alpha = 0.82f),
+                                    )
+                                    Text(
+                                        text = "Need $required pts",
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        color = RewardsPrimaryText.copy(alpha = 0.9f),
+                                        modifier = Modifier
+                                            .background(Color.Black.copy(alpha = 0.26f), RoundedCornerShape(999.dp))
+                                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .width(1.dp)
+                                        .height(112.dp)
+                                        .drawBehind {
+                                            drawLine(
+                                                color = Color.White.copy(alpha = 0.35f),
+                                                start = Offset(0f, 0f),
+                                                end = Offset(0f, size.height),
+                                                strokeWidth = 1.dp.toPx(),
+                                                pathEffect = PathEffect.dashPathEffect(
+                                                    floatArrayOf(4.dp.toPx(), 4.dp.toPx()),
+                                                ),
+                                            )
+                                        }
+                                        .padding(vertical = 8.dp),
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopCenter)
+                                            .size(11.dp)
+                                            .offset(y = (-7).dp)
+                                            .background(RewardsPageBackground.copy(alpha = 0.96f), CircleShape),
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.BottomCenter)
+                                            .size(11.dp)
+                                            .offset(y = 7.dp)
+                                            .background(RewardsPageBackground.copy(alpha = 0.96f), CircleShape),
+                                    )
+                                }
+
+                                Column(
+                                    modifier = Modifier
+                                        .width(112.dp)
+                                        .padding(start = 10.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    Text(
+                                        text = "Exchange",
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                        color = RewardsPrimaryText.copy(alpha = 0.9f),
+                                    )
+                                    Text(
+                                        text = "$required pts",
+                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        color = RewardsPrimaryText,
+                                        modifier = Modifier
+                                            .background(Color.Black.copy(alpha = 0.28f), RoundedCornerShape(10.dp))
+                                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                                    )
+
+                                    if (redeeming) {
+                                        Box(
+                                            modifier = Modifier
+                                                .widthIn(min = 90.dp)
+                                                .heightIn(min = 36.dp),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            CircularProgressIndicator(
+                                                color = RewardsPrimaryText,
+                                                modifier = Modifier.size(18.dp),
+                                                strokeWidth = 2.dp,
+                                            )
+                                        }
+                                    } else {
+                                        Button(
+                                            onClick = { if (token != null) pointsViewModel.exchange(token, coupon.id) },
+                                            enabled = canRedeem,
+                                            interactionSource = exchangeInteraction,
+                                            modifier = Modifier
+                                                .scale(exchangeScale)
+                                                .widthIn(min = 90.dp)
+                                                .heightIn(min = 36.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = if (canRedeem) Color.White else Color.White.copy(alpha = 0.12f),
+                                                contentColor = if (canRedeem) Color.Black else RewardsPrimaryText.copy(alpha = 0.45f),
+                                            ),
+                                            shape = RoundedCornerShape(999.dp),
+                                        ) {
+                                            Text(
+                                                text = if (canRedeem) "Exchange" else "Locked",
+                                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                            )
+                                        }
                                     }
                                 }
                             }
+
+                            Icon(
+                                imageVector = Icons.Filled.ConfirmationNumber,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.11f),
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(8.dp)
+                                    .rotate(12f)
+                                    .size(32.dp),
+                            )
                         }
                     }
                     }
                 }
 
                 item {
-                    RewardsUnifiedSectionHeader(title = "HISTORY")
-                }
-
-                if (!pointsViewModel.isLoading && pointsViewModel.transactions.isEmpty()) {
-                    item {
-                        RewardsEmptyStateCard(
-                            icon = Icons.Filled.History,
-                            title = "No transactions yet",
-                            subtitle = "Your points activity will appear here.",
-                        )
-                    }
-                } else {
-                    item {
-                        Card(
-                            shape = RoundedCornerShape(20.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.24f)),
-                        ) {
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.18f)),
+                    ) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(RewardsGold.copy(alpha = 0.32f)),
+                            )
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
-                                pointsViewModel.transactions.forEachIndexed { index, item ->
-                                    PointsHistoryRow(
-                                        item = item,
-                                        isLast = index == pointsViewModel.transactions.lastIndex,
+                                RewardsUnifiedSectionHeader(title = "HISTORY")
+                                if (!pointsViewModel.isLoading && pointsViewModel.transactions.isEmpty()) {
+                                    RewardsEmptyStateCard(
+                                        icon = Icons.Filled.History,
+                                        title = "No transactions yet",
+                                        subtitle = "Your points activity will appear here.",
+                                        compact = true,
                                     )
+                                } else {
+                                    Column {
+                                        pointsViewModel.transactions.forEachIndexed { index, item ->
+                                            PointsHistoryRow(
+                                                item = item,
+                                                isLast = index == pointsViewModel.transactions.lastIndex,
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -642,38 +753,45 @@ private fun RewardsEmptyStateCard(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     subtitle: String,
+    compact: Boolean = false,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
         border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.18f)),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 16.dp),
+                .padding(horizontal = RewardsPagePadding, vertical = if (compact) 20.dp else 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 12.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .background(Color.White.copy(alpha = 0.06f), CircleShape),
+                    .size(if (compact) 64.dp else 72.dp)
+                    .background(RewardsGold.copy(alpha = 0.12f), CircleShape)
+                    .border(1.dp, RewardsGold.copy(alpha = 0.32f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(icon, contentDescription = null, tint = RewardsGold)
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = RewardsGold,
+                    modifier = Modifier.size(if (compact) 26.dp else 30.dp),
+                )
             }
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = RewardsPrimaryText,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = RewardsPrimaryText.copy(alpha = 0.9f),
                 textAlign = TextAlign.Center,
             )
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.bodyMedium,
-                color = RewardsMutedText,
+                style = MaterialTheme.typography.bodySmall,
+                color = RewardsSecondaryText,
                 textAlign = TextAlign.Center,
             )
         }
