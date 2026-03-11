@@ -53,10 +53,12 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -70,6 +72,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Security
@@ -107,6 +110,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -1744,7 +1748,7 @@ fun GiftCardsScreen(
 
             item {
                 Card(
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(18.dp),
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = RewardsGold.copy(alpha = 0.08f)),
                     border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.18f)),
@@ -1763,7 +1767,7 @@ fun GiftCardsScreen(
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.CheckCircle,
+                                imageVector = Icons.Filled.Security,
                                 contentDescription = null,
                                 tint = RewardsGold,
                                 modifier = Modifier.size(16.dp),
@@ -1831,18 +1835,54 @@ private fun GiftCardCollectionCard(
     )
 
     Card(
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(8.dp, RoundedCornerShape(18.dp)),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.32f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.20f)),
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Brush.linearGradient(giftCardSurfaceGradient(status)))
-                .padding(horizontal = RewardsPagePadding, vertical = 13.dp),
-            verticalArrangement = Arrangement.spacedBy(11.dp),
+                .background(Brush.linearGradient(giftCardSurfaceGradient())),
         ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                RewardsGold.copy(alpha = 0.16f),
+                                Color.Transparent,
+                            ),
+                            center = Offset.Zero,
+                            radius = 420f,
+                        ),
+                    ),
+            )
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .height(24.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.10f),
+                                Color.Transparent,
+                            ),
+                        ),
+                    ),
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = RewardsPagePadding, vertical = 13.dp),
+                verticalArrangement = Arrangement.spacedBy(11.dp),
+            ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1982,7 +2022,7 @@ private fun GiftCardCollectionCard(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.History,
+                            imageVector = Icons.Filled.AccessTime,
                             contentDescription = null,
                             tint = RewardsSecondaryText,
                             modifier = Modifier.size(12.dp),
@@ -1997,11 +2037,22 @@ private fun GiftCardCollectionCard(
             }
 
             card.recipient_phone?.takeIf { it.isNotBlank() }?.let { recipient ->
-                Text(
-                    text = "Recipient ${maskPhone(recipient)}",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = RewardsSecondaryText,
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Person,
+                        contentDescription = null,
+                        tint = RewardsSecondaryText,
+                        modifier = Modifier.size(11.dp),
+                    )
+                    Text(
+                        text = "Recipient ${maskPhone(recipient)}",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = RewardsSecondaryText,
+                    )
+                }
             }
 
             when (status) {
@@ -2024,13 +2075,23 @@ private fun GiftCardCollectionCard(
                         ),
                         shape = RoundedCornerShape(12.dp),
                     ) {
-                        Text(
-                            text = "Send this card",
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.8.sp,
-                            ),
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                            )
+                            Text(
+                                text = "SEND THIS CARD",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.8.sp,
+                                ),
+                            )
+                        }
                     }
                 }
 
@@ -2054,26 +2115,41 @@ private fun GiftCardCollectionCard(
                         shape = RoundedCornerShape(12.dp),
                     ) {
                         if (revokingCardId == card.id) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(14.dp),
-                                strokeWidth = 1.8.dp,
-                                color = Color(0xFFFF8A8A),
-                            )
-                            Text(
-                                text = "  Canceling...",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.8.sp,
-                                ),
-                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 1.8.dp,
+                                    color = Color(0xFFFF8A8A),
+                                )
+                                Text(
+                                    text = "CANCELING...",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.8.sp,
+                                    ),
+                                )
+                            }
                         } else {
-                            Text(
-                                text = "Cancel transfer",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.8.sp,
-                                ),
-                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Close,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(12.dp),
+                                )
+                                Text(
+                                    text = "CANCEL TRANSFER",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.8.sp,
+                                    ),
+                                )
+                            }
                         }
                     }
                 }
@@ -2082,13 +2158,13 @@ private fun GiftCardCollectionCard(
     }
 }
 
-private fun giftCardSurfaceGradient(status: String): List<Color> {
-    return when (status) {
-        "pending_transfer" -> listOf(RewardsCardBackground, Color(0xFF2F2612))
-        "active" -> listOf(RewardsCardBackground, Color(0xFF1E1B13))
-        "revoked" -> listOf(RewardsCardBackground, Color(0xFF2A1A1A))
-        else -> listOf(RewardsCardBackground, Color(0xFF1B1B1B))
-    }
+}
+
+private fun giftCardSurfaceGradient(): List<Color> {
+    return listOf(
+        RewardsCardBackground,
+        Color(0xFF1E1B13),
+    )
 }
 
 private fun giftStatusToneColor(status: String): Color {
