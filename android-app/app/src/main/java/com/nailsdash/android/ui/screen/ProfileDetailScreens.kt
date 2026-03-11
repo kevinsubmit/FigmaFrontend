@@ -2371,7 +2371,12 @@ fun OrderHistoryScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(reviewSheetScrollState)
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(
+                        start = RewardsPagePadding,
+                        end = RewardsPagePadding,
+                        top = 18.dp,
+                        bottom = 12.dp,
+                    ),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 Row(
@@ -2432,7 +2437,7 @@ fun OrderHistoryScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Rating",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                         color = RewardsPrimaryText.copy(alpha = 0.62f),
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2457,7 +2462,7 @@ fun OrderHistoryScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Comment (Optional)",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                         color = RewardsPrimaryText.copy(alpha = 0.62f),
                     )
                     BasicTextField(
@@ -2655,7 +2660,6 @@ fun OrderHistoryScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
