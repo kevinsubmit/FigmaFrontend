@@ -3125,7 +3125,7 @@ fun FavoritesScreen(
                     start = RewardsPagePadding,
                     end = RewardsPagePadding,
                     top = 8.dp,
-                    bottom = 26.dp,
+                    bottom = 24.dp,
                 ),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
@@ -3133,7 +3133,7 @@ fun FavoritesScreen(
             item {
                 Text(
                     text = "${myFavoritesViewModel.favoriteStores.size} salons · ${myFavoritesViewModel.favoritePins.size} designs",
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                     color = RewardsSecondaryText,
                 )
             }
@@ -3152,7 +3152,9 @@ fun FavoritesScreen(
                 item {
                     Button(
                         onClick = onBrowseSalons,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 46.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = RewardsGold,
                             contentColor = Color.Black,
@@ -3167,28 +3169,32 @@ fun FavoritesScreen(
                 }
             } else {
                 if (myFavoritesViewModel.favoritePins.isNotEmpty()) {
-                    item { RewardsSectionHeader(title = "FAVORITE DESIGNS") }
-                    myFavoritesViewModel.favoritePins.chunked(2).forEach { pinRow ->
-                        item {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            ) {
-                                pinRow.forEach { pin ->
-                                    FavoritePinCard(
-                                        pin = pin,
-                                        isDeleting = myFavoritesViewModel.deletingPinId == pin.id,
-                                        onOpen = { onOpenPin(pin.id) },
-                                        onRemove = {
-                                            if (token != null) {
-                                                myFavoritesViewModel.removePin(token, pin.id)
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                }
-                                if (pinRow.size == 1) {
-                                    Spacer(modifier = Modifier.weight(1f))
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            RewardsSectionHeader(title = "FAVORITE DESIGNS")
+                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                myFavoritesViewModel.favoritePins.chunked(2).forEach { pinRow ->
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    ) {
+                                        pinRow.forEach { pin ->
+                                            FavoritePinCard(
+                                                pin = pin,
+                                                isDeleting = myFavoritesViewModel.deletingPinId == pin.id,
+                                                onOpen = { onOpenPin(pin.id) },
+                                                onRemove = {
+                                                    if (token != null) {
+                                                        myFavoritesViewModel.removePin(token, pin.id)
+                                                    }
+                                                },
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                        }
+                                        if (pinRow.size == 1) {
+                                            Spacer(modifier = Modifier.weight(1f))
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -3196,19 +3202,25 @@ fun FavoritesScreen(
                 }
 
                 if (myFavoritesViewModel.favoriteStores.isNotEmpty()) {
-                    item { RewardsSectionHeader(title = "FAVORITE SALONS") }
-                    items(myFavoritesViewModel.favoriteStores, key = { it.id }) { store ->
-                        FavoriteStoreCard(
-                            store = store,
-                            overrideImageUrl = myFavoritesViewModel.favoriteStoreImageUrlById[store.id],
-                            isDeleting = myFavoritesViewModel.deletingStoreId == store.id,
-                            onOpen = { onOpenStore(store.id) },
-                            onRemove = {
-                                if (token != null) {
-                                    myFavoritesViewModel.removeStore(token, store.id)
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            RewardsSectionHeader(title = "FAVORITE SALONS")
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                myFavoritesViewModel.favoriteStores.forEach { store ->
+                                    FavoriteStoreCard(
+                                        store = store,
+                                        overrideImageUrl = myFavoritesViewModel.favoriteStoreImageUrlById[store.id],
+                                        isDeleting = myFavoritesViewModel.deletingStoreId == store.id,
+                                        onOpen = { onOpenStore(store.id) },
+                                        onRemove = {
+                                            if (token != null) {
+                                                myFavoritesViewModel.removeStore(token, store.id)
+                                            }
+                                        },
+                                    )
                                 }
-                            },
-                        )
+                            }
+                        }
                     }
                 }
             }
@@ -3334,7 +3346,7 @@ private fun FavoriteStoreCard(
     )
 
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(18.dp),
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
         border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.16f)),
@@ -3350,13 +3362,11 @@ private fun FavoriteStoreCard(
                 modifier = Modifier
                     .weight(1f)
                     .scale(openScale)
-                    .clip(RoundedCornerShape(14.dp))
                     .clickable(
                         interactionSource = openInteraction,
                         indication = null,
                         onClick = onOpen,
-                    )
-                    .padding(2.dp),
+                    ),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -3365,7 +3375,7 @@ private fun FavoriteStoreCard(
                     contentDescription = store.name,
                     modifier = Modifier
                         .size(84.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(Color.White.copy(alpha = 0.12f)),
                     contentScale = ContentScale.Crop,
                 )
@@ -3375,7 +3385,7 @@ private fun FavoriteStoreCard(
                 ) {
                     Text(
                         text = store.name,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                         color = RewardsPrimaryText,
                         maxLines = 1,
                     )
@@ -3408,7 +3418,7 @@ private fun FavoriteStoreCard(
                         )
                         Text(
                             text = String.format("%.1f", store.rating),
-                            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                             color = RewardsPrimaryText.copy(alpha = 0.76f),
                         )
                         Text(
@@ -3424,8 +3434,6 @@ private fun FavoriteStoreCard(
                 modifier = Modifier
                     .size(34.dp)
                     .scale(removeScale)
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.40f))
                     .clickable(
                         enabled = !isDeleting,
                         interactionSource = removeInteraction,
@@ -3438,14 +3446,14 @@ private fun FavoriteStoreCard(
                     CircularProgressIndicator(
                         modifier = Modifier.size(14.dp),
                         strokeWidth = 1.8.dp,
-                        color = Color.White.copy(alpha = 0.90f),
+                        color = Color.White,
                     )
                 } else {
                     Icon(
                         imageVector = Icons.Filled.Favorite,
                         contentDescription = "Remove favorite",
                         tint = RewardsGold,
-                        modifier = Modifier.size(17.dp),
+                        modifier = Modifier.size(16.dp),
                     )
                 }
             }
