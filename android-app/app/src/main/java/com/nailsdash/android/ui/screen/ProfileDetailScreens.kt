@@ -2898,6 +2898,9 @@ fun ReviewsScreen(
 
             if (!myReviewsViewModel.isLoading && myReviewsViewModel.items.isEmpty()) {
                 item {
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
+                item {
                     RewardsEmptyStateCard(
                         icon = Icons.Filled.Star,
                         title = "No reviews yet",
@@ -2915,7 +2918,7 @@ fun ReviewsScreen(
                             ?.takeIf { it.isNotEmpty() }
                         ?: "Salon"
                     Card(
-                        shape = RoundedCornerShape(20.dp),
+                        shape = RoundedCornerShape(18.dp),
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
                         border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.16f)),
@@ -2935,7 +2938,7 @@ fun ReviewsScreen(
                                 ) {
                                     Text(
                                         text = resolvedStoreName,
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                                         color = RewardsPrimaryText,
                                         maxLines = 1,
                                     )
@@ -2994,6 +2997,7 @@ fun ReviewsScreen(
                                     modifier = Modifier
                                         .weight(1f)
                                         .scale(editScale)
+                                        .heightIn(min = 40.dp)
                                         .alpha(if (canEdit) 1f else 0.45f),
                                     interactionSource = editInteraction,
                                     colors = ButtonDefaults.buttonColors(
@@ -3001,6 +3005,7 @@ fun ReviewsScreen(
                                         contentColor = Color.White.copy(alpha = 0.92f),
                                     ),
                                     shape = RoundedCornerShape(12.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
                                 ) {
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(5.dp),
@@ -3011,7 +3016,10 @@ fun ReviewsScreen(
                                             contentDescription = null,
                                             modifier = Modifier.size(12.dp),
                                         )
-                                        Text("Edit")
+                                        Text(
+                                            text = "Edit",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                        )
                                     }
                                 }
                                 Button(
@@ -3023,13 +3031,18 @@ fun ReviewsScreen(
                                     enabled = myReviewsViewModel.deletingReviewId != review.id,
                                     modifier = Modifier
                                         .weight(1f)
-                                        .scale(deleteScale),
+                                        .scale(deleteScale)
+                                        .heightIn(min = 40.dp),
                                     interactionSource = deleteInteraction,
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = Color(0xFFFF6E6E).copy(alpha = 0.12f),
                                         contentColor = Color(0xFFFF8A8A),
                                     ),
                                     shape = RoundedCornerShape(12.dp),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        Color(0xFFFF8A8A).copy(alpha = 0.28f),
+                                    ),
                                 ) {
                                     if (myReviewsViewModel.deletingReviewId == review.id) {
                                         CircularProgressIndicator(
@@ -3048,7 +3061,10 @@ fun ReviewsScreen(
                                                 contentDescription = null,
                                                 modifier = Modifier.size(12.dp),
                                             )
-                                            Text("Delete")
+                                            Text(
+                                                text = "Delete",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                            )
                                         }
                                     }
                                 }
