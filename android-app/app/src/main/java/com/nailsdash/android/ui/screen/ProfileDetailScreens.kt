@@ -44,8 +44,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
@@ -98,9 +101,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -156,6 +164,7 @@ private val RewardsPrimaryText = Color.White
 private val RewardsSecondaryText = Color.White.copy(alpha = 0.72f)
 private val RewardsMutedText = Color.White.copy(alpha = 0.52f)
 private val RewardsPagePadding = 16.dp
+private val OrderHistoryCardCorner = 18.dp
 private val RewardsShortDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M/d/yy", Locale.US)
 private val RewardsJoinedDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
 private val RewardsNaiveDateTimeParsers: List<DateTimeFormatter> = listOf(
@@ -2030,21 +2039,31 @@ fun OrderHistoryScreen(
         }
     }
 
+    val dismissReviewComposer: () -> Unit = {
+        reviewingItem = null
+        reviewComment = ""
+        reviewRating = 5
+        reviewDraftImages = emptyList()
+    }
+
     if (reviewingItem != null) {
         val current = reviewingItem
+        val reviewSheetScrollState = rememberScrollState()
+        val isSubmittingCurrentReview = current?.id != null &&
+            orderHistoryViewModel.submittingReviewAppointmentId == current.id
+        val isReviewSubmissionBusy = isSubmittingCurrentReview || orderHistoryViewModel.isUploadingReviewImages
+
         ModalBottomSheet(
-            onDismissRequest = {
-                reviewingItem = null
-                reviewDraftImages = emptyList()
-            },
-            containerColor = RewardsCardBackground,
+            onDismissRequest = dismissReviewComposer,
+            containerColor = Color.Black,
             contentColor = RewardsPrimaryText,
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(reviewSheetScrollState)
                     .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -2053,20 +2072,18 @@ fun OrderHistoryScreen(
                 ) {
                     Text(
                         text = "Write a Review",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = RewardsPrimaryText,
                     )
-                    IconButton(
-                        onClick = {
-                            reviewingItem = null
-                            reviewDraftImages = emptyList()
-                        },
-                        modifier = Modifier.background(Color.White.copy(alpha = 0.08f), CircleShape),
+                    TextButton(
+                        onClick = dismissReviewComposer,
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = Color.White.copy(alpha = 0.74f),
+                        ),
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Close",
-                            tint = RewardsSecondaryText,
+                        Text(
+                            text = "Close",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                         )
                     }
                 }
@@ -2079,7 +2096,7 @@ fun OrderHistoryScreen(
 
                 if (current != null) {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.36f)),
+                        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.12f)),
                         shape = RoundedCornerShape(12.dp),
                     ) {
@@ -2103,35 +2120,65 @@ fun OrderHistoryScreen(
                     }
                 }
 
-                Text("Rating", color = RewardsPrimaryText.copy(alpha = 0.62f))
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    (1..5).forEach { star ->
-                        IconButton(onClick = { reviewRating = star }) {
-                            Icon(
-                                imageVector = if (star <= reviewRating) Icons.Filled.Star else Icons.Filled.StarBorder,
-                                contentDescription = null,
-                                tint = if (star <= reviewRating) RewardsGold else Color.White.copy(alpha = 0.34f),
-                            )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Rating",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = RewardsPrimaryText.copy(alpha = 0.62f),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        (1..5).forEach { star ->
+                            Box(
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clickable { reviewRating = star },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = if (star <= reviewRating) Icons.Filled.Star else Icons.Filled.StarBorder,
+                                    contentDescription = null,
+                                    tint = if (star <= reviewRating) RewardsGold else Color.White.copy(alpha = 0.34f),
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
                         }
                     }
                 }
 
-                OutlinedTextField(
-                    value = reviewComment,
-                    onValueChange = { reviewComment = it },
-                    label = { Text("Comment (Optional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 4,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = RewardsPrimaryText,
-                        unfocusedTextColor = RewardsPrimaryText,
-                        focusedBorderColor = RewardsGold.copy(alpha = 0.45f),
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.12f),
-                        cursorColor = RewardsGold,
-                        focusedLabelColor = RewardsGold,
-                        unfocusedLabelColor = RewardsSecondaryText,
-                    ),
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Comment (Optional)",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = RewardsPrimaryText.copy(alpha = 0.62f),
+                    )
+                    BasicTextField(
+                        value = reviewComment,
+                        onValueChange = { reviewComment = it },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = RewardsPrimaryText),
+                        cursorBrush = SolidColor(RewardsGold),
+                        modifier = Modifier.fillMaxWidth(),
+                        decorationBox = { innerTextField ->
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 120.dp, max = 180.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(RewardsCardBackground)
+                                    .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                                    .padding(8.dp),
+                            ) {
+                                if (reviewComment.isBlank()) {
+                                    Text(
+                                        text = "Share details about your visit...",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = RewardsSecondaryText.copy(alpha = 0.74f),
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        },
+                    )
+                }
 
                 Text(
                     text = "Photos (Optional, max 5)",
@@ -2169,7 +2216,7 @@ fun OrderHistoryScreen(
                                         .align(Alignment.TopEnd)
                                         .padding(4.dp)
                                         .size(24.dp)
-                                        .background(Color.Black.copy(alpha = 0.65f), CircleShape),
+                                        .background(Color.Black.copy(alpha = 0.68f), CircleShape),
                                 ) {
                                     Icon(
                                         imageVector = Icons.Filled.Close,
@@ -2184,26 +2231,50 @@ fun OrderHistoryScreen(
                 }
 
                 if (reviewDraftImages.size < MaxReviewImageCount) {
-                    Button(
-                        onClick = { reviewImagePickerLauncher.launch("image/*") },
-                        enabled = !orderHistoryViewModel.isUploadingReviewImages,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White.copy(alpha = 0.08f),
-                            contentColor = RewardsPrimaryText.copy(alpha = 0.86f),
-                        ),
-                        shape = RoundedCornerShape(12.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 40.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(RewardsCardBackground)
+                            .drawBehind {
+                                drawRoundRect(
+                                    color = Color.White.copy(alpha = 0.16f),
+                                    cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx()),
+                                    style = Stroke(
+                                        width = 1.dp.toPx(),
+                                        pathEffect = PathEffect.dashPathEffect(
+                                            floatArrayOf(6.dp.toPx(), 4.dp.toPx()),
+                                        ),
+                                    ),
+                                )
+                            }
+                            .clickable(
+                                enabled = !orderHistoryViewModel.isUploadingReviewImages,
+                                onClick = { reviewImagePickerLauncher.launch("image/*") },
+                            )
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.PhotoLibrary,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                        )
+                        if (orderHistoryViewModel.isUploadingReviewImages) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                color = RewardsGold,
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Filled.PhotoLibrary,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Add Photos (${reviewDraftImages.size}/$MaxReviewImageCount)",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            text = if (orderHistoryViewModel.isUploadingReviewImages) "Uploading..." else "Add Photos",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = RewardsPrimaryText.copy(alpha = 0.86f),
                         )
                     }
                 }
@@ -2213,17 +2284,20 @@ fun OrderHistoryScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Button(
-                        onClick = {
-                            reviewingItem = null
-                            reviewDraftImages = emptyList()
-                        },
-                        modifier = Modifier.weight(1f),
+                        onClick = dismissReviewComposer,
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 46.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.White.copy(alpha = 0.08f),
-                            contentColor = RewardsPrimaryText.copy(alpha = 0.86f),
+                            contentColor = RewardsPrimaryText.copy(alpha = 0.80f),
                         ),
+                        shape = RoundedCornerShape(12.dp),
                     ) {
-                        Text("Cancel")
+                        Text(
+                            text = "Cancel",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        )
                     }
                     Button(
                         onClick = {
@@ -2241,35 +2315,34 @@ fun OrderHistoryScreen(
                                             mimeType = image.mimeType,
                                         )
                                     },
-                                    onCreated = {
-                                        reviewingItem = null
-                                        reviewComment = ""
-                                        reviewRating = 5
-                                        reviewDraftImages = emptyList()
-                                    },
+                                    onCreated = dismissReviewComposer,
                                 )
                             }
                         },
-                        enabled = current != null &&
-                            orderHistoryViewModel.submittingReviewAppointmentId != current.id &&
-                            !orderHistoryViewModel.isUploadingReviewImages,
-                        modifier = Modifier.weight(1f),
+                        enabled = current != null && !isReviewSubmissionBusy,
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 46.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = RewardsGold,
                             contentColor = Color.Black,
+                            disabledContainerColor = RewardsGold.copy(alpha = 0.42f),
+                            disabledContentColor = Color.Black.copy(alpha = 0.72f),
                         ),
+                        shape = RoundedCornerShape(12.dp),
                     ) {
-                        val label = when {
-                            current != null &&
-                                orderHistoryViewModel.submittingReviewAppointmentId == current.id &&
-                                orderHistoryViewModel.isUploadingReviewImages -> "Uploading..."
-
-                            current != null &&
-                                orderHistoryViewModel.submittingReviewAppointmentId == current.id -> "Submitting..."
-
-                            else -> "Submit"
+                        if (isSubmittingCurrentReview) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = Color.Black.copy(alpha = 0.82f),
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Text(
+                                text = "Submit",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            )
                         }
-                        Text(label)
                     }
                 }
 
@@ -2323,27 +2396,7 @@ fun OrderHistoryScreen(
             }
 
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "RECENT ACTIVITY",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 2.2.sp,
-                        ),
-                        color = RewardsGold,
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    if (completedCount > 0) {
-                        Text(
-                            text = "$completedCount completed",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = RewardsSecondaryText,
-                        )
-                    }
-                }
+                OrderHistoryActivityHeader(completedCount = completedCount)
             }
 
             if (!orderHistoryViewModel.isLoading && orderHistoryViewModel.items.isEmpty()) {
@@ -2384,6 +2437,57 @@ fun OrderHistoryScreen(
 }
 
 @Composable
+private fun OrderHistoryActivityHeader(completedCount: Int) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(5.dp)
+                    .background(RewardsGold, CircleShape),
+            )
+            Text(
+                text = "RECENT ACTIVITY",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                ),
+                color = RewardsSecondaryText,
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            if (completedCount > 0) {
+                Text(
+                    text = "$completedCount completed",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = RewardsSecondaryText,
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            RewardsGold.copy(alpha = 0.22f),
+                            Color.White.copy(alpha = 0.04f),
+                        ),
+                    ),
+                ),
+        )
+    }
+}
+
+@Composable
 private fun OrderHistorySummaryMetric(
     title: String,
     value: String,
@@ -2393,7 +2497,7 @@ private fun OrderHistorySummaryMetric(
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(OrderHistoryCardCorner),
         colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
         border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.18f)),
     ) {
@@ -2444,7 +2548,7 @@ private fun OrderHistoryActivityCard(
     val amount = maxOf(item.service_price ?: 0.0, 0.0)
 
     Card(
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(OrderHistoryCardCorner),
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
         border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.16f)),
@@ -2464,7 +2568,7 @@ private fun OrderHistoryActivityCard(
                 ) {
                     Text(
                         text = item.store_name ?: "Salon",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                         color = RewardsPrimaryText,
                         maxLines = 1,
                     )
@@ -2480,12 +2584,23 @@ private fun OrderHistoryActivityCard(
                         )
                     }
                     item.store_address?.trim()?.takeIf { it.isNotEmpty() }?.let { address ->
-                        Text(
-                            text = address,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color.White.copy(alpha = 0.60f),
-                            maxLines = 1,
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.LocationOn,
+                                contentDescription = null,
+                                tint = Color.White.copy(alpha = 0.48f),
+                                modifier = Modifier.size(11.dp),
+                            )
+                            Text(
+                                text = address,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.60f),
+                                maxLines = 1,
+                            )
+                        }
                     }
                 }
 
@@ -2534,33 +2649,31 @@ private fun OrderHistoryActivityCard(
 
                     when {
                         canReview -> {
-                            Button(
-                                onClick = onReview,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = RewardsGold.copy(alpha = 0.12f),
-                                    contentColor = RewardsGold,
-                                ),
-                                shape = RoundedCornerShape(999.dp),
-                                modifier = Modifier.border(
-                                    width = 1.dp,
-                                    color = RewardsGold.copy(alpha = 0.42f),
-                                    shape = RoundedCornerShape(999.dp),
-                                ),
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(RewardsGold.copy(alpha = 0.12f))
+                                    .clickable(onClick = onReview)
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                                    .border(
+                                        width = 1.dp,
+                                        color = RewardsGold.copy(alpha = 0.42f),
+                                        shape = RoundedCornerShape(999.dp),
+                                    ),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Star,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(11.dp),
-                                    )
-                                    Text(
-                                        text = "Review",
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                    )
-                                }
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = null,
+                                    tint = RewardsGold,
+                                    modifier = Modifier.size(11.dp),
+                                )
+                                Text(
+                                    text = "Review",
+                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    color = RewardsGold,
+                                )
                             }
                         }
 
