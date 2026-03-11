@@ -3834,7 +3834,7 @@ fun ReferralScreen(
                 contentPadding = PaddingValues(
                     start = RewardsPagePadding,
                     end = RewardsPagePadding,
-                    top = 8.dp,
+                    top = 16.dp,
                     bottom = 24.dp,
                 ),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
@@ -3890,7 +3890,9 @@ fun ReferralScreen(
                     border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
                 ) {
                     Column(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
@@ -3901,13 +3903,11 @@ fun ReferralScreen(
                                 letterSpacing = 1.8.sp,
                             ),
                             color = Color.White.copy(alpha = 0.48f),
-                            modifier = Modifier.padding(top = 16.dp),
                         )
 
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
                                 .background(Color.Black, RoundedCornerShape(14.dp))
                                 .border(
                                     width = 1.dp,
@@ -3973,8 +3973,6 @@ fun ReferralScreen(
                                 color = RewardsGold,
                             )
                         }
-
-                        Spacer(modifier = Modifier.height(6.dp))
                     }
                 }
             }
@@ -4079,73 +4077,17 @@ fun ReferralScreen(
                 }
             } else {
                 item {
-                    Text(
-                        text = "REFERRAL HISTORY",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.8.sp,
-                        ),
-                        color = Color.White.copy(alpha = 0.52f),
-                    )
-                }
-                items(referralViewModel.items, key = { it.id }) { item ->
-                    Card(
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(3.dp),
-                            ) {
-                                Text(
-                                    text = item.referee_name.ifBlank { "User" },
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                                    color = RewardsPrimaryText,
-                                )
-                                Text(
-                                    text = maskPhone(item.referee_phone),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.58f),
-                                )
-                                Text(
-                                    text = "Joined: ${displayJoinedDate(item.created_at)}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White.copy(alpha = 0.42f),
-                                )
-                            }
-                            if (item.referrer_reward_given) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.CheckCircle,
-                                        contentDescription = null,
-                                        tint = Color(0xFF7DE39A),
-                                        modifier = Modifier.size(12.dp),
-                                    )
-                                    Text(
-                                        text = "Rewarded",
-                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                        color = Color(0xFF7DE39A),
-                                    )
-                                }
-                            } else {
-                                Text(
-                                    text = "Pending",
-                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                    color = RewardsGold,
-                                )
-                            }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "REFERRAL HISTORY",
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.8.sp,
+                            ),
+                            color = Color.White.copy(alpha = 0.52f),
+                        )
+                        referralViewModel.items.forEach { item ->
+                            ReferralHistoryCard(item = item)
                         }
                     }
                 }
@@ -4164,6 +4106,69 @@ fun ReferralScreen(
         }
     }
 }
+}
+
+@Composable
+private fun ReferralHistoryCard(item: com.nailsdash.android.data.model.ReferralListItem) {
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Text(
+                    text = item.referee_name.ifBlank { "User" },
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = RewardsPrimaryText,
+                )
+                Text(
+                    text = maskPhone(item.referee_phone),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.58f),
+                )
+                Text(
+                    text = "Joined: ${displayJoinedDate(item.created_at)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.42f),
+                )
+            }
+            if (item.referrer_reward_given) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF7DE39A),
+                        modifier = Modifier.size(12.dp),
+                    )
+                    Text(
+                        text = "Rewarded",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = Color(0xFF7DE39A),
+                    )
+                }
+            } else {
+                Text(
+                    text = "Pending",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = RewardsGold,
+                )
+            }
+        }
+    }
 }
 
 @Composable
