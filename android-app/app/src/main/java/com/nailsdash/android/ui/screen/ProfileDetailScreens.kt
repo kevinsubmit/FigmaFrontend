@@ -65,6 +65,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.WorkspacePremium
@@ -3416,7 +3417,7 @@ fun VipScreen(
             VipTierVisual(
                 level = "VIP 1-3",
                 title = "Silver Perks",
-                icon = Icons.Filled.CheckCircle,
+                icon = Icons.Filled.Security,
                 iconTint = Color(0xFFB7BDC9),
                 benefits = listOf(
                     "5% off all services",
