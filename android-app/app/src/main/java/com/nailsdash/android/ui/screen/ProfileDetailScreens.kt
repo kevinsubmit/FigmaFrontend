@@ -130,6 +130,10 @@ import com.nailsdash.android.ui.state.ReferralViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
 import java.io.ByteArrayOutputStream
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -2401,7 +2405,7 @@ private fun OrderHistoryActivityCard(
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    text = "${displayDateOnly(item.appointment_date)} · ${item.appointment_time}",
+                    text = "${formatAppointmentDate(item.appointment_date)} · ${formatAppointmentTime(item.appointment_time)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = RewardsSecondaryText,
                     maxLines = 1,
@@ -2567,13 +2571,51 @@ private fun compressBitmapUnderLimit(bitmap: Bitmap, maxBytes: Int): ByteArray? 
 private fun canReviewAppointment(item: Appointment): Boolean {
     if (item.status.lowercase() != "completed") return false
     if (item.review_id != null) return false
-    return isReviewWindowOpen(item.appointment_date, 30)
+    return isReviewWindowOpen(item.appointment_date, item.appointment_time, 30)
 }
 
-private fun isReviewWindowOpen(appointmentDate: String, reviewWindowDays: Long): Boolean {
-    val date = runCatching { LocalDate.parse(appointmentDate) }.getOrNull() ?: return false
-    val cutoff = date.plusDays(reviewWindowDays)
-    return LocalDate.now() <= cutoff
+private fun isReviewWindowOpen(
+    appointmentDate: String,
+    appointmentTime: String,
+    reviewWindowDays: Long,
+): Boolean {
+    val baseDateTime = parseAppointmentDateTime(appointmentDate, appointmentTime) ?: return false
+    val cutoff = baseDateTime.plusDays(reviewWindowDays)
+    return !LocalDateTime.now().isAfter(cutoff)
+}
+
+private fun parseAppointmentDateTime(date: String, time: String): LocalDateTime? {
+    val normalizedTime = normalizeAppointmentTime(time) ?: return null
+    val raw = "${date.trim()}T$normalizedTime"
+    return runCatching {
+        LocalDateTime.parse(raw, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+    }.recoverCatching {
+        LocalDateTime.parse(raw, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"))
+    }.getOrNull()
+}
+
+private fun normalizeAppointmentTime(raw: String): String? {
+    val value = raw.trim()
+    if (value.isBlank()) return null
+    return when {
+        value.length >= 8 -> value.take(8)
+        value.length == 5 -> "$value:00"
+        else -> value
+    }
+}
+
+private fun formatAppointmentDate(raw: String): String {
+    val value = raw.trim()
+    return runCatching {
+        LocalDate.parse(value).format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US))
+    }.getOrElse { value }
+}
+
+private fun formatAppointmentTime(raw: String): String {
+    val normalized = normalizeAppointmentTime(raw) ?: return raw.trim()
+    return runCatching {
+        LocalTime.parse(normalized).format(DateTimeFormatter.ofPattern("h:mm a", Locale.US))
+    }.getOrElse { raw.trim() }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
