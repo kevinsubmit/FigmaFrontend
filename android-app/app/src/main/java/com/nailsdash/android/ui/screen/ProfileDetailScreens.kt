@@ -2762,6 +2762,13 @@ fun ReviewsScreen(
             } else {
                 items(myReviewsViewModel.items, key = { it.id }) { review ->
                     val rating = review.rating ?: 0.0
+                    val resolvedStoreName = review.store_name
+                        ?.trim()
+                        ?.takeIf { it.isNotEmpty() }
+                        ?: review.store_id
+                            ?.let { myReviewsViewModel.storeNameById[it]?.trim() }
+                            ?.takeIf { it.isNotEmpty() }
+                        ?: "Salon"
                     Card(
                         shape = RoundedCornerShape(20.dp),
                         modifier = Modifier.fillMaxWidth(),
@@ -2782,7 +2789,7 @@ fun ReviewsScreen(
                                     verticalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {
                                     Text(
-                                        text = review.store_name?.takeIf { it.isNotBlank() } ?: "Salon",
+                                        text = resolvedStoreName,
                                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                                         color = RewardsPrimaryText,
                                         maxLines = 1,
@@ -3050,6 +3057,7 @@ fun FavoritesScreen(
                     items(myFavoritesViewModel.favoriteStores, key = { it.id }) { store ->
                         FavoriteStoreCard(
                             store = store,
+                            overrideImageUrl = myFavoritesViewModel.favoriteStoreImageUrlById[store.id],
                             isDeleting = myFavoritesViewModel.deletingStoreId == store.id,
                             onOpen = { onOpenStore(store.id) },
                             onRemove = {
@@ -3165,6 +3173,7 @@ private fun FavoritePinCard(
 @Composable
 private fun FavoriteStoreCard(
     store: Store,
+    overrideImageUrl: String?,
     isDeleting: Boolean,
     onOpen: () -> Unit,
     onRemove: () -> Unit,
@@ -3208,7 +3217,7 @@ private fun FavoriteStoreCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 AsyncImage(
-                    model = AssetUrlResolver.resolveURL(store.image_url),
+                    model = AssetUrlResolver.resolveURL(overrideImageUrl ?: store.image_url),
                     contentDescription = store.name,
                     modifier = Modifier
                         .size(84.dp)

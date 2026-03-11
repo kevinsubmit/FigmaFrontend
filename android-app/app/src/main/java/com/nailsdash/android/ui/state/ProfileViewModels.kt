@@ -19,6 +19,7 @@ import com.nailsdash.android.data.model.UserReview
 import com.nailsdash.android.data.model.VipStatus
 import com.nailsdash.android.data.repository.AppointmentsRepository
 import com.nailsdash.android.data.repository.ProfileRepository
+import com.nailsdash.android.data.repository.StoresRepository
 import com.nailsdash.android.utils.PhoneFormatter
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -406,8 +407,12 @@ class OrderHistoryViewModel(application: Application) : AndroidViewModel(applica
 
 class MyReviewsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ProfileRepository()
+    private val storesRepository = StoresRepository()
 
     var items by mutableStateOf(emptyList<UserReview>())
+        private set
+
+    var storeNameById by mutableStateOf<Map<Int, String>>(emptyMap())
         private set
 
     var deletingReviewId by mutableStateOf<Int?>(null)
@@ -429,12 +434,14 @@ class MyReviewsViewModel(application: Application) : AndroidViewModel(applicatio
         isLoading = true
         viewModelScope.launch {
             repository.getMyReviews(bearerToken, limit = 100)
-                .onSuccess {
-                    items = it
+                .onSuccess { rows ->
+                    items = rows
+                    refreshStoreNameMap()
                     errorMessage = null
                 }
                 .onFailure { err ->
                     items = emptyList()
+                    storeNameById = emptyMap()
                     errorMessage = err.message
                 }
             isLoading = false
@@ -447,6 +454,7 @@ class MyReviewsViewModel(application: Application) : AndroidViewModel(applicatio
             repository.deleteReview(bearerToken, reviewId)
                 .onSuccess {
                     items = items.filterNot { it.id == reviewId }
+                    refreshStoreNameMap()
                     actionMessage = "Review deleted."
                     errorMessage = null
                 }
@@ -477,6 +485,7 @@ class MyReviewsViewModel(application: Application) : AndroidViewModel(applicatio
                 images = images,
             ).onSuccess { updated ->
                 items = items.map { if (it.id == reviewId) updated else it }
+                refreshStoreNameMap()
                 actionMessage = "Review updated."
                 errorMessage = null
                 onUpdated()
@@ -486,15 +495,52 @@ class MyReviewsViewModel(application: Application) : AndroidViewModel(applicatio
             updatingReviewId = null
         }
     }
+
+    private suspend fun refreshStoreNameMap() = coroutineScope {
+        val merged = mutableMapOf<Int, String>()
+        items.forEach { item ->
+            val storeId = item.store_id ?: return@forEach
+            val normalized = item.store_name?.trim().orEmpty()
+            if (normalized.isNotEmpty()) {
+                merged[storeId] = normalized
+            }
+        }
+
+        val missingStoreIds = items.mapNotNull { it.store_id }.toSet().subtract(merged.keys)
+        if (missingStoreIds.isNotEmpty()) {
+            val tasks = missingStoreIds.map { storeId ->
+                async {
+                    val name = storesRepository.getStoreDetail(storeId)
+                        .getOrNull()
+                        ?.name
+                        ?.trim()
+                        .orEmpty()
+                    storeId to name.takeIf { it.isNotEmpty() }
+                }
+            }
+            tasks.forEach { task ->
+                val (storeId, name) = task.await()
+                if (name != null) {
+                    merged[storeId] = name
+                }
+            }
+        }
+
+        storeNameById = merged
+    }
 }
 
 class MyFavoritesViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ProfileRepository()
+    private val storesRepository = StoresRepository()
 
     var favoritePins by mutableStateOf(emptyList<com.nailsdash.android.data.model.HomeFeedPin>())
         private set
 
     var favoriteStores by mutableStateOf(emptyList<com.nailsdash.android.data.model.Store>())
+        private set
+
+    var favoriteStoreImageUrlById by mutableStateOf<Map<Int, String>>(emptyMap())
         private set
 
     var deletingPinId by mutableStateOf<Int?>(null)
@@ -524,7 +570,10 @@ class MyFavoritesViewModel(application: Application) : AndroidViewModel(applicat
                     .onFailure { errorMessage = it.message }
 
                 storesTask.await()
-                    .onSuccess { favoriteStores = it }
+                    .onSuccess {
+                        favoriteStores = it
+                        favoriteStoreImageUrlById = resolveFavoriteStoreImageUrls(it)
+                    }
                     .onFailure { errorMessage = it.message }
             }
             isLoading = false
@@ -551,12 +600,58 @@ class MyFavoritesViewModel(application: Application) : AndroidViewModel(applicat
             repository.removeFavoriteStore(bearerToken, storeId)
                 .onSuccess {
                     favoriteStores = favoriteStores.filterNot { it.id == storeId }
+                    favoriteStoreImageUrlById = favoriteStoreImageUrlById - storeId
                     actionMessage = "Removed from favorites."
                     errorMessage = null
                 }
                 .onFailure { errorMessage = it.message }
             deletingStoreId = null
         }
+    }
+
+    private suspend fun resolveFavoriteStoreImageUrls(
+        stores: List<com.nailsdash.android.data.model.Store>,
+    ): Map<Int, String> = coroutineScope {
+        if (stores.isEmpty()) return@coroutineScope emptyMap()
+
+        val resolved = mutableMapOf<Int, String>()
+        stores.forEach { store ->
+            val direct = store.image_url?.trim().orEmpty()
+            if (direct.isNotEmpty()) {
+                resolved[store.id] = direct
+            }
+        }
+
+        val missingStores = stores.filter { it.id !in resolved.keys }
+        if (missingStores.isNotEmpty()) {
+            val tasks = missingStores.map { store ->
+                async {
+                    val imageUrl = storesRepository.getStoreImages(store.id)
+                        .getOrNull()
+                        ?.let(::pickPrimaryStoreImageUrl)
+                    store.id to imageUrl
+                }
+            }
+            tasks.forEach { task ->
+                val (storeId, imageUrl) = task.await()
+                if (!imageUrl.isNullOrBlank()) {
+                    resolved[storeId] = imageUrl
+                }
+            }
+        }
+
+        resolved
+    }
+
+    private fun pickPrimaryStoreImageUrl(
+        images: List<com.nailsdash.android.data.model.StoreImage>,
+    ): String? {
+        if (images.isEmpty()) return null
+        return images.sortedWith(
+            compareByDescending<com.nailsdash.android.data.model.StoreImage> { it.is_primary ?: 0 }
+                .thenBy { it.display_order ?: Int.MAX_VALUE }
+                .thenBy { it.id },
+        ).firstOrNull()?.image_url?.trim()?.takeIf { it.isNotEmpty() }
     }
 }
 
