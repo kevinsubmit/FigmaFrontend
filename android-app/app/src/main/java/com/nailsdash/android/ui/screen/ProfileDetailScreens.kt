@@ -151,6 +151,7 @@ private val RewardsSecondaryText = Color.White.copy(alpha = 0.72f)
 private val RewardsMutedText = Color.White.copy(alpha = 0.52f)
 private val RewardsPagePadding = 12.dp
 private val RewardsShortDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M/d/yy", Locale.US)
+private val RewardsJoinedDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
 private val RewardsNaiveDateTimeParsers: List<DateTimeFormatter> = listOf(
     DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS"),
     DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS"),
@@ -695,6 +696,13 @@ private fun displayDateOnly(raw: String): String {
     if (value.isBlank()) return value
     val localDate = parseRewardsLocalDate(value) ?: return value
     return runCatching { localDate.format(RewardsShortDateFormatter) }.getOrElse { value }
+}
+
+private fun displayJoinedDate(raw: String): String {
+    val value = raw.trim()
+    if (value.isBlank()) return value
+    val localDate = parseRewardsLocalDate(value) ?: return value
+    return runCatching { localDate.format(RewardsJoinedDateFormatter) }.getOrElse { value }
 }
 
 private fun parseRewardsLocalDate(raw: String): LocalDate? {
@@ -4054,7 +4062,7 @@ fun ReferralScreen(
                                     color = Color.White.copy(alpha = 0.58f),
                                 )
                                 Text(
-                                    text = "Joined: ${displayDateOnly(item.created_at)}",
+                                    text = "Joined: ${displayJoinedDate(item.created_at)}",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color.White.copy(alpha = 0.42f),
                                 )
