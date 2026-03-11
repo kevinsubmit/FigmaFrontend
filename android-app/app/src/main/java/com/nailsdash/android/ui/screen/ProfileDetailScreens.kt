@@ -67,6 +67,7 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -335,7 +336,7 @@ fun PointsScreen(
             } else {
                 items(pointsViewModel.exchangeables, key = { it.id }) { coupon ->
                     val required = coupon.points_required ?: 0
-                    val canRedeem = (pointsViewModel.balance?.available_points ?: 0) >= required && required > 0
+                    val canRedeem = (pointsViewModel.balance?.available_points ?: 0) >= required
                     val redeeming = pointsViewModel.isRedeemingCouponId == coupon.id
                     val exchangeInteraction = remember(coupon.id) { MutableInteractionSource() }
                     val exchangeScale = rememberPressScale(
@@ -3448,7 +3449,7 @@ fun VipScreen(
             VipTierVisual(
                 level = "VIP 10",
                 title = "Diamond Elite",
-                icon = Icons.Filled.AutoAwesome,
+                icon = Icons.Filled.WorkspacePremium,
                 iconTint = RewardsGold,
                 benefits = listOf(
                     "20% off all services",
@@ -3570,7 +3571,7 @@ private fun VipHeroSection() {
                     .border(1.dp, RewardsGold.copy(alpha = 0.34f + (haloAlpha - 0.12f) * 0.9f), CircleShape),
             )
             Icon(
-                imageVector = Icons.Filled.AutoAwesome,
+                imageVector = Icons.Filled.WorkspacePremium,
                 contentDescription = null,
                 tint = RewardsGold,
                 modifier = Modifier
@@ -3580,7 +3581,7 @@ private fun VipHeroSection() {
         }
 
         Text(
-            text = "ELITE REWARDS PROGRAM",
+            text = "Elite Rewards Program",
             style = MaterialTheme.typography.headlineSmall.copy(
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 1.8.sp,
