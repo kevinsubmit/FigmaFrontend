@@ -3522,18 +3522,22 @@ fun VipScreen(
                 contentPadding = PaddingValues(
                     start = RewardsPagePadding,
                     end = RewardsPagePadding,
-                    top = 8.dp,
+                    top = 20.dp,
                     bottom = 28.dp,
                 ),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
 
             item {
                 VipHeroSection()
             }
 
-            items(tiers, key = { it.level }) { tier ->
-                VipTierCard(tier = tier)
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    tiers.forEach { tier ->
+                        VipTierCard(tier = tier)
+                    }
+                }
             }
 
             item {
@@ -3549,7 +3553,9 @@ fun VipScreen(
                     ),
                     color = Color.White.copy(alpha = 0.32f),
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 6.dp),
                 )
             }
         }
@@ -3597,7 +3603,9 @@ private fun VipHeroSection() {
     )
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -3630,6 +3638,7 @@ private fun VipHeroSection() {
             text = "ELITE REWARDS PROGRAM",
             style = MaterialTheme.typography.headlineSmall.copy(
                 fontWeight = FontWeight.Medium,
+                fontSize = 23.sp,
                 letterSpacing = 1.8.sp,
             ),
             color = RewardsPrimaryText,
@@ -3638,7 +3647,7 @@ private fun VipHeroSection() {
 
         Text(
             text = "Elevate your experience with our tiered rewards. The more you pamper yourself, the more exclusive your benefits become.",
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
             color = Color.White.copy(alpha = 0.58f),
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(horizontal = 10.dp),
@@ -3666,14 +3675,15 @@ private fun VipTierCard(tier: VipTierVisual) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
                         text = tier.level,
-                        style = MaterialTheme.typography.titleLarge.copy(
+                        style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.ExtraBold,
+                            fontSize = 20.sp,
                             fontStyle = FontStyle.Italic,
                         ),
                         color = RewardsGold,
                     )
                     Text(
-                        text = tier.title,
+                        text = tier.title.uppercase(Locale.US),
                         style = MaterialTheme.typography.labelMedium.copy(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.4.sp,
@@ -3705,7 +3715,7 @@ private fun VipTierCard(tier: VipTierVisual) {
                         )
                         Text(
                             text = benefit,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
                             color = Color.White.copy(alpha = 0.72f),
                         )
                     }
@@ -3770,7 +3780,10 @@ private fun VipRedemptionCard() {
 
             Text(
                 text = "\"Points are accumulated automatically with every visit. To redeem your benefits, simply present your digital membership card to your technician during checkout. All vouchers and tier rewards must be redeemed in-store.\"",
-                style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontStyle = FontStyle.Italic,
+                    lineHeight = 19.sp,
+                ),
                 color = Color.White.copy(alpha = 0.68f),
             )
         }
