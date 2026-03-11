@@ -2701,7 +2701,11 @@ fun OrderHistoryScreen(
             }
 
             item {
-                OrderHistoryActivityHeader(completedCount = completedCount)
+                RewardsUnifiedSectionHeader(
+                    title = "RECENT ACTIVITY",
+                    trailing = if (completedCount > 0) "$completedCount completed" else null,
+                    showsDivider = true,
+                )
             }
 
             if (!orderHistoryViewModel.isLoading && orderHistoryViewModel.items.isEmpty()) {
@@ -2739,57 +2743,6 @@ fun OrderHistoryScreen(
         }
     }
 }
-}
-
-@Composable
-private fun OrderHistoryActivityHeader(completedCount: Int) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(7.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(5.dp)
-                    .background(RewardsGold, CircleShape),
-            )
-            Text(
-                text = "RECENT ACTIVITY",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 2.sp,
-                ),
-                color = RewardsSecondaryText,
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            if (completedCount > 0) {
-                Text(
-                    text = "$completedCount completed",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = RewardsSecondaryText,
-                )
-            }
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            RewardsGold.copy(alpha = 0.22f),
-                            Color.White.copy(alpha = 0.04f),
-                        ),
-                    ),
-                ),
-        )
-    }
 }
 
 @Composable
@@ -3174,7 +3127,7 @@ fun ReviewsScreen(
                 showEditDialog = false
                 editingReview = null
             },
-            containerColor = RewardsCardBackground,
+            containerColor = Color.Black,
             contentColor = RewardsPrimaryText,
         ) {
             Column(
@@ -3190,20 +3143,21 @@ fun ReviewsScreen(
                 ) {
                     Text(
                         text = "Edit Review",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = RewardsPrimaryText,
                     )
-                    IconButton(
+                    TextButton(
                         onClick = {
                             showEditDialog = false
                             editingReview = null
                         },
-                        modifier = Modifier.background(Color.White.copy(alpha = 0.08f), CircleShape),
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = Color.White.copy(alpha = 0.74f),
+                        ),
                     ) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Close",
-                            tint = RewardsSecondaryText,
+                        Text(
+                            text = "Close",
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                         )
                     }
                 }
