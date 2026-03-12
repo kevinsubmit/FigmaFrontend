@@ -604,23 +604,34 @@ fun PointsScreen(
                                             )
                                         }
                                     } else {
-                                        Button(
-                                            onClick = { if (token != null) pointsViewModel.exchange(token, coupon.id) },
-                                            enabled = canRedeem,
-                                            interactionSource = exchangeInteraction,
+                                        Box(
                                             modifier = Modifier
                                                 .scale(exchangeScale)
                                                 .widthIn(min = 90.dp)
-                                                .heightIn(min = 36.dp),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = if (canRedeem) Color.White else Color.White.copy(alpha = 0.12f),
-                                                contentColor = if (canRedeem) Color.Black else RewardsPrimaryText.copy(alpha = 0.45f),
-                                            ),
-                                            shape = RoundedCornerShape(999.dp),
+                                                .heightIn(min = 36.dp)
+                                                .clip(RoundedCornerShape(999.dp))
+                                                .background(
+                                                    if (canRedeem) {
+                                                        Color.White
+                                                    } else {
+                                                        Color.White.copy(alpha = 0.12f)
+                                                    },
+                                                )
+                                                .clickable(
+                                                    enabled = canRedeem,
+                                                    interactionSource = exchangeInteraction,
+                                                    indication = null,
+                                                    onClick = {
+                                                        if (token != null) pointsViewModel.exchange(token, coupon.id)
+                                                    },
+                                                )
+                                                .padding(horizontal = 18.dp),
+                                            contentAlignment = Alignment.Center,
                                         ) {
                                             Text(
                                                 text = if (canRedeem) "Exchange" else "Locked",
                                                 style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                                color = if (canRedeem) Color.Black else RewardsPrimaryText.copy(alpha = 0.45f),
                                             )
                                         }
                                     }
@@ -1352,19 +1363,20 @@ fun CouponsScreen(
                                                         .padding(horizontal = 10.dp, vertical = 6.dp),
                                                 )
                                                 if (isAvailable) {
-                                                    Button(
-                                                        onClick = { useCouponId = item.id },
-                                                        interactionSource = useInteraction,
+                                                    Box(
                                                         modifier = Modifier
                                                             .scale(useScale)
                                                             .widthIn(min = 90.dp)
-                                                            .heightIn(min = 36.dp),
-                                                        colors = ButtonDefaults.buttonColors(
-                                                            containerColor = Color.White,
-                                                            contentColor = Color.Black,
-                                                        ),
-                                                        shape = RoundedCornerShape(999.dp),
-                                                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 0.dp),
+                                                            .heightIn(min = 36.dp)
+                                                            .clip(RoundedCornerShape(999.dp))
+                                                            .background(Color.White)
+                                                            .clickable(
+                                                                interactionSource = useInteraction,
+                                                                indication = null,
+                                                                onClick = { useCouponId = item.id },
+                                                            )
+                                                            .padding(horizontal = 18.dp),
+                                                        contentAlignment = Alignment.Center,
                                                     ) {
                                                         Text(
                                                             text = "Use",
@@ -1372,6 +1384,7 @@ fun CouponsScreen(
                                                                 fontSize = 15.sp,
                                                                 fontWeight = FontWeight.SemiBold,
                                                             ),
+                                                            color = Color.Black,
                                                         )
                                                     }
                                                 } else if (status == "expired") {
