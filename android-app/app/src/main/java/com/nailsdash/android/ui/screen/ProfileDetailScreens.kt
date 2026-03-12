@@ -488,6 +488,7 @@ fun PointsScreen(
                                         ),
                                     )
                                     .padding(horizontal = RewardsPagePadding, vertical = 14.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Column(
