@@ -1497,8 +1497,8 @@ fun GiftCardsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                    .padding(RewardsPagePadding),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1595,13 +1595,8 @@ fun GiftCardsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(
-                        start = RewardsPagePadding,
-                        end = RewardsPagePadding,
-                        top = 18.dp,
-                        bottom = 12.dp,
-                    ),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                    .padding(RewardsPagePadding),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1676,7 +1671,7 @@ fun GiftCardsScreen(
                             )
                         }
                     },
-                    enabled = giftCardsViewModel.sendingCardId != sendCard.id,
+                    enabled = giftCardsViewModel.sendingCardId == null,
                     interactionSource = sendSheetActionInteraction,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1700,7 +1695,7 @@ fun GiftCardsScreen(
                             )
                         } else {
                             Icon(
-                                imageVector = Icons.Filled.Share,
+                                imageVector = Icons.AutoMirrored.Filled.Send,
                                 contentDescription = null,
                                 modifier = Modifier.size(14.dp),
                             )
@@ -1964,7 +1959,7 @@ fun GiftCardsScreen(
                                 modifier = Modifier.size(12.dp),
                             )
                             Text(
-                                text = "Claim",
+                                text = "CLAIM",
                                 style = MaterialTheme.typography.labelMedium.copy(
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 1.1.sp,
@@ -1998,7 +1993,6 @@ fun GiftCardsScreen(
                         sortedCards.forEach { card ->
                             GiftCardCollectionCard(
                                 card = card,
-                                sendingCardId = giftCardsViewModel.sendingCardId,
                                 revokingCardId = giftCardsViewModel.revokingCardId,
                                 onCopyCode = { code ->
                                     clipboardManager.setText(AnnotatedString(code))
@@ -2085,7 +2079,6 @@ fun GiftCardsScreen(
 private fun GiftCardCollectionCard(
     modifier: Modifier = Modifier,
     card: GiftCard,
-    sendingCardId: Int?,
     revokingCardId: Int?,
     onCopyCode: (String) -> Unit,
     onSend: () -> Unit,
@@ -2339,7 +2332,6 @@ private fun GiftCardCollectionCard(
                 "active" -> {
                     Button(
                         onClick = onSend,
-                        enabled = sendingCardId == null,
                         interactionSource = sendInteraction,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -2385,12 +2377,12 @@ private fun GiftCardCollectionCard(
                             .scale(revokeScale)
                             .border(
                                 width = 1.dp,
-                                color = Color(0xFFFF8A8A).copy(alpha = 0.45f),
+                                color = Color(0xFFFF3B30).copy(alpha = 0.45f),
                                 shape = RoundedCornerShape(12.dp),
                             ),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFFF8A8A).copy(alpha = 0.10f),
-                            contentColor = Color(0xFFFF8A8A),
+                            containerColor = Color(0xFFFF3B30).copy(alpha = 0.10f),
+                            contentColor = Color(0xFFFF3B30),
                         ),
                         shape = RoundedCornerShape(12.dp),
                     ) {
@@ -2402,7 +2394,7 @@ private fun GiftCardCollectionCard(
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(14.dp),
                                     strokeWidth = 1.8.dp,
-                                    color = Color(0xFFFF8A8A),
+                                    color = Color(0xFFFF3B30),
                                 )
                                 Text(
                                     text = "CANCELING...",
@@ -2450,10 +2442,10 @@ private fun giftCardSurfaceGradient(): List<Color> {
 private fun giftStatusToneColor(status: String): Color {
     return when (status) {
         "pending_transfer" -> RewardsGold
-        "active" -> Color(0xFF7DE39A)
-        "used" -> Color(0xFFFFC36A)
-        "revoked" -> Color(0xFFFF8A8A)
-        "expired" -> Color(0xFFB2B2B2)
+        "active" -> Color(0xFF34C759)
+        "used" -> Color(0xFFFF9500)
+        "revoked" -> Color(0xFFFF3B30)
+        "expired" -> Color(0xFF8E8E93)
         else -> RewardsSecondaryText
     }
 }
