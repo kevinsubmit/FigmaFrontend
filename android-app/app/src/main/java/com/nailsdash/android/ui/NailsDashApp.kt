@@ -338,6 +338,7 @@ fun NailsDashApp() {
             composable("profile/settings") {
                 SettingsScreen(
                     sessionViewModel = sessionViewModel,
+                    onBack = { navController.navigateUp() },
                     onOpenProfileSettings = { navController.navigate("profile/settings/profile") },
                     onOpenChangePassword = { navController.navigate("profile/settings/password") },
                     onOpenPhoneSettings = { navController.navigate("profile/settings/phone") },

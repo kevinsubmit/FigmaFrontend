@@ -33,18 +33,23 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.animation.animateContentSize
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -53,6 +58,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -67,6 +73,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -83,6 +90,7 @@ import androidx.compose.animation.core.tween
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.nailsdash.android.BuildConfig
+import com.nailsdash.android.data.repository.ProfileRepository
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.ChangePasswordViewModel
 import com.nailsdash.android.ui.state.LanguageSettingsViewModel
@@ -104,11 +112,14 @@ private val SettingsBackground = Color(0xFF000000)
 private val SettingsCardBackground = Color(0xFF111111)
 private val SettingsPrimaryText = Color.White
 private val SettingsSecondaryText = Color.White.copy(alpha = 0.68f)
+private val SettingsPagePadding = 16.dp
+private val SettingsCardCorner = 18.dp
 private const val SettingsMotionDurationMs = 220
 
 @Composable
 fun SettingsScreen(
     sessionViewModel: AppSessionViewModel,
+    onBack: () -> Unit = {},
     onOpenProfileSettings: () -> Unit,
     onOpenChangePassword: () -> Unit,
     onOpenPhoneSettings: () -> Unit,
@@ -121,7 +132,18 @@ fun SettingsScreen(
     onOpenAboutUs: () -> Unit,
 ) {
     val context = LocalContext.current
+    val bearerToken = sessionViewModel.accessTokenOrNull()
+    val profileRepository = remember { ProfileRepository() }
     var showLogoutConfirm by remember { mutableStateOf(false) }
+    var vipBadgeText by remember { mutableStateOf("VIP") }
+
+    LaunchedEffect(bearerToken) {
+        if (bearerToken != null) {
+            profileRepository.getVipStatus(bearerToken)
+                .onSuccess { vipBadgeText = "VIP ${it.current_level.level}" }
+        }
+    }
+
     val languageOptions = listOf(
         "en" to "English",
         "es" to "Español",
@@ -140,25 +162,25 @@ fun SettingsScreen(
             title = "ACCOUNT & PREFERENCES",
             items = listOf(
                 SettingsMenuItem("Profile Settings", icon = Icons.Filled.Person, onClick = onOpenProfileSettings),
-                SettingsMenuItem("Change Password", icon = Icons.Filled.Lock, onClick = onOpenChangePassword),
+                SettingsMenuItem("Change Password", icon = Icons.Filled.Security, onClick = onOpenChangePassword),
                 SettingsMenuItem("Phone Number", icon = Icons.Filled.Phone, onClick = onOpenPhoneSettings),
-                SettingsMenuItem("VIP Membership", icon = Icons.Filled.Star, badge = "Rewards", onClick = onOpenVipMembership),
-                SettingsMenuItem("Language", icon = Icons.Filled.AutoAwesome, badge = selectedLanguageLabel, onClick = onOpenLanguageSettings),
+                SettingsMenuItem("VIP Membership", icon = Icons.Filled.WorkspacePremium, badge = vipBadgeText, onClick = onOpenVipMembership),
+                SettingsMenuItem("Language", icon = Icons.Filled.Public, badge = selectedLanguageLabel, onClick = onOpenLanguageSettings),
                 SettingsMenuItem("Notifications", icon = Icons.Filled.Notifications, onClick = onOpenNotifications),
             ),
         ),
         SettingsMenuSection(
             title = "PLATFORM",
             items = listOf(
-                SettingsMenuItem("Feedback & Support", icon = Icons.Filled.Edit, onClick = onOpenFeedbackSupport),
+                SettingsMenuItem("Feedback & Support", icon = Icons.AutoMirrored.Filled.Message, onClick = onOpenFeedbackSupport),
                 SettingsMenuItem("Partnership Inquiry", icon = Icons.Filled.Storefront, onClick = onOpenPartnershipInquiry),
-                SettingsMenuItem("Privacy & Safety", icon = Icons.Filled.Lock, onClick = onOpenPrivacySafety),
+                SettingsMenuItem("Privacy & Safety", icon = Icons.Filled.Security, onClick = onOpenPrivacySafety),
             ),
         ),
         SettingsMenuSection(
             title = "OTHERS",
             items = listOf(
-                SettingsMenuItem("About Us", icon = Icons.Filled.History, onClick = onOpenAboutUs),
+                SettingsMenuItem("About Us", icon = Icons.Filled.Info, onClick = onOpenAboutUs),
             ),
         ),
     )
@@ -168,83 +190,85 @@ fun SettingsScreen(
             .fillMaxSize()
             .background(SettingsBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 26.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            item {
-                Text(
-                    text = "Settings",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = SettingsPrimaryText,
-                )
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
+            SettingsTopBar(title = "Settings", onBack = onBack)
 
-            sections.forEach { section ->
-                item {
-                    Text(
-                        text = section.title,
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 2.sp,
-                        ),
-                        color = Color.White.copy(alpha = 0.42f),
-                        modifier = Modifier.padding(start = 2.dp),
-                    )
-                }
-                item {
-                    Card(
-                        shape = RoundedCornerShape(20.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = SettingsCardBackground.copy(alpha = 0.94f)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-                    ) {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            section.items.forEachIndexed { index, item ->
-                                SettingsMenuRow(item = item)
-                                if (index < section.items.lastIndex) {
-                                    HorizontalDivider(
-                                        color = Color.White.copy(alpha = 0.10f),
-                                        modifier = Modifier.padding(horizontal = 14.dp),
-                                    )
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = SettingsPagePadding,
+                    end = SettingsPagePadding,
+                    top = 24.dp,
+                    bottom = 28.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
+                sections.forEach { section ->
+                    item {
+                        Text(
+                            text = section.title,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Black,
+                                fontSize = 10.sp,
+                                letterSpacing = 2.sp,
+                            ),
+                            color = Color.White.copy(alpha = 0.42f),
+                            modifier = Modifier.padding(start = 2.dp),
+                        )
+                    }
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(SettingsCardCorner),
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = SettingsCardBackground.copy(alpha = 0.94f)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                        ) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                section.items.forEachIndexed { index, item ->
+                                    SettingsMenuRow(item = item)
+                                    if (index < section.items.lastIndex) {
+                                        HorizontalDivider(
+                                            color = Color.White.copy(alpha = 0.10f),
+                                            modifier = Modifier.padding(horizontal = 14.dp),
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            item {
-                Button(
-                    onClick = { showLogoutConfirm = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = SettingsCardBackground.copy(alpha = 0.94f),
-                        contentColor = Color(0xFFFF7A7A),
-                    ),
-                    shape = RoundedCornerShape(20.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-                ) {
+                item {
+                    Button(
+                        onClick = { showLogoutConfirm = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = SettingsCardBackground.copy(alpha = 0.94f),
+                            contentColor = Color(0xFFFF7A7A),
+                        ),
+                        shape = RoundedCornerShape(SettingsCardCorner),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                    ) {
+                        Text(
+                            text = "Logout",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        )
+                    }
+                }
+
+                item {
                     Text(
-                        text = "Logout",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        text = "Figma Make Beauty Platform • ${BuildConfig.VERSION_NAME}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.22f),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
                     )
                 }
-            }
-
-            item {
-                Text(
-                    text = "Figma Make Beauty Platform • ${BuildConfig.VERSION_NAME}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.22f),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 4.dp),
-                )
             }
         }
 
@@ -273,6 +297,69 @@ fun SettingsScreen(
                 },
             )
         }
+    }
+}
+
+@Composable
+private fun SettingsTopBar(
+    title: String,
+    onBack: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color.Black,
+                        Color.Black.copy(alpha = 0.96f),
+                    ),
+                ),
+            ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = SettingsPagePadding, end = SettingsPagePadding, top = 4.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .size(38.dp)
+                    .background(Color.White.copy(alpha = 0.07f), CircleShape),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ChevronLeft,
+                    contentDescription = "Back",
+                    tint = SettingsPrimaryText,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = SettingsPrimaryText,
+                    maxLines = 1,
+                )
+            }
+
+            Spacer(modifier = Modifier.size(38.dp))
+        }
+
+        HorizontalDivider(
+            color = Color.White.copy(alpha = 0.08f),
+            thickness = 1.dp,
+        )
     }
 }
 
@@ -324,7 +411,7 @@ private fun SettingsMenuRow(item: SettingsMenuItem) {
             imageVector = Icons.Filled.ChevronRight,
             contentDescription = null,
             tint = Color.White.copy(alpha = 0.30f),
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(14.dp),
         )
     }
 }
