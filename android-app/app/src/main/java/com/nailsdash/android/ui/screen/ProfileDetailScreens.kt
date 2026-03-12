@@ -835,7 +835,7 @@ private fun PointsHistoryRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp),
+            .padding(horizontal = 2.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -852,7 +852,7 @@ private fun PointsHistoryRow(
                 imageVector = if (isPositive) Icons.Filled.NorthEast else Icons.Filled.SouthEast,
                 contentDescription = null,
                 tint = if (isPositive) Color(0xFF7DE39A) else Color(0xFFFF8A8A),
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier.size(13.dp),
             )
         }
 
