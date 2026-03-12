@@ -889,7 +889,10 @@ private fun PointsHistoryRow(
 
         Text(
             text = if (item.amount > 0) "+${item.amount}" else item.amount.toString(),
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+            ),
             color = if (isPositive) Color(0xFF7DE39A) else RewardsPrimaryText.copy(alpha = 0.9f),
             maxLines = 1,
         )
