@@ -1197,162 +1197,170 @@ fun CouponsScreen(
                         }
                     }
                 } else {
-                    items(couponsViewModel.coupons, key = { it.id }) { item ->
-                    val status = item.status.lowercase()
-                    val isAvailable = status == "available"
-                    val useInteraction = remember(item.id) { MutableInteractionSource() }
-                    val useScale = rememberPressScale(
-                        interactionSource = useInteraction,
-                        pressedScale = 0.96f,
-                    )
-
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .alpha(if (isAvailable) 1f else 0.65f),
-                    ) {
-                        Card(
-                            shape = RoundedCornerShape(18.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+                    item {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 1.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp),
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 162.dp)
-                                    .background(Brush.horizontalGradient(couponGradientColors(item.coupon.category)))
-                                    .padding(horizontal = RewardsPagePadding, vertical = 14.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(start = 2.dp),
-                                    verticalArrangement = Arrangement.spacedBy(5.dp),
-                                ) {
-                                    Text(
-                                        text = couponDiscount(item.coupon),
-                                        style = MaterialTheme.typography.displayMedium.copy(
-                                            fontWeight = FontWeight.Black,
-                                            fontSize = 44.sp,
-                                        ),
-                                        color = RewardsPrimaryText,
-                                        maxLines = 1,
-                                    )
-                                    Text(
-                                        text = couponSubtitle(item),
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                        color = RewardsPrimaryText.copy(alpha = 0.94f),
-                                        maxLines = 1,
-                                    )
-                                    Text(
-                                        text = "Min. spend $${String.format("%.0f", item.coupon.min_amount)}",
-                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                                        color = RewardsPrimaryText.copy(alpha = 0.80f),
-                                    )
-                                }
+                            couponsViewModel.coupons.forEach { item ->
+                                val status = item.status.lowercase()
+                                val isAvailable = status == "available"
+                                val useInteraction = remember(item.id) { MutableInteractionSource() }
+                                val useScale = rememberPressScale(
+                                    interactionSource = useInteraction,
+                                    pressedScale = 0.96f,
+                                )
 
                                 Box(
                                     modifier = Modifier
-                                        .width(11.dp)
-                                        .height(112.dp)
-                                        .drawBehind {
-                                            drawLine(
-                                                color = Color.White.copy(alpha = 0.35f),
-                                                start = Offset(x = size.width / 2f, y = 0f),
-                                                end = Offset(x = size.width / 2f, y = size.height),
-                                                strokeWidth = 1.dp.toPx(),
-                                                pathEffect = PathEffect.dashPathEffect(
-                                                    floatArrayOf(4.dp.toPx(), 4.dp.toPx()),
-                                                ),
-                                            )
-                                        },
+                                        .fillMaxWidth()
+                                        .alpha(if (isAvailable) 1f else 0.65f),
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.TopCenter)
-                                            .offset(y = (-6).dp)
-                                            .size(11.dp)
-                                            .background(Color.Black.copy(alpha = 0.96f), CircleShape),
-                                    )
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.BottomCenter)
-                                            .offset(y = 6.dp)
-                                            .size(11.dp)
-                                            .background(Color.Black.copy(alpha = 0.96f), CircleShape),
-                                    )
-                                }
-
-                                Column(
-                                    modifier = Modifier
-                                        .width(108.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    Text(
-                                        text = if (status == "used") "Used" else "Expires",
-                                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                                        color = RewardsPrimaryText.copy(alpha = 0.90f),
-                                    )
-                                    Text(
-                                        text = couponDateLabel(item),
-                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                        color = RewardsPrimaryText,
-                                        modifier = Modifier
-                                            .background(Color.Black.copy(alpha = 0.28f), RoundedCornerShape(8.dp))
-                                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                                    )
-                                    if (isAvailable) {
-                                        Button(
-                                            onClick = { useCouponId = item.id },
-                                            interactionSource = useInteraction,
+                                    Card(
+                                        shape = RoundedCornerShape(18.dp),
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+                                    ) {
+                                        Row(
                                             modifier = Modifier
-                                                .scale(useScale)
-                                                .widthIn(min = 90.dp)
-                                                .heightIn(min = 36.dp),
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = Color.White,
-                                                contentColor = Color.Black,
-                                            ),
-                                            shape = RoundedCornerShape(999.dp),
-                                            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 0.dp),
+                                                .fillMaxWidth()
+                                                .heightIn(min = 162.dp)
+                                                .background(Brush.horizontalGradient(couponGradientColors(item.coupon.category)))
+                                                .padding(horizontal = RewardsPagePadding, vertical = 14.dp),
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
                                         ) {
-                                            Text(
-                                                text = "Use",
-                                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                                            )
+                                            Column(
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .padding(start = 2.dp),
+                                                verticalArrangement = Arrangement.spacedBy(5.dp),
+                                            ) {
+                                                Text(
+                                                    text = couponDiscount(item.coupon),
+                                                    style = MaterialTheme.typography.displayMedium.copy(
+                                                        fontWeight = FontWeight.Black,
+                                                        fontSize = 44.sp,
+                                                    ),
+                                                    color = RewardsPrimaryText,
+                                                    maxLines = 1,
+                                                )
+                                                Text(
+                                                    text = couponSubtitle(item),
+                                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                    color = RewardsPrimaryText.copy(alpha = 0.94f),
+                                                    maxLines = 1,
+                                                )
+                                                Text(
+                                                    text = "Min. spend $${String.format("%.0f", item.coupon.min_amount)}",
+                                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                                    color = RewardsPrimaryText.copy(alpha = 0.80f),
+                                                )
+                                            }
+
+                                            Box(
+                                                modifier = Modifier
+                                                    .width(1.dp)
+                                                    .height(112.dp)
+                                                    .drawBehind {
+                                                        drawLine(
+                                                            color = Color.White.copy(alpha = 0.35f),
+                                                            start = Offset(0f, 0f),
+                                                            end = Offset(0f, size.height),
+                                                            strokeWidth = 1.dp.toPx(),
+                                                            pathEffect = PathEffect.dashPathEffect(
+                                                                floatArrayOf(4.dp.toPx(), 4.dp.toPx()),
+                                                            ),
+                                                        )
+                                                    }
+                                                    .padding(vertical = 7.dp),
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .align(Alignment.TopCenter)
+                                                        .offset(y = (-6).dp)
+                                                        .size(11.dp)
+                                                        .background(Color.Black.copy(alpha = 0.96f), CircleShape),
+                                                )
+                                                Box(
+                                                    modifier = Modifier
+                                                        .align(Alignment.BottomCenter)
+                                                        .offset(y = 6.dp)
+                                                        .size(11.dp)
+                                                        .background(Color.Black.copy(alpha = 0.96f), CircleShape),
+                                                )
+                                            }
+
+                                            Column(
+                                                modifier = Modifier
+                                                    .width(108.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                            ) {
+                                                Text(
+                                                    text = if (status == "used") "Used" else "Expires",
+                                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                                                    color = RewardsPrimaryText.copy(alpha = 0.90f),
+                                                )
+                                                Text(
+                                                    text = couponDateLabel(item),
+                                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                                    color = RewardsPrimaryText,
+                                                    modifier = Modifier
+                                                        .background(Color.Black.copy(alpha = 0.28f), RoundedCornerShape(8.dp))
+                                                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                                                )
+                                                if (isAvailable) {
+                                                    Button(
+                                                        onClick = { useCouponId = item.id },
+                                                        interactionSource = useInteraction,
+                                                        modifier = Modifier
+                                                            .scale(useScale)
+                                                            .widthIn(min = 90.dp)
+                                                            .heightIn(min = 36.dp),
+                                                        colors = ButtonDefaults.buttonColors(
+                                                            containerColor = Color.White,
+                                                            contentColor = Color.Black,
+                                                        ),
+                                                        shape = RoundedCornerShape(999.dp),
+                                                        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 0.dp),
+                                                    ) {
+                                                        Text(
+                                                            text = "Use",
+                                                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                                        )
+                                                    }
+                                                } else if (status == "expired") {
+                                                    Text(
+                                                        text = "Expired",
+                                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                                        color = Color(0xFFFF8A8A),
+                                                    )
+                                                } else {
+                                                    Text(
+                                                        text = "Used",
+                                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                                        color = RewardsPrimaryText.copy(alpha = 0.7f),
+                                                    )
+                                                }
+                                            }
                                         }
-                                    } else if (status == "expired") {
-                                        Text(
-                                            text = "Expired",
-                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                            color = Color(0xFFFF8A8A),
-                                        )
-                                    } else {
-                                        Text(
-                                            text = "Used",
-                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                                            color = RewardsPrimaryText.copy(alpha = 0.7f),
-                                        )
                                     }
+
+                                    Icon(
+                                        imageVector = Icons.Filled.ConfirmationNumber,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.10f),
+                                        modifier = Modifier
+                                            .align(Alignment.BottomEnd)
+                                            .padding(8.dp)
+                                            .size(36.dp)
+                                            .rotate(12f),
+                                    )
                                 }
                             }
                         }
-
-                        Icon(
-                            imageVector = Icons.Filled.ConfirmationNumber,
-                            contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.10f),
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(8.dp)
-                                .size(36.dp)
-                                .rotate(12f),
-                        )
-                    }
                     }
                 }
             }
