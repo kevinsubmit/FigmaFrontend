@@ -766,8 +766,8 @@ private fun RewardsEmptyStateCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
-        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.18f)),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.03f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.16f)),
     ) {
         Column(
             modifier = Modifier
@@ -887,14 +887,20 @@ private fun RewardsLoadingOverlay() {
         contentAlignment = Alignment.Center,
     ) {
         Card(
+            modifier = Modifier.shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = Color.Black.copy(alpha = 0.28f),
+                spotColor = Color.Black.copy(alpha = 0.28f),
+            ),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
-            border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+            colors = CardDefaults.cardColors(containerColor = RewardsCardBackground.copy(alpha = 0.96f)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.16f)),
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),
@@ -903,8 +909,11 @@ private fun RewardsLoadingOverlay() {
                 )
                 Text(
                     text = "Loading...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = RewardsPrimaryText,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = RewardsSecondaryText,
                 )
             }
         }
