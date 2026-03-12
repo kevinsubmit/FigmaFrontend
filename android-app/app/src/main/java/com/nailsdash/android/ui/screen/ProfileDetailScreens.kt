@@ -1501,7 +1501,7 @@ fun GiftCardsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 340.dp)
+                    .height(340.dp)
                     .padding(RewardsPagePadding),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -1535,7 +1535,10 @@ fun GiftCardsScreen(
                     value = claimCode,
                     onValueChange = { claimCode = it.uppercase() },
                     placeholder = "Claim code",
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Characters,
+                        autoCorrectEnabled = false,
+                    ),
                 )
 
                 Button(
@@ -1603,7 +1606,7 @@ fun GiftCardsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 420.dp)
+                    .height(420.dp)
                     .padding(RewardsPagePadding),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -1666,6 +1669,7 @@ fun GiftCardsScreen(
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Number,
                         capitalization = KeyboardCapitalization.None,
+                        autoCorrectEnabled = false,
                     ),
                 )
 
