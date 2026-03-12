@@ -4464,7 +4464,7 @@ fun ReferralScreen(
                     )
                     Text(
                         text = "Share the glow! Both you and your friend will receive 1 Free Coupon (\$10 value) immediately after successful registration.",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
                         color = Color.White.copy(alpha = 0.68f),
                         textAlign = TextAlign.Center,
                     )
@@ -4510,6 +4510,8 @@ fun ReferralScreen(
                             Text(
                                 text = if (referralCode.isBlank()) "—" else referralCode,
                                 style = MaterialTheme.typography.headlineMedium.copy(
+                                    fontSize = 28.sp,
+                                    lineHeight = 30.sp,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 5.2.sp,
                                 ),
@@ -4605,7 +4607,10 @@ fun ReferralScreen(
                             )
                             Text(
                                 text = "Share with Friends",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                ),
                             )
                         }
                     }
@@ -4778,7 +4783,10 @@ private fun ReferralStatChip(
         )
         Text(
             text = text,
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+            ),
             color = tint,
         )
     }
@@ -4788,8 +4796,11 @@ private fun referralSharePayload(referralCode: String): String {
     val code = referralCode.trim()
     if (code.isEmpty()) return ""
     val shareText = "Join me on Nails Booking! Use my referral code $code and get a \$10 coupon right after registration!"
-    val apiBase = BuildConfig.API_BASE_URL.trim().trimEnd('/')
-    val webBase = if (apiBase.endsWith("/api")) apiBase.removeSuffix("/api") else apiBase
+    val webBase = BuildConfig.API_BASE_URL
+        .trim()
+        .trimEnd('/')
+        .removeSuffix("api/v1")
+        .trimEnd('/')
     val referralLink = "$webBase/register?ref=$code"
     return "$shareText\n$referralLink"
 }
