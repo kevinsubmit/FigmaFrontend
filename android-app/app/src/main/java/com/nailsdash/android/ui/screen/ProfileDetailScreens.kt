@@ -1577,9 +1577,9 @@ fun GiftCardsScreen(
                     ) {
                         if (isClaiming) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(12.dp),
+                                modifier = Modifier.size(11.dp),
                                 color = claimButtonFg,
-                                strokeWidth = 1.8.dp,
+                                strokeWidth = 1.6.dp,
                             )
                         } else {
                             Icon(
@@ -1729,9 +1729,9 @@ fun GiftCardsScreen(
                     ) {
                         if (isSendingCurrentCard) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(12.dp),
+                                modifier = Modifier.size(11.dp),
                                 color = sendButtonFg,
-                                strokeWidth = 1.8.dp,
+                                strokeWidth = 1.6.dp,
                             )
                         } else {
                             Icon(
@@ -2425,6 +2425,7 @@ private fun GiftCardCollectionCard(
 
                 "pending_transfer" -> {
                     val isRevoking = revokingCardId == card.id
+                    val revokeTextColor = Color(0xFFFF3B30).copy(alpha = 0.9f)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -2452,8 +2453,8 @@ private fun GiftCardCollectionCard(
                         ) {
                             if (isRevoking) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(12.dp),
-                                    strokeWidth = 1.8.dp,
+                                    modifier = Modifier.size(9.dp),
+                                    strokeWidth = 1.6.dp,
                                     color = Color(0xFFFF3B30),
                                 )
                                 Spacer(modifier = Modifier.width(5.dp))
@@ -2463,15 +2464,22 @@ private fun GiftCardCollectionCard(
                                         fontWeight = FontWeight.Bold,
                                         letterSpacing = 0.8.sp,
                                     ),
-                                    color = Color(0xFFFF3B30),
+                                    color = revokeTextColor,
                                 )
                             } else {
-                                Icon(
-                                    imageVector = Icons.Filled.Close,
-                                    contentDescription = null,
-                                    tint = Color(0xFFFF3B30),
-                                    modifier = Modifier.size(12.dp),
-                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .background(revokeTextColor.copy(alpha = 0.18f), CircleShape),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Close,
+                                        contentDescription = null,
+                                        tint = revokeTextColor,
+                                        modifier = Modifier.size(8.dp),
+                                    )
+                                }
                                 Spacer(modifier = Modifier.width(5.dp))
                                 Text(
                                     text = "CANCEL TRANSFER",
@@ -2479,7 +2487,7 @@ private fun GiftCardCollectionCard(
                                         fontWeight = FontWeight.Bold,
                                         letterSpacing = 0.8.sp,
                                     ),
-                                    color = Color(0xFFFF3B30),
+                                    color = revokeTextColor,
                                 )
                             }
                         }
