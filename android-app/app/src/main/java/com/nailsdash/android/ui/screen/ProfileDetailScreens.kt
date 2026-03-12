@@ -1071,7 +1071,10 @@ private fun maskPhone(raw: String): String {
 private fun GiftSheetLabel(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+        style = MaterialTheme.typography.labelSmall.copy(
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.6.sp,
+        ),
         color = RewardsSecondaryText,
     )
 }
@@ -1105,7 +1108,7 @@ private fun GiftSheetInputField(
                     Text(
                         text = placeholder,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = RewardsSecondaryText.copy(alpha = 0.82f),
+                        color = RewardsSecondaryText,
                     )
                 }
                 innerTextField()
@@ -1581,7 +1584,7 @@ fun GiftCardsScreen(
 
                 Text(
                     text = "Enter the code from SMS to claim a transferred gift card.",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = RewardsSecondaryText,
                 )
 
@@ -2242,11 +2245,10 @@ private fun GiftCardCollectionCard(
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(
-                    imageVector = Icons.Filled.ConfirmationNumber,
-                    contentDescription = null,
-                    tint = RewardsGold,
-                    modifier = Modifier.size(14.dp),
+                Text(
+                    text = "#",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = RewardsGold,
                 )
                 Text(
                     text = card.card_number,
