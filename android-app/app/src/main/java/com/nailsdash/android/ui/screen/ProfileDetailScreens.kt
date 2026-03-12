@@ -1577,9 +1577,9 @@ fun GiftCardsScreen(
                     ) {
                         if (isClaiming) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(14.dp),
+                                modifier = Modifier.size(12.dp),
                                 color = claimButtonFg,
-                                strokeWidth = 2.dp,
+                                strokeWidth = 1.8.dp,
                             )
                         } else {
                             Icon(
@@ -1729,9 +1729,9 @@ fun GiftCardsScreen(
                     ) {
                         if (isSendingCurrentCard) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(14.dp),
+                                modifier = Modifier.size(12.dp),
                                 color = sendButtonFg,
-                                strokeWidth = 2.dp,
+                                strokeWidth = 1.8.dp,
                             )
                         } else {
                             Icon(
@@ -2228,11 +2228,14 @@ private fun GiftCardCollectionCard(
                 }
                 Text(
                     text = giftStatusLabel(status),
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 10.sp,
+                    ),
                     color = statusColor,
                     modifier = Modifier
                         .background(statusColor.copy(alpha = 0.18f), RoundedCornerShape(999.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
                 )
             }
 
@@ -2449,7 +2452,7 @@ private fun GiftCardCollectionCard(
                         ) {
                             if (isRevoking) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(14.dp),
+                                    modifier = Modifier.size(12.dp),
                                     strokeWidth = 1.8.dp,
                                     color = Color(0xFFFF3B30),
                                 )
