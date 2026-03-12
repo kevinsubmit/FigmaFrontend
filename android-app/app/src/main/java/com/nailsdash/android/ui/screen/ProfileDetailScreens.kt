@@ -1575,12 +1575,12 @@ fun GiftCardsScreen(
                             Icon(
                                 imageVector = Icons.Filled.CheckCircle,
                                 contentDescription = null,
-                                modifier = Modifier.size(14.dp),
+                                modifier = Modifier.size(12.dp),
                             )
                         }
                         Text(
                             text = if (giftCardsViewModel.isClaiming) "Claiming..." else "Claim Gift Card",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         )
                     }
                 }
@@ -1720,7 +1720,7 @@ fun GiftCardsScreen(
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Send,
                                 contentDescription = null,
-                                modifier = Modifier.size(14.dp),
+                                modifier = Modifier.size(12.dp),
                             )
                         }
                         Text(
@@ -1729,7 +1729,7 @@ fun GiftCardsScreen(
                             } else {
                                 "Send Digital Gift Card"
                             },
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         )
                     }
                 }
