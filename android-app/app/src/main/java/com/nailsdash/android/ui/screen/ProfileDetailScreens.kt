@@ -11,10 +11,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -4183,35 +4179,6 @@ private data class VipTierVisual(
 
 @Composable
 private fun VipHeroSection() {
-    val heroTransition = rememberInfiniteTransition(label = "vipHero")
-    val haloScale by heroTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.14f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2200),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "vipHeroHaloScale",
-    )
-    val haloAlpha by heroTransition.animateFloat(
-        initialValue = 0.12f,
-        targetValue = 0.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2200),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "vipHeroHaloAlpha",
-    )
-    val iconScale by heroTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.06f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2200),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "vipHeroIconScale",
-    )
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -4226,21 +4193,18 @@ private fun VipHeroSection() {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .scale(haloScale)
-                    .background(RewardsGold.copy(alpha = haloAlpha), CircleShape),
+                    .background(RewardsGold.copy(alpha = 0.14f), CircleShape),
             )
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .border(1.dp, RewardsGold.copy(alpha = 0.34f + (haloAlpha - 0.12f) * 0.9f), CircleShape),
+                    .border(1.dp, RewardsGold.copy(alpha = 0.34f), CircleShape),
             )
             Icon(
                 imageVector = Icons.Filled.WorkspacePremium,
                 contentDescription = null,
                 tint = RewardsGold,
-                modifier = Modifier
-                    .size(30.dp)
-                    .scale(iconScale),
+                modifier = Modifier.size(30.dp),
             )
         }
 
@@ -4337,17 +4301,6 @@ private fun VipTierCard(tier: VipTierVisual) {
 
 @Composable
 private fun VipRedemptionCard() {
-    val redemptionTransition = rememberInfiniteTransition(label = "vipRedemption")
-    val redemptionGlowAlpha by redemptionTransition.animateFloat(
-        initialValue = 0.08f,
-        targetValue = 0.16f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2600),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "vipRedemptionGlow",
-    )
-
     Card(
         shape = RoundedCornerShape(18.dp),
         modifier = Modifier.fillMaxWidth(),
@@ -4360,7 +4313,7 @@ private fun VipRedemptionCard() {
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            RewardsGold.copy(alpha = redemptionGlowAlpha),
+                            RewardsGold.copy(alpha = 0.10f),
                             Color.Transparent,
                         ),
                     ),
