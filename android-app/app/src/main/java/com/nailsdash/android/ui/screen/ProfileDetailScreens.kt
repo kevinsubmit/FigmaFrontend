@@ -493,7 +493,7 @@ fun PointsScreen(
                                 Column(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .padding(start = 2.dp, end = 10.dp),
+                                        .padding(start = 2.dp),
                                     verticalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
                                     Text(
