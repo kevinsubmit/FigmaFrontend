@@ -1497,6 +1497,7 @@ fun GiftCardsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(min = 340.dp)
                     .padding(RewardsPagePadding),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -1579,7 +1580,7 @@ fun GiftCardsScreen(
                     color = RewardsSecondaryText,
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.weight(1f))
             }
         }
     }
@@ -1594,7 +1595,7 @@ fun GiftCardsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
+                    .heightIn(min = 420.dp)
                     .padding(RewardsPagePadding),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -1711,7 +1712,7 @@ fun GiftCardsScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.weight(1f))
             }
         }
     }
