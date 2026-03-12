@@ -2231,7 +2231,7 @@ private fun GiftCardCollectionCard(
 
             Text(
                 text = "Available Balance",
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
                 color = RewardsSecondaryText,
             )
 
@@ -2349,98 +2349,106 @@ private fun GiftCardCollectionCard(
 
             when (status) {
                 "active" -> {
-                    Button(
-                        onClick = onSend,
-                        interactionSource = sendInteraction,
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .scale(sendScale)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.Black.copy(alpha = 0.42f))
                             .border(
                                 width = 1.dp,
                                 color = RewardsGold.copy(alpha = 0.35f),
                                 shape = RoundedCornerShape(12.dp),
                             ),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Black.copy(alpha = 0.42f),
-                            contentColor = RewardsGold,
-                        ),
-                        shape = RoundedCornerShape(12.dp),
                     ) {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = sendInteraction,
+                                    indication = null,
+                                    onClick = onSend,
+                                )
+                                .padding(vertical = 9.dp),
+                            horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Send,
                                 contentDescription = null,
+                                tint = RewardsGold,
                                 modifier = Modifier.size(12.dp),
                             )
+                            Spacer(modifier = Modifier.width(5.dp))
                             Text(
                                 text = "SEND THIS CARD",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 0.8.sp,
                                 ),
+                                color = RewardsGold,
                             )
                         }
                     }
                 }
 
                 "pending_transfer" -> {
-                    Button(
-                        onClick = onRevoke,
-                        enabled = revokingCardId != card.id,
-                        interactionSource = revokeInteraction,
+                    val isRevoking = revokingCardId == card.id
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .scale(revokeScale)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFFF3B30).copy(alpha = 0.10f))
                             .border(
                                 width = 1.dp,
                                 color = Color(0xFFFF3B30).copy(alpha = 0.45f),
                                 shape = RoundedCornerShape(12.dp),
                             ),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFFF3B30).copy(alpha = 0.10f),
-                            contentColor = Color(0xFFFF3B30),
-                            disabledContainerColor = Color(0xFFFF3B30).copy(alpha = 0.10f),
-                            disabledContentColor = Color(0xFFFF3B30),
-                        ),
-                        shape = RoundedCornerShape(12.dp),
                     ) {
-                        if (revokingCardId == card.id) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    enabled = !isRevoking,
+                                    interactionSource = revokeInteraction,
+                                    indication = null,
+                                    onClick = onRevoke,
+                                )
+                                .padding(vertical = 9.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (isRevoking) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(14.dp),
                                     strokeWidth = 1.8.dp,
                                     color = Color(0xFFFF3B30),
                                 )
+                                Spacer(modifier = Modifier.width(5.dp))
                                 Text(
                                     text = "CANCELING...",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontWeight = FontWeight.Bold,
                                         letterSpacing = 0.8.sp,
                                     ),
+                                    color = Color(0xFFFF3B30),
                                 )
-                            }
-                        } else {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
+                            } else {
                                 Icon(
                                     imageVector = Icons.Filled.Close,
                                     contentDescription = null,
+                                    tint = Color(0xFFFF3B30),
                                     modifier = Modifier.size(12.dp),
                                 )
+                                Spacer(modifier = Modifier.width(5.dp))
                                 Text(
                                     text = "CANCEL TRANSFER",
                                     style = MaterialTheme.typography.labelSmall.copy(
                                         fontWeight = FontWeight.Bold,
                                         letterSpacing = 0.8.sp,
                                     ),
+                                    color = Color(0xFFFF3B30),
                                 )
                             }
                         }
