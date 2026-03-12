@@ -1073,8 +1073,7 @@ private fun GiftSheetLabel(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelSmall.copy(
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.6.sp,
+            fontWeight = FontWeight.SemiBold,
         ),
         color = RewardsSecondaryText,
     )
@@ -1530,7 +1529,14 @@ fun GiftCardsScreen(
                     )
                 }
 
-                GiftSheetLabel(text = "Enter claim code")
+                Text(
+                    text = "Enter claim code",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.6.sp,
+                    ),
+                    color = RewardsSecondaryText,
+                )
 
                 GiftSheetInputField(
                     value = claimCode,
