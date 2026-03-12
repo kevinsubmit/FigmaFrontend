@@ -2228,14 +2228,11 @@ private fun GiftCardCollectionCard(
                 }
                 Text(
                     text = giftStatusLabel(status),
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 10.sp,
-                    ),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                     color = statusColor,
                     modifier = Modifier
                         .background(statusColor.copy(alpha = 0.18f), RoundedCornerShape(999.dp))
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
                 )
             }
 
@@ -2268,7 +2265,7 @@ private fun GiftCardCollectionCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color.Black.copy(alpha = 0.44f), RoundedCornerShape(12.dp))
+                    .background(Color.Black.copy(alpha = 0.44f), RoundedCornerShape(11.dp))
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
