@@ -9,7 +9,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,21 +31,21 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.animation.animateContentSize
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storefront
@@ -248,18 +248,31 @@ fun SettingsScreen(
                         onClick = { showLogoutConfirm = true },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp),
+                            .height(56.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = SettingsCardBackground.copy(alpha = 0.94f),
-                            contentColor = Color(0xFFFF7A7A),
+                            contentColor = Color(0xFFFF7A7A).copy(alpha = 0.86f),
                         ),
                         shape = RoundedCornerShape(SettingsCardCorner),
                         border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
                     ) {
-                        Text(
-                            text = "Logout",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                                contentDescription = null,
+                                modifier = Modifier.size(17.dp),
+                            )
+                            Text(
+                                text = "Logout",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                ),
+                            )
+                        }
                     }
                 }
 
@@ -1082,31 +1095,12 @@ fun LanguageSettingsScreen(
                     SettingsStaticCard {
                     options.forEachIndexed { index, (code, label) ->
                         val selected = languageSettingsViewModel.selectedLanguage == code
-                        val rowBackground by animateColorAsState(
-                            targetValue = if (selected) {
-                                SettingsGold.copy(alpha = 0.12f)
-                            } else {
-                                Color.Transparent
-                            },
-                            animationSpec = tween(
-                                durationMillis = SettingsMotionDurationMs,
-                                easing = FastOutSlowInEasing,
-                            ),
-                            label = "language_row_background",
-                        )
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { languageSettingsViewModel.selectedLanguage = code }
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(rowBackground)
-                                .animateContentSize(
-                                    animationSpec = tween(
-                                        durationMillis = SettingsMotionDurationMs,
-                                        easing = FastOutSlowInEasing,
-                                    ),
-                                )
-                                .padding(horizontal = 4.dp, vertical = 14.dp),
+                                .heightIn(min = 58.dp)
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -1121,15 +1115,18 @@ fun LanguageSettingsScreen(
                                 )
                                 Text(
                                     text = languageSubtitle(code),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium,
+                                    ),
                                     color = Color.White.copy(alpha = 0.40f),
                                 )
                             }
                             Icon(
-                                imageVector = if (selected) Icons.Filled.CheckCircle else Icons.Filled.ChevronRight,
+                                imageVector = if (selected) Icons.Filled.CheckCircle else Icons.Filled.RadioButtonUnchecked,
                                 contentDescription = null,
                                 tint = if (selected) SettingsGold else Color.White.copy(alpha = 0.26f),
-                                modifier = Modifier.size(if (selected) 18.dp else 16.dp),
+                                modifier = Modifier.size(18.dp),
                             )
                         }
                         if (index < options.lastIndex) {
@@ -1181,16 +1178,22 @@ fun LanguageSettingsScreen(
 private fun SettingsDescription(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 18.sp),
+        style = MaterialTheme.typography.bodySmall.copy(
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            lineHeight = 16.sp,
+        ),
         color = Color.White.copy(alpha = 0.50f),
+        modifier = Modifier.fillMaxWidth(),
     )
 }
 
 @Composable
 private fun SettingsFieldLabel(title: String) {
     Text(
-        text = title.uppercase(),
+        text = title,
         style = MaterialTheme.typography.labelSmall.copy(
+            fontSize = 10.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 2.sp,
         ),
@@ -1246,28 +1249,19 @@ private fun SettingsMessageBanner(
         label = "settings_message_banner",
     ) { banner ->
         if (banner != null) {
-            val tone = if (banner.isError) Color(0xFFFF8F8F) else Color(0xFF8BE3A6)
-            Row(
+            val tone = if (banner.isError) Color.Red.copy(alpha = 0.92f) else Color(0xFF7FE3A0).copy(alpha = 0.92f)
+            Text(
+                text = banner.text,
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(tone.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
-                    .border(1.dp, tone.copy(alpha = 0.24f), RoundedCornerShape(14.dp))
                     .padding(horizontal = 12.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = if (banner.isError) Icons.Filled.Error else Icons.Filled.CheckCircle,
-                    contentDescription = null,
-                    tint = tone,
-                    modifier = Modifier.size(16.dp),
-                )
-                Text(
-                    text = banner.text,
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = tone,
-                )
-            }
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                ),
+                color = tone,
+            )
         } else {
             Spacer(modifier = Modifier.height(0.dp))
         }
@@ -1279,39 +1273,56 @@ private fun SettingsInfoCard(
     title: String,
     bullets: List<String>,
 ) {
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(SettingsCardBackground, RoundedCornerShape(12.dp))
-            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+            .background(Color(0xFF5CA9FF).copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+            .border(1.dp, Color(0xFF5CA9FF).copy(alpha = 0.20f), RoundedCornerShape(14.dp))
             .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top,
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.8.sp,
-            ),
-            color = Color.White.copy(alpha = 0.52f),
+        Icon(
+            imageVector = Icons.Filled.Info,
+            contentDescription = null,
+            tint = Color(0xFF5CA9FF).copy(alpha = 0.90f),
+            modifier = Modifier
+                .size(17.dp)
+                .padding(top = 2.dp),
         )
-        bullets.forEach { line ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalAlignment = Alignment.Top,
-            ) {
-                Text(
-                    text = "•",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                    color = SettingsGold,
-                    modifier = Modifier.padding(top = 1.dp),
-                )
-                Text(
-                    text = line,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.62f),
-                    modifier = Modifier.weight(1f),
-                )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                ),
+                color = Color.White.copy(alpha = 0.88f),
+            )
+            bullets.forEach { line ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 7.dp)
+                            .size(4.dp)
+                            .background(Color.White.copy(alpha = 0.42f), CircleShape),
+                    )
+                    Text(
+                        text = line,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        color = Color.White.copy(alpha = 0.60f),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
     }
@@ -1414,10 +1425,10 @@ fun FeedbackSupportScreen(onBack: () -> Unit = {}) {
                 contentPadding = PaddingValues(
                     start = SettingsPagePadding,
                     end = SettingsPagePadding,
-                    top = 24.dp,
-                    bottom = 28.dp,
+                    top = 20.dp,
+                    bottom = 32.dp,
                 ),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item {
                     Text(
@@ -1482,7 +1493,6 @@ fun FeedbackSupportScreen(onBack: () -> Unit = {}) {
                                 if (index < channels.lastIndex) {
                                     HorizontalDivider(
                                         color = Color.White.copy(alpha = 0.10f),
-                                        modifier = Modifier.padding(horizontal = 14.dp),
                                     )
                                 }
                             }
@@ -1515,10 +1525,10 @@ fun PartnershipInquiryScreen(onBack: () -> Unit = {}) {
                 contentPadding = PaddingValues(
                     start = SettingsPagePadding,
                     end = SettingsPagePadding,
-                    top = 24.dp,
-                    bottom = 28.dp,
+                    top = 20.dp,
+                    bottom = 32.dp,
                 ),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item {
                     Text(
@@ -1576,7 +1586,6 @@ fun PartnershipInquiryScreen(onBack: () -> Unit = {}) {
                                 if (index < highlights.lastIndex) {
                                     HorizontalDivider(
                                         color = Color.White.copy(alpha = 0.10f),
-                                        modifier = Modifier.padding(horizontal = 14.dp),
                                     )
                                 }
                             }
@@ -1598,7 +1607,7 @@ fun PartnershipInquiryScreen(onBack: () -> Unit = {}) {
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             Text(
-                                text = "CONTACT OUR PARTNERSHIP TEAM",
+                                text = "Contact our Partnership Team",
                                 style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 2.sp,
@@ -1692,10 +1701,10 @@ fun PrivacySafetyScreen(onBack: () -> Unit = {}) {
                 contentPadding = PaddingValues(
                     start = SettingsPagePadding,
                     end = SettingsPagePadding,
-                    top = 24.dp,
-                    bottom = 28.dp,
+                    top = 20.dp,
+                    bottom = 32.dp,
                 ),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item {
                     SettingsStaticCard {
@@ -1766,10 +1775,10 @@ fun AboutUsScreen(onBack: () -> Unit = {}) {
                 contentPadding = PaddingValues(
                     start = SettingsPagePadding,
                     end = SettingsPagePadding,
-                    top = 24.dp,
-                    bottom = 28.dp,
+                    top = 20.dp,
+                    bottom = 32.dp,
                 ),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item {
                     SettingsStaticCard {
@@ -1801,7 +1810,6 @@ fun AboutUsScreen(onBack: () -> Unit = {}) {
                     SettingsStaticCard {
                         SettingsStaticInfo(label = "Version", value = "v${BuildConfig.VERSION_NAME}")
                         SettingsStaticInfo(label = "Market", value = "United States")
-                        SettingsStaticInfo(label = "Platform", value = "Figma Make Beauty Platform")
                     }
                 }
             }
@@ -1846,8 +1854,9 @@ private fun SettingsStaticInfo(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
-            text = label.uppercase(),
+            text = label,
             style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 2.sp,
             ),
@@ -1855,7 +1864,10 @@ private fun SettingsStaticInfo(
         )
         Text(
             text = value.ifBlank { "-" },
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+            ),
             color = SettingsPrimaryText,
         )
     }

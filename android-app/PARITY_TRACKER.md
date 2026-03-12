@@ -39,7 +39,7 @@ Last updated: 2026-03-11
 
 ## Settings
 - `DONE` Settings hub + subpages (`SettingsModule.swift` -> `SettingsScreens.kt`)
-  - done: profile/password/phone/language/support/privacy/about/partnership flows; Settings hub + all major subpages upgraded to iOS-like black+gold grouped cards and form modules (avatar section, message banners, info cards, field labels, CTA states, logout confirmation, version footer), plus profile gender dialog picker + birthday date picker + language checkmark selection interaction; message banner animated transitions + icon states; language row selection background animation/content-size transition and unified timing/easing polish
+  - done: profile/password/phone/language/support/privacy/about/partnership flows; Settings hub + all major subpages upgraded to iOS-like black+gold grouped cards and form modules (avatar section, message banners, info cards, field labels, CTA states, logout confirmation, version footer), plus profile gender dialog picker + birthday date picker + language checkmark selection interaction; settings micro-parity pass #42 (description/field-label/static-info typography alignment, simplified message banner without icon/border, blue advisory info-card structure, language row trailing icon semantics switched to check-circle/circle with no selected fill, logout CTA upgraded to icon + 56dp height, static pages switched to iOS spacing rhythm `top=20/bottom=32/spacing=16`, and About page removed extra platform row)
 
 ## Auth
 - `DONE` Login/register (`LoginView.swift` -> `LoginScreen.kt`)
