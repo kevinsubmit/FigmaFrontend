@@ -123,6 +123,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -2278,6 +2279,7 @@ private fun GiftCardCollectionCard(
                         .weight(1f)
                         .padding(start = 8.dp),
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Box(
                     modifier = Modifier
@@ -2345,6 +2347,7 @@ private fun GiftCardCollectionCard(
                         )
                     }
                 }
+                Spacer(modifier = Modifier.weight(1f))
             }
 
             card.recipient_phone?.takeIf { it.isNotBlank() }?.let { recipient ->
