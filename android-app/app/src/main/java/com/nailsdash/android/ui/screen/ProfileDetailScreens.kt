@@ -1515,17 +1515,15 @@ fun GiftCardsScreen(
                         ),
                         color = RewardsPrimaryText,
                     )
-                    TextButton(
-                        onClick = { showClaimDialog = false },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = RewardsGold,
-                        ),
-                    ) {
-                        Text(
-                            text = "Close",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                        )
-                    }
+                    Text(
+                        text = "Close",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = RewardsGold,
+                        modifier = Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) { showClaimDialog = false },
+                    )
                 }
 
                 GiftSheetLabel(text = "Enter claim code")
@@ -1552,6 +1550,8 @@ fun GiftCardsScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = RewardsGold,
                         contentColor = Color.Black,
+                        disabledContainerColor = RewardsGold.copy(alpha = 0.82f),
+                        disabledContentColor = Color.Black.copy(alpha = 0.82f),
                     ),
                     shape = RoundedCornerShape(14.dp),
                 ) {
@@ -1617,17 +1617,15 @@ fun GiftCardsScreen(
                         ),
                         color = RewardsPrimaryText,
                     )
-                    TextButton(
-                        onClick = { sendCardId = null },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = RewardsGold,
-                        ),
-                    ) {
-                        Text(
-                            text = "Close",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
-                        )
-                    }
+                    Text(
+                        text = "Close",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = RewardsGold,
+                        modifier = Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) { sendCardId = null },
+                    )
                 }
 
                 Card(
@@ -1696,6 +1694,8 @@ fun GiftCardsScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = RewardsGold,
                         contentColor = Color.Black,
+                        disabledContainerColor = RewardsGold.copy(alpha = 0.82f),
+                        disabledContentColor = Color.Black.copy(alpha = 0.82f),
                     ),
                     shape = RoundedCornerShape(14.dp),
                 ) {
@@ -2402,6 +2402,8 @@ private fun GiftCardCollectionCard(
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFFFF3B30).copy(alpha = 0.10f),
                             contentColor = Color(0xFFFF3B30),
+                            disabledContainerColor = Color(0xFFFF3B30).copy(alpha = 0.10f),
+                            disabledContentColor = Color(0xFFFF3B30),
                         ),
                         shape = RoundedCornerShape(12.dp),
                     ) {
