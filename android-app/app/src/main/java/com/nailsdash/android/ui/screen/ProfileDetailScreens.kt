@@ -171,6 +171,8 @@ private val RewardsCardBackground = Color(0xFF111111)
 private val RewardsPrimaryText = Color.White
 private val RewardsSecondaryText = Color.White.copy(alpha = 0.72f)
 private val RewardsMutedText = Color.White.copy(alpha = 0.52f)
+private val RewardsSystemGreen = Color(0xFF34C759)
+private val RewardsSystemRed = Color(0xFFFF3B30)
 private val RewardsPagePadding = 16.dp
 private val OrderHistoryCardCorner = 18.dp
 private val RewardsShortDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M/d/yy", Locale.US)
@@ -850,7 +852,7 @@ private fun PointsHistoryRow(
             modifier = Modifier
                 .size(32.dp)
                 .background(
-                    if (isPositive) Color(0xFF2D7A4A).copy(alpha = 0.22f) else Color(0xFF9F3A3A).copy(alpha = 0.22f),
+                    if (isPositive) RewardsSystemGreen.copy(alpha = 0.22f) else RewardsSystemRed.copy(alpha = 0.22f),
                     CircleShape,
                 ),
             contentAlignment = Alignment.Center,
@@ -858,7 +860,7 @@ private fun PointsHistoryRow(
             Icon(
                 imageVector = if (isPositive) Icons.Filled.NorthEast else Icons.Filled.SouthEast,
                 contentDescription = null,
-                tint = if (isPositive) Color(0xFF7DE39A) else Color(0xFFFF8A8A),
+                tint = if (isPositive) RewardsSystemGreen else RewardsSystemRed,
                 modifier = Modifier.size(13.dp),
             )
         }
@@ -897,7 +899,7 @@ private fun PointsHistoryRow(
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
             ),
-            color = if (isPositive) Color(0xFF7DE39A) else RewardsPrimaryText.copy(alpha = 0.9f),
+            color = if (isPositive) RewardsSystemGreen else RewardsPrimaryText.copy(alpha = 0.9f),
             maxLines = 1,
         )
     }
