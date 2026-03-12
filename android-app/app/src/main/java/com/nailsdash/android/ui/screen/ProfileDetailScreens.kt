@@ -608,7 +608,7 @@ fun PointsScreen(
                                             contentAlignment = Alignment.Center,
                                         ) {
                                             CircularProgressIndicator(
-                                                color = RewardsPrimaryText,
+                                                color = RewardsGold,
                                                 modifier = Modifier.size(18.dp),
                                                 strokeWidth = 2.dp,
                                             )
