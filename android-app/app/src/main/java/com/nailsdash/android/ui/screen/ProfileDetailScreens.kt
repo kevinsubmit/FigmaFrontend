@@ -516,7 +516,10 @@ fun PointsScreen(
                                     )
                                     Text(
                                         text = "Min. spend $${String.format("%.0f", coupon.min_amount)}",
-                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Medium,
+                                        ),
                                         color = RewardsPrimaryText.copy(alpha = 0.82f),
                                     )
                                     Row(
@@ -581,7 +584,10 @@ fun PointsScreen(
                                 ) {
                                     Text(
                                         text = "Exchange",
-                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.Medium,
+                                        ),
                                         color = RewardsPrimaryText.copy(alpha = 0.9f),
                                     )
                                     Text(
@@ -1308,7 +1314,10 @@ fun CouponsScreen(
                                                 )
                                                 Text(
                                                     text = "Min. spend $${String.format("%.0f", item.coupon.min_amount)}",
-                                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                                        fontSize = 15.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                    ),
                                                     color = RewardsPrimaryText.copy(alpha = 0.80f),
                                                 )
                                             }
