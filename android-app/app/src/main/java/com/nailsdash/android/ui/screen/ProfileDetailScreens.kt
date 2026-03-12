@@ -54,11 +54,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.SouthEast
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -72,6 +71,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.NorthEast
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Share
@@ -517,14 +517,25 @@ fun PointsScreen(
                                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                                         color = RewardsPrimaryText.copy(alpha = 0.82f),
                                     )
-                                    Text(
-                                        text = "Need $required pts",
-                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                        color = RewardsPrimaryText.copy(alpha = 0.9f),
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
                                         modifier = Modifier
                                             .background(Color.Black.copy(alpha = 0.26f), RoundedCornerShape(999.dp))
                                             .padding(horizontal = 8.dp, vertical = 4.dp),
-                                    )
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.AutoAwesome,
+                                            contentDescription = null,
+                                            tint = RewardsGold,
+                                            modifier = Modifier.size(11.dp),
+                                        )
+                                        Text(
+                                            text = "Need $required pts",
+                                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                            color = RewardsPrimaryText.copy(alpha = 0.9f),
+                                        )
+                                    }
                                 }
 
                                 Box(
@@ -823,7 +834,7 @@ private fun PointsHistoryRow(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                imageVector = if (isPositive) Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
+                imageVector = if (isPositive) Icons.Filled.NorthEast else Icons.Filled.SouthEast,
                 contentDescription = null,
                 tint = if (isPositive) Color(0xFF7DE39A) else Color(0xFFFF8A8A),
                 modifier = Modifier.size(14.dp),
