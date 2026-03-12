@@ -1893,14 +1893,14 @@ fun GiftCardsScreen(
                             )
 
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(2.dp),
                                 verticalAlignment = Alignment.Bottom,
                             ) {
                                 Text(
                                     text = "$",
                                     style = MaterialTheme.typography.headlineMedium.copy(
                                         fontWeight = FontWeight.Black,
-                                        fontSize = 30.sp,
+                                        fontSize = 28.sp,
                                     ),
                                     color = RewardsGold,
                                     modifier = Modifier.alignByBaseline(),
@@ -2242,8 +2242,12 @@ private fun GiftCardCollectionCard(
             ) {
                 Text(
                     text = "$",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 20.sp,
+                    ),
                     color = RewardsGold,
+                    modifier = Modifier.alignByBaseline(),
                 )
                 Text(
                     text = String.format("%.2f", card.balance),
@@ -2253,6 +2257,7 @@ private fun GiftCardCollectionCard(
                     ),
                     color = RewardsPrimaryText,
                     maxLines = 1,
+                    modifier = Modifier.alignByBaseline(),
                 )
             }
 
