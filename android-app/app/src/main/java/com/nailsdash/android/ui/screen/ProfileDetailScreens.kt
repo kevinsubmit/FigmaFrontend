@@ -1199,7 +1199,10 @@ fun CouponsScreen(
                             ) {
                                 Text(
                                     text = couponStatusTitle(status),
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                    style = MaterialTheme.typography.titleSmall.copy(
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    ),
                                 )
                             }
                         }
@@ -1213,7 +1216,7 @@ fun CouponsScreen(
                         ) {
                             RewardsEmptyStateCard(
                                 icon = Icons.Filled.ConfirmationNumber,
-                                title = "No ${couponStatusTitle(couponsViewModel.selectedStatus).lowercase()} coupons",
+                                title = "No ${couponStatusTitle(couponsViewModel.selectedStatus)} coupons",
                                 subtitle = "Coupons from stores and rewards will appear here.",
                             )
                         }
@@ -1322,12 +1325,18 @@ fun CouponsScreen(
                                             ) {
                                                 Text(
                                                     text = if (status == "used") "Used" else "Expires",
-                                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                                                    style = MaterialTheme.typography.labelLarge.copy(
+                                                        fontSize = 13.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                    ),
                                                     color = RewardsPrimaryText.copy(alpha = 0.90f),
                                                 )
                                                 Text(
                                                     text = couponDateLabel(item),
-                                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                                    style = MaterialTheme.typography.labelSmall.copy(
+                                                        fontSize = 12.sp,
+                                                        fontWeight = FontWeight.SemiBold,
+                                                    ),
                                                     color = RewardsPrimaryText,
                                                     modifier = Modifier
                                                         .background(Color.Black.copy(alpha = 0.28f), RoundedCornerShape(8.dp))
@@ -1350,7 +1359,10 @@ fun CouponsScreen(
                                                     ) {
                                                         Text(
                                                             text = "Use",
-                                                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                                            style = MaterialTheme.typography.titleSmall.copy(
+                                                                fontSize = 15.sp,
+                                                                fontWeight = FontWeight.SemiBold,
+                                                            ),
                                                         )
                                                     }
                                                 } else if (status == "expired") {
