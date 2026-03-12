@@ -586,8 +586,8 @@ fun PointsScreen(
                                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                                         color = RewardsPrimaryText,
                                         modifier = Modifier
-                                            .background(Color.Black.copy(alpha = 0.28f), RoundedCornerShape(10.dp))
-                                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                                            .background(Color.Black.copy(alpha = 0.28f), RoundedCornerShape(8.dp))
+                                            .padding(horizontal = 10.dp, vertical = 6.dp),
                                     )
 
                                     if (redeeming) {
@@ -630,7 +630,10 @@ fun PointsScreen(
                                         ) {
                                             Text(
                                                 text = if (canRedeem) "Exchange" else "Locked",
-                                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                                                style = MaterialTheme.typography.titleSmall.copy(
+                                                    fontSize = 15.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                ),
                                                 color = if (canRedeem) Color.Black else RewardsPrimaryText.copy(alpha = 0.45f),
                                             )
                                         }
