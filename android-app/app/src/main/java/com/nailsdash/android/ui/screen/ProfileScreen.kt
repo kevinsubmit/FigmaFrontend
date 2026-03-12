@@ -9,6 +9,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,10 +34,11 @@ import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.NorthEast
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -70,7 +72,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
+import coil.compose.rememberAsyncImagePainter
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.ProfileCenterViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
@@ -86,12 +89,12 @@ private data class ProfileStatItem(
 
 private val ProfileGold = Color(0xFFD4AF37)
 private val ProfilePageBackground = Color(0xFF000000)
-private val ProfileCardBackground = Color(0xFF111111)
+private val ProfileCardBackground = Color(0xFF181818)
 private val ProfilePrimaryText = Color.White
 private val ProfileSecondaryText = Color.White.copy(alpha = 0.72f)
 private val ProfileMutedText = Color.White.copy(alpha = 0.50f)
 private val ProfileHairline = Color.White.copy(alpha = 0.08f)
-private val ProfilePagePadding = 12.dp
+private val ProfilePagePadding = 16.dp
 
 @Composable
 fun ProfileScreen(
@@ -248,11 +251,14 @@ fun ProfileScreen(
         if (noticeMessage != null) {
             AlertDialog(
                 onDismissRequest = { noticeMessage = null },
+                containerColor = ProfileCardBackground,
+                titleContentColor = ProfilePrimaryText,
+                textContentColor = ProfileSecondaryText,
                 title = { Text("Notice") },
                 text = { Text(noticeMessage.orEmpty()) },
                 confirmButton = {
                     TextButton(onClick = { noticeMessage = null }) {
-                        Text("OK")
+                        Text("OK", color = ProfileGold)
                     }
                 },
             )
@@ -269,16 +275,16 @@ private fun ProfileTopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = ProfilePagePadding, vertical = 10.dp),
+            .padding(start = ProfilePagePadding, end = ProfilePagePadding, top = 10.dp, bottom = 2.dp),
         horizontalArrangement = Arrangement.End,
     ) {
         ProfileTopActionButton(
-            icon = Icons.Filled.Notifications,
+            icon = Icons.Outlined.Notifications,
             unreadCount = unreadCount,
             onClick = onOpenNotifications,
         )
         ProfileTopActionButton(
-            icon = Icons.Filled.Settings,
+            icon = Icons.Outlined.Settings,
             unreadCount = 0,
             onClick = onOpenSettings,
         )
@@ -295,20 +301,25 @@ private fun ProfileTopActionButton(
         IconButton(
             onClick = onClick,
             modifier = Modifier
-                .size(40.dp)
+                .size(34.dp)
                 .background(Color.White.copy(alpha = 0.05f), CircleShape)
                 .border(BorderStroke(1.dp, ProfileGold.copy(alpha = 0.28f)), CircleShape),
         ) {
-            Icon(icon, contentDescription = null, tint = ProfilePrimaryText)
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = ProfilePrimaryText,
+                modifier = Modifier.size(16.dp),
+            )
         }
-        if (unreadCount > 0 && icon == Icons.Filled.Notifications) {
+        if (unreadCount > 0 && icon == Icons.Outlined.Notifications) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(end = 1.dp)
                     .padding(top = 1.dp)
                     .background(ProfileGold, RoundedCornerShape(999.dp))
-                    .padding(horizontal = 5.dp, vertical = 1.dp),
+                    .padding(horizontal = 5.dp, vertical = 2.dp),
             ) {
                 Text(
                     text = if (unreadCount > 99) "99+" else unreadCount.toString(),
@@ -326,6 +337,9 @@ private fun ProfileHeaderCard(
     maskedPhone: String,
     avatarUrl: String?,
 ) {
+    val avatarPainter = rememberAsyncImagePainter(model = avatarUrl)
+    val avatarState = avatarPainter.state
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -341,19 +355,28 @@ private fun ProfileHeaderCard(
                 .border(BorderStroke(3.dp, ProfileGold), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            if (avatarUrl != null) {
-                AsyncImage(
-                    model = avatarUrl,
-                    contentDescription = "Avatar",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                )
-            } else {
-                Text(
-                    initials(userName),
-                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                    color = ProfileGold,
-                )
+            when {
+                avatarUrl.isNullOrBlank() -> {
+                    ProfileAvatarFallback(userName = userName)
+                }
+                avatarState is AsyncImagePainter.State.Success -> {
+                    Image(
+                        painter = avatarPainter,
+                        contentDescription = "Avatar",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+                avatarState is AsyncImagePainter.State.Loading || avatarState is AsyncImagePainter.State.Empty -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = ProfileGold,
+                        strokeWidth = 2.dp,
+                    )
+                }
+                else -> {
+                    ProfileAvatarFallback(userName = userName)
+                }
             }
         }
 
@@ -375,6 +398,15 @@ private fun ProfileHeaderCard(
 }
 
 @Composable
+private fun ProfileAvatarFallback(userName: String) {
+    Text(
+        text = initials(userName),
+        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+        color = ProfileGold,
+    )
+}
+
+@Composable
 private fun ProfileVipCard(
     currentVipLevel: Int,
     nextVipLevel: Int,
@@ -391,7 +423,7 @@ private fun ProfileVipCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = ProfileCardBackground),
         border = BorderStroke(1.dp, ProfileGold.copy(alpha = 0.2f)),
     ) {
@@ -467,7 +499,12 @@ private fun ProfileVipCard(
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = Color.White.copy(alpha = 0.52f))
+                    Icon(
+                        imageVector = Icons.Filled.NorthEast,
+                        contentDescription = null,
+                        tint = Color.White.copy(alpha = 0.52f),
+                        modifier = Modifier.size(12.dp),
+                    )
                     Text(
                         text = "Next level to VIP $nextVipLevel",
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -509,7 +546,7 @@ private fun ProfileInviteCard(onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = ProfileCardBackground),
         border = BorderStroke(1.dp, ProfileGold.copy(alpha = 0.16f)),
     ) {
@@ -562,6 +599,7 @@ private fun ProfileInviteCard(onClick: () -> Unit) {
                 imageVector = Icons.Filled.ChevronRight,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = 0.42f),
+                modifier = Modifier.size(16.dp),
             )
         }
     }
