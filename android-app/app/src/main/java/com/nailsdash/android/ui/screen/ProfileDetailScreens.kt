@@ -120,6 +120,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -1508,7 +1509,10 @@ fun GiftCardsScreen(
                 ) {
                     Text(
                         text = "Claim a Gift",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                        ),
                         color = RewardsPrimaryText,
                     )
                     TextButton(
@@ -1519,7 +1523,7 @@ fun GiftCardsScreen(
                     ) {
                         Text(
                             text = "Close",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                         )
                     }
                 }
@@ -1530,6 +1534,7 @@ fun GiftCardsScreen(
                     value = claimCode,
                     onValueChange = { claimCode = it.uppercase() },
                     placeholder = "Claim code",
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
                 )
 
                 Button(
@@ -1606,7 +1611,10 @@ fun GiftCardsScreen(
                 ) {
                     Text(
                         text = "Send Gift Card",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                        ),
                         color = RewardsPrimaryText,
                     )
                     TextButton(
@@ -1617,7 +1625,7 @@ fun GiftCardsScreen(
                     ) {
                         Text(
                             text = "Close",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                         )
                     }
                 }
@@ -1635,13 +1643,16 @@ fun GiftCardsScreen(
                     ) {
                         Text(
                             text = "Balance",
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                             color = RewardsSecondaryText,
                         )
                         Text(
                             text = "$${String.format("%.2f", sendCard.balance)}",
                             color = RewardsGold,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Black),
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Black,
+                                fontSize = 20.sp,
+                            ),
                         )
                     }
                 }
@@ -1651,7 +1662,10 @@ fun GiftCardsScreen(
                     value = transferPhone,
                     onValueChange = { transferPhone = it },
                     placeholder = "Enter US phone",
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Number,
+                        capitalization = KeyboardCapitalization.None,
+                    ),
                 )
 
                 GiftSheetLabel(text = "Message (Optional)")
@@ -1659,6 +1673,7 @@ fun GiftCardsScreen(
                     value = transferMessage,
                     onValueChange = { transferMessage = it },
                     placeholder = "Write a message",
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 )
 
                 Button(
