@@ -507,7 +507,10 @@ fun PointsScreen(
                                     )
                                     Text(
                                         text = coupon.name,
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        style = MaterialTheme.typography.titleLarge.copy(
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 20.sp,
+                                        ),
                                         color = RewardsPrimaryText.copy(alpha = 0.94f),
                                         maxLines = 1,
                                     )
@@ -1296,7 +1299,10 @@ fun CouponsScreen(
                                                 )
                                                 Text(
                                                     text = couponSubtitle(item),
-                                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                                    style = MaterialTheme.typography.titleLarge.copy(
+                                                        fontWeight = FontWeight.SemiBold,
+                                                        fontSize = 20.sp,
+                                                    ),
                                                     color = RewardsPrimaryText.copy(alpha = 0.94f),
                                                     maxLines = 1,
                                                 )
