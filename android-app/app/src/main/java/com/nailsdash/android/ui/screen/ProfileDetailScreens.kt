@@ -1367,6 +1367,8 @@ fun CouponsScreen(
                                                         fontWeight = FontWeight.SemiBold,
                                                     ),
                                                     color = RewardsPrimaryText,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
                                                     modifier = Modifier
                                                         .background(Color.Black.copy(alpha = 0.28f), RoundedCornerShape(8.dp))
                                                         .padding(horizontal = 10.dp, vertical = 6.dp),
