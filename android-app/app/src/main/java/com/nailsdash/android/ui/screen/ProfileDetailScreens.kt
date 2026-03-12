@@ -1541,46 +1541,52 @@ fun GiftCardsScreen(
                     ),
                 )
 
-                Button(
-                    onClick = {
-                        if (token != null) {
-                            giftCardsViewModel.claim(token, claimCode)
-                        }
-                    },
-                    enabled = !giftCardsViewModel.isClaiming,
-                    interactionSource = claimSheetActionInteraction,
+                val isClaiming = giftCardsViewModel.isClaiming
+                val claimButtonBg = if (isClaiming) RewardsGold.copy(alpha = 0.82f) else RewardsGold
+                val claimButtonFg = if (isClaiming) Color.Black.copy(alpha = 0.82f) else Color.Black
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .scale(claimSheetActionScale)
-                        .heightIn(min = 44.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = RewardsGold,
-                        contentColor = Color.Black,
-                        disabledContainerColor = RewardsGold.copy(alpha = 0.82f),
-                        disabledContentColor = Color.Black.copy(alpha = 0.82f),
-                    ),
-                    shape = RoundedCornerShape(14.dp),
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(claimButtonBg),
                 ) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(
+                                enabled = !isClaiming,
+                                interactionSource = claimSheetActionInteraction,
+                                indication = null,
+                                onClick = {
+                                    if (token != null) {
+                                        giftCardsViewModel.claim(token, claimCode)
+                                    }
+                                },
+                            )
+                            .padding(vertical = 11.dp),
+                        horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        if (giftCardsViewModel.isClaiming) {
+                        if (isClaiming) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(14.dp),
-                                color = Color.Black,
+                                color = claimButtonFg,
                                 strokeWidth = 2.dp,
                             )
                         } else {
                             Icon(
                                 imageVector = Icons.Filled.CheckCircle,
                                 contentDescription = null,
+                                tint = claimButtonFg,
                                 modifier = Modifier.size(12.dp),
                             )
                         }
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (giftCardsViewModel.isClaiming) "Claiming..." else "Claim Gift Card",
+                            text = if (isClaiming) "Claiming..." else "Claim Gift Card",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = claimButtonFg,
                         )
                     }
                 }
@@ -1681,55 +1687,62 @@ fun GiftCardsScreen(
                     keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 )
 
-                Button(
-                    onClick = {
-                        if (token != null) {
-                            giftCardsViewModel.transfer(
-                                bearerToken = token,
-                                giftCardId = sendCard.id,
-                                recipientPhone = transferPhone,
-                                message = transferMessage.takeIf { it.isNotBlank() },
-                            )
-                        }
-                    },
-                    enabled = giftCardsViewModel.sendingCardId == null,
-                    interactionSource = sendSheetActionInteraction,
+                val isSendingCurrentCard = giftCardsViewModel.sendingCardId == sendCard.id
+                val isSendBusy = giftCardsViewModel.sendingCardId != null
+                val sendButtonBg = if (isSendBusy) RewardsGold.copy(alpha = 0.82f) else RewardsGold
+                val sendButtonFg = if (isSendBusy) Color.Black.copy(alpha = 0.82f) else Color.Black
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .scale(sendSheetActionScale)
-                        .heightIn(min = 44.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = RewardsGold,
-                        contentColor = Color.Black,
-                        disabledContainerColor = RewardsGold.copy(alpha = 0.82f),
-                        disabledContentColor = Color.Black.copy(alpha = 0.82f),
-                    ),
-                    shape = RoundedCornerShape(14.dp),
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(sendButtonBg),
                 ) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(
+                                enabled = !isSendBusy,
+                                interactionSource = sendSheetActionInteraction,
+                                indication = null,
+                                onClick = {
+                                    if (token != null) {
+                                        giftCardsViewModel.transfer(
+                                            bearerToken = token,
+                                            giftCardId = sendCard.id,
+                                            recipientPhone = transferPhone,
+                                            message = transferMessage.takeIf { it.isNotBlank() },
+                                        )
+                                    }
+                                },
+                            )
+                            .padding(vertical = 11.dp),
+                        horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        if (giftCardsViewModel.sendingCardId == sendCard.id) {
+                        if (isSendingCurrentCard) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(14.dp),
-                                color = Color.Black,
+                                color = sendButtonFg,
                                 strokeWidth = 2.dp,
                             )
                         } else {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Send,
                                 contentDescription = null,
+                                tint = sendButtonFg,
                                 modifier = Modifier.size(12.dp),
                             )
                         }
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (giftCardsViewModel.sendingCardId == sendCard.id) {
+                            text = if (isSendingCurrentCard) {
                                 "Sending..."
                             } else {
                                 "Send Digital Gift Card"
                             },
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = sendButtonFg,
                         )
                     }
                 }
