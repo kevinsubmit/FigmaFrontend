@@ -4455,12 +4455,18 @@ fun ReferralScreen(
 
                     Text(
                         text = "Refer a Friend",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
                         color = RewardsPrimaryText,
                     )
                     Text(
                         text = "Share the glow! Both you and your friend will receive 1 Free Coupon (\$10 value) immediately after successful registration.",
-                        style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 13.sp,
+                            lineHeight = 15.sp,
+                        ),
                         color = Color.White.copy(alpha = 0.68f),
                         textAlign = TextAlign.Center,
                     )
@@ -4534,7 +4540,8 @@ fun ReferralScreen(
                                 contentPadding = PaddingValues(0.dp),
                                 modifier = Modifier
                                     .size(48.dp)
-                                    .scale(referralCopyScale),
+                                    .scale(referralCopyScale)
+                                    .alpha(if (referralCode.isNotBlank()) 1f else 0.45f),
                             ) {
                                 Icon(
                                     imageVector = if (copied) Icons.Filled.CheckCircle else Icons.Filled.ContentCopy,
@@ -4556,7 +4563,10 @@ fun ReferralScreen(
                         ) {
                             Text(
                                 text = copyNotice.orEmpty(),
-                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                ),
                                 color = RewardsGold,
                             )
                         }
@@ -4581,7 +4591,8 @@ fun ReferralScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)
-                            .scale(referralShareScale),
+                            .scale(referralShareScale)
+                            .alpha(if (referralCode.isNotBlank()) 1f else 0.45f),
                         enabled = referralCode.isNotBlank(),
                         interactionSource = referralShareInteraction,
                         colors = ButtonDefaults.buttonColors(
@@ -4719,17 +4730,20 @@ private fun ReferralHistoryCard(item: com.nailsdash.android.data.model.ReferralL
             ) {
                 Text(
                     text = item.referee_name.ifBlank { "User" },
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
                     color = RewardsPrimaryText,
                 )
                 Text(
                     text = maskPhone(item.referee_phone),
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                     color = Color.White.copy(alpha = 0.58f),
                 )
                 Text(
                     text = "Joined: ${displayJoinedDate(item.created_at)}",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
                     color = Color.White.copy(alpha = 0.42f),
                 )
             }
@@ -4746,14 +4760,20 @@ private fun ReferralHistoryCard(item: com.nailsdash.android.data.model.ReferralL
                     )
                     Text(
                         text = "Rewarded",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
                         color = Color(0xFF7DE39A),
                     )
                 }
             } else {
                 Text(
                     text = "Pending",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
                     color = RewardsGold,
                 )
             }
