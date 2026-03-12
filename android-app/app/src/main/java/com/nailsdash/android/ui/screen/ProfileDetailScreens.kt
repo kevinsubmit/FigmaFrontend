@@ -1310,7 +1310,7 @@ fun CouponsScreen(
                                             Box(
                                                 modifier = Modifier
                                                     .width(1.dp)
-                                                    .height(112.dp)
+                                                    .fillMaxHeight()
                                                     .drawBehind {
                                                         drawLine(
                                                             color = Color.White.copy(alpha = 0.35f),
