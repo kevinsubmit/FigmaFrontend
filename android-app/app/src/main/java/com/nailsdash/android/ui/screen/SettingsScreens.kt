@@ -39,13 +39,14 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Storefront
@@ -1283,7 +1284,7 @@ private fun SettingsInfoCard(
         verticalAlignment = Alignment.Top,
     ) {
         Icon(
-            imageVector = Icons.Filled.Info,
+            imageVector = Icons.Filled.Error,
             contentDescription = null,
             tint = Color(0xFF5CA9FF).copy(alpha = 0.90f),
             modifier = Modifier
@@ -1407,8 +1408,8 @@ private fun showSettingsDatePickerDialog(
 fun FeedbackSupportScreen(onBack: () -> Unit = {}) {
     val uriHandler = LocalUriHandler.current
     val channels = listOf(
-        SupportChannel("WhatsApp Support", "Fastest response time", Icons.Filled.Phone, Color(0xFF5EDB89), "https://wa.me/14151234567"),
-        SupportChannel("iMessage", "Standard for iPhone users", Icons.Filled.Notifications, Color(0xFF79B5FF), "sms:+14151234567"),
+        SupportChannel("WhatsApp Support", "Fastest response time", Icons.AutoMirrored.Filled.Message, Color(0xFF5EDB89), "https://wa.me/14151234567"),
+        SupportChannel("iMessage", "Standard for iPhone users", Icons.AutoMirrored.Filled.Message, Color(0xFF79B5FF), "sms:+14151234567"),
         SupportChannel("Instagram DM", "Follow us for nail inspo", Icons.Filled.Star, SettingsGold, "https://instagram.com"),
     )
 
@@ -1431,11 +1432,7 @@ fun FeedbackSupportScreen(onBack: () -> Unit = {}) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item {
-                    Text(
-                        text = "How can we help you today? Reach us through your preferred channel.",
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 18.sp),
-                        color = Color.White.copy(alpha = 0.50f),
-                    )
+                    SettingsDescription("How can we help you today? Reach us through your preferred channel.")
                 }
 
                 item {
@@ -1509,7 +1506,7 @@ fun PartnershipInquiryScreen(onBack: () -> Unit = {}) {
     val uriHandler = LocalUriHandler.current
     val highlights = listOf(
         Triple(Icons.Filled.Storefront, "List Your Salon", "Get discovered by local beauty seekers"),
-        Triple(Icons.Filled.AutoAwesome, "Advanced Booking", "Manage appointments with ease"),
+        Triple(Icons.Filled.Schedule, "Advanced Booking", "Manage appointments with ease"),
     )
 
     Box(
@@ -1531,11 +1528,7 @@ fun PartnershipInquiryScreen(onBack: () -> Unit = {}) {
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item {
-                    Text(
-                        text = "Join our salon network and reach more customers.",
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 18.sp),
-                        color = Color.White.copy(alpha = 0.50f),
-                    )
+                    SettingsDescription("Join our salon network and reach more customers.")
                 }
 
                 item {
@@ -1614,7 +1607,9 @@ fun PartnershipInquiryScreen(onBack: () -> Unit = {}) {
                                 ),
                                 color = Color.White.copy(alpha = 0.42f),
                                 textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
                             )
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -1637,7 +1632,7 @@ fun PartnershipInquiryScreen(onBack: () -> Unit = {}) {
                                         verticalArrangement = Arrangement.spacedBy(8.dp),
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Filled.Phone,
+                                            imageVector = Icons.AutoMirrored.Filled.Message,
                                             contentDescription = null,
                                             tint = Color(0xFF5EDB89),
                                             modifier = Modifier.size(22.dp),
@@ -1662,7 +1657,7 @@ fun PartnershipInquiryScreen(onBack: () -> Unit = {}) {
                                         verticalArrangement = Arrangement.spacedBy(8.dp),
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Filled.Notifications,
+                                            imageVector = Icons.AutoMirrored.Filled.Message,
                                             contentDescription = null,
                                             tint = Color(0xFF79B5FF),
                                             modifier = Modifier.size(22.dp),
@@ -1713,20 +1708,23 @@ fun PrivacySafetyScreen(onBack: () -> Unit = {}) {
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Lock,
+                                imageVector = Icons.Filled.Security,
                                 contentDescription = null,
                                 tint = SettingsGold,
                                 modifier = Modifier.size(18.dp),
                             )
                             Text(
                                 text = "Your Data, Your Control",
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                ),
                                 color = SettingsPrimaryText,
                             )
                         }
                         Text(
                             text = "We only collect the information needed to manage bookings and improve your service experience.",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
                             color = Color.White.copy(alpha = 0.55f),
                         )
                     }
@@ -1741,13 +1739,16 @@ fun PrivacySafetyScreen(onBack: () -> Unit = {}) {
                             ) {
                                 Text(
                                     text = "•",
-                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    ),
                                     color = SettingsGold,
                                     modifier = Modifier.padding(top = 1.dp),
                                 )
                                 Text(
                                     text = line,
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
                                     color = Color.White.copy(alpha = 0.62f),
                                     modifier = Modifier.weight(1f),
                                 )
@@ -1794,7 +1795,10 @@ fun AboutUsScreen(onBack: () -> Unit = {}) {
                             )
                             Text(
                                 text = "NailsDash",
-                                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.headlineSmall.copy(
+                                    fontSize = 22.sp,
+                                    fontWeight = FontWeight.Bold,
+                                ),
                                 color = SettingsPrimaryText,
                             )
                         }
