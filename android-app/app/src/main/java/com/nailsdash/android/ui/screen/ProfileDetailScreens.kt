@@ -883,7 +883,10 @@ private fun PointsHistoryRow(
             }
             Text(
                 text = displayDateOnly(item.created_at),
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
                 color = RewardsSecondaryText,
             )
         }
