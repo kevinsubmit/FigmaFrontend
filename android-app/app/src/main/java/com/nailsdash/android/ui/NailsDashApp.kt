@@ -352,28 +352,40 @@ fun NailsDashApp() {
                 )
             }
             composable("profile/settings/profile") {
-                ProfileSettingsScreen(sessionViewModel = sessionViewModel)
+                ProfileSettingsScreen(
+                    sessionViewModel = sessionViewModel,
+                    onBack = { navController.navigateUp() },
+                )
             }
             composable("profile/settings/password") {
-                ChangePasswordScreen(sessionViewModel = sessionViewModel)
+                ChangePasswordScreen(
+                    sessionViewModel = sessionViewModel,
+                    onBack = { navController.navigateUp() },
+                )
             }
             composable("profile/settings/phone") {
-                PhoneSettingsScreen(sessionViewModel = sessionViewModel)
+                PhoneSettingsScreen(
+                    sessionViewModel = sessionViewModel,
+                    onBack = { navController.navigateUp() },
+                )
             }
             composable("profile/settings/language") {
-                LanguageSettingsScreen(sessionViewModel = sessionViewModel)
+                LanguageSettingsScreen(
+                    sessionViewModel = sessionViewModel,
+                    onBack = { navController.navigateUp() },
+                )
             }
             composable("profile/settings/feedback") {
-                FeedbackSupportScreen()
+                FeedbackSupportScreen(onBack = { navController.navigateUp() })
             }
             composable("profile/settings/partnership") {
-                PartnershipInquiryScreen()
+                PartnershipInquiryScreen(onBack = { navController.navigateUp() })
             }
             composable("profile/settings/privacy") {
-                PrivacySafetyScreen()
+                PrivacySafetyScreen(onBack = { navController.navigateUp() })
             }
             composable("profile/settings/about") {
-                AboutUsScreen()
+                AboutUsScreen(onBack = { navController.navigateUp() })
             }
         }
     }

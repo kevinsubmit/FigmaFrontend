@@ -419,6 +419,7 @@ private fun SettingsMenuRow(item: SettingsMenuItem) {
 @Composable
 fun ProfileSettingsScreen(
     sessionViewModel: AppSessionViewModel,
+    onBack: () -> Unit = {},
     profileSettingsViewModel: ProfileSettingsViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -451,29 +452,30 @@ fun ProfileSettingsScreen(
             .fillMaxSize()
             .background(SettingsBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            item {
-                Text(
-                    text = "Profile Settings",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = SettingsPrimaryText,
-                )
-            }
-            item {
-                SettingsDescription("Keep your profile details up to date.")
-            }
-            item {
-                SettingsMessageBanner(
-                    error = profileSettingsViewModel.errorMessage,
-                    message = profileSettingsViewModel.actionMessage,
-                )
-            }
-            item {
-                SettingsStaticCard {
+        Column(modifier = Modifier.fillMaxSize()) {
+            SettingsTopBar(title = "Profile Settings", onBack = onBack)
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = SettingsPagePadding,
+                    end = SettingsPagePadding,
+                    top = 24.dp,
+                    bottom = 28.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                item {
+                    SettingsDescription("Keep your profile details up to date.")
+                }
+                item {
+                    SettingsMessageBanner(
+                        error = profileSettingsViewModel.errorMessage,
+                        message = profileSettingsViewModel.actionMessage,
+                    )
+                }
+                item {
+                    SettingsStaticCard {
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -714,6 +716,7 @@ fun ProfileSettingsScreen(
                         )
                     }
                 }
+                }
             }
         }
 
@@ -726,6 +729,7 @@ fun ProfileSettingsScreen(
 @Composable
 fun ChangePasswordScreen(
     sessionViewModel: AppSessionViewModel,
+    onBack: () -> Unit = {},
     changePasswordViewModel: ChangePasswordViewModel = viewModel(),
 ) {
     val bearerToken = sessionViewModel.accessTokenOrNull()
@@ -735,29 +739,30 @@ fun ChangePasswordScreen(
             .fillMaxSize()
             .background(SettingsBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            item {
-                Text(
-                    text = "Change Password",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = SettingsPrimaryText,
-                )
-            }
-            item {
-                SettingsDescription("Use at least 8 characters and keep your account secure.")
-            }
-            item {
-                SettingsMessageBanner(
-                    error = changePasswordViewModel.errorMessage,
-                    message = changePasswordViewModel.actionMessage,
-                )
-            }
-            item {
-                SettingsStaticCard {
+        Column(modifier = Modifier.fillMaxSize()) {
+            SettingsTopBar(title = "Change Password", onBack = onBack)
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = SettingsPagePadding,
+                    end = SettingsPagePadding,
+                    top = 24.dp,
+                    bottom = 28.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                item {
+                    SettingsDescription("Use at least 8 characters and keep your account secure.")
+                }
+                item {
+                    SettingsMessageBanner(
+                        error = changePasswordViewModel.errorMessage,
+                        message = changePasswordViewModel.actionMessage,
+                    )
+                }
+                item {
+                    SettingsStaticCard {
                     SettingsInfoCard(
                         title = "PASSWORD REQUIREMENTS",
                         bullets = listOf(
@@ -834,6 +839,7 @@ fun ChangePasswordScreen(
                         )
                     }
                 }
+                }
             }
         }
     }
@@ -842,6 +848,7 @@ fun ChangePasswordScreen(
 @Composable
 fun PhoneSettingsScreen(
     sessionViewModel: AppSessionViewModel,
+    onBack: () -> Unit = {},
     phoneNumberSettingsViewModel: PhoneNumberSettingsViewModel = viewModel(),
 ) {
     val bearerToken = sessionViewModel.accessTokenOrNull()
@@ -855,29 +862,30 @@ fun PhoneSettingsScreen(
             .fillMaxSize()
             .background(SettingsBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            item {
-                Text(
-                    text = "Phone Number",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = SettingsPrimaryText,
-                )
-            }
-            item {
-                SettingsDescription("Update your login phone with verification code and current password.")
-            }
-            item {
-                SettingsMessageBanner(
-                    error = phoneNumberSettingsViewModel.errorMessage,
-                    message = phoneNumberSettingsViewModel.actionMessage,
-                )
-            }
-            item {
-                SettingsStaticCard {
+        Column(modifier = Modifier.fillMaxSize()) {
+            SettingsTopBar(title = "Phone Number", onBack = onBack)
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = SettingsPagePadding,
+                    end = SettingsPagePadding,
+                    top = 24.dp,
+                    bottom = 28.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                item {
+                    SettingsDescription("Update your login phone with verification code and current password.")
+                }
+                item {
+                    SettingsMessageBanner(
+                        error = phoneNumberSettingsViewModel.errorMessage,
+                        message = phoneNumberSettingsViewModel.actionMessage,
+                    )
+                }
+                item {
+                    SettingsStaticCard {
                     SettingsInfoCard(
                         title = "IMPORTANT",
                         bullets = listOf(
@@ -1011,6 +1019,7 @@ fun PhoneSettingsScreen(
                         )
                     }
                 }
+                }
             }
         }
     }
@@ -1019,6 +1028,7 @@ fun PhoneSettingsScreen(
 @Composable
 fun LanguageSettingsScreen(
     sessionViewModel: AppSessionViewModel,
+    onBack: () -> Unit = {},
     languageSettingsViewModel: LanguageSettingsViewModel = viewModel(),
 ) {
     val bearerToken = sessionViewModel.accessTokenOrNull()
@@ -1040,30 +1050,31 @@ fun LanguageSettingsScreen(
             .fillMaxSize()
             .background(SettingsBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            item {
-                Text(
-                    text = "Language",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = SettingsPrimaryText,
-                )
-            }
-            item {
-                SettingsDescription("Choose your preferred app language.")
-            }
-            item {
-                SettingsMessageBanner(
-                    error = languageSettingsViewModel.errorMessage,
-                    message = languageSettingsViewModel.actionMessage,
-                )
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
+            SettingsTopBar(title = "Language", onBack = onBack)
 
-            item {
-                SettingsStaticCard {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = SettingsPagePadding,
+                    end = SettingsPagePadding,
+                    top = 24.dp,
+                    bottom = 28.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                item {
+                    SettingsDescription("Choose your preferred app language.")
+                }
+                item {
+                    SettingsMessageBanner(
+                        error = languageSettingsViewModel.errorMessage,
+                        message = languageSettingsViewModel.actionMessage,
+                    )
+                }
+
+                item {
+                    SettingsStaticCard {
                     options.forEachIndexed { index, (code, label) ->
                         val selected = languageSettingsViewModel.selectedLanguage == code
                         val rowBackground by animateColorAsState(
@@ -1154,6 +1165,7 @@ fun LanguageSettingsScreen(
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                         )
                     }
+                }
                 }
             }
         }
@@ -1376,7 +1388,7 @@ private fun showSettingsDatePickerDialog(
 }
 
 @Composable
-fun FeedbackSupportScreen() {
+fun FeedbackSupportScreen(onBack: () -> Unit = {}) {
     val uriHandler = LocalUriHandler.current
     val channels = listOf(
         SupportChannel("WhatsApp Support", "Fastest response time", Icons.Filled.Phone, Color(0xFF5EDB89), "https://wa.me/14151234567"),
@@ -1389,83 +1401,85 @@ fun FeedbackSupportScreen() {
             .fillMaxSize()
             .background(SettingsBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            item {
-                Text(
-                    text = "Feedback & Support",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = SettingsPrimaryText,
-                )
-            }
-            item {
-                Text(
-                    text = "How can we help you today? Reach us through your preferred channel.",
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 18.sp),
-                    color = Color.White.copy(alpha = 0.50f),
-                )
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
+            SettingsTopBar(title = "Feedback & Support", onBack = onBack)
 
-            item {
-                Card(
-                    shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = SettingsCardBackground.copy(alpha = 0.94f)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        channels.forEachIndexed { index, channel ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { uriHandler.openUri(channel.uri) }
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Box(
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = SettingsPagePadding,
+                    end = SettingsPagePadding,
+                    top = 24.dp,
+                    bottom = 28.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                item {
+                    Text(
+                        text = "How can we help you today? Reach us through your preferred channel.",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 18.sp),
+                        color = Color.White.copy(alpha = 0.50f),
+                    )
+                }
+
+                item {
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = SettingsCardBackground.copy(alpha = 0.94f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            channels.forEachIndexed { index, channel ->
+                                Row(
                                     modifier = Modifier
-                                        .size(42.dp)
-                                        .background(channel.tint.copy(alpha = 0.12f), RoundedCornerShape(12.dp)),
-                                    contentAlignment = Alignment.Center,
+                                        .fillMaxWidth()
+                                        .clickable { uriHandler.openUri(channel.uri) }
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(42.dp)
+                                            .background(channel.tint.copy(alpha = 0.12f), RoundedCornerShape(12.dp)),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = channel.icon,
+                                            contentDescription = null,
+                                            tint = channel.tint,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    }
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                                    ) {
+                                        Text(
+                                            text = channel.title,
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                            color = SettingsPrimaryText,
+                                        )
+                                        Text(
+                                            text = channel.subtitle,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.White.copy(alpha = 0.45f),
+                                        )
+                                    }
                                     Icon(
-                                        imageVector = channel.icon,
+                                        imageVector = Icons.Filled.ChevronRight,
                                         contentDescription = null,
-                                        tint = channel.tint,
-                                        modifier = Modifier.size(18.dp),
+                                        tint = Color.White.copy(alpha = 0.30f),
+                                        modifier = Modifier.size(16.dp),
                                     )
                                 }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                                ) {
-                                    Text(
-                                        text = channel.title,
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                        color = SettingsPrimaryText,
-                                    )
-                                    Text(
-                                        text = channel.subtitle,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.45f),
+                                if (index < channels.lastIndex) {
+                                    HorizontalDivider(
+                                        color = Color.White.copy(alpha = 0.10f),
+                                        modifier = Modifier.padding(horizontal = 14.dp),
                                     )
                                 }
-                                Icon(
-                                    imageVector = Icons.Filled.ChevronRight,
-                                    contentDescription = null,
-                                    tint = Color.White.copy(alpha = 0.30f),
-                                    modifier = Modifier.size(16.dp),
-                                )
-                            }
-                            if (index < channels.lastIndex) {
-                                HorizontalDivider(
-                                    color = Color.White.copy(alpha = 0.10f),
-                                    modifier = Modifier.padding(horizontal = 14.dp),
-                                )
                             }
                         }
                     }
@@ -1476,7 +1490,7 @@ fun FeedbackSupportScreen() {
 }
 
 @Composable
-fun PartnershipInquiryScreen() {
+fun PartnershipInquiryScreen(onBack: () -> Unit = {}) {
     val uriHandler = LocalUriHandler.current
     val highlights = listOf(
         Triple(Icons.Filled.Storefront, "List Your Salon", "Get discovered by local beauty seekers"),
@@ -1488,157 +1502,159 @@ fun PartnershipInquiryScreen() {
             .fillMaxSize()
             .background(SettingsBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            item {
-                Text(
-                    text = "Partner with Us",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = SettingsPrimaryText,
-                )
-            }
-            item {
-                Text(
-                    text = "Join our salon network and reach more customers.",
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 18.sp),
-                    color = Color.White.copy(alpha = 0.50f),
-                )
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
+            SettingsTopBar(title = "Partner with Us", onBack = onBack)
 
-            item {
-                Card(
-                    shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = SettingsCardBackground.copy(alpha = 0.94f)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        highlights.forEachIndexed { index, feature ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Box(
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = SettingsPagePadding,
+                    end = SettingsPagePadding,
+                    top = 24.dp,
+                    bottom = 28.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                item {
+                    Text(
+                        text = "Join our salon network and reach more customers.",
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium, lineHeight = 18.sp),
+                        color = Color.White.copy(alpha = 0.50f),
+                    )
+                }
+
+                item {
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = SettingsCardBackground.copy(alpha = 0.94f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            highlights.forEachIndexed { index, feature ->
+                                Row(
                                     modifier = Modifier
-                                        .size(42.dp)
-                                        .background(SettingsCardBackground, RoundedCornerShape(12.dp)),
-                                    contentAlignment = Alignment.Center,
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Icon(
-                                        imageVector = feature.first,
-                                        contentDescription = null,
-                                        tint = SettingsGold,
-                                        modifier = Modifier.size(18.dp),
+                                    Box(
+                                        modifier = Modifier
+                                            .size(42.dp)
+                                            .background(SettingsCardBackground, RoundedCornerShape(12.dp)),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = feature.first,
+                                            contentDescription = null,
+                                            tint = SettingsGold,
+                                            modifier = Modifier.size(18.dp),
+                                        )
+                                    }
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                                    ) {
+                                        Text(
+                                            text = feature.second,
+                                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                            color = SettingsPrimaryText,
+                                        )
+                                        Text(
+                                            text = feature.third,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.White.copy(alpha = 0.45f),
+                                        )
+                                    }
+                                }
+                                if (index < highlights.lastIndex) {
+                                    HorizontalDivider(
+                                        color = Color.White.copy(alpha = 0.10f),
+                                        modifier = Modifier.padding(horizontal = 14.dp),
                                     )
                                 }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                                ) {
-                                    Text(
-                                        text = feature.second,
-                                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                        color = SettingsPrimaryText,
-                                    )
-                                    Text(
-                                        text = feature.third,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.45f),
-                                    )
-                                }
-                            }
-                            if (index < highlights.lastIndex) {
-                                HorizontalDivider(
-                                    color = Color.White.copy(alpha = 0.10f),
-                                    modifier = Modifier.padding(horizontal = 14.dp),
-                                )
                             }
                         }
                     }
                 }
-            }
 
-            item {
-                Card(
-                    shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = SettingsCardBackground.copy(alpha = 0.94f)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                item {
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = SettingsCardBackground.copy(alpha = 0.94f)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
                     ) {
-                        Text(
-                            text = "CONTACT OUR PARTNERSHIP TEAM",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.sp,
-                            ),
-                            color = Color.White.copy(alpha = 0.42f),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            Button(
-                                onClick = { uriHandler.openUri("https://wa.me/14151234567") },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(92.dp),
-                                shape = RoundedCornerShape(18.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = SettingsCardBackground.copy(alpha = 0.85f),
-                                    contentColor = SettingsPrimaryText,
+                            Text(
+                                text = "CONTACT OUR PARTNERSHIP TEAM",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 2.sp,
                                 ),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                                color = Color.White.copy(alpha = 0.42f),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                Button(
+                                    onClick = { uriHandler.openUri("https://wa.me/14151234567") },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(92.dp),
+                                    shape = RoundedCornerShape(18.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = SettingsCardBackground.copy(alpha = 0.85f),
+                                        contentColor = SettingsPrimaryText,
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Phone,
-                                        contentDescription = null,
-                                        tint = Color(0xFF5EDB89),
-                                        modifier = Modifier.size(22.dp),
-                                    )
-                                    Text("WhatsApp", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold))
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Phone,
+                                            contentDescription = null,
+                                            tint = Color(0xFF5EDB89),
+                                            modifier = Modifier.size(22.dp),
+                                        )
+                                        Text("WhatsApp", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold))
+                                    }
                                 }
-                            }
-                            Button(
-                                onClick = { uriHandler.openUri("sms:+14151234567") },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(92.dp),
-                                shape = RoundedCornerShape(18.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = SettingsCardBackground.copy(alpha = 0.85f),
-                                    contentColor = SettingsPrimaryText,
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                Button(
+                                    onClick = { uriHandler.openUri("sms:+14151234567") },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(92.dp),
+                                    shape = RoundedCornerShape(18.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = SettingsCardBackground.copy(alpha = 0.85f),
+                                        contentColor = SettingsPrimaryText,
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Notifications,
-                                        contentDescription = null,
-                                        tint = Color(0xFF79B5FF),
-                                        modifier = Modifier.size(22.dp),
-                                    )
-                                    Text("iMessage", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold))
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Notifications,
+                                            contentDescription = null,
+                                            tint = Color(0xFF79B5FF),
+                                            modifier = Modifier.size(22.dp),
+                                        )
+                                        Text("iMessage", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold))
+                                    }
                                 }
                             }
                         }
@@ -1650,7 +1666,7 @@ fun PartnershipInquiryScreen() {
 }
 
 @Composable
-fun PrivacySafetyScreen() {
+fun PrivacySafetyScreen(onBack: () -> Unit = {}) {
     val bullets = listOf(
         "We never sell your personal information.",
         "You can request data deletion by contacting support.",
@@ -1663,64 +1679,65 @@ fun PrivacySafetyScreen() {
             .fillMaxSize()
             .background(SettingsBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            item {
-                Text(
-                    text = "Privacy & Safety",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = SettingsPrimaryText,
-                )
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
+            SettingsTopBar(title = "Privacy & Safety", onBack = onBack)
 
-            item {
-                SettingsStaticCard {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Lock,
-                            contentDescription = null,
-                            tint = SettingsGold,
-                            modifier = Modifier.size(18.dp),
-                        )
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = SettingsPagePadding,
+                    end = SettingsPagePadding,
+                    top = 24.dp,
+                    bottom = 28.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                item {
+                    SettingsStaticCard {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Lock,
+                                contentDescription = null,
+                                tint = SettingsGold,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Text(
+                                text = "Your Data, Your Control",
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                color = SettingsPrimaryText,
+                            )
+                        }
                         Text(
-                            text = "Your Data, Your Control",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            color = SettingsPrimaryText,
+                            text = "We only collect the information needed to manage bookings and improve your service experience.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.55f),
                         )
                     }
-                    Text(
-                        text = "We only collect the information needed to manage bookings and improve your service experience.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.55f),
-                    )
                 }
-            }
 
-            item {
-                SettingsStaticCard {
-                    bullets.forEach { line ->
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.Top,
-                        ) {
-                            Text(
-                                text = "•",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = SettingsGold,
-                                modifier = Modifier.padding(top = 1.dp),
-                            )
-                            Text(
-                                text = line,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.62f),
-                                modifier = Modifier.weight(1f),
-                            )
+                item {
+                    SettingsStaticCard {
+                        bullets.forEach { line ->
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.Top,
+                            ) {
+                                Text(
+                                    text = "•",
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = SettingsGold,
+                                    modifier = Modifier.padding(top = 1.dp),
+                                )
+                                Text(
+                                    text = line,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White.copy(alpha = 0.62f),
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
                         }
                     }
                 }
@@ -1730,56 +1747,57 @@ fun PrivacySafetyScreen() {
 }
 
 @Composable
-fun AboutUsScreen() {
+fun AboutUsScreen(onBack: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(SettingsBackground),
     ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            item {
-                Text(
-                    text = "About Us",
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = SettingsPrimaryText,
-                )
-            }
+        Column(modifier = Modifier.fillMaxSize()) {
+            SettingsTopBar(title = "About Us", onBack = onBack)
 
-            item {
-                SettingsStaticCard {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.AutoAwesome,
-                            contentDescription = null,
-                            tint = SettingsGold,
-                            modifier = Modifier.size(18.dp),
-                        )
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = SettingsPagePadding,
+                    end = SettingsPagePadding,
+                    top = 24.dp,
+                    bottom = 28.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                item {
+                    SettingsStaticCard {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.AutoAwesome,
+                                contentDescription = null,
+                                tint = SettingsGold,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Text(
+                                text = "NailsDash",
+                                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                                color = SettingsPrimaryText,
+                            )
+                        }
                         Text(
-                            text = "NailsDash",
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            color = SettingsPrimaryText,
+                            text = "NailsDash connects customers with top-rated nail salons. Discover styles, book appointments, and unlock exclusive deals in one place.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.55f),
                         )
                     }
-                    Text(
-                        text = "NailsDash connects customers with top-rated nail salons. Discover styles, book appointments, and unlock exclusive deals in one place.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.55f),
-                    )
                 }
-            }
 
-            item {
-                SettingsStaticCard {
-                    SettingsStaticInfo(label = "Version", value = "v${BuildConfig.VERSION_NAME}")
-                    SettingsStaticInfo(label = "Market", value = "United States")
-                    SettingsStaticInfo(label = "Platform", value = "Figma Make Beauty Platform")
+                item {
+                    SettingsStaticCard {
+                        SettingsStaticInfo(label = "Version", value = "v${BuildConfig.VERSION_NAME}")
+                        SettingsStaticInfo(label = "Market", value = "United States")
+                        SettingsStaticInfo(label = "Platform", value = "Figma Make Beauty Platform")
+                    }
                 }
             }
         }
