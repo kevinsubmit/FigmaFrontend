@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -539,7 +540,7 @@ fun PointsScreen(
                                 Box(
                                     modifier = Modifier
                                         .width(1.dp)
-                                        .height(112.dp)
+                                        .fillMaxHeight()
                                         .drawBehind {
                                             drawLine(
                                                 color = Color.White.copy(alpha = 0.35f),
@@ -571,8 +572,7 @@ fun PointsScreen(
 
                                 Column(
                                     modifier = Modifier
-                                        .width(112.dp)
-                                        .padding(start = 10.dp),
+                                        .width(112.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(10.dp),
                                 ) {
