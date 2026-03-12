@@ -18,6 +18,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+private const val SETTINGS_PREFS_NAME = "nailsdash_settings"
+private const val SETTINGS_LANGUAGE_KEY = "nailsdash.language"
+private const val LEGACY_SETTINGS_LANGUAGE_KEY = "language"
+
 class ProfileSettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = SettingsRepository()
 
@@ -352,8 +356,10 @@ class LanguageSettingsViewModel(application: Application) : AndroidViewModel(app
     fun loadInitialLanguage() {
         // Mirror iOS local preference cache behavior.
         val prefs = getApplication<Application>()
-            .getSharedPreferences("nailsdash_settings", 0)
-        selectedLanguage = prefs.getString("language", "en") ?: "en"
+            .getSharedPreferences(SETTINGS_PREFS_NAME, 0)
+        selectedLanguage = prefs.getString(SETTINGS_LANGUAGE_KEY, null)
+            ?: prefs.getString(LEGACY_SETTINGS_LANGUAGE_KEY, "en")
+            ?: "en"
     }
 
     fun save(bearerToken: String) {
@@ -367,8 +373,11 @@ class LanguageSettingsViewModel(application: Application) : AndroidViewModel(app
                 ),
             ).onSuccess { response ->
                 val prefs = getApplication<Application>()
-                    .getSharedPreferences("nailsdash_settings", 0)
-                prefs.edit().putString("language", selectedLanguage).apply()
+                    .getSharedPreferences(SETTINGS_PREFS_NAME, 0)
+                prefs.edit()
+                    .putString(SETTINGS_LANGUAGE_KEY, selectedLanguage)
+                    .putString(LEGACY_SETTINGS_LANGUAGE_KEY, selectedLanguage)
+                    .apply()
                 actionMessage = response.message
                 errorMessage = null
             }.onFailure { err ->

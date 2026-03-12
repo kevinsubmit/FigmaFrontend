@@ -109,11 +109,14 @@ private data class SettingsMenuSection(val title: String, val items: List<Settin
 
 private val SettingsGold = Color(0xFFD4AF37)
 private val SettingsBackground = Color(0xFF000000)
-private val SettingsCardBackground = Color(0xFF111111)
+private val SettingsCardBackground = Color(0xFF181818)
 private val SettingsPrimaryText = Color.White
 private val SettingsSecondaryText = Color.White.copy(alpha = 0.68f)
 private val SettingsPagePadding = 16.dp
 private val SettingsCardCorner = 18.dp
+private const val SettingsPrefsName = "nailsdash_settings"
+private const val SettingsLanguageKey = "nailsdash.language"
+private const val LegacySettingsLanguageKey = "language"
 private const val SettingsMotionDurationMs = 220
 
 @Composable
@@ -135,7 +138,7 @@ fun SettingsScreen(
     val bearerToken = sessionViewModel.accessTokenOrNull()
     val profileRepository = remember { ProfileRepository() }
     var showLogoutConfirm by remember { mutableStateOf(false) }
-    var vipBadgeText by remember { mutableStateOf("VIP") }
+    var vipBadgeText by remember { mutableStateOf("VIP 1") }
 
     LaunchedEffect(bearerToken) {
         if (bearerToken != null) {
@@ -153,8 +156,10 @@ fun SettingsScreen(
         "vi" to "Tiếng Việt",
     )
     val selectedLanguageCode = context
-        .getSharedPreferences("nailsdash_settings", 0)
-        .getString("language", "en") ?: "en"
+        .getSharedPreferences(SettingsPrefsName, 0)
+        .getString(SettingsLanguageKey, null)
+        ?: context.getSharedPreferences(SettingsPrefsName, 0).getString(LegacySettingsLanguageKey, "en")
+        ?: "en"
     val selectedLanguageLabel = languageOptions.firstOrNull { it.first == selectedLanguageCode }?.second ?: "English"
 
     val sections = listOf(
@@ -243,7 +248,7 @@ fun SettingsScreen(
                         onClick = { showLogoutConfirm = true },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(56.dp),
+                            .height(48.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = SettingsCardBackground.copy(alpha = 0.94f),
                             contentColor = Color(0xFFFF7A7A),
@@ -384,7 +389,7 @@ private fun SettingsMenuRow(item: SettingsMenuItem) {
                 imageVector = item.icon,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = 0.68f),
-                modifier = Modifier.size(19.dp),
+                modifier = Modifier.size(18.dp),
             )
         }
 
@@ -693,7 +698,7 @@ fun ProfileSettingsScreen(
                         enabled = !profileSettingsViewModel.isSaving,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp),
+                            .height(48.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = SettingsGold,
                             contentColor = Color.Black,
@@ -816,7 +821,7 @@ fun ChangePasswordScreen(
                         enabled = !changePasswordViewModel.isSaving,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp),
+                            .height(48.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = SettingsGold,
                             contentColor = Color.Black,
@@ -928,7 +933,7 @@ fun PhoneSettingsScreen(
                             enabled = !phoneNumberSettingsViewModel.isSendingCode && phoneNumberSettingsViewModel.countdown == 0,
                             modifier = Modifier
                                 .width(92.dp)
-                                .height(56.dp),
+                                .height(48.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (phoneNumberSettingsViewModel.isSendingCode || phoneNumberSettingsViewModel.countdown > 0) {
                                     SettingsGold.copy(alpha = 0.50f)
@@ -996,7 +1001,7 @@ fun PhoneSettingsScreen(
                         enabled = !phoneNumberSettingsViewModel.isSaving,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp),
+                            .height(48.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = SettingsGold,
                             contentColor = Color.Black,
@@ -1142,7 +1147,7 @@ fun LanguageSettingsScreen(
                         enabled = !languageSettingsViewModel.isSaving,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp)
+                            .height(48.dp)
                             .padding(top = 10.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = SettingsGold,
