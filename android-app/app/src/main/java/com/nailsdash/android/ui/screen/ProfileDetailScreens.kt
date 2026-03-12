@@ -156,6 +156,7 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
@@ -948,14 +949,24 @@ private fun displayJoinedDate(raw: String): String {
 }
 
 private fun parseRewardsLocalDate(raw: String): LocalDate? {
-    runCatching { OffsetDateTime.parse(raw).toLocalDate() }.getOrNull()?.let { return it }
+    runCatching {
+        OffsetDateTime.parse(raw)
+            .toInstant()
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+    }.getOrNull()?.let { return it }
     runCatching { Instant.parse(raw).atZone(ZoneId.systemDefault()).toLocalDate() }.getOrNull()?.let { return it }
     runCatching { LocalDate.parse(raw) }.getOrNull()?.let { return it }
 
     val candidates = listOf(raw, raw.replace(' ', 'T'))
     candidates.forEach { candidate ->
         RewardsNaiveDateTimeParsers.forEach { formatter ->
-            runCatching { LocalDateTime.parse(candidate, formatter).toLocalDate() }.getOrNull()?.let { return it }
+            runCatching {
+                LocalDateTime.parse(candidate, formatter)
+                    .atOffset(ZoneOffset.UTC)
+                    .atZoneSameInstant(ZoneId.systemDefault())
+                    .toLocalDate()
+            }.getOrNull()?.let { return it }
         }
     }
 
