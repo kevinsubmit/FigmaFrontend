@@ -1651,7 +1651,7 @@ fun GiftCardsScreen(
                     value = transferPhone,
                     onValueChange = { transferPhone = it },
                     placeholder = "Enter US phone",
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 )
 
                 GiftSheetLabel(text = "Message (Optional)")
@@ -1918,7 +1918,7 @@ fun GiftCardsScreen(
                 val claimInteraction = remember { MutableInteractionSource() }
                 val claimScale = rememberPressScale(
                     interactionSource = claimInteraction,
-                    pressedScale = 0.94f,
+                    pressedScale = 0.97f,
                 )
                 Row(
                     modifier = Modifier
@@ -1934,37 +1934,40 @@ fun GiftCardsScreen(
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    Button(
-                        onClick = { showClaimDialog = true },
-                        interactionSource = claimInteraction,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Black.copy(alpha = 0.45f),
-                            contentColor = RewardsGold,
-                        ),
-                        shape = RoundedCornerShape(999.dp),
+                    Box(
                         modifier = Modifier
                             .scale(claimScale)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(Color.Black.copy(alpha = 0.45f))
                             .border(
                                 width = 1.dp,
                                 color = RewardsGold.copy(alpha = 0.35f),
                                 shape = RoundedCornerShape(999.dp),
+                            )
+                            .clickable(
+                                interactionSource = claimInteraction,
+                                indication = null,
+                                onClick = { showClaimDialog = true },
                             ),
                     ) {
                         Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.ConfirmationNumber,
                                 contentDescription = null,
+                                tint = RewardsGold,
                                 modifier = Modifier.size(12.dp),
                             )
                             Text(
                                 text = "CLAIM",
-                                style = MaterialTheme.typography.labelMedium.copy(
+                                style = MaterialTheme.typography.labelSmall.copy(
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 1.1.sp,
                                 ),
+                                color = RewardsGold,
                             )
                         }
                     }
