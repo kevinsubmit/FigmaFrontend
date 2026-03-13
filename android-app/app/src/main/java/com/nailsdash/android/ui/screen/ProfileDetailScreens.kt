@@ -5030,7 +5030,7 @@ private fun ReferralHistoryCard(item: com.nailsdash.android.data.model.ReferralL
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(

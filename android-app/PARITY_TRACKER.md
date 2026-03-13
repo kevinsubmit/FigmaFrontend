@@ -152,6 +152,7 @@ Last updated: 2026-03-11
   - done: giftcards-meta-caption-scale parity pass #174 (GiftCards card metadata texts `Issued ...`, `Exp ...`, and `Recipient ...` now use explicit `12sp` semibold scale to align with iOS `.caption.weight(.semibold)` typography hierarchy)
   - done: giftcards-recipient-icon-outline-semantics parity pass #175 (GiftCards card `Recipient` metadata icon now uses outlined person semantics to match iOS `person` line-style glyph treatment instead of filled avatar icon)
   - done: giftcards-meta-divider-secondary-opacity parity pass #176 (GiftCards metadata divider dot now uses `RewardsSecondaryText` with `0.55` alpha to align with iOS `.secondary.opacity(0.55)` tone semantics)
+  - done: referral-history-row-spacing parity pass #204 (Referral history cards now use explicit `10dp` sibling spacing in the row container instead of `SpaceBetween`, aligning closer with iOS `HStack(spacing: UITheme.spacing10)` layout behavior)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
