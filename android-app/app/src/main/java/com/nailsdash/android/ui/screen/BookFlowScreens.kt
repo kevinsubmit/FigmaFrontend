@@ -176,7 +176,7 @@ fun StoreDetailScreen(
                     onClick = { onBookNow(storeId, selectedService.id) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
                     Text(
                         "Book ${selectedService.name} • $${String.format(Locale.US, "%.2f", selectedService.price)}",
@@ -189,7 +189,7 @@ fun StoreDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(12.dp),
+                .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             item {
