@@ -2814,6 +2814,7 @@ fun OrderHistoryScreen(
                             .heightIn(max = 220.dp),
                     ) {
                         gridItems(reviewDraftImages, key = { it.id }) { item ->
+                            val removeImageInteraction = remember(item.id) { MutableInteractionSource() }
                             Box(
                                 modifier = Modifier
                                     .aspectRatio(1f)
@@ -2826,15 +2827,21 @@ fun OrderHistoryScreen(
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier.fillMaxSize(),
                                 )
-                                IconButton(
-                                    onClick = {
-                                        reviewDraftImages = reviewDraftImages.filterNot { it.id == item.id }
-                                    },
+                                Box(
                                     modifier = Modifier
                                         .align(Alignment.TopEnd)
                                         .padding(4.dp)
                                         .size(24.dp)
-                                        .background(Color.Black.copy(alpha = 0.68f), CircleShape),
+                                        .clip(CircleShape)
+                                        .background(Color.Black.copy(alpha = 0.68f), CircleShape)
+                                        .clickable(
+                                            interactionSource = removeImageInteraction,
+                                            indication = null,
+                                            onClick = {
+                                                reviewDraftImages = reviewDraftImages.filterNot { it.id == item.id }
+                                            },
+                                        ),
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
                                         imageVector = Icons.Filled.Close,
