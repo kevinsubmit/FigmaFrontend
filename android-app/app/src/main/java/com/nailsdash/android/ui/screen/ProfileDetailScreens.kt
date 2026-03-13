@@ -70,7 +70,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NorthEast
 import androidx.compose.material.icons.filled.Paid
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Star
@@ -80,6 +79,7 @@ import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.ConfirmationNumber as OutlinedTicketIcon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -2482,7 +2482,7 @@ private fun GiftCardCollectionCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Person,
+                        imageVector = Icons.Outlined.Person,
                         contentDescription = null,
                         tint = RewardsSecondaryText,
                         modifier = Modifier.size(11.dp),
