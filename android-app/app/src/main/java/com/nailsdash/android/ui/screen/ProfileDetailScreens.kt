@@ -3259,6 +3259,7 @@ private fun OrderHistoryActivityCard(
                     ),
                     color = RewardsGold,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
 
