@@ -2431,7 +2431,7 @@ private fun GiftCardCollectionCard(
                         imageVector = Icons.Filled.CalendarMonth,
                         contentDescription = null,
                         tint = RewardsSecondaryText,
-                        modifier = Modifier.size(12.dp),
+                        modifier = Modifier.size(11.dp),
                     )
                     Text(
                         text = "Issued ${displayDateOnly(card.created_at)}",
@@ -2454,7 +2454,7 @@ private fun GiftCardCollectionCard(
                             imageVector = Icons.Filled.AccessTime,
                             contentDescription = null,
                             tint = RewardsSecondaryText,
-                            modifier = Modifier.size(12.dp),
+                            modifier = Modifier.size(11.dp),
                         )
                         Text(
                             text = "Exp ${displayDateOnly(expires)}",
