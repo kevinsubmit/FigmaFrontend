@@ -3200,7 +3200,10 @@ private fun OrderHistoryActivityCard(
                 ) {
                     Text(
                         text = item.store_name ?: "Salon",
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp,
+                        ),
                         color = RewardsPrimaryText,
                         maxLines = 1,
                     )
