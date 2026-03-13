@@ -26,8 +26,6 @@ import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -320,18 +318,36 @@ private fun EmptyAppointmentsState(
         }
         Text(
             text = if (isUpcoming) "No upcoming appointments" else "No past appointments",
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Medium,
+            ),
             color = AppointmentsSecondaryText,
         )
         if (isUpcoming) {
-            Button(
-                onClick = onBookNow,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AppointmentsGold,
-                    contentColor = Color.Black,
-                ),
+            val bookNowInteraction = remember { MutableInteractionSource() }
+            Box(
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(AppointmentsGold)
+                    .clickable(
+                        interactionSource = bookNowInteraction,
+                        indication = null,
+                        onClick = onBookNow,
+                    )
+                    .heightIn(min = 46.dp)
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Text("Book Now", modifier = Modifier.padding(horizontal = 4.dp))
+                Text(
+                    text = "Book Now",
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = Color.Black,
+                )
             }
         }
     }
