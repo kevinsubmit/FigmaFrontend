@@ -77,6 +77,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.outlined.Collections
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.ConfirmationNumber as OutlinedTicketIcon
 import androidx.compose.material3.AlertDialog
@@ -3870,7 +3872,7 @@ fun ReviewsScreen(
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Filled.Edit,
+                                            imageVector = Icons.Outlined.Edit,
                                             contentDescription = null,
                                             modifier = Modifier.size(11.dp),
                                             tint = Color.White.copy(alpha = 0.92f),
@@ -3921,7 +3923,7 @@ fun ReviewsScreen(
                                             verticalAlignment = Alignment.CenterVertically,
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Filled.Delete,
+                                                imageVector = Icons.Outlined.Delete,
                                                 contentDescription = null,
                                                 modifier = Modifier.size(11.dp),
                                                 tint = Color.Red.copy(alpha = 0.9f),
