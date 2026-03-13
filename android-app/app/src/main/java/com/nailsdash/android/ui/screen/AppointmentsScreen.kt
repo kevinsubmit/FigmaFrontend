@@ -175,6 +175,7 @@ private fun AppointmentsHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .background(Color.Black.copy(alpha = 0.96f))
             .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 6.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -195,6 +196,7 @@ private fun AppointmentsHeader(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(top = 2.dp)
                 .background(
                     color = Color.White.copy(alpha = 0.04f),
                     shape = RoundedCornerShape(12.dp),
