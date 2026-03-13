@@ -68,6 +68,7 @@ Last updated: 2026-03-11
   - done: giftcards-sheets-primary-cta-headline-scale parity pass #117 (GiftCards claim/send sheet primary CTA labels now use explicit semibold `17sp` headline scale to align with iOS `.font(.headline.weight(.semibold))` hierarchy)
   - done: giftcards-sheets-cta-disabled-visual parity pass #118 (GiftCards claim/send sheet primary actions now keep constant gold background and black foreground during in-flight disabled state, matching iOS `.background(brandGold)` and `.foregroundStyle(.black)` semantics without Android-only alpha dimming)
   - done: giftcards-sheets-caption-type-scale parity pass #119 (GiftCards claim/send sheets caption-level texts now use explicit `12sp` scale for field labels, claim-code prompt, helper copy, and send-balance label to align with iOS `.caption` typography hierarchy)
+  - done: giftcards-send-balance-row-vertical-padding parity pass #120 (GiftCards send sheet balance summary row vertical inset is now `12dp` to match iOS `.padding(UITheme.spacing12)` card content rhythm)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
