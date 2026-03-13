@@ -206,6 +206,12 @@ private fun RewardsTopBar(
     title: String,
     onBack: () -> Unit,
 ) {
+    val backInteraction = remember { MutableInteractionSource() }
+    val backScale = rememberPressScale(
+        interactionSource = backInteraction,
+        pressedScale = 0.94f,
+    )
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -225,11 +231,18 @@ private fun RewardsTopBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            IconButton(
-                onClick = onBack,
+            Box(
                 modifier = Modifier
                     .size(38.dp)
-                    .background(Color.White.copy(alpha = 0.07f), CircleShape),
+                    .scale(backScale)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.07f), CircleShape)
+                    .clickable(
+                        interactionSource = backInteraction,
+                        indication = null,
+                        onClick = onBack,
+                    ),
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = Icons.Filled.ChevronLeft,
