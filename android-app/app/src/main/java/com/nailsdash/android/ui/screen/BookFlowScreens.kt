@@ -477,12 +477,14 @@ fun StoreDetailScreen(
 @Composable
 private fun StoreDetailTopBar(onBack: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.Black.copy(alpha = 0.96f)),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 6.dp),
+                .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 8.dp),
         ) {
             Column(
                 modifier = Modifier.align(Alignment.Center),
@@ -491,13 +493,19 @@ private fun StoreDetailTopBar(onBack: () -> Unit) {
             ) {
                 Text(
                     text = "STEP 02",
-                    style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 2.2.sp),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        letterSpacing = 2.2.sp,
+                        fontSize = 11.sp,
+                    ),
                     color = BookingGold,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = "Book Services",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                    ),
                     color = Color.White,
                 )
             }
@@ -506,7 +514,7 @@ private fun StoreDetailTopBar(onBack: () -> Unit) {
                 onClick = onBack,
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-                    .size(40.dp)
+                    .size(38.dp)
                     .background(
                         color = Color.White.copy(alpha = 0.07f),
                         shape = CircleShape,
@@ -516,6 +524,7 @@ private fun StoreDetailTopBar(onBack: () -> Unit) {
                     imageVector = Icons.Filled.ChevronLeft,
                     contentDescription = "Back",
                     tint = Color.White,
+                    modifier = Modifier.size(16.dp),
                 )
             }
         }
