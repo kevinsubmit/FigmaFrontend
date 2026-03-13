@@ -2817,7 +2817,8 @@ fun OrderHistoryScreen(
                             val removeImageInteraction = remember(item.id) { MutableInteractionSource() }
                             Box(
                                 modifier = Modifier
-                                    .aspectRatio(1f)
+                                    .fillMaxWidth()
+                                    .height(92.dp)
                                     .clip(RoundedCornerShape(12.dp))
                                     .background(Color.Black.copy(alpha = 0.22f)),
                             ) {
