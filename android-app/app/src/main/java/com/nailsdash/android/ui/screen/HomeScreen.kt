@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -153,6 +154,7 @@ fun HomeScreen(
             ) {
                 items(homeViewModel.tags, key = { it }) { tag ->
                     val selected = homeViewModel.selectedTag == tag
+                    val tagInteraction = remember(tag) { MutableInteractionSource() }
                     Box(
                         modifier = Modifier
                             .heightIn(min = 40.dp)
@@ -163,7 +165,10 @@ fun HomeScreen(
                                 color = if (selected) Color.Transparent else HomeGold.copy(alpha = 0.26f),
                                 shape = RoundedCornerShape(999.dp),
                             )
-                            .clickable { homeViewModel.selectTag(tag) }
+                            .clickable(
+                                interactionSource = tagInteraction,
+                                indication = null,
+                            ) { homeViewModel.selectTag(tag) }
                             .padding(horizontal = 14.dp, vertical = 9.dp),
                         contentAlignment = Alignment.Center,
                     ) {

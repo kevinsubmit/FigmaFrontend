@@ -10,6 +10,7 @@ Last updated: 2026-03-11
 ## Home
 - `DONE` Home feed list (`HomeFeedModule.swift` -> `HomeScreen.kt`)
   - done: home-header-search-tag-token parity pass #179 (Home feed header now matches iOS token structure: black gradient header, capsule search field with leading search + trailing clear control, `16dp` page padding, `40dp` tag capsules with semibold `13sp` labels, bottom hairline divider, and content insets `top=12/bottom=26`)
+  - done: home-tags-plain-tap parity pass #188 (Home tag capsules now use plain no-ripple tap interaction semantics to align with iOS `.buttonStyle(.plain)` behavior)
 - `DONE` Pin detail (`PinDetailModule.swift` -> `HomePinDetailScreen.kt`)
   - done: favorite, share, download, related pins, choose salon, advanced hero interactions (pinch-zoom + drag + double-tap reset + zoom-state scroll lock), floating top controls parity (left back + right share/favorite controls with gradient overlay), and iOS-like floating bottom booking strip + toast feedback
 - `DONE` Deals tab (`HomeView.swift DealsView` -> `DealsScreen.kt`)
