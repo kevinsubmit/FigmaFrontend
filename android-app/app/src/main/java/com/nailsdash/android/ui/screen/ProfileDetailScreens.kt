@@ -4221,8 +4221,8 @@ private fun FavoriteStoreCard(
             ) {
                 if (isDeleting) {
                     CircularProgressIndicator(
-                        modifier = Modifier.size(14.dp),
-                        strokeWidth = 1.8.dp,
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
                         color = Color.White,
                     )
                 } else {
