@@ -2785,13 +2785,6 @@ fun OrderHistoryScreen(
                                     .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
                                     .padding(8.dp),
                             ) {
-                                if (reviewComment.isBlank()) {
-                                    Text(
-                                        text = "Share details about your visit...",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = RewardsSecondaryText.copy(alpha = 0.74f),
-                                    )
-                                }
                                 innerTextField()
                             }
                         },
