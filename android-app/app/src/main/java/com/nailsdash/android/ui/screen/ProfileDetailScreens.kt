@@ -2708,7 +2708,10 @@ fun OrderHistoryScreen(
                 ) {
                     Text(
                         text = "Write a Review",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 17.sp,
+                        ),
                         color = RewardsPrimaryText,
                     )
                     Text(
@@ -3514,7 +3517,10 @@ fun ReviewsScreen(
                 ) {
                     Text(
                         text = "Edit Review",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 17.sp,
+                        ),
                         color = RewardsPrimaryText,
                     )
                     Text(
