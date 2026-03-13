@@ -51,6 +51,7 @@ Last updated: 2026-03-11
   - done: order-history-review-draft-image-corner-radius parity pass #100 (OrderHistory write-review draft image tile corner radius is now `12dp`, matching iOS `UITheme.controlCornerRadius` card geometry)
   - done: order-history-review-draft-image-height parity pass #101 (OrderHistory write-review draft image tile now uses fixed `92dp` height with full-width fill per grid cell to match iOS review image cell geometry)
   - done: order-history-add-photos-icon-semantics parity pass #102 (OrderHistory write-review `Add Photos` leading icon now uses layered collections semantics to better match iOS `photo.on.rectangle.angled` visual intent)
+  - done: order-history-review-draft-image-bg-removal parity pass #103 (OrderHistory write-review draft image tile no longer applies Android-only dark background fill, matching iOS draft image cell rendering that displays the selected image directly)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)

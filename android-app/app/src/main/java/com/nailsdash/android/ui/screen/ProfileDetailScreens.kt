@@ -2819,8 +2819,7 @@ fun OrderHistoryScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(92.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Color.Black.copy(alpha = 0.22f)),
+                                    .clip(RoundedCornerShape(12.dp)),
                             ) {
                                 AsyncImage(
                                     model = item.uri,
