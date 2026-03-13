@@ -1750,25 +1750,29 @@ fun GiftCardsScreen(
                     }
                 }
 
-                GiftSheetLabel(text = "Recipient Phone")
-                GiftSheetInputField(
-                    value = transferPhone,
-                    onValueChange = { transferPhone = it },
-                    placeholder = "Enter US phone",
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Number,
-                        capitalization = KeyboardCapitalization.None,
-                        autoCorrectEnabled = false,
-                    ),
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    GiftSheetLabel(text = "Recipient Phone")
+                    GiftSheetInputField(
+                        value = transferPhone,
+                        onValueChange = { transferPhone = it },
+                        placeholder = "Enter US phone",
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            capitalization = KeyboardCapitalization.None,
+                            autoCorrectEnabled = false,
+                        ),
+                    )
+                }
 
-                GiftSheetLabel(text = "Message (Optional)")
-                GiftSheetInputField(
-                    value = transferMessage,
-                    onValueChange = { transferMessage = it },
-                    placeholder = "Write a message",
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    GiftSheetLabel(text = "Message (Optional)")
+                    GiftSheetInputField(
+                        value = transferMessage,
+                        onValueChange = { transferMessage = it },
+                        placeholder = "Write a message",
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+                    )
+                }
 
                 val isSendingCurrentCard = giftCardsViewModel.sendingCardId == sendCard.id
                 val isSendBusy = giftCardsViewModel.sendingCardId != null
