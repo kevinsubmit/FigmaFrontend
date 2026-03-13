@@ -2413,7 +2413,7 @@ private fun GiftCardCollectionCard(
                         imageVector = Icons.Filled.ContentCopy,
                         contentDescription = "Copy card code",
                         tint = RewardsPrimaryText.copy(alpha = 0.9f),
-                        modifier = Modifier.size(14.dp),
+                        modifier = Modifier.size(12.dp),
                     )
                 }
             }
