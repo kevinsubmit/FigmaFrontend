@@ -5064,7 +5064,7 @@ private fun ReferralHistoryCard(item: com.nailsdash.android.data.model.ReferralL
                     Icon(
                         imageVector = Icons.Filled.CheckCircle,
                         contentDescription = null,
-                        tint = Color(0xFF7DE39A),
+                        tint = RewardsSystemGreen.copy(alpha = 0.88f),
                         modifier = Modifier.size(12.dp),
                     )
                     Text(
@@ -5073,7 +5073,7 @@ private fun ReferralHistoryCard(item: com.nailsdash.android.data.model.ReferralL
                             fontSize = 12.sp,
                             fontWeight = FontWeight.SemiBold,
                         ),
-                        color = Color(0xFF7DE39A),
+                        color = RewardsSystemGreen.copy(alpha = 0.88f),
                     )
                 }
             } else {
