@@ -120,6 +120,7 @@ Last updated: 2026-03-11
   - done: giftcards-code-copy-icon-caption-scale parity pass #169 (GiftCards card-number copy control icon now uses `12dp` size to align closer with iOS `.caption.weight(.bold)` glyph footprint)
   - done: giftcards-meta-row-spacer-minlength parity pass #170 (GiftCards card meta row `Issued/Exp` tail spacer now enforces `min=6dp` while remaining flexible, aligning with iOS `Spacer(minLength: UITheme.spacing6)` behavior)
   - done: giftcards-meta-icons-caption2-scale parity pass #171 (GiftCards card meta row `Issued/Exp` calendar and clock icons now use `11dp` size to align with iOS `.caption2.weight(.bold)` glyph scale)
+  - done: giftcards-meta-divider-caption2-scale parity pass #172 (GiftCards card meta-row divider dot now uses explicit `11sp` scale to align with iOS `.caption2` separator typography)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)

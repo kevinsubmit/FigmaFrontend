@@ -2443,7 +2443,7 @@ private fun GiftCardCollectionCard(
                 card.expires_at?.let { expires ->
                     Text(
                         text = "•",
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                         color = RewardsMutedText,
                     )
                     Row(
