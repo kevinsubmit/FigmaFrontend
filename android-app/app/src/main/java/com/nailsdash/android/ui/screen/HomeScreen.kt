@@ -274,10 +274,16 @@ private fun HomePinCard(
     pin: HomeFeedPin,
     onClick: () -> Unit,
 ) {
+    val cardInteraction = remember(pin.id) { MutableInteractionSource() }
+
     Card(
         shape = RoundedCornerShape(22.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier.clickable(
+            interactionSource = cardInteraction,
+            indication = null,
+            onClick = onClick,
+        ),
     ) {
         Box {
             AsyncImage(

@@ -13,6 +13,7 @@ Last updated: 2026-03-11
   - done: home-tags-plain-tap parity pass #188 (Home tag capsules now use plain no-ripple tap interaction semantics to align with iOS `.buttonStyle(.plain)` behavior)
   - done: home-search-control-plain-height parity pass #189 (Home search field controls now use plain no-ripple tap semantics for search/clear actions, and search input height is pinned to `44dp` to align iOS `UITheme.controlHeight`)
   - done: home-search-keyboard-semantics parity pass #190 (Home search input now disables auto-capitalization and autocorrect via `KeyboardCapitalization.None` + `autoCorrectEnabled=false`, aligning iOS `.textInputAutocapitalization(.never)` and `.autocorrectionDisabled()` behavior)
+  - done: home-pin-card-plain-tap parity pass #194 (Home inspiration cards now use plain no-ripple tap interaction semantics to align with iOS card tap behavior without Android ripple chrome)
 - `DONE` Pin detail (`PinDetailModule.swift` -> `HomePinDetailScreen.kt`)
   - done: favorite, share, download, related pins, choose salon, advanced hero interactions (pinch-zoom + drag + double-tap reset + zoom-state scroll lock), floating top controls parity (left back + right share/favorite controls with gradient overlay), and iOS-like floating bottom booking strip + toast feedback
 - `DONE` Deals tab (`HomeView.swift DealsView` -> `DealsScreen.kt`)
