@@ -1622,8 +1622,8 @@ fun GiftCardsScreen(
                 )
 
                 val isClaiming = giftCardsViewModel.isClaiming
-                val claimButtonBg = if (isClaiming) RewardsGold.copy(alpha = 0.82f) else RewardsGold
-                val claimButtonFg = if (isClaiming) Color.Black.copy(alpha = 0.82f) else Color.Black
+                val claimButtonBg = RewardsGold
+                val claimButtonFg = Color.Black
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1779,8 +1779,8 @@ fun GiftCardsScreen(
 
                 val isSendingCurrentCard = giftCardsViewModel.sendingCardId == sendCard.id
                 val isSendBusy = giftCardsViewModel.sendingCardId != null
-                val sendButtonBg = if (isSendBusy) RewardsGold.copy(alpha = 0.82f) else RewardsGold
-                val sendButtonFg = if (isSendBusy) Color.Black.copy(alpha = 0.82f) else Color.Black
+                val sendButtonBg = RewardsGold
+                val sendButtonFg = Color.Black
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

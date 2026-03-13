@@ -66,6 +66,7 @@ Last updated: 2026-03-11
   - done: giftcards-sheets-close-text-scale parity pass #115 (GiftCards claim/send sheets `Close` text actions now use iOS-like subheadline `15sp` semibold scale, matching SwiftUI `.font(.subheadline.weight(.semibold))`)
   - done: giftcards-send-sheet-field-group-spacing parity pass #116 (GiftCards send sheet now groups `Recipient Phone` and `Message` label+input pairs with internal `6dp` spacing, matching iOS field-group cadence from `VStack(spacing: UITheme.spacing6)`)
   - done: giftcards-sheets-primary-cta-headline-scale parity pass #117 (GiftCards claim/send sheet primary CTA labels now use explicit semibold `17sp` headline scale to align with iOS `.font(.headline.weight(.semibold))` hierarchy)
+  - done: giftcards-sheets-cta-disabled-visual parity pass #118 (GiftCards claim/send sheet primary actions now keep constant gold background and black foreground during in-flight disabled state, matching iOS `.background(brandGold)` and `.foregroundStyle(.black)` semantics without Android-only alpha dimming)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
