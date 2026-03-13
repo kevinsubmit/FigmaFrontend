@@ -3262,7 +3262,7 @@ private fun OrderHistoryActivityCard(
                 )
                 Text(
                     text = "${formatAppointmentDate(item.appointment_date)} · ${formatAppointmentTime(item.appointment_time)}",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
                     color = RewardsSecondaryText,
                     maxLines = 1,
                 )
@@ -3278,7 +3278,10 @@ private fun OrderHistoryActivityCard(
                 ) {
                     Text(
                         text = "Review",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp,
+                        ),
                         color = Color.White.copy(alpha = 0.68f),
                     )
 
@@ -3311,7 +3314,10 @@ private fun OrderHistoryActivityCard(
                                 )
                                 Text(
                                     text = "Review",
-                                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                    ),
                                     color = RewardsGold,
                                 )
                             }
@@ -3320,7 +3326,10 @@ private fun OrderHistoryActivityCard(
                         item.review_id != null -> {
                             Text(
                                 text = "Reviewed",
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 12.sp,
+                                ),
                                 color = RewardsGold,
                             )
                         }
@@ -3328,7 +3337,10 @@ private fun OrderHistoryActivityCard(
                         else -> {
                             Text(
                                 text = "Review window closed",
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 12.sp,
+                                ),
                                 color = Color.White.copy(alpha = 0.56f),
                             )
                         }
