@@ -3812,7 +3812,10 @@ fun ReviewsScreen(
                                 }
                                 Text(
                                     text = displayDateOnly(review.created_at.orEmpty()),
-                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Normal,
+                                    ),
                                     color = RewardsSecondaryText,
                                 )
                             }
