@@ -34,6 +34,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -94,7 +95,7 @@ fun DealsScreen(
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 26.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 dealsViewModel.errorMessage?.let { message ->
@@ -156,66 +157,77 @@ private fun DealsHeader(
                 Brush.verticalGradient(
                     colors = listOf(Color.Black, Color.Black.copy(alpha = 0.96f)),
                 ),
-            )
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Text(
-            text = "Limited-time offers",
-            style = MaterialTheme.typography.headlineMedium.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 30.sp,
             ),
-            color = Color.White,
-        )
-
-        Row(
+    ) {
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White.copy(alpha = 0.04f), RoundedCornerShape(12.dp))
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            DealsSegment.entries.forEach { segment ->
-                val selected = selectedSegment == segment
-                val chipScale by animateFloatAsState(
-                    targetValue = if (selected) 1f else 0.97f,
-                    animationSpec = spring(dampingRatio = 0.78f, stiffness = 520f),
-                    label = "dealsSegmentScale",
-                )
-                val chipBg by animateColorAsState(
-                    targetValue = if (selected) DealsGold else Color.Transparent,
-                    animationSpec = tween(durationMillis = 180),
-                    label = "dealsSegmentBg",
-                )
-                val chipText by animateColorAsState(
-                    targetValue = if (selected) Color.Black else Color.White.copy(alpha = 0.86f),
-                    animationSpec = tween(durationMillis = 180),
-                    label = "dealsSegmentText",
-                )
+            Text(
+                text = "Limited-time offers",
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 30.sp,
+                ),
+                color = Color.White,
+            )
 
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(36.dp)
-                        .scale(chipScale)
-                        .background(chipBg, RoundedCornerShape(10.dp))
-                        .border(
-                            width = 1.dp,
-                            color = if (selected) Color.Transparent else DealsGold.copy(alpha = 0.24f),
-                            shape = RoundedCornerShape(10.dp),
-                        )
-                        .clickable { onSelectSegment(segment) },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = segment.label,
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                        color = chipText,
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp)
+                    .background(Color.White.copy(alpha = 0.04f), RoundedCornerShape(12.dp))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                DealsSegment.entries.forEach { segment ->
+                    val selected = selectedSegment == segment
+                    val chipScale by animateFloatAsState(
+                        targetValue = if (selected) 1f else 0.97f,
+                        animationSpec = spring(dampingRatio = 0.78f, stiffness = 520f),
+                        label = "dealsSegmentScale",
                     )
+                    val chipBg by animateColorAsState(
+                        targetValue = if (selected) DealsGold else Color.Transparent,
+                        animationSpec = tween(durationMillis = 180),
+                        label = "dealsSegmentBg",
+                    )
+                    val chipText by animateColorAsState(
+                        targetValue = if (selected) Color.Black else Color.White.copy(alpha = 0.86f),
+                        animationSpec = tween(durationMillis = 180),
+                        label = "dealsSegmentText",
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(40.dp)
+                            .scale(chipScale)
+                            .background(chipBg, RoundedCornerShape(10.dp))
+                            .border(
+                                width = 1.dp,
+                                color = if (selected) Color.Transparent else DealsGold.copy(alpha = 0.24f),
+                                shape = RoundedCornerShape(10.dp),
+                            )
+                            .clickable { onSelectSegment(segment) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = segment.label,
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp,
+                            ),
+                            color = chipText,
+                        )
+                    }
                 }
             }
         }
+
+        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
     }
 }
 

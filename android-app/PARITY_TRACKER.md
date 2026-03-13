@@ -13,6 +13,7 @@ Last updated: 2026-03-11
   - done: favorite, share, download, related pins, choose salon, advanced hero interactions (pinch-zoom + drag + double-tap reset + zoom-state scroll lock), floating top controls parity (left back + right share/favorite controls with gradient overlay), and iOS-like floating bottom booking strip + toast feedback
 - `DONE` Deals tab (`HomeView.swift DealsView` -> `DealsScreen.kt`)
   - done: segmented store/platform deals and CTA routing, plus exact visual hierarchy/motion parity (black-gold header/segment container, layered offer cards, scope/price/meta pills, differentiated store/platform CTA styling, card press feedback, loading overlay)
+  - done: deals-header-segment-token parity pass #177 (Deals header now matches iOS token geometry: page padding `16`, header insets `top=4/bottom=6`, segment top offset `2`, segment min-height `40`, footnote-scale label `13sp`, bottom hairline divider `white@0.08`, and list insets `16/12/16/26`)
 
 ## Book
 - `DONE` Store list (`StoresListView.swift` -> `StoresScreen.kt`)
