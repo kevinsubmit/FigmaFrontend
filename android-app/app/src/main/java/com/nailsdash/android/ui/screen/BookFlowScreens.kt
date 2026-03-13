@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -544,17 +545,14 @@ private fun StoreDetailTabBar(
     selectedTab: String,
     onPickTab: (String) -> Unit,
 ) {
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.20f),
-        ),
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.Black)
+            .padding(top = 4.dp, bottom = 6.dp),
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 6.dp, bottom = 2.dp),
+            modifier = Modifier.fillMaxWidth(),
         ) {
             tabs.forEach { tab ->
                 val selected = selectedTab == tab
@@ -565,44 +563,45 @@ private fun StoreDetailTabBar(
                 )
                 val labelColor by animateColorAsState(
                     targetValue = if (selected) {
-                        MaterialTheme.colorScheme.onSurface
+                        Color.White
                     } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
+                        Color.White.copy(alpha = 0.56f)
                     },
                     label = "storeTabLabelColor",
                 )
                 val indicatorColor by animateColorAsState(
                     targetValue = if (selected) {
-                        MaterialTheme.colorScheme.primary
+                        BookingGold
                     } else {
                         Color.Transparent
                     },
                     label = "storeTabIndicatorColor",
                 )
-                val indicatorWidth by animateDpAsState(
-                    targetValue = if (selected) 58.dp else 24.dp,
-                    label = "storeTabIndicatorWidth",
-                )
                 Column(
                     modifier = Modifier
                         .weight(1f)
+                        .heightIn(min = 48.dp)
                         .scale(tabScale)
                         .clickable { onPickTab(tab) }
-                        .padding(horizontal = 4.dp, vertical = 6.dp),
+                        .padding(horizontal = 4.dp, vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
                         text = tab.uppercase(Locale.US),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                            letterSpacing = 1.5.sp,
+                        ),
                         color = labelColor,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Box(
                         modifier = Modifier
-                            .width(indicatorWidth)
-                            .height(2.dp)
+                            .width(74.dp)
+                            .height(3.dp)
                             .background(
                                 color = indicatorColor,
                                 shape = RoundedCornerShape(999.dp),
@@ -611,6 +610,13 @@ private fun StoreDetailTabBar(
                 }
             }
         }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Color.White.copy(alpha = 0.14f)),
+        )
     }
 }
 
