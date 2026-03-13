@@ -3499,7 +3499,7 @@ fun ReviewsScreen(
 
                 Text(
                     text = "Rating",
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                     color = RewardsPrimaryText.copy(alpha = 0.62f),
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -3527,7 +3527,7 @@ fun ReviewsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Comment",
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                         color = RewardsPrimaryText.copy(alpha = 0.62f),
                     )
                     BasicTextField(

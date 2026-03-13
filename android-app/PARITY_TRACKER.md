@@ -59,6 +59,7 @@ Last updated: 2026-03-11
   - done: order-history-submit-button-visual-state parity pass #108 (OrderHistory write-review `Submit` CTA now keeps iOS-like constant gold background with fixed black label/spinner contrast during busy/disabled state, removing Android-only dimmed gold variant)
   - done: order-history-review-comment-placeholder-removal parity pass #109 (OrderHistory write-review comment editor no longer renders Android-only placeholder copy, matching iOS `TextEditor` behavior with plain content area)
   - done: order-history-review-sheet-caption-type-scale parity pass #110 (OrderHistory write-review sheet helper copy, service subtitle, and section labels `Rating/Comment/Photos` now use caption-level `labelSmall` hierarchy to match iOS `.caption` typography scale)
+  - done: myreviews-edit-sheet-label-caption-scale parity pass #111 (MyReviews edit-review sheet `Rating` and `Comment` labels now use semibold `labelSmall` to match iOS `.caption.weight(.semibold)` label hierarchy)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
