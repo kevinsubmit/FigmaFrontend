@@ -3889,20 +3889,23 @@ fun FavoritesScreen(
                     )
                 }
                 item {
-                    Button(
-                        onClick = onBrowseSalons,
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(min = 46.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = RewardsGold,
-                            contentColor = Color.Black,
-                        ),
-                        shape = RoundedCornerShape(14.dp),
+                            .heightIn(min = 46.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(RewardsGold)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = onBrowseSalons,
+                            ),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            "Browse Salons",
+                            text = "Browse Salons",
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                            color = Color.Black,
                         )
                     }
                 }
