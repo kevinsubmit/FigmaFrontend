@@ -184,6 +184,7 @@ private fun DealsHeader(
             ) {
                 DealsSegment.entries.forEach { segment ->
                     val selected = selectedSegment == segment
+                    val segmentInteraction = remember(segment) { MutableInteractionSource() }
                     val chipScale by animateFloatAsState(
                         targetValue = if (selected) 1f else 0.97f,
                         animationSpec = spring(dampingRatio = 0.78f, stiffness = 520f),
@@ -211,7 +212,10 @@ private fun DealsHeader(
                                 color = if (selected) Color.Transparent else DealsGold.copy(alpha = 0.24f),
                                 shape = RoundedCornerShape(10.dp),
                             )
-                            .clickable { onSelectSegment(segment) },
+                            .clickable(
+                                interactionSource = segmentInteraction,
+                                indication = null,
+                            ) { onSelectSegment(segment) },
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
