@@ -3145,7 +3145,7 @@ private fun OrderHistorySummaryMetric(
                     fontSize = 12.sp,
                     letterSpacing = 1.6.sp,
                 ),
-                color = RewardsSecondaryText,
+                color = Color.White.copy(alpha = 0.62f),
             )
             Text(
                 text = value,
@@ -3169,7 +3169,7 @@ private fun OrderHistorySummaryMetric(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Normal,
                     ),
-                    color = RewardsSecondaryText,
+                    color = Color.White.copy(alpha = 0.62f),
                 )
             }
         }
@@ -3281,7 +3281,7 @@ private fun OrderHistoryActivityCard(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Normal,
                     ),
-                    color = RewardsSecondaryText,
+                    color = Color.White.copy(alpha = 0.62f),
                     maxLines = 1,
                 )
             }
