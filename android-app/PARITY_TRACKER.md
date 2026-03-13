@@ -79,6 +79,7 @@ Last updated: 2026-03-11
   - done: myreviews-comment-footnote-scale parity pass #128 (MyReviews list card comment text now uses explicit `13sp` scale to match iOS `.footnote` typography for both written comments and `No written comment` placeholder)
   - done: order-history-caption2-exact-scale parity pass #129 (OrderHistory activity card `Order xxx` meta text and store-address row text now use explicit `11sp` caption2 scale to match iOS `.caption2` hierarchy)
   - done: order-history-summary-caption-exact-scale parity pass #130 (OrderHistory summary metric title and `Completed orders` subtitle now use explicit `12sp` caption scale to match iOS summary-card `.caption` typography)
+  - done: myreviews-store-name-subheadline-scale parity pass #131 (MyReviews list card store-name title now uses explicit `15sp` semibold scale to match iOS `.subheadline.weight(.semibold)` hierarchy)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)

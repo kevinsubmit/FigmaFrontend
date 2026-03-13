@@ -3779,7 +3779,10 @@ fun ReviewsScreen(
                                 ) {
                                     Text(
                                         text = resolvedStoreName,
-                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 15.sp,
+                                        ),
                                         color = RewardsPrimaryText,
                                         maxLines = 1,
                                     )
