@@ -3241,7 +3241,10 @@ private fun OrderHistoryActivityCard(
 
                 Text(
                     text = "$${String.format("%.2f", amount)}",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                    ),
                     color = RewardsGold,
                 )
             }
