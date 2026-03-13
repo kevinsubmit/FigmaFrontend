@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,8 +30,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -408,47 +408,80 @@ private fun DealCard(
                 }
 
                 if (hasStoreTarget) {
-                    Button(
-                        onClick = { promotion.store_id?.let(onOpenStore) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(999.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = DealsGold,
-                            contentColor = Color.Black,
-                        ),
+                    val bookCtaInteraction = remember(promotion.id) { MutableInteractionSource() }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(DealsGold),
                     ) {
                         Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 46.dp)
+                                .clickable(
+                                    interactionSource = bookCtaInteraction,
+                                    indication = null,
+                                ) { promotion.store_id?.let(onOpenStore) }
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("Book Now", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                text = "Book Now",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 15.sp,
+                                ),
+                                color = Color.Black,
+                            )
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                 contentDescription = null,
-                                modifier = Modifier.size(14.dp),
+                                modifier = Modifier.size(12.dp),
+                                tint = Color.Black,
                             )
                         }
                     }
                 } else {
-                    Button(
-                        onClick = onBrowseStores,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(999.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White.copy(alpha = 0.04f),
-                            contentColor = DealsGold,
-                        ),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, DealsGold.copy(alpha = 0.28f)),
+                    val browseCtaInteraction = remember(promotion.id) { MutableInteractionSource() }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(Color.White.copy(alpha = 0.04f))
+                            .border(
+                                width = 1.dp,
+                                color = DealsGold.copy(alpha = 0.28f),
+                                shape = RoundedCornerShape(999.dp),
+                            ),
                     ) {
                         Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 46.dp)
+                                .clickable(
+                                    interactionSource = browseCtaInteraction,
+                                    indication = null,
+                                    onClick = onBrowseStores,
+                                )
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text("Browse Stores", fontWeight = FontWeight.SemiBold)
+                            Text(
+                                text = "Browse Stores",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 15.sp,
+                                ),
+                                color = DealsGold,
+                            )
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                 contentDescription = null,
-                                modifier = Modifier.size(14.dp),
+                                modifier = Modifier.size(12.dp),
+                                tint = DealsGold,
                             )
                         }
                     }
