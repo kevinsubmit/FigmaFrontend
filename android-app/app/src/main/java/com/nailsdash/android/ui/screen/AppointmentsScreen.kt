@@ -348,6 +348,7 @@ private fun AppointmentCard(
     val status = effectiveStatus(item)
     val statusColor = statusColor(status)
     val cardShape = RoundedCornerShape(18.dp)
+    val cardTapInteraction = remember(item.id) { MutableInteractionSource() }
 
     Box(
         modifier = Modifier
@@ -363,7 +364,11 @@ private fun AppointmentCard(
             ),
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(enabled = isUpcoming) { onOpenAppointment(item.id) },
+                .clickable(
+                    enabled = isUpcoming,
+                    interactionSource = cardTapInteraction,
+                    indication = null,
+                ) { onOpenAppointment(item.id) },
         ) {
             Column(
                 modifier = Modifier

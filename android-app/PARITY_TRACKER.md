@@ -39,6 +39,7 @@ Last updated: 2026-03-11
   - done: appointments-list-content-inset parity pass #182 (My Appointments list container insets now match iOS geometry: `horizontal=16dp`, `top=10dp`, `bottom=28dp`)
   - done: appointments-header-bg-top-gap parity pass #183 (My Appointments header now applies iOS-like `black@0.96` container backdrop and adds `2dp` top inset before segmented control block to match SwiftUI `tabHeader` spacing cadence)
   - done: appointments-segment-plain-tap parity pass #186 (My Appointments segmented controls now use plain no-ripple tap interaction semantics to align with iOS `Button(...).buttonStyle(.plain)` behavior)
+  - done: appointments-card-plain-tap parity pass #191 (My Appointments list cards now use plain no-ripple tap interaction semantics when opening upcoming appointment details, aligning with iOS card button behavior without Android ripple chrome)
 - `DONE` Appointment detail (`AppointmentDetailView` -> `AppointmentDetailScreen.kt`)
   - done: card-based detail, map open with map-app chooser sheet, status display, iOS-like top close action, bottom action bar helper text, dedicated cancel/reschedule action sheets, picker-based reschedule date/time, top auto-dismiss toast, loading overlay, fine-grained visual styling (dark + gold card system, action bar, sheets)
 
