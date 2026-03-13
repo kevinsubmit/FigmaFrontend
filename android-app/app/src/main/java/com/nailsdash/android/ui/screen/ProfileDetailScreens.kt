@@ -2898,7 +2898,10 @@ fun OrderHistoryScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = if (orderHistoryViewModel.isUploadingReviewImages) "Uploading..." else "Add Photos",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 15.sp,
+                                ),
                                 color = RewardsPrimaryText.copy(alpha = 0.86f),
                             )
                         }
@@ -2924,7 +2927,10 @@ fun OrderHistoryScreen(
                     ) {
                         Text(
                             text = "Cancel",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                            ),
                             color = RewardsPrimaryText.copy(alpha = 0.80f),
                         )
                     }
@@ -2970,7 +2976,10 @@ fun OrderHistoryScreen(
                         } else {
                             Text(
                                 text = "Submit",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                ),
                                 color = Color.Black.copy(alpha = 0.88f),
                             )
                         }
@@ -3583,7 +3592,10 @@ fun ReviewsScreen(
                     ) {
                         Text(
                             text = "Cancel",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                            ),
                             color = RewardsPrimaryText.copy(alpha = 0.80f),
                         )
                     }
@@ -3628,7 +3640,10 @@ fun ReviewsScreen(
                         } else {
                             Text(
                                 text = "Update",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                ),
                                 color = Color.Black.copy(alpha = 0.88f),
                             )
                         }
