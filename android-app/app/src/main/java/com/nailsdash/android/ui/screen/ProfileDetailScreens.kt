@@ -1130,6 +1130,7 @@ private fun GiftSheetLabel(text: String) {
         text = text,
         style = MaterialTheme.typography.labelSmall.copy(
             fontWeight = FontWeight.SemiBold,
+            fontSize = 12.sp,
         ),
         color = RewardsSecondaryText,
     )
@@ -1606,6 +1607,7 @@ fun GiftCardsScreen(
                     text = "Enter claim code",
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
                         letterSpacing = 1.6.sp,
                     ),
                     color = RewardsSecondaryText,
@@ -1676,7 +1678,7 @@ fun GiftCardsScreen(
 
                 Text(
                     text = "Enter the code from SMS to claim a transferred gift card.",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
                     color = RewardsSecondaryText,
                 )
 
@@ -1739,7 +1741,10 @@ fun GiftCardsScreen(
                     ) {
                         Text(
                             text = "Balance",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp,
+                            ),
                             color = RewardsSecondaryText,
                         )
                         Text(
