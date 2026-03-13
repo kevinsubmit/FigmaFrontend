@@ -3805,6 +3805,7 @@ fun ReviewsScreen(
                                         ),
                                         color = RewardsPrimaryText,
                                         maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
                                     )
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
