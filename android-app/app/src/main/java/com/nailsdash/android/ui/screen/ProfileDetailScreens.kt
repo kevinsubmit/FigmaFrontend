@@ -3240,11 +3240,16 @@ private fun OrderHistoryActivityCard(
 
                     when {
                         canReview -> {
+                            val reviewActionInteraction = remember(item.id) { MutableInteractionSource() }
                             Row(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(999.dp))
                                     .background(RewardsGold.copy(alpha = 0.12f))
-                                    .clickable(onClick = onReview)
+                                    .clickable(
+                                        interactionSource = reviewActionInteraction,
+                                        indication = null,
+                                        onClick = onReview,
+                                    )
                                     .padding(horizontal = 12.dp, vertical = 6.dp)
                                     .border(
                                         width = 1.dp,
