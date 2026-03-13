@@ -3867,7 +3867,7 @@ fun ReviewsScreen(
                                         Icon(
                                             imageVector = Icons.Filled.Edit,
                                             contentDescription = null,
-                                            modifier = Modifier.size(12.dp),
+                                            modifier = Modifier.size(11.dp),
                                             tint = Color.White.copy(alpha = 0.92f),
                                         )
                                         Text(
@@ -3918,7 +3918,7 @@ fun ReviewsScreen(
                                             Icon(
                                                 imageVector = Icons.Filled.Delete,
                                                 contentDescription = null,
-                                                modifier = Modifier.size(12.dp),
+                                                modifier = Modifier.size(11.dp),
                                                 tint = Color(0xFFFF8A8A),
                                             )
                                             Text(

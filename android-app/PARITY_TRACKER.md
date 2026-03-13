@@ -82,6 +82,7 @@ Last updated: 2026-03-11
   - done: myreviews-store-name-subheadline-scale parity pass #131 (MyReviews list card store-name title now uses explicit `15sp` semibold scale to match iOS `.subheadline.weight(.semibold)` hierarchy)
   - done: order-history-caption-regular-weight parity pass #132 (OrderHistory summary subtitle `Completed orders`, activity-card address text, and activity datetime label now use regular caption/caption2 weight to match iOS `.caption`/`.caption2` default font weight semantics)
   - done: myreviews-rating-stars-caption2-scale parity pass #133 (MyReviews list-card star glyphs now use `11dp` sizing in `ReviewStars`, matching iOS `.caption2` star footprint more closely)
+  - done: myreviews-action-icons-caption2-scale parity pass #134 (MyReviews list-card `Edit/Delete` leading icons now use `11dp` sizing to better match iOS `.caption2` icon footprint in action rows)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
