@@ -1741,7 +1741,7 @@ fun GiftCardsScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
@@ -1752,6 +1752,7 @@ fun GiftCardsScreen(
                             ),
                             color = RewardsSecondaryText,
                         )
+                        Spacer(modifier = Modifier.weight(1f))
                         Text(
                             text = "$${String.format("%.2f", sendCard.balance)}",
                             color = RewardsGold,
