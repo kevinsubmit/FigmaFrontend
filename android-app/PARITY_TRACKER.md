@@ -91,6 +91,7 @@ Last updated: 2026-03-11
   - done: myreviews-date-single-line-limit parity pass #140 (MyReviews list-card created-date label now enforces single-line rendering via `maxLines = 1`, matching iOS `.lineLimit(1)` behavior in tight-width layouts)
   - done: myreviews-empty-comment-secondary-contrast parity pass #141 (MyReviews empty-comment fallback `No written comment` now uses `Color.White.copy(alpha = 0.62f)` to match iOS `.secondary` foreground semantics)
   - done: myreviews-action-icon-outline-semantics parity pass #142 (MyReviews list-card `Edit/Delete` leading glyphs now use outlined icon semantics to align with iOS SF Symbols `pencil` and `trash` line-style treatment)
+  - done: order-history-total-spend-icon-semantics parity pass #143 (OrderHistory summary `Total Spend` metric icon now uses `Paid` semantics instead of generic `AttachMoney`, aligning closer with iOS `dollarsign.circle.fill` circular-currency intent)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
