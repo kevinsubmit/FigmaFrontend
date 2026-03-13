@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -49,6 +50,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nailsdash.android.data.model.Appointment
 import com.nailsdash.android.ui.state.AppSessionViewModel
@@ -103,7 +105,7 @@ fun AppointmentsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 appointmentsViewModel.errorMessage?.let {
@@ -173,17 +175,20 @@ private fun AppointmentsHeader(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 6.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 6.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(
             text = "My Appointments",
-            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.headlineLarge.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 30.sp,
+            ),
             color = AppointmentsPrimaryText,
         )
         Text(
             text = "Manage upcoming and past bookings",
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
             color = AppointmentsMutedText,
         )
 
@@ -234,13 +239,17 @@ private fun AppointmentSegmentButton(
                 shape = RoundedCornerShape(10.dp),
             )
             .clickable(onClick = onClick)
+            .heightIn(min = 40.dp)
             .padding(horizontal = 10.dp, vertical = 9.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp,
+            ),
             color = if (selected) Color(0xFF1A1A1A) else Color.White.copy(alpha = 0.86f),
         )
         if (count != null && count > 0) {

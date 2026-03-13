@@ -26,6 +26,7 @@ Last updated: 2026-03-11
 ## Appointments
 - `DONE` My appointments (`MyAppointmentsView.swift` -> `AppointmentsScreen.kt`)
   - done: upcoming/past segmented view, status capsules, empty states, map open with map-app chooser sheet (Google Maps / Waze / system app), iOS-style header/segment typography, layered appointment cards, loading overlay, fine-grained color/opacity tuning
+  - done: appointments-header-segment-token parity pass #178 (My Appointments header/list now use iOS page padding `16dp`; header title/subtitle typography aligned to `30sp/13sp`; segment labels use semibold `13sp`; segment controls enforce iOS min-height `40dp`)
 - `DONE` Appointment detail (`AppointmentDetailView` -> `AppointmentDetailScreen.kt`)
   - done: card-based detail, map open with map-app chooser sheet, status display, iOS-like top close action, bottom action bar helper text, dedicated cancel/reschedule action sheets, picker-based reschedule date/time, top auto-dismiss toast, loading overlay, fine-grained visual styling (dark + gold card system, action bar, sheets)
 
