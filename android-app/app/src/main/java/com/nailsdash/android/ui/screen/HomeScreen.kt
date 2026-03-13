@@ -33,7 +33,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -97,28 +96,44 @@ fun HomeScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, top = 8.dp, end = 16.dp),
+                    .padding(start = 16.dp, top = 8.dp, end = 16.dp)
+                    .height(44.dp),
                 singleLine = true,
                 shape = RoundedCornerShape(999.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { homeViewModel.applySearch() }),
                 leadingIcon = {
-                    IconButton(onClick = { homeViewModel.applySearch() }) {
+                    val searchIconInteraction = remember { MutableInteractionSource() }
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(CircleShape)
+                            .clickable(
+                                interactionSource = searchIconInteraction,
+                                indication = null,
+                            ) { homeViewModel.applySearch() },
+                        contentAlignment = Alignment.Center,
+                    ) {
                         Icon(
                             imageVector = Icons.Filled.Search,
                             contentDescription = "Search",
                             tint = Color.White.copy(alpha = 0.72f),
+                            modifier = Modifier.size(15.dp),
                         )
                     }
                 },
                 trailingIcon = {
                     if (homeViewModel.searchDraft.isNotEmpty()) {
+                        val clearInteraction = remember { MutableInteractionSource() }
                         Box(
                             modifier = Modifier
                                 .size(26.dp)
                                 .clip(CircleShape)
                                 .background(Color.White.copy(alpha = 0.07f))
-                                .clickable { homeViewModel.clearSearch() },
+                                .clickable(
+                                    interactionSource = clearInteraction,
+                                    indication = null,
+                                ) { homeViewModel.clearSearch() },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
