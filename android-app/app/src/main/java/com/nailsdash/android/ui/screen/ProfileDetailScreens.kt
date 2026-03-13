@@ -3312,6 +3312,7 @@ private fun OrderHistoryActivityCard(
                         ),
                         color = Color.White.copy(alpha = 0.68f),
                     )
+                    Spacer(modifier = Modifier.weight(1f))
 
                     when {
                         canReview -> {
