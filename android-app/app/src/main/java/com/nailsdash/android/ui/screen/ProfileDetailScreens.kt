@@ -3801,21 +3801,11 @@ fun ReviewsScreen(
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     if (myReviewsViewModel.deletingReviewId == review.id) {
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(14.dp),
-                                                strokeWidth = 1.8.dp,
-                                                color = Color(0xFFFF8A8A),
-                                            )
-                                            Text(
-                                                text = "Deleting...",
-                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                                                color = Color(0xFFFF8A8A),
-                                            )
-                                        }
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(14.dp),
+                                            strokeWidth = 1.8.dp,
+                                            color = Color(0xFFFF8A8A),
+                                        )
                                     } else {
                                         Row(
                                             horizontalArrangement = Arrangement.spacedBy(5.dp),
