@@ -3154,6 +3154,7 @@ private fun OrderHistorySummaryMetric(
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Black),
                 color = if (highlighted) RewardsGold else RewardsPrimaryText,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Row(
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
