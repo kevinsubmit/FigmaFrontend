@@ -877,6 +877,7 @@ private fun PointsHistoryRow(
                 ),
                 color = RewardsPrimaryText,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             item.description?.takeIf { it.isNotBlank() }?.let {
                 Text(
@@ -887,6 +888,7 @@ private fun PointsHistoryRow(
                     ),
                     color = RewardsSecondaryText,
                     maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Text(
@@ -907,6 +909,7 @@ private fun PointsHistoryRow(
             ),
             color = if (isPositive) RewardsSystemGreen else RewardsPrimaryText.copy(alpha = 0.9f),
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 
