@@ -556,6 +556,7 @@ private fun StoreDetailTabBar(
         ) {
             tabs.forEach { tab ->
                 val selected = selectedTab == tab
+                val tabInteraction = remember(tab) { MutableInteractionSource() }
                 val tabScale by animateFloatAsState(
                     targetValue = if (selected) 1f else 0.96f,
                     animationSpec = spring(dampingRatio = 0.78f, stiffness = 540f),
@@ -582,7 +583,10 @@ private fun StoreDetailTabBar(
                         .weight(1f)
                         .heightIn(min = 48.dp)
                         .scale(tabScale)
-                        .clickable { onPickTab(tab) }
+                        .clickable(
+                            interactionSource = tabInteraction,
+                            indication = null,
+                        ) { onPickTab(tab) }
                         .padding(horizontal = 4.dp, vertical = 8.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
