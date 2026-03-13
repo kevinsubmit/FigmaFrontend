@@ -77,6 +77,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material.icons.outlined.Collections
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.ConfirmationNumber as OutlinedTicketIcon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -3229,7 +3230,7 @@ private fun OrderHistoryActivityCard(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.LocationOn,
+                                imageVector = Icons.Outlined.LocationOn,
                                 contentDescription = null,
                                 tint = Color.White.copy(alpha = 0.48f),
                                 modifier = Modifier.size(11.dp),
