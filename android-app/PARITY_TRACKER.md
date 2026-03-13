@@ -46,6 +46,7 @@ Last updated: 2026-03-11
   - done: appointments-segment-plain-tap parity pass #186 (My Appointments segmented controls now use plain no-ripple tap interaction semantics to align with iOS `Button(...).buttonStyle(.plain)` behavior)
   - done: appointments-card-plain-tap parity pass #191 (My Appointments list cards now use plain no-ripple tap interaction semantics when opening upcoming appointment details, aligning with iOS card button behavior without Android ripple chrome)
   - done: appointments-empty-cta-plain-token parity pass #196 (My Appointments empty-state `Book Now` action now uses iOS-like plain capsule control semantics: no-ripple tap, `46dp` minimum height, subheadline-bold `15sp` label, and top inset `4dp`)
+  - done: appointments-empty-icon-semantics-size parity pass #198 (My Appointments empty-state icon now uses `EventBusy` semantics and `26dp` glyph inside a `64dp` circular container to better align iOS `calendar.badge.exclamationmark` visual intent and container sizing)
 - `DONE` Appointment detail (`AppointmentDetailView` -> `AppointmentDetailScreen.kt`)
   - done: card-based detail, map open with map-app chooser sheet, status display, iOS-like top close action, bottom action bar helper text, dedicated cancel/reschedule action sheets, picker-based reschedule date/time, top auto-dismiss toast, loading overlay, fine-grained visual styling (dark + gold card system, action bar, sheets)
 

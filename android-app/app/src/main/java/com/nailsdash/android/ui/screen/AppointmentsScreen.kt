@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Storefront
@@ -297,8 +299,8 @@ private fun EmptyAppointmentsState(
     ) {
         Box(
             modifier = Modifier
-                .width(66.dp)
-                .height(66.dp)
+                .width(64.dp)
+                .height(64.dp)
                 .background(
                     color = Color.White.copy(alpha = 0.05f),
                     shape = CircleShape,
@@ -311,9 +313,10 @@ private fun EmptyAppointmentsState(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                imageVector = Icons.Filled.CalendarMonth,
+                imageVector = Icons.Filled.EventBusy,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = 0.66f),
+                modifier = Modifier.size(26.dp),
             )
         }
         Text(
