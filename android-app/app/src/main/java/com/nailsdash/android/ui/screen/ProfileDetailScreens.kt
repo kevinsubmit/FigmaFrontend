@@ -871,14 +871,20 @@ private fun PointsHistoryRow(
         ) {
             Text(
                 text = formattedPointsReason(item.reason),
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
                 color = RewardsPrimaryText,
                 maxLines = 1,
             )
             item.description?.takeIf { it.isNotBlank() }?.let {
                 Text(
                     text = it,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Normal,
+                    ),
                     color = RewardsSecondaryText,
                     maxLines = 2,
                 )
