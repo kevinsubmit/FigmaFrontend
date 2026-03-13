@@ -1590,7 +1590,10 @@ fun GiftCardsScreen(
                     )
                     Text(
                         text = "Close",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp,
+                        ),
                         color = RewardsGold,
                         modifier = Modifier.clickable(
                             interactionSource = remember { MutableInteractionSource() },
@@ -1708,7 +1711,10 @@ fun GiftCardsScreen(
                     )
                     Text(
                         text = "Close",
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp,
+                        ),
                         color = RewardsGold,
                         modifier = Modifier.clickable(
                             interactionSource = remember { MutableInteractionSource() },

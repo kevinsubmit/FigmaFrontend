@@ -63,6 +63,7 @@ Last updated: 2026-03-11
   - done: order-history-photos-section-inner-spacing parity pass #112 (OrderHistory write-review `Photos` block is now grouped with internal `8dp` spacing between label/grid/add-action, matching iOS `VStack(spacing: UITheme.spacing8)` cadence instead of Android outer-stack `14dp` gaps)
   - done: rewards-review-sheets-close-text-scale parity pass #113 (OrderHistory write-review and MyReviews edit sheets `Close` text actions now use iOS-like subheadline scale `15sp` with semibold weight, replacing the smaller Android `titleSmall` sizing)
   - done: rewards-review-sheets-cta-text-scale parity pass #114 (OrderHistory write-review and MyReviews edit sheet action labels `Add Photos/Cancel/Submit/Update` now use iOS-like subheadline `15sp` typography while preserving existing semibold/bold weight semantics)
+  - done: giftcards-sheets-close-text-scale parity pass #115 (GiftCards claim/send sheets `Close` text actions now use iOS-like subheadline `15sp` semibold scale, matching SwiftUI `.font(.subheadline.weight(.semibold))`)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
