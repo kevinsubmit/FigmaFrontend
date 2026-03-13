@@ -3475,7 +3475,8 @@ fun ReviewsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 18.dp, bottom = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Row(
@@ -3632,8 +3633,6 @@ fun ReviewsScreen(
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }

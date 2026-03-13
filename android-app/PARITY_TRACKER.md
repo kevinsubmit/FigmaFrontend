@@ -53,6 +53,7 @@ Last updated: 2026-03-11
   - done: order-history-add-photos-icon-semantics parity pass #102 (OrderHistory write-review `Add Photos` leading icon now uses layered collections semantics to better match iOS `photo.on.rectangle.angled` visual intent)
   - done: order-history-review-draft-image-bg-removal parity pass #103 (OrderHistory write-review draft image tile no longer applies Android-only dark background fill, matching iOS draft image cell rendering that displays the selected image directly)
   - done: order-history-add-photos-icon-outline-tone parity pass #104 (OrderHistory write-review `Add Photos` icon switched to outlined collections glyph with `0.86` alpha foreground tone, matching iOS `photo.on.rectangle.angled` line-style weight and emphasis)
+  - done: myreviews-edit-sheet-content-insets parity pass #105 (MyReviews edit-review sheet content now uses iOS-matched container insets `top=18dp / bottom=12dp` and removes extra trailing spacer, aligning vertical rhythm with SwiftUI sheet layout)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
