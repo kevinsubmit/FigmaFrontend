@@ -23,6 +23,7 @@ Last updated: 2026-03-11
   - done: deals-segment-plain-tap parity pass #187 (Deals segmented controls now use plain no-ripple tap interaction semantics to align with iOS `.buttonStyle(.plain)` behavior)
   - done: deals-cta-plain-height-token parity pass #195 (Deals `Book Now/Browse Stores` actions now use plain no-ripple capsule controls with iOS-like `46dp` minimum height and subheadline-semibold text/icon hierarchy instead of Material button chrome)
   - done: deals-cover-height-token parity pass #199 (Deals card cover media height now uses `168dp` to align iOS `UITheme.dealCoverHeight = 168` visual proportion instead of the taller Android `196dp`)
+  - done: deals-cta-center-strict-height parity pass #200 (Deals CTA inner content is now center-aligned like iOS and removes extra vertical padding so controls honor a stricter `46dp` minimum-height footprint rather than an over-tall capsule)
 
 ## Book
 - `DONE` Store list (`StoresListView.swift` -> `StoresScreen.kt`)

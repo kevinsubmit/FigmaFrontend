@@ -423,8 +423,8 @@ private fun DealCard(
                                     interactionSource = bookCtaInteraction,
                                     indication = null,
                                 ) { promotion.store_id?.let(onOpenStore) }
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                .padding(horizontal = 14.dp),
+                            horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
@@ -435,6 +435,7 @@ private fun DealCard(
                                 ),
                                 color = Color.Black,
                             )
+                            Spacer(modifier = Modifier.width(6.dp))
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                 contentDescription = null,
@@ -465,8 +466,8 @@ private fun DealCard(
                                     indication = null,
                                     onClick = onBrowseStores,
                                 )
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                .padding(horizontal = 14.dp),
+                            horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
@@ -477,6 +478,7 @@ private fun DealCard(
                                 ),
                                 color = DealsGold,
                             )
+                            Spacer(modifier = Modifier.width(6.dp))
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                 contentDescription = null,
