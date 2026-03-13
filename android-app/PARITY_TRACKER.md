@@ -114,6 +114,7 @@ Last updated: 2026-03-11
   - done: giftcards-send-balance-row-spacer semantics parity pass #163 (GiftCards send sheet balance row now uses `6dp` sibling spacing plus explicit weighted spacer between `Balance` label and amount value, aligning with iOS `HStack(spacing: UITheme.spacing6)` + `Spacer` distribution semantics)
   - done: giftcards-item-header-spacer semantics parity pass #164 (GiftCards list-card top header row now uses `8dp` sibling spacing plus explicit weighted spacer between left badge group and status pill, aligning with iOS `HStack(spacing: UITheme.spacing8)` + `Spacer` distribution semantics)
   - done: giftcards-balance-value-ellipsis parity pass #165 (GiftCards list-card large balance value now applies `TextOverflow.Ellipsis` with single-line rendering to align iOS `lineLimit(1)` truncation behavior under constrained widths)
+  - done: giftcards-available-balance-top-inset parity pass #166 (GiftCards list-card `Available Balance` caption now adds `top=1dp` inset to match iOS `.padding(.top, UITheme.spacing1)` baseline spacing)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)

@@ -2364,6 +2364,7 @@ private fun GiftCardCollectionCard(
                 text = "Available Balance",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
                 color = RewardsSecondaryText,
+                modifier = Modifier.padding(top = 1.dp),
             )
 
             Row(
