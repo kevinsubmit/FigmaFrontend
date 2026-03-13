@@ -2435,7 +2435,10 @@ private fun GiftCardCollectionCard(
                     )
                     Text(
                         text = "Issued ${displayDateOnly(card.created_at)}",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp,
+                        ),
                         color = RewardsSecondaryText,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -2460,7 +2463,10 @@ private fun GiftCardCollectionCard(
                         )
                         Text(
                             text = "Exp ${displayDateOnly(expires)}",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 12.sp,
+                            ),
                             color = RewardsSecondaryText,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -2483,7 +2489,10 @@ private fun GiftCardCollectionCard(
                     )
                     Text(
                         text = "Recipient ${maskPhone(recipient)}",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp,
+                        ),
                         color = RewardsSecondaryText,
                     )
                 }
