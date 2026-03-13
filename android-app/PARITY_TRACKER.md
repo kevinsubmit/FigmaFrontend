@@ -25,6 +25,7 @@ Last updated: 2026-03-11
   - done: deals-cover-height-token parity pass #199 (Deals card cover media height now uses `168dp` to align iOS `UITheme.dealCoverHeight = 168` visual proportion instead of the taller Android `196dp`)
   - done: deals-cta-center-strict-height parity pass #200 (Deals CTA inner content is now center-aligned like iOS and removes extra vertical padding so controls honor a stricter `46dp` minimum-height footprint rather than an over-tall capsule)
   - done: deals-card-top-accent-line parity pass #201 (Deals cards now render the iOS-style `1dp` top gold accent line with `0.42` alpha above the cover media, matching `dealRow` top overlay hierarchy in `HomeView.swift`)
+  - done: deals-content-stack-spacing parity pass #202 (Deals card body now matches iOS `dealRow` content rhythm by using `12dp` inner stack spacing and `14dp` bottom inset with `top=12dp`, aligning `VStack(spacing: UITheme.spacing12)` + bottom `UITheme.cardPadding` geometry)
 
 ## Book
 - `DONE` Store list (`StoresListView.swift` -> `StoresScreen.kt`)
