@@ -286,6 +286,13 @@ private fun DealCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(1.dp)
+                    .background(DealsGold.copy(alpha = 0.42f)),
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
                     .height(168.dp)
                     .clickable(
                         interactionSource = interactionSource,
