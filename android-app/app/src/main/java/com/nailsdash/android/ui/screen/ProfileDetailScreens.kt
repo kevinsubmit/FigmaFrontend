@@ -3257,6 +3257,7 @@ private fun OrderHistoryActivityCard(
                         fontSize = 17.sp,
                     ),
                     color = RewardsGold,
+                    maxLines = 1,
                 )
             }
 

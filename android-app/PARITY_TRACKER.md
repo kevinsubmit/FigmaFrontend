@@ -95,6 +95,7 @@ Last updated: 2026-03-11
   - done: order-history-total-visits-icon-semantics parity pass #144 (OrderHistory summary `Total Visits` metric icon now uses `EventAvailable` semantics to align closer with iOS `calendar.badge.checkmark` completed-visit intent)
   - done: myreviews-header-row-spacing parity pass #145 (MyReviews list-card top row now uses explicit `8dp` sibling spacing instead of `SpaceBetween`, aligning with iOS header `HStack(spacing: UITheme.spacing8)` rhythm while preserving flexible title width via weighted left column)
   - done: order-history-header-row-spacing parity pass #146 (OrderHistory activity-card top row now uses explicit `8dp` sibling spacing instead of `SpaceBetween`, aligning with iOS header `HStack(spacing: UITheme.spacing10)` + `Spacer(minLength: 8)` distribution semantics)
+  - done: order-history-amount-single-line-limit parity pass #147 (OrderHistory activity-card top-right amount label now enforces `maxLines = 1`, matching iOS amount text `lineLimit(1)` behavior under narrow-width constraints)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
