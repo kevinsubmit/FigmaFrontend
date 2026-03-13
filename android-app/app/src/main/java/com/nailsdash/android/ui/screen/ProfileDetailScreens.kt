@@ -3141,6 +3141,7 @@ private fun OrderHistorySummaryMetric(
                 text = title.uppercase(),
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
                     letterSpacing = 1.6.sp,
                 ),
                 color = RewardsSecondaryText,
@@ -3163,7 +3164,7 @@ private fun OrderHistorySummaryMetric(
                 )
                 Text(
                     text = "Completed orders",
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
                     color = RewardsSecondaryText,
                 )
             }
