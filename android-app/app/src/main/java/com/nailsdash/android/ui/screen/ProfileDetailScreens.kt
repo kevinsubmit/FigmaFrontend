@@ -3825,7 +3825,7 @@ fun ReviewsScreen(
                             Text(
                                 text = review.comment?.takeIf { it.isNotBlank() } ?: "No written comment",
                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                                color = if (review.comment.isNullOrBlank()) RewardsSecondaryText else Color.White.copy(alpha = 0.82f),
+                                color = if (review.comment.isNullOrBlank()) Color.White.copy(alpha = 0.62f) else Color.White.copy(alpha = 0.82f),
                             )
 
                             Row(
