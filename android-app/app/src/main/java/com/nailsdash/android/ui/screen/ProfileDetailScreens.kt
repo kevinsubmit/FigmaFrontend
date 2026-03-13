@@ -2449,7 +2449,7 @@ private fun GiftCardCollectionCard(
                     Text(
                         text = "•",
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-                        color = RewardsMutedText,
+                        color = RewardsSecondaryText.copy(alpha = 0.55f),
                     )
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
