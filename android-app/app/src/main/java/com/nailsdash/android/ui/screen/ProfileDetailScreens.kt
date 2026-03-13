@@ -3962,7 +3962,7 @@ private fun ReviewStars(rating: Double) {
                 imageVector = if (index < normalized) Icons.Filled.Star else Icons.Filled.StarBorder,
                 contentDescription = null,
                 tint = if (index < normalized) RewardsGold else Color.White.copy(alpha = 0.28f),
-                modifier = Modifier.size(12.dp),
+                modifier = Modifier.size(11.dp),
             )
         }
     }
