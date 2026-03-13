@@ -3214,6 +3214,7 @@ private fun OrderHistoryActivityCard(
                         ),
                         color = RewardsPrimaryText,
                         maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     item.order_number?.takeIf { it.isNotBlank() }?.let { order ->
                         Text(

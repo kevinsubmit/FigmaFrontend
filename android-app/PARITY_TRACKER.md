@@ -103,6 +103,7 @@ Last updated: 2026-03-11
   - done: order-history-service-name-ellipsis parity pass #152 (OrderHistory activity-card service-name label now applies `TextOverflow.Ellipsis` with single-line rendering to align iOS `lineLimit(1)` truncation behavior for long service titles)
   - done: order-history-order-number-ellipsis parity pass #153 (OrderHistory activity-card order-number meta text now applies `TextOverflow.Ellipsis` with single-line rendering to align iOS `lineLimit(1)` truncation behavior for long order identifiers)
   - done: order-history-address-ellipsis parity pass #154 (OrderHistory activity-card address label now applies `TextOverflow.Ellipsis` with single-line rendering to align iOS `lineLimit(1)` truncation behavior for long store addresses)
+  - done: order-history-store-name-ellipsis parity pass #155 (OrderHistory activity-card store-name title now applies `TextOverflow.Ellipsis` with single-line rendering to align iOS `lineLimit(1)` truncation behavior for long salon names)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
