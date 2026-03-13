@@ -2326,7 +2326,10 @@ private fun GiftCardCollectionCard(
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
                     text = giftStatusLabel(status),
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 11.sp,
+                    ),
                     color = statusColor,
                     modifier = Modifier
                         .background(statusColor.copy(alpha = 0.18f), RoundedCornerShape(999.dp))
