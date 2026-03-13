@@ -1324,7 +1324,7 @@ fun BookAppointmentScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .padding(12.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 item {
@@ -1976,19 +1976,37 @@ private fun GroupGuestServicesCard(
 @Composable
 private fun StepHeader(step: String, title: String) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-        modifier = Modifier.padding(bottom = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.Black.copy(alpha = 0.96f))
+            .padding(top = 12.dp, bottom = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(1.dp),
     ) {
         Text(
             text = step,
-            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 2.2.sp),
+            style = MaterialTheme.typography.labelSmall.copy(
+                letterSpacing = 2.2.sp,
+                fontSize = 11.sp,
+            ),
             color = BookingGold,
             fontWeight = FontWeight.Bold,
         )
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+            ),
             color = Color.White,
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+                .height(1.dp)
+                .background(Color.White.copy(alpha = 0.08f)),
         )
     }
 }

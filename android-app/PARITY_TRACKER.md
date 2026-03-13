@@ -24,6 +24,7 @@ Last updated: 2026-03-11
   - done: store-detail-topbar-nav-token parity pass #180 (Store detail top bar now aligns with iOS nav tokens: black `0.96` header backdrop, `16/8/8` bar insets, back control `38dp` with `16dp` chevron, and title scale `17sp` with caption2-like step label sizing)
 - `DONE` Booking form (`BookAppointmentView.swift` -> `BookAppointmentScreen`)
   - done: service/technician/date/time/notes, style reference note auto-injection, success overlay transition, step header + card-based sections, sticky bottom summary/confirm bar, month calendar date picker, single/group toggle + guest service rows + group booking submit, pay-at-salon detailed module (safe badge shimmer + payment badges), black-gold typography/spacing polish for section titles/cards/chips/notes/bottom bar/calendar/summary overlay, micro-motion parity pass (group section animated expand/collapse, booking-type spring emphasis, calendar day animated state transitions, summary/CTA text transitions, success overlay fade+scale)
+  - done: booking-form-topbar-token parity pass #181 (Book form `STEP 03` header now mirrors iOS top-bar token style: centered caption2 step label + `17sp` headline title, black `0.96` backdrop with bottom hairline divider, and form content horizontal page padding unified to `16dp`)
 
 ## Appointments
 - `DONE` My appointments (`MyAppointmentsView.swift` -> `AppointmentsScreen.kt`)
