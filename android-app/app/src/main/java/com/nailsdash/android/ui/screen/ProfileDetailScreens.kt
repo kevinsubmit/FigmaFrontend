@@ -2355,6 +2355,7 @@ private fun GiftCardCollectionCard(
                     ),
                     color = RewardsPrimaryText,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.alignByBaseline(),
                 )
             }
