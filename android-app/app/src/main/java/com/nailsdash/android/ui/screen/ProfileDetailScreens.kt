@@ -4009,6 +4009,7 @@ private fun FavoritePinCard(
                 .scale(openScale)
                 .clip(RoundedCornerShape(24.dp))
                 .background(Color.White.copy(alpha = 0.08f))
+                .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(24.dp))
                 .clickable(
                     interactionSource = openInteraction,
                     indication = null,

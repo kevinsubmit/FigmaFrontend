@@ -36,6 +36,7 @@ Last updated: 2026-03-11
   - done: coupons-status-tab-plain-button parity pass #85 (Coupons status tabs now use plain no-ripple tap handling with custom clickable containers to mirror iOS `.buttonStyle(.plain)` interaction semantics while preserving animated color/scale transitions)
   - done: referral-copy-share-plain-button parity pass #86 (Referral code copy control and Share CTA now use plain no-ripple clickable containers to match iOS `.buttonStyle(.plain)` tap semantics while preserving existing press-scale and disabled-opacity behavior)
   - done: favorites-empty-browse-plain-button parity pass #87 (Favorites empty-state `Browse Salons` CTA now uses a plain no-ripple clickable container to match iOS `NavigationLink` `.buttonStyle(.plain)` interaction behavior)
+  - done: favorites-pin-card-outline parity pass #88 (Favorite design image cards now include iOS-like `24dp` rounded white thin outline at `0.06` alpha to match SwiftUI overlay stroke treatment)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
