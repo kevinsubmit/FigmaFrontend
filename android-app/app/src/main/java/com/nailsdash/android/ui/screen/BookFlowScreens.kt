@@ -477,6 +477,8 @@ fun StoreDetailScreen(
 
 @Composable
 private fun StoreDetailTopBar(onBack: () -> Unit) {
+    val backInteraction = remember { MutableInteractionSource() }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -511,15 +513,20 @@ private fun StoreDetailTopBar(onBack: () -> Unit) {
                 )
             }
 
-            IconButton(
-                onClick = onBack,
+            Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .size(38.dp)
                     .background(
                         color = Color.White.copy(alpha = 0.07f),
                         shape = CircleShape,
+                    )
+                    .clickable(
+                        interactionSource = backInteraction,
+                        indication = null,
+                        onClick = onBack,
                     ),
+                contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = Icons.Filled.ChevronLeft,
