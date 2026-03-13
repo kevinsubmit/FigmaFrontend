@@ -4653,32 +4653,31 @@ fun ReferralScreen(
                                 maxLines = 1,
                                 modifier = Modifier.weight(1f),
                             )
-                            Button(
-                                onClick = {
-                                    if (referralCode.isBlank()) return@Button
-                                    clipboardManager.setText(AnnotatedString(referralCode))
-                                    copied = true
-                                    copyNotice = "Referral code copied"
-                                },
-                                enabled = referralCode.isNotBlank(),
-                                interactionSource = referralCopyInteraction,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = RewardsGold,
-                                    contentColor = Color.Black,
-                                    disabledContainerColor = RewardsGold.copy(alpha = 0.45f),
-                                    disabledContentColor = Color.Black.copy(alpha = 0.5f),
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(0.dp),
+                            Box(
                                 modifier = Modifier
                                     .size(48.dp)
                                     .scale(referralCopyScale)
-                                    .alpha(if (referralCode.isNotBlank()) 1f else 0.45f),
+                                    .alpha(if (referralCode.isNotBlank()) 1f else 0.45f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(RewardsGold)
+                                    .clickable(
+                                        enabled = referralCode.isNotBlank(),
+                                        interactionSource = referralCopyInteraction,
+                                        indication = null,
+                                        onClick = {
+                                            if (referralCode.isBlank()) return@clickable
+                                            clipboardManager.setText(AnnotatedString(referralCode))
+                                            copied = true
+                                            copyNotice = "Referral code copied"
+                                        },
+                                    ),
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
                                     imageVector = if (copied) Icons.Filled.CheckCircle else Icons.Filled.ContentCopy,
                                     contentDescription = if (copied) "Copied" else "Copy referral code",
                                     modifier = Modifier.size(22.dp),
+                                    tint = Color.Black,
                                 )
                             }
                         }
@@ -4711,29 +4710,28 @@ fun ReferralScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Button(
-                        onClick = {
-                            if (referralCode.isBlank()) return@Button
-                            val intent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, referralSharePayload(referralCode))
-                            }
-                            context.startActivity(Intent.createChooser(intent, "Share with Friends"))
-                        },
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp)
                             .scale(referralShareScale)
-                            .alpha(if (referralCode.isNotBlank()) 1f else 0.45f),
-                        enabled = referralCode.isNotBlank(),
-                        interactionSource = referralShareInteraction,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White,
-                            contentColor = Color.Black,
-                            disabledContainerColor = Color.White.copy(alpha = 0.45f),
-                            disabledContentColor = Color.Black.copy(alpha = 0.5f),
-                        ),
-                        shape = RoundedCornerShape(14.dp),
+                            .alpha(if (referralCode.isNotBlank()) 1f else 0.45f)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color.White)
+                            .clickable(
+                                enabled = referralCode.isNotBlank(),
+                                interactionSource = referralShareInteraction,
+                                indication = null,
+                                onClick = {
+                                    if (referralCode.isBlank()) return@clickable
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, referralSharePayload(referralCode))
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, "Share with Friends"))
+                                },
+                            ),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -4743,6 +4741,7 @@ fun ReferralScreen(
                                 imageVector = Icons.Filled.Share,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
+                                tint = Color.Black,
                             )
                             Text(
                                 text = "Share with Friends",
@@ -4750,6 +4749,7 @@ fun ReferralScreen(
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
                                 ),
+                                color = Color.Black,
                             )
                         }
                     }
