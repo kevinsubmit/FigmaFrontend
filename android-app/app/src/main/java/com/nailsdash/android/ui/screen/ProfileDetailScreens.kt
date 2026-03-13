@@ -2658,6 +2658,10 @@ fun OrderHistoryScreen(
         val isSubmittingCurrentReview = current?.id != null &&
             orderHistoryViewModel.submittingReviewAppointmentId == current.id
         val isReviewSubmissionBusy = isSubmittingCurrentReview || orderHistoryViewModel.isUploadingReviewImages
+        val reviewCloseInteraction = remember { MutableInteractionSource() }
+        val addPhotosInteraction = remember { MutableInteractionSource() }
+        val reviewCancelInteraction = remember { MutableInteractionSource() }
+        val reviewSubmitInteraction = remember { MutableInteractionSource() }
 
         ModalBottomSheet(
             onDismissRequest = dismissReviewComposer,
@@ -2686,17 +2690,16 @@ fun OrderHistoryScreen(
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = RewardsPrimaryText,
                     )
-                    TextButton(
-                        onClick = dismissReviewComposer,
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = Color.White.copy(alpha = 0.74f),
+                    Text(
+                        text = "Close",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = Color.White.copy(alpha = 0.74f),
+                        modifier = Modifier.clickable(
+                            interactionSource = reviewCloseInteraction,
+                            indication = null,
+                            onClick = dismissReviewComposer,
                         ),
-                    ) {
-                        Text(
-                            text = "Close",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                        )
-                    }
+                    )
                 }
 
                 Text(
@@ -2866,6 +2869,8 @@ fun OrderHistoryScreen(
                             }
                             .clickable(
                                 enabled = !orderHistoryViewModel.isUploadingReviewImages,
+                                interactionSource = addPhotosInteraction,
+                                indication = null,
                                 onClick = { reviewImagePickerLauncher.launch("image/*") },
                             )
                             .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -2898,53 +2903,57 @@ fun OrderHistoryScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Button(
-                        onClick = dismissReviewComposer,
+                    Box(
                         modifier = Modifier
                             .weight(1f)
-                            .heightIn(min = 46.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White.copy(alpha = 0.08f),
-                            contentColor = RewardsPrimaryText.copy(alpha = 0.80f),
-                        ),
-                        shape = RoundedCornerShape(12.dp),
+                            .heightIn(min = 46.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.White.copy(alpha = 0.08f))
+                            .clickable(
+                                interactionSource = reviewCancelInteraction,
+                                indication = null,
+                                onClick = dismissReviewComposer,
+                            ),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "Cancel",
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = RewardsPrimaryText.copy(alpha = 0.80f),
                         )
                     }
-                    Button(
-                        onClick = {
-                            val appointment = current ?: return@Button
-                            if (token != null) {
-                                orderHistoryViewModel.createReview(
-                                    bearerToken = token,
-                                    appointmentId = appointment.id,
-                                    rating = reviewRating.toDouble(),
-                                    comment = reviewComment.takeIf { it.isNotBlank() },
-                                    imageFiles = reviewDraftImages.map { image ->
-                                        ReviewUploadImagePayload(
-                                            imageData = image.data,
-                                            fileName = image.fileName,
-                                            mimeType = image.mimeType,
-                                        )
-                                    },
-                                    onCreated = dismissReviewComposer,
-                                )
-                            }
-                        },
-                        enabled = current != null && !isReviewSubmissionBusy,
+                    val canSubmitReview = current != null && !isReviewSubmissionBusy
+                    Box(
                         modifier = Modifier
                             .weight(1f)
-                            .heightIn(min = 46.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = RewardsGold,
-                            contentColor = Color.Black,
-                            disabledContainerColor = RewardsGold.copy(alpha = 0.42f),
-                            disabledContentColor = Color.Black.copy(alpha = 0.72f),
-                        ),
-                        shape = RoundedCornerShape(12.dp),
+                            .heightIn(min = 46.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (canSubmitReview) RewardsGold else RewardsGold.copy(alpha = 0.42f))
+                            .clickable(
+                                enabled = canSubmitReview,
+                                interactionSource = reviewSubmitInteraction,
+                                indication = null,
+                                onClick = {
+                                    val appointment = current ?: return@clickable
+                                    if (token != null) {
+                                        orderHistoryViewModel.createReview(
+                                            bearerToken = token,
+                                            appointmentId = appointment.id,
+                                            rating = reviewRating.toDouble(),
+                                            comment = reviewComment.takeIf { it.isNotBlank() },
+                                            imageFiles = reviewDraftImages.map { image ->
+                                                ReviewUploadImagePayload(
+                                                    imageData = image.data,
+                                                    fileName = image.fileName,
+                                                    mimeType = image.mimeType,
+                                                )
+                                            },
+                                            onCreated = dismissReviewComposer,
+                                        )
+                                    }
+                                },
+                            ),
+                        contentAlignment = Alignment.Center,
                     ) {
                         if (isSubmittingCurrentReview) {
                             CircularProgressIndicator(
@@ -2956,6 +2965,7 @@ fun OrderHistoryScreen(
                             Text(
                                 text = "Submit",
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = if (canSubmitReview) Color.Black else Color.Black.copy(alpha = 0.72f),
                             )
                         }
                     }
