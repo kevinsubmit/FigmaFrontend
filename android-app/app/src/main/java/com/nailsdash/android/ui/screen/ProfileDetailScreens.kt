@@ -2704,7 +2704,7 @@ fun OrderHistoryScreen(
 
                 Text(
                     text = "Reviews are available within 30 days after your appointment.",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = RewardsSecondaryText,
                 )
 
@@ -2727,7 +2727,7 @@ fun OrderHistoryScreen(
                             )
                             Text(
                                 current.service_name ?: "Service",
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = RewardsSecondaryText,
                             )
                         }
@@ -2737,7 +2737,7 @@ fun OrderHistoryScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Rating",
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                         color = RewardsPrimaryText.copy(alpha = 0.62f),
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2766,7 +2766,7 @@ fun OrderHistoryScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Comment (Optional)",
-                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                         color = RewardsPrimaryText.copy(alpha = 0.62f),
                     )
                     BasicTextField(
@@ -2793,7 +2793,7 @@ fun OrderHistoryScreen(
 
                 Text(
                     text = "Photos (Optional, max 5)",
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
                     color = RewardsPrimaryText.copy(alpha = 0.62f),
                 )
 
