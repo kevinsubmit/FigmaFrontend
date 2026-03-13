@@ -2331,6 +2331,8 @@ private fun GiftCardCollectionCard(
                         fontSize = 11.sp,
                     ),
                     color = statusColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier
                         .background(statusColor.copy(alpha = 0.18f), RoundedCornerShape(999.dp))
                         .padding(horizontal = 10.dp, vertical = 4.dp),

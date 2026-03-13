@@ -116,6 +116,7 @@ Last updated: 2026-03-11
   - done: giftcards-balance-value-ellipsis parity pass #165 (GiftCards list-card large balance value now applies `TextOverflow.Ellipsis` with single-line rendering to align iOS `lineLimit(1)` truncation behavior under constrained widths)
   - done: giftcards-available-balance-top-inset parity pass #166 (GiftCards list-card `Available Balance` caption now adds `top=1dp` inset to match iOS `.padding(.top, UITheme.spacing1)` baseline spacing)
   - done: giftcards-status-pill-caption2-scale parity pass #167 (GiftCards list-card status-pill label now uses explicit `11sp` semibold scale to align with iOS `.caption2.weight(.semibold)` typography hierarchy)
+  - done: giftcards-status-pill-single-line-ellipsis parity pass #168 (GiftCards list-card status-pill label now enforces single-line rendering with tail ellipsis to match iOS capsule text truncation behavior on constrained widths)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
