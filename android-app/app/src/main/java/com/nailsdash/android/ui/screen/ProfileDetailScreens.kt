@@ -4828,6 +4828,7 @@ fun ReferralScreen(
                                 ),
                                 color = RewardsGold,
                                 maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f),
                             )
                             Box(
