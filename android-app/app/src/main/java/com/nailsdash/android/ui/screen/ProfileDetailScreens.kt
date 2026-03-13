@@ -4087,16 +4087,16 @@ private fun FavoritePinCard(
         ) {
             if (isDeleting) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(14.dp),
-                    strokeWidth = 1.8.dp,
-                    color = Color.White.copy(alpha = 0.92f),
+                    modifier = Modifier.size(12.dp),
+                    strokeWidth = 1.6.dp,
+                    color = Color.White,
                 )
             } else {
                 Icon(
                     imageVector = Icons.Filled.Favorite,
                     contentDescription = "Remove favorite",
                     tint = RewardsGold,
-                    modifier = Modifier.size(14.dp),
+                    modifier = Modifier.size(12.dp),
                 )
             }
         }

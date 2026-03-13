@@ -43,6 +43,7 @@ Last updated: 2026-03-11
   - done: order-history-review-sheet-plain-actions parity pass #92 (OrderHistory write-review sheet `Close/Cancel/Submit` actions plus dashed `Add Photos` tap target now use plain no-ripple interaction semantics to better match iOS sheet button behavior while preserving existing busy/disabled states)
   - done: order-history-review-image-remove-plain-button parity pass #93 (OrderHistory write-review selected-image remove control now uses plain no-ripple circular tap behavior to match iOS `.buttonStyle(.plain)` remove-photo button semantics)
   - done: myreviews-delete-loading-spinner-only parity pass #94 (MyReviews list-card delete in-flight state now shows only centered red spinner, matching iOS `ProgressView`-only destructive loading treatment without extra text label)
+  - done: favorites-pin-remove-icon-spinner-size parity pass #95 (Favorites design-card remove control now uses smaller iOS-like heart/spinner sizing within the 30dp circular chip, matching SwiftUI `.caption` icon scale and reduced in-flight indicator footprint)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
