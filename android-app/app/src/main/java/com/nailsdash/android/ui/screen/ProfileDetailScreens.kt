@@ -3164,7 +3164,10 @@ private fun OrderHistorySummaryMetric(
                 )
                 Text(
                     text = "Completed orders",
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Normal,
+                    ),
                     color = RewardsSecondaryText,
                 )
             }
@@ -3233,7 +3236,10 @@ private fun OrderHistoryActivityCard(
                             )
                             Text(
                                 text = address,
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Normal,
+                                ),
                                 color = Color.White.copy(alpha = 0.60f),
                                 maxLines = 1,
                             )
@@ -3270,7 +3276,10 @@ private fun OrderHistoryActivityCard(
                 )
                 Text(
                     text = "${formatAppointmentDate(item.appointment_date)} · ${formatAppointmentTime(item.appointment_time)}",
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Normal,
+                    ),
                     color = RewardsSecondaryText,
                     maxLines = 1,
                 )
