@@ -3767,14 +3767,17 @@ fun ReviewsScreen(
                                         ReviewStars(rating = rating)
                                         Text(
                                             text = String.format("%.1f", rating),
-                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 12.sp,
+                                            ),
                                             color = Color.White.copy(alpha = 0.68f),
                                         )
                                     }
                                 }
                                 Text(
                                     text = displayDateOnly(review.created_at.orEmpty()),
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
                                     color = RewardsSecondaryText,
                                 )
                             }
@@ -3834,7 +3837,10 @@ fun ReviewsScreen(
                                         )
                                         Text(
                                             text = "Edit",
-                                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 12.sp,
+                                            ),
                                             color = Color.White.copy(alpha = 0.92f),
                                         )
                                     }
@@ -3882,7 +3888,10 @@ fun ReviewsScreen(
                                             )
                                             Text(
                                                 text = "Delete",
-                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontSize = 12.sp,
+                                                ),
                                                 color = Color(0xFFFF8A8A),
                                             )
                                         }

@@ -71,6 +71,7 @@ Last updated: 2026-03-11
   - done: giftcards-send-balance-row-vertical-padding parity pass #120 (GiftCards send sheet balance summary row vertical inset is now `12dp` to match iOS `.padding(UITheme.spacing12)` card content rhythm)
   - done: rewards-review-sheets-title-headline-scale parity pass #121 (OrderHistory write-review and MyReviews edit-review sheet titles now use explicit semibold `17sp` scale to match iOS `.font(.headline.weight(.semibold))` hierarchy)
   - done: rewards-review-sheets-caption-exact-scale parity pass #122 (OrderHistory write-review + MyReviews edit-review sheet caption-level helper/subtitle/section labels now use explicit `12sp` sizing to match iOS `.caption` scale rather than Material default `labelSmall`)
+  - done: myreviews-list-caption-exact-scale parity pass #123 (MyReviews list card caption-level texts now use explicit `12sp` scale for rating value, created-date label, and `Edit/Delete` action labels to match iOS `.caption` typography hierarchy)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
