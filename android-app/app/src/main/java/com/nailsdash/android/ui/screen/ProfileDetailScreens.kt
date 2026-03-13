@@ -71,12 +71,12 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NorthEast
 import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.ConfirmationNumber as OutlinedTicketIcon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -2892,9 +2892,10 @@ fun OrderHistoryScreen(
                             )
                         } else {
                             Icon(
-                                imageVector = Icons.Filled.Collections,
+                                imageVector = Icons.Outlined.Collections,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
+                                tint = RewardsPrimaryText.copy(alpha = 0.86f),
                             )
                         }
                         Spacer(modifier = Modifier.width(8.dp))
