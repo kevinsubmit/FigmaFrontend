@@ -1581,7 +1581,7 @@ fun GiftCardsScreen(
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -1592,6 +1592,7 @@ fun GiftCardsScreen(
                         ),
                         color = RewardsPrimaryText,
                     )
+                    Spacer(modifier = Modifier.weight(1f))
                     Text(
                         text = "Close",
                         style = MaterialTheme.typography.bodyMedium.copy(
@@ -1706,7 +1707,7 @@ fun GiftCardsScreen(
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -1717,6 +1718,7 @@ fun GiftCardsScreen(
                         ),
                         color = RewardsPrimaryText,
                     )
+                    Spacer(modifier = Modifier.weight(1f))
                     Text(
                         text = "Close",
                         style = MaterialTheme.typography.bodyMedium.copy(
