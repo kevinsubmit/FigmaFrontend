@@ -3886,10 +3886,10 @@ fun ReviewsScreen(
                                         .scale(deleteScale)
                                         .heightIn(min = 40.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color(0xFFFF6E6E).copy(alpha = 0.12f))
+                                        .background(Color.Red.copy(alpha = 0.12f))
                                         .border(
                                             1.dp,
-                                            Color(0xFFFF8A8A).copy(alpha = 0.28f),
+                                            Color.Red.copy(alpha = 0.28f),
                                             RoundedCornerShape(12.dp),
                                         )
                                         .clickable(
@@ -3908,7 +3908,7 @@ fun ReviewsScreen(
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(14.dp),
                                             strokeWidth = 1.8.dp,
-                                            color = Color(0xFFFF8A8A),
+                                            color = Color.Red,
                                         )
                                     } else {
                                         Row(
@@ -3919,7 +3919,7 @@ fun ReviewsScreen(
                                                 imageVector = Icons.Filled.Delete,
                                                 contentDescription = null,
                                                 modifier = Modifier.size(11.dp),
-                                                tint = Color(0xFFFF8A8A),
+                                                tint = Color.Red.copy(alpha = 0.9f),
                                             )
                                             Text(
                                                 text = "Delete",
@@ -3927,7 +3927,7 @@ fun ReviewsScreen(
                                                     fontWeight = FontWeight.SemiBold,
                                                     fontSize = 12.sp,
                                                 ),
-                                                color = Color(0xFFFF8A8A),
+                                                color = Color.Red.copy(alpha = 0.9f),
                                             )
                                         }
                                     }
