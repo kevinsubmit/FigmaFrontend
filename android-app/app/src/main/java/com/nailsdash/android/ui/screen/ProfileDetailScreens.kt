@@ -2739,10 +2739,14 @@ fun OrderHistoryScreen(
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         (1..5).forEach { star ->
+                            val starInteraction = remember(star) { MutableInteractionSource() }
                             Box(
                                 modifier = Modifier
                                     .size(34.dp)
-                                    .clickable { reviewRating = star },
+                                    .clickable(
+                                        interactionSource = starInteraction,
+                                        indication = null,
+                                    ) { reviewRating = star },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
@@ -3483,10 +3487,14 @@ fun ReviewsScreen(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     (1..5).forEach { star ->
+                        val starInteraction = remember(star) { MutableInteractionSource() }
                         Box(
                             modifier = Modifier
                                 .size(34.dp)
-                                .clickable { editRating = star },
+                                .clickable(
+                                    interactionSource = starInteraction,
+                                    indication = null,
+                                ) { editRating = star },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(

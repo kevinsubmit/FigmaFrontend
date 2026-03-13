@@ -39,6 +39,7 @@ Last updated: 2026-03-11
   - done: favorites-pin-card-outline parity pass #88 (Favorite design image cards now include iOS-like `24dp` rounded white thin outline at `0.06` alpha to match SwiftUI overlay stroke treatment)
   - done: myreviews-card-actions-plain-button parity pass #89 (MyReviews list-card `Edit/Delete` controls now use plain no-ripple clickable containers to mirror iOS `.buttonStyle(.plain)` semantics while preserving existing press-scale, disabled-state, and color token behavior)
   - done: myreviews-edit-sheet-plain-actions parity pass #90 (MyReviews edit bottom-sheet `Close/Cancel/Update` controls now use plain no-ripple clickable containers to match iOS `.buttonStyle(.plain)` interaction semantics while preserving existing state/disabled behavior)
+  - done: review-sheets-star-plain-tap parity pass #91 (OrderHistory write-review sheet and MyReviews edit sheet star selectors now use plain no-ripple tap behavior to match iOS star `Button(...).buttonStyle(.plain)` interaction semantics)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
