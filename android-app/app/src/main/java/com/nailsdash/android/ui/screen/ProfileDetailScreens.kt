@@ -4061,18 +4061,6 @@ private fun FavoritePinCard(
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
             )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.14f),
-                            ),
-                        ),
-                    ),
-            )
         }
         Box(
             modifier = Modifier

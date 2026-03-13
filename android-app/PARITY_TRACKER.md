@@ -46,6 +46,7 @@ Last updated: 2026-03-11
   - done: favorites-pin-remove-icon-spinner-size parity pass #95 (Favorites design-card remove control now uses smaller iOS-like heart/spinner sizing within the 30dp circular chip, matching SwiftUI `.caption` icon scale and reduced in-flight indicator footprint)
   - done: favorites-store-remove-spinner-scale parity pass #96 (Favorites store-card remove loading indicator is enlarged to a closer iOS `ProgressView` visual footprint within the 34dp icon control slot)
   - done: order-history-review-capsule-plain-button parity pass #97 (OrderHistory completed-card `Review` capsule action now uses plain no-ripple tap behavior to match iOS `.buttonStyle(.plain)` interaction semantics)
+  - done: favorites-pin-image-overlay-removal parity pass #98 (Favorites design-card thumbnail no longer applies Android-only bottom dark gradient overlay, matching iOS card image treatment that renders the asset directly beneath border/corner styling)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
