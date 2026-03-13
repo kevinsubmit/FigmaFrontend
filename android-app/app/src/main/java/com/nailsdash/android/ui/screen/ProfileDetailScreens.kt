@@ -3434,6 +3434,9 @@ fun ReviewsScreen(
 
     if (showEditDialog && editingReview != null) {
         val current = editingReview
+        val closeInteraction = remember { MutableInteractionSource() }
+        val cancelInteraction = remember { MutableInteractionSource() }
+        val updateInteraction = remember { MutableInteractionSource() }
         ModalBottomSheet(
             onDismissRequest = {
                 showEditDialog = false
@@ -3458,20 +3461,19 @@ fun ReviewsScreen(
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = RewardsPrimaryText,
                     )
-                    TextButton(
-                        onClick = {
-                            showEditDialog = false
-                            editingReview = null
-                        },
-                        colors = ButtonDefaults.textButtonColors(
-                            contentColor = Color.White.copy(alpha = 0.74f),
+                    Text(
+                        text = "Close",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = Color.White.copy(alpha = 0.74f),
+                        modifier = Modifier.clickable(
+                            interactionSource = closeInteraction,
+                            indication = null,
+                            onClick = {
+                                showEditDialog = false
+                                editingReview = null
+                            },
                         ),
-                    ) {
-                        Text(
-                            text = "Close",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                        )
-                    }
+                    )
                 }
 
                 Text(
@@ -3530,55 +3532,59 @@ fun ReviewsScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     val isUpdating = current != null && myReviewsViewModel.updatingReviewId == current.id
-                    Button(
-                        onClick = {
-                            showEditDialog = false
-                            editingReview = null
-                        },
+                    Box(
                         modifier = Modifier
                             .weight(1f)
-                            .heightIn(min = 46.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.White.copy(alpha = 0.08f),
-                            contentColor = RewardsPrimaryText.copy(alpha = 0.80f),
-                        ),
-                        shape = RoundedCornerShape(12.dp),
+                            .heightIn(min = 46.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.White.copy(alpha = 0.08f))
+                            .clickable(
+                                interactionSource = cancelInteraction,
+                                indication = null,
+                                onClick = {
+                                    showEditDialog = false
+                                    editingReview = null
+                                },
+                            ),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "Cancel",
                             style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = RewardsPrimaryText.copy(alpha = 0.80f),
                         )
                     }
-                    Button(
-                        onClick = {
-                            val review = current ?: return@Button
-                            val appointmentId = review.appointment_id ?: return@Button
-                            if (token != null) {
-                                myReviewsViewModel.updateReview(
-                                    bearerToken = token,
-                                    reviewId = review.id,
-                                    appointmentId = appointmentId,
-                                    rating = editRating.toDouble(),
-                                    comment = editComment,
-                                    images = review.images,
-                                    onUpdated = {
-                                        showEditDialog = false
-                                        editingReview = null
-                                    },
-                                )
-                            }
-                        },
-                        enabled = current != null && !isUpdating,
+                    val canUpdate = current != null && !isUpdating
+                    Box(
                         modifier = Modifier
                             .weight(1f)
-                            .heightIn(min = 46.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = RewardsGold,
-                            contentColor = Color.Black,
-                            disabledContainerColor = RewardsGold.copy(alpha = 0.42f),
-                            disabledContentColor = Color.Black.copy(alpha = 0.72f),
-                        ),
-                        shape = RoundedCornerShape(12.dp),
+                            .heightIn(min = 46.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (canUpdate) RewardsGold else RewardsGold.copy(alpha = 0.42f))
+                            .clickable(
+                                enabled = canUpdate,
+                                interactionSource = updateInteraction,
+                                indication = null,
+                                onClick = {
+                                    val review = current ?: return@clickable
+                                    val appointmentId = review.appointment_id ?: return@clickable
+                                    if (token != null) {
+                                        myReviewsViewModel.updateReview(
+                                            bearerToken = token,
+                                            reviewId = review.id,
+                                            appointmentId = appointmentId,
+                                            rating = editRating.toDouble(),
+                                            comment = editComment,
+                                            images = review.images,
+                                            onUpdated = {
+                                                showEditDialog = false
+                                                editingReview = null
+                                            },
+                                        )
+                                    }
+                                },
+                            ),
+                        contentAlignment = Alignment.Center,
                     ) {
                         if (isUpdating) {
                             CircularProgressIndicator(
@@ -3590,6 +3596,7 @@ fun ReviewsScreen(
                             Text(
                                 text = "Update",
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = if (canUpdate) Color.Black else Color.Black.copy(alpha = 0.72f),
                             )
                         }
                     }
