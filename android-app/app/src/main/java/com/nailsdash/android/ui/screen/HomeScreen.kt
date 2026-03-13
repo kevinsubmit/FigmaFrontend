@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -229,10 +230,15 @@ fun HomeScreen(
                 CircularProgressIndicator(modifier = Modifier.padding(8.dp), color = HomeGold)
             }
 
-            val emptyMessage = if (homeViewModel.searchQuery.isBlank() && homeViewModel.selectedTag == "All") {
-                "No images yet. New inspiration will appear here."
+            val emptyTitle = if (homeViewModel.searchQuery.isBlank() && homeViewModel.selectedTag == "All") {
+                "No images yet"
             } else {
-                "No images found. Try another search keyword or tag."
+                "No images found"
+            }
+            val emptySubtitle = if (homeViewModel.searchQuery.isBlank() && homeViewModel.selectedTag == "All") {
+                "New inspiration will appear here."
+            } else {
+                "Try another search keyword."
             }
 
             LazyVerticalGrid(
@@ -252,12 +258,13 @@ fun HomeScreen(
 
                 if (!homeViewModel.isLoading && homeViewModel.pins.isEmpty()) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
-                        Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
-                            Text(
-                                emptyMessage,
-                                modifier = Modifier.padding(12.dp),
-                            )
-                        }
+                        HomeEmptyStateCard(
+                            title = emptyTitle,
+                            subtitle = emptySubtitle,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                        )
                     }
                 }
 
@@ -267,6 +274,53 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun HomeEmptyStateCard(
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.03f)),
+        border = BorderStroke(1.dp, HomeGold.copy(alpha = 0.16f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .background(HomeGold.copy(alpha = 0.12f), CircleShape)
+                    .border(1.dp, HomeGold.copy(alpha = 0.32f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Image,
+                    contentDescription = null,
+                    tint = HomeGold,
+                    modifier = Modifier.size(26.dp),
+                )
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = Color.White.copy(alpha = 0.90f),
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.72f),
+            )
         }
     }
 }
