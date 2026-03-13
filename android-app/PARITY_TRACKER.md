@@ -48,6 +48,7 @@ Last updated: 2026-03-11
   - done: order-history-review-capsule-plain-button parity pass #97 (OrderHistory completed-card `Review` capsule action now uses plain no-ripple tap behavior to match iOS `.buttonStyle(.plain)` interaction semantics)
   - done: favorites-pin-image-overlay-removal parity pass #98 (Favorites design-card thumbnail no longer applies Android-only bottom dark gradient overlay, matching iOS card image treatment that renders the asset directly beneath border/corner styling)
   - done: order-history-review-image-remove-geometry parity pass #99 (OrderHistory write-review selected-image remove control geometry now matches iOS footprint with `22dp` capsule size, tighter top trailing inset, and smaller close glyph scale)
+  - done: order-history-review-draft-image-corner-radius parity pass #100 (OrderHistory write-review draft image tile corner radius is now `12dp`, matching iOS `UITheme.controlCornerRadius` card geometry)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)

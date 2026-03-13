@@ -2818,7 +2818,7 @@ fun OrderHistoryScreen(
                             Box(
                                 modifier = Modifier
                                     .aspectRatio(1f)
-                                    .clip(RoundedCornerShape(10.dp))
+                                    .clip(RoundedCornerShape(12.dp))
                                     .background(Color.Black.copy(alpha = 0.22f)),
                             ) {
                                 AsyncImage(
