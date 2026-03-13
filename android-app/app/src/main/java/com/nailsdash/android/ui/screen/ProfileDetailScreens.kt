@@ -3705,30 +3705,27 @@ fun ReviewsScreen(
                                     interactionSource = deleteInteraction,
                                     pressedScale = 0.97f,
                                 )
-                                Button(
-                                    onClick = {
-                                        if (canEdit) {
-                                            editingReview = review
-                                            editComment = review.comment.orEmpty()
-                                            editRating = (review.rating ?: 5.0).roundToInt().coerceIn(1, 5)
-                                            showEditDialog = true
-                                        } else {
-                                            noticeMessage = "This review cannot be edited right now."
-                                        }
-                                    },
-                                    enabled = canEdit,
+                                Box(
                                     modifier = Modifier
                                         .weight(1f)
                                         .scale(editScale)
                                         .heightIn(min = 40.dp)
-                                        .alpha(if (canEdit) 1f else 0.45f),
-                                    interactionSource = editInteraction,
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color.White.copy(alpha = 0.06f),
-                                        contentColor = Color.White.copy(alpha = 0.92f),
-                                    ),
-                                    shape = RoundedCornerShape(12.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                                        .alpha(if (canEdit) 1f else 0.45f)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color.White.copy(alpha = 0.06f))
+                                        .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
+                                        .clickable(
+                                            enabled = canEdit,
+                                            interactionSource = editInteraction,
+                                            indication = null,
+                                            onClick = {
+                                                editingReview = review
+                                                editComment = review.comment.orEmpty()
+                                                editRating = (review.rating ?: 5.0).roundToInt().coerceIn(1, 5)
+                                                showEditDialog = true
+                                            },
+                                        ),
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     Row(
                                         horizontalArrangement = Arrangement.spacedBy(5.dp),
@@ -3738,42 +3735,55 @@ fun ReviewsScreen(
                                             imageVector = Icons.Filled.Edit,
                                             contentDescription = null,
                                             modifier = Modifier.size(12.dp),
+                                            tint = Color.White.copy(alpha = 0.92f),
                                         )
                                         Text(
                                             text = "Edit",
                                             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                            color = Color.White.copy(alpha = 0.92f),
                                         )
                                     }
                                 }
-                                Button(
-                                    onClick = {
-                                        if (token != null) {
-                                            myReviewsViewModel.deleteReview(token, review.id)
-                                        }
-                                    },
-                                    enabled = myReviewsViewModel.deletingReviewId != review.id,
+                                Box(
                                     modifier = Modifier
                                         .weight(1f)
                                         .scale(deleteScale)
-                                        .heightIn(min = 40.dp),
-                                    interactionSource = deleteInteraction,
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFFFF6E6E).copy(alpha = 0.12f),
-                                        contentColor = Color(0xFFFF8A8A),
-                                    ),
-                                    shape = RoundedCornerShape(12.dp),
-                                    border = androidx.compose.foundation.BorderStroke(
-                                        1.dp,
-                                        Color(0xFFFF8A8A).copy(alpha = 0.28f),
-                                    ),
+                                        .heightIn(min = 40.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color(0xFFFF6E6E).copy(alpha = 0.12f))
+                                        .border(
+                                            1.dp,
+                                            Color(0xFFFF8A8A).copy(alpha = 0.28f),
+                                            RoundedCornerShape(12.dp),
+                                        )
+                                        .clickable(
+                                            enabled = myReviewsViewModel.deletingReviewId != review.id,
+                                            interactionSource = deleteInteraction,
+                                            indication = null,
+                                            onClick = {
+                                                if (token != null) {
+                                                    myReviewsViewModel.deleteReview(token, review.id)
+                                                }
+                                            },
+                                        ),
+                                    contentAlignment = Alignment.Center,
                                 ) {
                                     if (myReviewsViewModel.deletingReviewId == review.id) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(14.dp),
-                                            strokeWidth = 1.8.dp,
-                                            color = Color(0xFFFF8A8A),
-                                        )
-                                        Text("  Deleting...")
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(14.dp),
+                                                strokeWidth = 1.8.dp,
+                                                color = Color(0xFFFF8A8A),
+                                            )
+                                            Text(
+                                                text = "Deleting...",
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                                color = Color(0xFFFF8A8A),
+                                            )
+                                        }
                                     } else {
                                         Row(
                                             horizontalArrangement = Arrangement.spacedBy(5.dp),
@@ -3783,10 +3793,12 @@ fun ReviewsScreen(
                                                 imageVector = Icons.Filled.Delete,
                                                 contentDescription = null,
                                                 modifier = Modifier.size(12.dp),
+                                                tint = Color(0xFFFF8A8A),
                                             )
                                             Text(
                                                 text = "Delete",
                                                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                                color = Color(0xFFFF8A8A),
                                             )
                                         }
                                     }
