@@ -61,6 +61,7 @@ Last updated: 2026-03-11
   - done: order-history-review-sheet-caption-type-scale parity pass #110 (OrderHistory write-review sheet helper copy, service subtitle, and section labels `Rating/Comment/Photos` now use caption-level `labelSmall` hierarchy to match iOS `.caption` typography scale)
   - done: myreviews-edit-sheet-label-caption-scale parity pass #111 (MyReviews edit-review sheet `Rating` and `Comment` labels now use semibold `labelSmall` to match iOS `.caption.weight(.semibold)` label hierarchy)
   - done: order-history-photos-section-inner-spacing parity pass #112 (OrderHistory write-review `Photos` block is now grouped with internal `8dp` spacing between label/grid/add-action, matching iOS `VStack(spacing: UITheme.spacing8)` cadence instead of Android outer-stack `14dp` gaps)
+  - done: rewards-review-sheets-close-text-scale parity pass #113 (OrderHistory write-review and MyReviews edit sheets `Close` text actions now use iOS-like subheadline scale `15sp` with semibold weight, replacing the smaller Android `titleSmall` sizing)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)

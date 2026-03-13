@@ -2692,7 +2692,10 @@ fun OrderHistoryScreen(
                     )
                     Text(
                         text = "Close",
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp,
+                        ),
                         color = Color.White.copy(alpha = 0.74f),
                         modifier = Modifier.clickable(
                             interactionSource = reviewCloseInteraction,
@@ -3486,7 +3489,10 @@ fun ReviewsScreen(
                     )
                     Text(
                         text = "Close",
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 15.sp,
+                        ),
                         color = Color.White.copy(alpha = 0.74f),
                         modifier = Modifier.clickable(
                             interactionSource = closeInteraction,
