@@ -28,8 +28,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -379,7 +379,7 @@ private fun DealCard(
                 }
 
                 DealMetaRow(
-                    icon = Icons.Filled.AccessTime,
+                    icon = Icons.Outlined.AccessTime,
                     text = formatExpiry(promotion.end_at),
                     iconTint = Color.White.copy(alpha = 0.74f),
                     textColor = Color.White.copy(alpha = 0.74f),
@@ -387,7 +387,7 @@ private fun DealCard(
 
                 store?.formattedAddress?.takeIf { it.isNotBlank() }?.let { address ->
                     DealMetaRow(
-                        icon = Icons.Filled.LocationOn,
+                        icon = Icons.Outlined.LocationOn,
                         text = address,
                         iconTint = DealsGold,
                         textColor = Color.White.copy(alpha = 0.72f),
