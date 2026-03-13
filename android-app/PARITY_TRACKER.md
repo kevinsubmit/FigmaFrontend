@@ -56,6 +56,7 @@ Last updated: 2026-03-11
   - done: myreviews-edit-sheet-content-insets parity pass #105 (MyReviews edit-review sheet content now uses iOS-matched container insets `top=18dp / bottom=12dp` and removes extra trailing spacer, aligning vertical rhythm with SwiftUI sheet layout)
   - done: myreviews-edit-sheet-spacing-label-scale parity pass #106 (MyReviews edit-review sheet root stack spacing is now `14dp` and `Comment` label uses semibold `bodySmall`, matching iOS `VStack(spacing: UITheme.spacing14)` and caption-level label hierarchy)
   - done: myreviews-edit-update-button-visual-state parity pass #107 (MyReviews edit-review `Update` CTA now keeps iOS-like constant gold background and fixed black label/spinner contrast during in-flight state, removing Android-only disabled dimming drift)
+  - done: order-history-submit-button-visual-state parity pass #108 (OrderHistory write-review `Submit` CTA now keeps iOS-like constant gold background with fixed black label/spinner contrast during busy/disabled state, removing Android-only dimmed gold variant)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)

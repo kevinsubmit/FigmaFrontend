@@ -2936,7 +2936,7 @@ fun OrderHistoryScreen(
                             .weight(1f)
                             .heightIn(min = 46.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(if (canSubmitReview) RewardsGold else RewardsGold.copy(alpha = 0.42f))
+                            .background(RewardsGold)
                             .clickable(
                                 enabled = canSubmitReview,
                                 interactionSource = reviewSubmitInteraction,
@@ -2966,14 +2966,14 @@ fun OrderHistoryScreen(
                         if (isSubmittingCurrentReview) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(16.dp),
-                                color = Color.Black.copy(alpha = 0.82f),
+                                color = Color.Black.copy(alpha = 0.85f),
                                 strokeWidth = 2.dp,
                             )
                         } else {
                             Text(
                                 text = "Submit",
                                 style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                                color = if (canSubmitReview) Color.Black else Color.Black.copy(alpha = 0.72f),
+                                color = Color.Black.copy(alpha = 0.88f),
                             )
                         }
                     }
