@@ -71,7 +71,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NorthEast
 import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Star
@@ -2893,7 +2893,7 @@ fun OrderHistoryScreen(
                             )
                         } else {
                             Icon(
-                                imageVector = Icons.Filled.PhotoLibrary,
+                                imageVector = Icons.Filled.Collections,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
                             )
