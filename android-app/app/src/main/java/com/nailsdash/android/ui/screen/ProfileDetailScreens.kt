@@ -3212,6 +3212,7 @@ private fun OrderHistoryActivityCard(
                             text = "Order $order",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp,
                                 letterSpacing = 1.1.sp,
                             ),
                             color = Color.White.copy(alpha = 0.55f),
@@ -3231,7 +3232,7 @@ private fun OrderHistoryActivityCard(
                             )
                             Text(
                                 text = address,
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
                                 color = Color.White.copy(alpha = 0.60f),
                                 maxLines = 1,
                             )
