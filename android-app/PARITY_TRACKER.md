@@ -108,6 +108,7 @@ Last updated: 2026-03-11
   - done: order-history-header-exact-spacing parity pass #157 (OrderHistory activity-card top row sibling spacing is now `10dp`, matching iOS `HStack(spacing: UITheme.spacing10)` geometry more precisely)
   - done: order-history-review-row-spacing parity pass #158 (OrderHistory activity-card review row now uses explicit `8dp` sibling spacing instead of `SpaceBetween`, aligning with iOS `HStack(spacing: UITheme.spacing8)` + spacer distribution semantics)
   - done: order-history-review-row-spacer semantics parity pass #159 (OrderHistory activity-card review row now inserts an explicit weighted spacer between left label and trailing action/status, matching iOS `Spacer(minLength: 8)` leading-trailing distribution behavior)
+  - done: order-history-review-sheet-header-spacer parity pass #160 (OrderHistory write-review sheet header row now uses `8dp` sibling spacing plus an explicit weighted spacer between title and Close action, aligning with iOS `HStack(spacing: UITheme.spacing8)` + `Spacer(minLength: 8)` semantics)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
