@@ -286,7 +286,7 @@ private fun DealCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(196.dp)
+                    .height(168.dp)
                     .clickable(
                         interactionSource = interactionSource,
                         indication = null,
