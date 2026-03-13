@@ -3817,7 +3817,7 @@ fun ReviewsScreen(
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Normal,
                                     ),
-                                    color = RewardsSecondaryText,
+                                    color = Color.White.copy(alpha = 0.62f),
                                 )
                             }
 

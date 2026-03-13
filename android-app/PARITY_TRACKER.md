@@ -86,6 +86,7 @@ Last updated: 2026-03-11
   - done: myreviews-delete-system-red-token parity pass #135 (MyReviews list-card delete action now uses iOS-aligned system-red token mapping: foreground `.red.opacity(0.9)`, background `.red.opacity(0.12)`, border `.red.opacity(0.28)`, and in-flight spinner `.red`)
   - done: myreviews-date-caption-regular-weight parity pass #136 (MyReviews list-card created-date label now uses explicit `12sp` regular weight to match iOS `.caption` default font-weight semantics)
   - done: order-history-address-icon-outline-semantics parity pass #137 (OrderHistory activity-card address row icon now uses outlined location-pin semantics to match iOS `mappin.and.ellipse` line-style glyph intent instead of filled pin treatment)
+  - done: myreviews-date-secondary-contrast parity pass #138 (MyReviews list-card created-date label color now uses `Color.White.copy(alpha = 0.62f)` to match iOS `.secondary` contrast level instead of the brighter shared secondary token)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
