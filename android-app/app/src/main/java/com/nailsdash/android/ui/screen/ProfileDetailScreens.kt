@@ -69,6 +69,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.NorthEast
+import androidx.compose.material.icons.filled.Paid
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Share
@@ -76,6 +77,7 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.WorkspacePremium
+import androidx.compose.material.icons.outlined.ConfirmationNumber as OutlinedTicketIcon
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -404,7 +406,7 @@ fun PointsScreen(
                                             .background(RewardsGold.copy(alpha = 0.13f), CircleShape),
                                     )
                                     Icon(
-                                        imageVector = Icons.Filled.AttachMoney,
+                                        imageVector = Icons.Filled.Paid,
                                         contentDescription = null,
                                         tint = RewardsGold,
                                         modifier = Modifier.size(42.dp),
@@ -667,7 +669,7 @@ fun PointsScreen(
                             }
 
                             Icon(
-                                imageVector = Icons.Filled.ConfirmationNumber,
+                                imageVector = Icons.Outlined.OutlinedTicketIcon,
                                 contentDescription = null,
                                 tint = Color.White.copy(alpha = 0.11f),
                                 modifier = Modifier
@@ -1456,7 +1458,7 @@ fun CouponsScreen(
                                     }
 
                                     Icon(
-                                        imageVector = Icons.Filled.ConfirmationNumber,
+                                        imageVector = Icons.Outlined.OutlinedTicketIcon,
                                         contentDescription = null,
                                         tint = Color.White.copy(alpha = 0.10f),
                                         modifier = Modifier
