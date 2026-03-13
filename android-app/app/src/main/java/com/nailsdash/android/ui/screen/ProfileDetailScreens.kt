@@ -3477,7 +3477,7 @@ fun ReviewsScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
                     .padding(top = 18.dp, bottom = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -3534,7 +3534,7 @@ fun ReviewsScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         text = "Comment",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                         color = RewardsPrimaryText.copy(alpha = 0.62f),
                     )
                     BasicTextField(
