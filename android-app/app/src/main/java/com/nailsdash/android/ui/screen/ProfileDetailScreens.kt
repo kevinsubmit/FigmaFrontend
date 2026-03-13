@@ -1665,7 +1665,10 @@ fun GiftCardsScreen(
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = if (isClaiming) "Claiming..." else "Claim Gift Card",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 17.sp,
+                            ),
                             color = claimButtonFg,
                         )
                     }
@@ -1828,7 +1831,10 @@ fun GiftCardsScreen(
                             } else {
                                 "Send Digital Gift Card"
                             },
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 17.sp,
+                            ),
                             color = sendButtonFg,
                         )
                     }
