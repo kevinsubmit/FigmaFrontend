@@ -1244,23 +1244,26 @@ fun CouponsScreen(
                                 animationSpec = tween(durationMillis = 140),
                                 label = "couponStatusContent",
                             )
-                            Button(
-                                onClick = { couponsViewModel.selectedStatus = status },
+                            Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .heightIn(min = 38.dp)
-                                    .scale(statusScale),
-                                interactionSource = statusInteraction,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = statusContainerColor,
-                                    contentColor = statusContentColor,
-                                ),
-                                shape = RoundedCornerShape(12.dp),
-                                border = if (selected) {
-                                    null
-                                } else {
-                                    androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.07f))
-                                },
+                                    .scale(statusScale)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(statusContainerColor, RoundedCornerShape(12.dp))
+                                    .then(
+                                        if (selected) {
+                                            Modifier
+                                        } else {
+                                            Modifier.border(1.dp, Color.White.copy(alpha = 0.07f), RoundedCornerShape(12.dp))
+                                        },
+                                    )
+                                    .clickable(
+                                        interactionSource = statusInteraction,
+                                        indication = null,
+                                        onClick = { couponsViewModel.selectedStatus = status },
+                                    ),
+                                contentAlignment = Alignment.Center,
                             ) {
                                 Text(
                                     text = couponStatusTitle(status),
@@ -1268,6 +1271,7 @@ fun CouponsScreen(
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Bold,
                                     ),
+                                    color = statusContentColor,
                                 )
                             }
                         }
