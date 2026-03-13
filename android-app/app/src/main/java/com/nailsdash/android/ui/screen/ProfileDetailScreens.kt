@@ -2830,8 +2830,8 @@ fun OrderHistoryScreen(
                                 Box(
                                     modifier = Modifier
                                         .align(Alignment.TopEnd)
-                                        .padding(4.dp)
-                                        .size(24.dp)
+                                        .padding(6.dp)
+                                        .size(22.dp)
                                         .clip(CircleShape)
                                         .background(Color.Black.copy(alpha = 0.68f), CircleShape)
                                         .clickable(
@@ -2847,7 +2847,7 @@ fun OrderHistoryScreen(
                                         imageVector = Icons.Filled.Close,
                                         contentDescription = "Remove image",
                                         tint = Color.White,
-                                        modifier = Modifier.size(14.dp),
+                                        modifier = Modifier.size(11.dp),
                                     )
                                 }
                             }
