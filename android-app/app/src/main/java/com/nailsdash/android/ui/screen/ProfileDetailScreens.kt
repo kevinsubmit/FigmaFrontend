@@ -61,6 +61,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.EventAvailable
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.History
@@ -3062,7 +3063,7 @@ fun OrderHistoryScreen(
                     OrderHistorySummaryMetric(
                         title = "Total Visits",
                         value = completedCount.toString(),
-                        icon = Icons.Filled.CalendarMonth,
+                        icon = Icons.Filled.EventAvailable,
                         highlighted = false,
                         modifier = Modifier.weight(1f),
                     )
