@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -100,7 +101,11 @@ fun HomeScreen(
                     .height(44.dp),
                 singleLine = true,
                 shape = RoundedCornerShape(999.dp),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.None,
+                    autoCorrectEnabled = false,
+                    imeAction = ImeAction.Search,
+                ),
                 keyboardActions = KeyboardActions(onSearch = { homeViewModel.applySearch() }),
                 leadingIcon = {
                     val searchIconInteraction = remember { MutableInteractionSource() }
