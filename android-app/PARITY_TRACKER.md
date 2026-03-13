@@ -106,6 +106,7 @@ Last updated: 2026-03-11
   - done: order-history-store-name-ellipsis parity pass #155 (OrderHistory activity-card store-name title now applies `TextOverflow.Ellipsis` with single-line rendering to align iOS `lineLimit(1)` truncation behavior for long salon names)
   - done: myreviews-store-name-ellipsis parity pass #156 (MyReviews list-card store-name title now applies `TextOverflow.Ellipsis` with single-line rendering to align iOS `lineLimit(1)` truncation behavior for long salon names)
   - done: order-history-header-exact-spacing parity pass #157 (OrderHistory activity-card top row sibling spacing is now `10dp`, matching iOS `HStack(spacing: UITheme.spacing10)` geometry more precisely)
+  - done: order-history-review-row-spacing parity pass #158 (OrderHistory activity-card review row now uses explicit `8dp` sibling spacing instead of `SpaceBetween`, aligning with iOS `HStack(spacing: UITheme.spacing8)` + spacer distribution semantics)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
