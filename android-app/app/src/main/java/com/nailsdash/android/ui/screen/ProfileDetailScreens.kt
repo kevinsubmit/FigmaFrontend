@@ -3288,6 +3288,7 @@ private fun OrderHistoryActivityCard(
                     ),
                     color = Color.White.copy(alpha = 0.62f),
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
 
