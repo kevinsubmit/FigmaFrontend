@@ -3225,6 +3225,7 @@ private fun OrderHistoryActivityCard(
                             ),
                             color = Color.White.copy(alpha = 0.55f),
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
                     item.store_address?.trim()?.takeIf { it.isNotEmpty() }?.let { address ->

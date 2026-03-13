@@ -101,6 +101,7 @@ Last updated: 2026-03-11
   - done: myreviews-date-ellipsis parity pass #150 (MyReviews created-date label now applies `TextOverflow.Ellipsis` alongside `maxLines = 1`, matching iOS `lineLimit(1)` truncation semantics for narrow-width header layouts)
   - done: order-history-datetime-ellipsis parity pass #151 (OrderHistory activity-card datetime label now applies `TextOverflow.Ellipsis` with single-line rendering to better match iOS `lineLimit(1)` truncation behavior in compact widths)
   - done: order-history-service-name-ellipsis parity pass #152 (OrderHistory activity-card service-name label now applies `TextOverflow.Ellipsis` with single-line rendering to align iOS `lineLimit(1)` truncation behavior for long service titles)
+  - done: order-history-order-number-ellipsis parity pass #153 (OrderHistory activity-card order-number meta text now applies `TextOverflow.Ellipsis` with single-line rendering to align iOS `lineLimit(1)` truncation behavior for long order identifiers)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
