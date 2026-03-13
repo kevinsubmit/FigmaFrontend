@@ -3252,7 +3252,10 @@ private fun OrderHistoryActivityCard(
             ) {
                 Text(
                     text = item.service_name ?: "Service",
-                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 13.sp,
+                    ),
                     color = Color.White.copy(alpha = 0.88f),
                     maxLines = 1,
                     modifier = Modifier.weight(1f),
