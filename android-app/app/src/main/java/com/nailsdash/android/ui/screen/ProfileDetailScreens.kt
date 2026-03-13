@@ -2463,7 +2463,7 @@ private fun GiftCardCollectionCard(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.widthIn(min = 6.dp).weight(1f))
             }
 
             card.recipient_phone?.takeIf { it.isNotBlank() }?.let { recipient ->

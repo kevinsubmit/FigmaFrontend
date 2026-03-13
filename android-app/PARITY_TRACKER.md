@@ -118,6 +118,7 @@ Last updated: 2026-03-11
   - done: giftcards-status-pill-caption2-scale parity pass #167 (GiftCards list-card status-pill label now uses explicit `11sp` semibold scale to align with iOS `.caption2.weight(.semibold)` typography hierarchy)
   - done: giftcards-status-pill-single-line-ellipsis parity pass #168 (GiftCards list-card status-pill label now enforces single-line rendering with tail ellipsis to match iOS capsule text truncation behavior on constrained widths)
   - done: giftcards-code-copy-icon-caption-scale parity pass #169 (GiftCards card-number copy control icon now uses `12dp` size to align closer with iOS `.caption.weight(.bold)` glyph footprint)
+  - done: giftcards-meta-row-spacer-minlength parity pass #170 (GiftCards card meta row `Issued/Exp` tail spacer now enforces `min=6dp` while remaining flexible, aligning with iOS `Spacer(minLength: UITheme.spacing6)` behavior)
   - pending: final page-by-page visual diff and QA sweep before marking DONE
 - `DONE` Notifications (`NotificationsModule.swift` -> `NotificationsScreen.kt`)
   - done: list + unread + open appointment, iOS-like black+gold module structure (top bar, filter pills, push preference row, empty state, notification cards, mark-read/delete actions, unified loading/notice overlay), plus fine-grained interaction parity (top back control, animated filter pill transitions, card press feedback)
