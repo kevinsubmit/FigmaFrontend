@@ -2301,7 +2301,7 @@ private fun GiftCardCollectionCard(
             ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(
@@ -2323,6 +2323,7 @@ private fun GiftCardCollectionCard(
                         color = RewardsSecondaryText,
                     )
                 }
+                Spacer(modifier = Modifier.weight(1f))
                 Text(
                     text = giftStatusLabel(status),
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
