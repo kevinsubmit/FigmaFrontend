@@ -2791,112 +2791,114 @@ fun OrderHistoryScreen(
                     )
                 }
 
-                Text(
-                    text = "Photos (Optional, max 5)",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = RewardsPrimaryText.copy(alpha = 0.62f),
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Photos (Optional, max 5)",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = RewardsPrimaryText.copy(alpha = 0.62f),
+                    )
 
-                if (reviewDraftImages.isNotEmpty()) {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(max = 220.dp),
-                    ) {
-                        gridItems(reviewDraftImages, key = { it.id }) { item ->
-                            val removeImageInteraction = remember(item.id) { MutableInteractionSource() }
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(92.dp)
-                                    .clip(RoundedCornerShape(12.dp)),
-                            ) {
-                                AsyncImage(
-                                    model = item.uri,
-                                    contentDescription = "Selected photo",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
+                    if (reviewDraftImages.isNotEmpty()) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 220.dp),
+                        ) {
+                            gridItems(reviewDraftImages, key = { it.id }) { item ->
+                                val removeImageInteraction = remember(item.id) { MutableInteractionSource() }
                                 Box(
                                     modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .padding(6.dp)
-                                        .size(22.dp)
-                                        .clip(CircleShape)
-                                        .background(Color.Black.copy(alpha = 0.68f), CircleShape)
-                                        .clickable(
-                                            interactionSource = removeImageInteraction,
-                                            indication = null,
-                                            onClick = {
-                                                reviewDraftImages = reviewDraftImages.filterNot { it.id == item.id }
-                                            },
-                                        ),
-                                    contentAlignment = Alignment.Center,
+                                        .fillMaxWidth()
+                                        .height(92.dp)
+                                        .clip(RoundedCornerShape(12.dp)),
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Close,
-                                        contentDescription = "Remove image",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(11.dp),
+                                    AsyncImage(
+                                        model = item.uri,
+                                        contentDescription = "Selected photo",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize(),
                                     )
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(6.dp)
+                                            .size(22.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.Black.copy(alpha = 0.68f), CircleShape)
+                                            .clickable(
+                                                interactionSource = removeImageInteraction,
+                                                indication = null,
+                                                onClick = {
+                                                    reviewDraftImages = reviewDraftImages.filterNot { it.id == item.id }
+                                                },
+                                            ),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Close,
+                                            contentDescription = "Remove image",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(11.dp),
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                if (reviewDraftImages.size < MaxReviewImageCount) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 40.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(RewardsCardBackground)
-                            .drawBehind {
-                                drawRoundRect(
-                                    color = Color.White.copy(alpha = 0.16f),
-                                    cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx()),
-                                    style = Stroke(
-                                        width = 1.dp.toPx(),
-                                        pathEffect = PathEffect.dashPathEffect(
-                                            floatArrayOf(6.dp.toPx(), 4.dp.toPx()),
+                    if (reviewDraftImages.size < MaxReviewImageCount) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(RewardsCardBackground)
+                                .drawBehind {
+                                    drawRoundRect(
+                                        color = Color.White.copy(alpha = 0.16f),
+                                        cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx()),
+                                        style = Stroke(
+                                            width = 1.dp.toPx(),
+                                            pathEffect = PathEffect.dashPathEffect(
+                                                floatArrayOf(6.dp.toPx(), 4.dp.toPx()),
+                                            ),
                                         ),
-                                    ),
+                                    )
+                                }
+                                .clickable(
+                                    enabled = !orderHistoryViewModel.isUploadingReviewImages,
+                                    interactionSource = addPhotosInteraction,
+                                    indication = null,
+                                    onClick = { reviewImagePickerLauncher.launch("image/*") },
+                                )
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (orderHistoryViewModel.isUploadingReviewImages) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    color = RewardsGold,
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Outlined.Collections,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = RewardsPrimaryText.copy(alpha = 0.86f),
                                 )
                             }
-                            .clickable(
-                                enabled = !orderHistoryViewModel.isUploadingReviewImages,
-                                interactionSource = addPhotosInteraction,
-                                indication = null,
-                                onClick = { reviewImagePickerLauncher.launch("image/*") },
-                            )
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        if (orderHistoryViewModel.isUploadingReviewImages) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(14.dp),
-                                color = RewardsGold,
-                                strokeWidth = 2.dp,
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Outlined.Collections,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = RewardsPrimaryText.copy(alpha = 0.86f),
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (orderHistoryViewModel.isUploadingReviewImages) "Uploading..." else "Add Photos",
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = RewardsPrimaryText.copy(alpha = 0.86f),
                             )
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (orderHistoryViewModel.isUploadingReviewImages) "Uploading..." else "Add Photos",
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                            color = RewardsPrimaryText.copy(alpha = 0.86f),
-                        )
                     }
                 }
 
