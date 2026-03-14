@@ -76,6 +76,7 @@ Last updated: 2026-03-11
   - done: booking-form-error-message-dialog parity pass #252 (Book form now listens to `errorMessage` and presents a modal `Message` dialog, removing Android-only inline error row while keeping iOS-aligned in-card slot hint messaging)
   - done: booking-form-inline-success-row-removal parity pass #253 (Book form no longer renders Android-only inline success text row after submission; success feedback now stays aligned with iOS overlay-driven completion flow)
   - done: booking-form-loading-overlay-card parity pass #256 (Book form loading state now uses centered floating `Loading...` card overlay with compact spinner+label hierarchy, replacing Android-only inline list spinner and matching iOS `ProgressView` overlay behavior)
+  - done: book-appointments-sensitive-auth-alert-logout parity pass #258 (Store list / store detail / booking form / my appointments alert confirmations now apply iOS-style sensitive-auth guard and force logout when message indicates session-expired/unauthorized/restricted account states)
 
 ## Appointments
 - `DONE` My appointments (`MyAppointmentsView.swift` -> `AppointmentsScreen.kt`)

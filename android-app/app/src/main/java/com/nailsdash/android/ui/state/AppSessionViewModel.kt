@@ -27,6 +27,36 @@ data class BookingStyleReference(
 }
 
 class AppSessionViewModel(application: Application) : AndroidViewModel(application) {
+    companion object {
+        const val sessionExpiredMessage = "Session expired, please sign in again."
+
+        fun shouldForceLogoutAfterSensitiveAuthAlert(message: String): Boolean {
+            val normalized = message.trim().lowercase()
+            if (normalized.isEmpty()) return false
+
+            if (
+                normalized.contains("restricted") ||
+                normalized.contains("ban") ||
+                normalized.contains("banned") ||
+                normalized.contains("blocked") ||
+                normalized.contains("suspended")
+            ) {
+                return true
+            }
+
+            if (
+                normalized.contains("session expired") ||
+                normalized.contains("sign in again") ||
+                normalized.contains("unauthorized") ||
+                normalized.contains("not authenticated")
+            ) {
+                return true
+            }
+
+            return false
+        }
+    }
+
     private val authRepository = AuthRepository()
 
     var isLoadingAuth by mutableStateOf(false)
@@ -189,10 +219,14 @@ class AppSessionViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun logout() {
+        forceLogout()
+    }
+
+    fun forceLogout(message: String? = null) {
         authRepository.logout()
         isLoggedIn = false
         currentUser = null
-        authMessage = null
+        authMessage = message
         bookingStyleReference = null
         bookOpenedFromStyleReference = false
     }

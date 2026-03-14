@@ -240,11 +240,18 @@ fun StoresScreen(
         AlertDialog(
             onDismissRequest = { noticeMessage = null },
             confirmButton = {
-                TextButton(onClick = { noticeMessage = null }) {
+                TextButton(
+                    onClick = {
+                        noticeMessage = null
+                        if (AppSessionViewModel.shouldForceLogoutAfterSensitiveAuthAlert(message)) {
+                            sessionViewModel.forceLogout(message)
+                        }
+                    },
+                ) {
                     Text("OK")
                 }
             },
-            title = { Text("Notice") },
+            title = { Text("Message") },
             text = { Text(message) },
         )
     }

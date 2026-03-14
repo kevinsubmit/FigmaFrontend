@@ -193,7 +193,14 @@ fun AppointmentsScreen(
         AlertDialog(
             onDismissRequest = { noticeMessage = null },
             confirmButton = {
-                TextButton(onClick = { noticeMessage = null }) {
+                TextButton(
+                    onClick = {
+                        noticeMessage = null
+                        if (AppSessionViewModel.shouldForceLogoutAfterSensitiveAuthAlert(message)) {
+                            sessionViewModel.forceLogout(message)
+                        }
+                    },
+                ) {
                     Text("OK")
                 }
             },
