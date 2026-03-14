@@ -51,6 +51,7 @@ class StoresViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val hasLocation = userLatitude != null && userLongitude != null
             val effectiveSort = if (selectedSort == StoreSortOption.Nearest && !hasLocation) {
+                selectedSort = StoreSortOption.Recommended
                 StoreSortOption.Recommended.apiValue
             } else {
                 selectedSort.apiValue
