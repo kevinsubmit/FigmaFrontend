@@ -87,6 +87,7 @@ Last updated: 2026-03-11
   - done: appointments-service-meta-icon parity pass #235 (My Appointments service metadata capsules now include leading icon semantics for amount/time/technician, aligning closer to iOS `dollarsign.circle`/`clock`/`person` iconized info-row hierarchy)
   - done: appointments-card-icon-caption-scale parity pass #236 (My Appointments card iconography now uses compact caption-like sizing for chevron/store/location/date/time glyphs, removing oversized Android default `24dp` icon footprint and matching iOS small-symbol hierarchy)
   - done: appointments-technician-fallback-icon-contrast parity pass #240 (My Appointments technician metadata now differentiates assigned vs fallback semantics with distinct icon treatment and contrast (`0.72` for assigned technician, `0.58` for `Any technician`) to match iOS person/questionmark hierarchy)
+  - done: appointments-loading-overlay-style parity pass #242 (My Appointments loading indicator now uses iOS-like centered compact card without full-screen dim layer, with stacked spinner+label treatment and subdued secondary loading text contrast)
 - `DONE` Appointment detail (`AppointmentDetailView` -> `AppointmentDetailScreen.kt`)
   - done: card-based detail, map open with map-app chooser sheet, status display, iOS-like top close action, bottom action bar helper text, dedicated cancel/reschedule action sheets, picker-based reschedule date/time, top auto-dismiss toast, loading overlay, fine-grained visual styling (dark + gold card system, action bar, sheets)
 

@@ -621,29 +621,30 @@ private fun AppointmentPill(
 @Composable
 private fun AppointmentsLoadingOverlay() {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.18f)),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
         Card(
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = AppointmentsCardBackground),
-            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+            colors = CardDefaults.cardColors(containerColor = AppointmentsCardBackground.copy(alpha = 0.96f)),
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 CircularProgressIndicator(
-                    modifier = Modifier.padding(2.dp),
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
                     color = AppointmentsGold,
                 )
                 Text(
                     "Loading...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = AppointmentsPrimaryText,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = AppointmentsMutedText,
                 )
             }
         }
