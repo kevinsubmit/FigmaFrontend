@@ -293,7 +293,7 @@ private fun EmptyAppointmentsState(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 56.dp),
+            .padding(start = 10.dp, top = 56.dp, end = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
