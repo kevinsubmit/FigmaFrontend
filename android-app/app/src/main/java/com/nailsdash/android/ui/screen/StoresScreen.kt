@@ -38,8 +38,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -166,15 +164,6 @@ fun StoresScreen(
                     onBack()
                 },
             )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                storesViewModel.locationStatus?.let { StoreListMessageBanner(it, isError = false) }
-            }
 
             Box(modifier = Modifier.fillMaxSize()) {
                 if (storesViewModel.stores.isEmpty()) {
@@ -391,36 +380,6 @@ private fun StoreSortHeader(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun StoreListMessageBanner(
-    message: String,
-    isError: Boolean,
-) {
-    val tone = if (isError) Color(0xFFFF8F8F) else Color.White.copy(alpha = 0.74f)
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(tone.copy(alpha = if (isError) 0.10f else 0.08f), RoundedCornerShape(12.dp))
-            .border(1.dp, tone.copy(alpha = 0.24f), RoundedCornerShape(12.dp))
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = if (isError) Icons.Filled.LocationOn else Icons.Filled.Star,
-            contentDescription = null,
-            tint = tone,
-            modifier = Modifier.size(14.dp),
-        )
-        Text(
-            text = message,
-            color = tone,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-        )
     }
 }
 
