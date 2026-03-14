@@ -18,6 +18,7 @@ Last updated: 2026-03-11
   - done: home-empty-state-card parity pass #207 (Home feed empty state now mirrors iOS compact unified card structure with photo icon, split title/subtitle copy, subtle gold outlined dark surface, and filtered-search subtitle text aligned to iOS wording `Try another search keyword.`)
   - done: home-selected-tag-shadow parity pass #215 (Home selected tag capsules now apply iOS-like gold glow shadow (`radius=6`, `alpha=0.25`) to match SwiftUI selected-pill emphasis instead of flat fill-only rendering)
   - done: home-feed-grid-spacing-inset parity pass #223 (Home feed grid now matches iOS `HomeFeedModule` cadence by using `16dp` vertical card spacing and content insets `top=8dp/bottom=16dp` instead of Android-only wider top/bottom rhythm)
+  - done: home-tab-switch-book-flow-reset parity pass #225 (Main tab navigation now resets book-flow source whenever active tab changes away from `Book`, matching iOS `HomeView.onChange(selectedTab)` behavior and preventing stale style-reference entry state)
 - `DONE` Pin detail (`PinDetailModule.swift` -> `HomePinDetailScreen.kt`)
   - done: favorite, share, download, related pins, choose salon, advanced hero interactions (pinch-zoom + drag + double-tap reset + zoom-state scroll lock), floating top controls parity (left back + right share/favorite controls with gradient overlay), and iOS-like floating bottom booking strip + toast feedback
 - `DONE` Deals tab (`HomeView.swift DealsView` -> `DealsScreen.kt`)

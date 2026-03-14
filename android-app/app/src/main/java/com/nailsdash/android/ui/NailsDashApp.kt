@@ -106,7 +106,14 @@ fun NailsDashApp() {
     val tabRoutes = MainDestination.entries.map { it.route }.toSet()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val currentRoute = currentDestination?.route
     val showBottomBar = currentDestination?.route in tabRoutes
+
+    LaunchedEffect(currentRoute) {
+        if (currentRoute in tabRoutes && currentRoute != MainDestination.Book.route) {
+            sessionViewModel.resetBookFlowSource()
+        }
+    }
 
     Scaffold(
         bottomBar = {
