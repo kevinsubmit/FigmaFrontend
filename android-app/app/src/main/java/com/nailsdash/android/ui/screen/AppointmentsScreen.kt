@@ -627,12 +627,12 @@ private fun statusLabel(raw: String): String {
 
 private fun statusColor(raw: String): Color {
     return when (raw.lowercase()) {
-        "pending" -> Color(0xFFFFC107)
-        "confirmed" -> Color(0xFF4CAF50)
-        "completed" -> Color(0xFF42A5F5)
-        "cancelled" -> Color(0xFFEF5350)
-        "expired" -> Color(0xFF9E9E9E)
-        else -> Color(0xFFFF9800)
+        "pending" -> Color(0xFFFFCC00)
+        "confirmed" -> Color(0xFF34C759)
+        "completed" -> Color(0xFF0A84FF)
+        "cancelled" -> Color(0xFFFF3B30)
+        "expired" -> Color(0xFF8E8E93)
+        else -> Color(0xFFFF9500)
     }
 }
 

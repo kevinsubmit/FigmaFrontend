@@ -62,6 +62,7 @@ Last updated: 2026-03-11
   - done: appointments-empty-horizontal-inset parity pass #209 (My Appointments empty-state container now applies iOS-matched horizontal inset `10dp` with top spacing `56dp`, aligning SwiftUI `.padding(.horizontal, UITheme.pillHorizontalPadding)` layout rhythm)
   - done: appointments-address-icon-outline-semantics parity pass #210 (My Appointments store-address row now uses outlined location-pin icon semantics to align closer with iOS line-style map glyph intent instead of filled pin treatment)
   - done: appointments-date-time-pill-icon-outline parity pass #212 (My Appointments date/time pills now use outlined calendar/clock icon semantics to align closer with iOS line-style `calendar` + `clock` glyph treatment)
+  - done: appointments-status-system-color parity pass #217 (My Appointments status capsule color mapping now uses iOS system palette semantics: pending `#FFCC00`, confirmed `#34C759`, completed `#0A84FF`, cancelled `#FF3B30`, expired `#8E8E93`, fallback `#FF9500`)
 - `DONE` Appointment detail (`AppointmentDetailView` -> `AppointmentDetailScreen.kt`)
   - done: card-based detail, map open with map-app chooser sheet, status display, iOS-like top close action, bottom action bar helper text, dedicated cancel/reschedule action sheets, picker-based reschedule date/time, top auto-dismiss toast, loading overlay, fine-grained visual styling (dark + gold card system, action bar, sheets)
 
