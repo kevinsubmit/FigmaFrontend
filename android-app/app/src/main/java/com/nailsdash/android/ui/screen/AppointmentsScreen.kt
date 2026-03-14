@@ -411,9 +411,12 @@ private fun AppointmentCard(
                     Text(
                         text = statusLabel(status),
                         color = statusColor,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
                         modifier = Modifier
-                            .background(statusColor.copy(alpha = 0.15f), RoundedCornerShape(999.dp))
+                            .background(statusColor.copy(alpha = 0.14f), RoundedCornerShape(999.dp))
                             .padding(horizontal = 10.dp, vertical = 4.dp),
                     )
                     if (isUpcoming) {
