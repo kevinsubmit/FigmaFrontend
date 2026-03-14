@@ -166,36 +166,62 @@ fun StoresScreen(
                 storesViewModel.locationStatus?.let { StoreListMessageBanner(it, isError = false) }
             }
 
-            if (storesViewModel.isLoading && storesViewModel.stores.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(color = StoreListGold)
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (storesViewModel.stores.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                    ) {
+                        if (!storesViewModel.isLoading) {
+                            StoreListEmptyCard()
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 26.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        items(storesViewModel.stores, key = { it.id }) { store ->
+                            storesViewModel.loadStoreRatingIfNeeded(store.id)
+                            storesViewModel.loadStoreImagesIfNeeded(store.id)
+                            StoreListCard(
+                                store = store,
+                                rating = storesViewModel.displayRating(store),
+                                images = storesViewModel.storeImages[store.id].orEmpty(),
+                                onOpenStore = { onOpenStore(store.id) },
+                            )
+                        }
+                    }
                 }
-            } else if (storesViewModel.stores.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                ) {
-                    StoreListEmptyCard()
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 26.dp),
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                ) {
-                    items(storesViewModel.stores, key = { it.id }) { store ->
-                        storesViewModel.loadStoreRatingIfNeeded(store.id)
-                        storesViewModel.loadStoreImagesIfNeeded(store.id)
-                        StoreListCard(
-                            store = store,
-                            rating = storesViewModel.displayRating(store),
-                            images = storesViewModel.storeImages[store.id].orEmpty(),
-                            onOpenStore = { onOpenStore(store.id) },
-                        )
+
+                if (storesViewModel.isLoading) {
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = StoreListCardBackground),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, StoreListGold.copy(alpha = 0.22f)),
+                        modifier = Modifier.align(Alignment.Center),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = StoreListGold,
+                            )
+                            Text(
+                                text = "Loading stores...",
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
+                                color = Color.White.copy(alpha = 0.72f),
+                            )
+                        }
                     }
                 }
             }
