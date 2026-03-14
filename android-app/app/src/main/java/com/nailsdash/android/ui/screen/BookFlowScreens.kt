@@ -83,6 +83,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -1260,6 +1261,7 @@ fun BookAppointmentScreen(
     var bookingType by remember(storeId) { mutableStateOf(BookingTypeSelection.Single) }
     var guestRows by remember(storeId) { mutableStateOf(emptyList<GroupGuestRow>()) }
     var nextGuestRowId by remember(storeId) { mutableStateOf(1L) }
+    var noticeMessage by rememberSaveable(storeId) { mutableStateOf<String?>(null) }
     val uiScope = rememberCoroutineScope()
 
     LaunchedEffect(storeId, preselectedServiceId) {
@@ -1294,6 +1296,12 @@ fun BookAppointmentScreen(
         val selectedMonth = YearMonth.from(bookAppointmentViewModel.selectedDate)
         if (selectedMonth != displayedMonth) {
             displayedMonth = selectedMonth
+        }
+    }
+    LaunchedEffect(bookAppointmentViewModel.errorMessage) {
+        val message = bookAppointmentViewModel.errorMessage?.trim().orEmpty()
+        if (message.isNotEmpty()) {
+            noticeMessage = message
         }
     }
 
@@ -1608,12 +1616,6 @@ fun BookAppointmentScreen(
                     }
                 }
 
-                bookAppointmentViewModel.errorMessage?.let { message ->
-                    item {
-                        Text(message, color = MaterialTheme.colorScheme.error)
-                    }
-                }
-
                 bookAppointmentViewModel.successMessage?.let { message ->
                     item {
                         Text(message, color = BookingGold)
@@ -1644,6 +1646,19 @@ fun BookAppointmentScreen(
         ) {
             BookingSuccessOverlay()
         }
+    }
+
+    noticeMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = { noticeMessage = null },
+            confirmButton = {
+                TextButton(onClick = { noticeMessage = null }) {
+                    Text("OK")
+                }
+            },
+            title = { Text("Message") },
+            text = { Text(message) },
+        )
     }
 }
 
