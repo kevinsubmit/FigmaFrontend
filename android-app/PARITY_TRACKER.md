@@ -24,6 +24,7 @@ Last updated: 2026-03-11
   - done: home-loading-overlay parity pass #238 (Home feed loading state now uses a centered unified loading overlay card with gold spinner + secondary loading label, matching iOS `UnifiedLoadingOverlay` semantics instead of Android inline empty-list spinner)
   - done: home-loading-overlay-token-refine parity pass #244 (Home loading overlay now matches iOS token tuning with `gold@0.16` border, elevated shadow depth, and footnote-scale semibold `Loading...` label hierarchy)
   - done: home-error-notice-dialog parity pass #248 (Home feed error handling now follows iOS notice-alert semantics via modal `Notice` dialog trigger from `errorMessage`, replacing Android-only inline red error text row)
+  - done: home-sensitive-auth-alert-logout parity pass #259 (Home feed `Notice` alert confirm now applies iOS-style sensitive-auth guard and force logout behavior for session-expired/unauthorized/restricted account error messages)
 - `DONE` Pin detail (`PinDetailModule.swift` -> `HomePinDetailScreen.kt`)
   - done: favorite, share, download, related pins, choose salon, advanced hero interactions (pinch-zoom + drag + double-tap reset + zoom-state scroll lock), floating top controls parity (left back + right share/favorite controls with gradient overlay), and iOS-like floating bottom booking strip + toast feedback
 - `DONE` Deals tab (`HomeView.swift DealsView` -> `DealsScreen.kt`)
@@ -43,6 +44,7 @@ Last updated: 2026-03-11
   - done: deals-loading-overlay-card parity pass #241 (Deals loading state now follows iOS `UnifiedLoadingOverlay` composition: centered card-only overlay without full-screen dim layer, stacked spinner+label layout, and subtle dark-gold border/shadow tokens)
   - done: deals-loading-overlay-footnote-depth parity pass #246 (Deals loading overlay now uses footnote-scale `13sp` semibold label and deeper `8dp` card elevation, aligning closer to iOS unified loading overlay text hierarchy and shadow depth)
   - done: deals-error-notice-dialog parity pass #247 (Deals error handling now matches iOS notice-alert semantics by presenting a modal `Notice` dialog on error and removing Android-only inline error card from the list flow)
+  - done: deals-sensitive-auth-alert-logout parity pass #259 (Deals `Notice` alert confirm now applies iOS-style sensitive-auth guard and force logout behavior for session-expired/unauthorized/restricted account error messages)
 
 ## Book
 - `DONE` Store list (`StoresListView.swift` -> `StoresScreen.kt`)

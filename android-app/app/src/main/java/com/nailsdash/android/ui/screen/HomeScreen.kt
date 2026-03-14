@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.nailsdash.android.data.model.HomeFeedPin
+import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.HomeViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
 
@@ -74,6 +75,7 @@ private val HomeHeaderFieldBackground = Color(0xFF1A1A1A)
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
+    sessionViewModel: AppSessionViewModel,
     homeViewModel: HomeViewModel = viewModel(),
     onOpenPin: (Int) -> Unit = {},
 ) {
@@ -295,7 +297,14 @@ fun HomeScreen(
             AlertDialog(
                 onDismissRequest = { noticeMessage = null },
                 confirmButton = {
-                    TextButton(onClick = { noticeMessage = null }) {
+                    TextButton(
+                        onClick = {
+                            noticeMessage = null
+                            if (AppSessionViewModel.shouldForceLogoutAfterSensitiveAuthAlert(message)) {
+                                sessionViewModel.forceLogout(message)
+                            }
+                        },
+                    ) {
                         Text("OK")
                     }
                 },

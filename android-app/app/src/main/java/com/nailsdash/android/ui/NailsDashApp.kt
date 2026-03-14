@@ -150,6 +150,7 @@ fun NailsDashApp() {
         ) {
             composable(MainDestination.Home.route) {
                 HomeScreen(
+                    sessionViewModel = sessionViewModel,
                     onOpenPin = { pinId ->
                         navController.navigate("home/pin/$pinId")
                     },
@@ -258,6 +259,7 @@ fun NailsDashApp() {
             }
             composable(MainDestination.Deals.route) {
                 DealsScreen(
+                    sessionViewModel = sessionViewModel,
                     onOpenStore = { storeId ->
                         navController.navigate("book/store/$storeId")
                     },

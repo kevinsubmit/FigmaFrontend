@@ -64,6 +64,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.nailsdash.android.data.model.Promotion
 import com.nailsdash.android.data.model.Store
+import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.DealsSegment
 import com.nailsdash.android.ui.state.DealsViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
@@ -79,6 +80,7 @@ private val DealsCardBackground = Color(0xFF111111)
 
 @Composable
 fun DealsScreen(
+    sessionViewModel: AppSessionViewModel,
     dealsViewModel: DealsViewModel = viewModel(),
     onOpenStore: (Int) -> Unit = {},
     onBrowseStores: () -> Unit = {},
@@ -144,7 +146,14 @@ fun DealsScreen(
             AlertDialog(
                 onDismissRequest = { noticeMessage = null },
                 confirmButton = {
-                    TextButton(onClick = { noticeMessage = null }) {
+                    TextButton(
+                        onClick = {
+                            noticeMessage = null
+                            if (AppSessionViewModel.shouldForceLogoutAfterSensitiveAuthAlert(message)) {
+                                sessionViewModel.forceLogout(message)
+                            }
+                        },
+                    ) {
                         Text("OK")
                     }
                 },
