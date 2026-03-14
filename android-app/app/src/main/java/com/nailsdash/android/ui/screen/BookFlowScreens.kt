@@ -1630,15 +1630,39 @@ fun BookAppointmentScreen(
                     }
                 }
 
-                if (bookAppointmentViewModel.isLoading) {
-                    item { CircularProgressIndicator() }
-                }
-
                 item {
                     Text(
                         "By confirming, you agree to contact the salon if you need changes.",
                         style = MaterialTheme.typography.bodySmall,
                         color = BookingSecondaryText,
+                    )
+                }
+            }
+        }
+
+        if (bookAppointmentViewModel.isLoading) {
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = BookingCardBackground),
+                modifier = Modifier.align(Alignment.Center),
+            ) {
+                Row(
+                    modifier = Modifier.padding(20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = BookingGold,
+                    )
+                    Text(
+                        text = "Loading...",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                        color = Color.White.copy(alpha = 0.72f),
                     )
                 }
             }

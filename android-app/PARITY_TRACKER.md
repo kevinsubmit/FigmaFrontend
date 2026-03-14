@@ -75,6 +75,7 @@ Last updated: 2026-03-11
   - done: booking-form-topbar-token parity pass #181 (Book form `STEP 03` header now mirrors iOS top-bar token style: centered caption2 step label + `17sp` headline title, black `0.96` backdrop with bottom hairline divider, and form content horizontal page padding unified to `16dp`)
   - done: booking-form-error-message-dialog parity pass #252 (Book form now listens to `errorMessage` and presents a modal `Message` dialog, removing Android-only inline error row while keeping iOS-aligned in-card slot hint messaging)
   - done: booking-form-inline-success-row-removal parity pass #253 (Book form no longer renders Android-only inline success text row after submission; success feedback now stays aligned with iOS overlay-driven completion flow)
+  - done: booking-form-loading-overlay-card parity pass #256 (Book form loading state now uses centered floating `Loading...` card overlay with compact spinner+label hierarchy, replacing Android-only inline list spinner and matching iOS `ProgressView` overlay behavior)
 
 ## Appointments
 - `DONE` My appointments (`MyAppointmentsView.swift` -> `AppointmentsScreen.kt`)
