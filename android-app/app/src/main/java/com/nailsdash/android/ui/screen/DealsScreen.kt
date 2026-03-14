@@ -586,20 +586,19 @@ private fun DealPill(
 @Composable
 private fun DealsLoadingOverlay() {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.42f)),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
         Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = DealsCardBackground),
-            border = androidx.compose.foundation.BorderStroke(1.dp, DealsGold.copy(alpha = 0.30f)),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = DealsCardBackground.copy(alpha = 0.96f)),
+            border = androidx.compose.foundation.BorderStroke(1.dp, DealsGold.copy(alpha = 0.16f)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),
@@ -608,8 +607,11 @@ private fun DealsLoadingOverlay() {
                 )
                 Text(
                     text = "Loading deals...",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                    ),
+                    color = Color.White.copy(alpha = 0.62f),
                 )
             }
         }
