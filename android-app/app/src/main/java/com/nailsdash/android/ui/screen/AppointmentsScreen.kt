@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.CalendarMonth
@@ -475,6 +476,21 @@ private fun AppointmentCard(
                 }
 
                 AppointmentInfoBlock {
+                    val technicianName = item.technician_name
+                        ?.trim()
+                        ?.takeIf { it.isNotEmpty() }
+                    val technicianText = technicianName ?: "Any technician"
+                    val technicianIcon = if (technicianName != null) {
+                        Icons.Outlined.Person
+                    } else {
+                        Icons.AutoMirrored.Outlined.HelpOutline
+                    }
+                    val technicianTextColor = if (technicianName != null) {
+                        AppointmentsSecondaryText
+                    } else {
+                        Color.White.copy(alpha = 0.58f)
+                    }
+
                     Text(
                         text = item.service_name ?: "Service #${item.service_id}",
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
@@ -497,9 +513,9 @@ private fun AppointmentCard(
                         }
                     }
                     AppointmentMetaTag(
-                        icon = Icons.Outlined.Person,
-                        text = item.technician_name?.ifBlank { "Any technician" } ?: "Any technician",
-                        textColor = AppointmentsSecondaryText,
+                        icon = technicianIcon,
+                        text = technicianText,
+                        textColor = technicianTextColor,
                     )
                 }
 
