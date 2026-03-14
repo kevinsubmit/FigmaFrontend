@@ -23,6 +23,7 @@ Last updated: 2026-03-11
   - done: home-error-text-footnote-red parity pass #237 (Home feed inline error copy now uses iOS-like footnote scale `13sp` and `red@0.9` tone with full-width leading alignment, replacing Android default error text token rendering)
   - done: home-loading-overlay parity pass #238 (Home feed loading state now uses a centered unified loading overlay card with gold spinner + secondary loading label, matching iOS `UnifiedLoadingOverlay` semantics instead of Android inline empty-list spinner)
   - done: home-loading-overlay-token-refine parity pass #244 (Home loading overlay now matches iOS token tuning with `gold@0.16` border, elevated shadow depth, and footnote-scale semibold `Loading...` label hierarchy)
+  - done: home-error-notice-dialog parity pass #248 (Home feed error handling now follows iOS notice-alert semantics via modal `Notice` dialog trigger from `errorMessage`, replacing Android-only inline red error text row)
 - `DONE` Pin detail (`PinDetailModule.swift` -> `HomePinDetailScreen.kt`)
   - done: favorite, share, download, related pins, choose salon, advanced hero interactions (pinch-zoom + drag + double-tap reset + zoom-state scroll lock), floating top controls parity (left back + right share/favorite controls with gradient overlay), and iOS-like floating bottom booking strip + toast feedback
 - `DONE` Deals tab (`HomeView.swift DealsView` -> `DealsScreen.kt`)

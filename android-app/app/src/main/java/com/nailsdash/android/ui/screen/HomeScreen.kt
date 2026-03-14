@@ -40,9 +40,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -71,8 +77,16 @@ fun HomeScreen(
     homeViewModel: HomeViewModel = viewModel(),
     onOpenPin: (Int) -> Unit = {},
 ) {
+    var noticeMessage by rememberSaveable { mutableStateOf<String?>(null) }
+
     LaunchedEffect(Unit) {
         homeViewModel.loadIfNeeded()
+    }
+    LaunchedEffect(homeViewModel.errorMessage) {
+        val message = homeViewModel.errorMessage?.trim().orEmpty()
+        if (message.isNotEmpty()) {
+            noticeMessage = message
+        }
     }
 
     Box(
@@ -226,17 +240,6 @@ fun HomeScreen(
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                homeViewModel.errorMessage?.let {
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                        color = Color.Red.copy(alpha = 0.9f),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 2.dp),
-                    )
-                }
-
                 val emptyTitle = if (homeViewModel.searchQuery.isBlank() && homeViewModel.selectedTag == "All") {
                     "No images yet"
                 } else {
@@ -286,6 +289,19 @@ fun HomeScreen(
 
         if (homeViewModel.isLoading) {
             HomeLoadingOverlay()
+        }
+
+        noticeMessage?.let { message ->
+            AlertDialog(
+                onDismissRequest = { noticeMessage = null },
+                confirmButton = {
+                    TextButton(onClick = { noticeMessage = null }) {
+                        Text("OK")
+                    }
+                },
+                title = { Text("Notice") },
+                text = { Text(message) },
+            )
         }
     }
 }
