@@ -959,13 +959,13 @@ private fun StoreDetailContactHoursCard(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "Today",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
                     text = todayHoursText,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
                     color = Color.White,
                     fontWeight = FontWeight.SemiBold,
                 )
@@ -1017,13 +1017,13 @@ private fun StoreDetailContactHoursCard(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = dayLabel(dayIndex),
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             Spacer(modifier = Modifier.weight(1f))
                             Text(
                                 text = hoursTextForDay(storeHours = storeHours, dayIndex = dayIndex),
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                                 color = Color.White,
                             )
                         }
@@ -1052,7 +1052,7 @@ private fun StoreDetailContactHoursCard(
                     )
                     Text(
                         text = phone,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
                         color = Color.White,
                         modifier = Modifier.weight(1f),
                     )
@@ -1077,7 +1077,7 @@ private fun StoreDetailContactHoursCard(
                     )
                     Text(
                         text = email,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
                         color = Color.White,
                         modifier = Modifier.weight(1f),
                         maxLines = 1,
