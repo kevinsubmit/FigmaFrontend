@@ -1043,9 +1043,10 @@ private fun StoreDetailContactHoursCard(
                         color = Color.White,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = { onOpenDial(phone) }) {
-                        Text("Call", color = Color.White)
-                    }
+                    StoreDetailContactActionChip(
+                        label = "Call",
+                        onClick = { onOpenDial(phone) },
+                    )
                 }
             }
 
@@ -1066,14 +1067,42 @@ private fun StoreDetailContactHoursCard(
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White,
                         modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                    TextButton(onClick = { onOpenEmail(email) }) {
-                        Text("Email", color = Color.White)
-                    }
+                    StoreDetailContactActionChip(
+                        label = "Email",
+                        onClick = { onOpenEmail(email) },
+                    )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun StoreDetailContactActionChip(
+    label: String,
+    onClick: () -> Unit,
+) {
+    val chipInteraction = remember { MutableInteractionSource() }
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelSmall.copy(
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+        ),
+        color = Color.White,
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color.White.copy(alpha = 0.06f))
+            .clickable(
+                interactionSource = chipInteraction,
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+    )
 }
 
 @Composable
