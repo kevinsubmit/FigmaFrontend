@@ -26,6 +26,7 @@ Last updated: 2026-03-11
   - done: home-error-notice-dialog parity pass #248 (Home feed error handling now follows iOS notice-alert semantics via modal `Notice` dialog trigger from `errorMessage`, replacing Android-only inline red error text row)
   - done: home-sensitive-auth-alert-logout parity pass #259 (Home feed `Notice` alert confirm now applies iOS-style sensitive-auth guard and force logout behavior for session-expired/unauthorized/restricted account error messages)
   - done: home-error-inline-row-restore parity pass #260 (Home feed now restores iOS-style inline footnote error row while retaining `Notice` alert behavior, matching current `HomeFeedModule` error presentation semantics)
+  - done: home-alert-explicit-ok-dismiss parity pass #261 (Home `Notice` alert now disables outside/back dismiss so users must confirm via `OK`, matching iOS alert dismissal semantics)
 - `DONE` Pin detail (`PinDetailModule.swift` -> `HomePinDetailScreen.kt`)
   - done: favorite, share, download, related pins, choose salon, advanced hero interactions (pinch-zoom + drag + double-tap reset + zoom-state scroll lock), floating top controls parity (left back + right share/favorite controls with gradient overlay), and iOS-like floating bottom booking strip + toast feedback
 - `DONE` Deals tab (`HomeView.swift DealsView` -> `DealsScreen.kt`)
@@ -46,6 +47,7 @@ Last updated: 2026-03-11
   - done: deals-loading-overlay-footnote-depth parity pass #246 (Deals loading overlay now uses footnote-scale `13sp` semibold label and deeper `8dp` card elevation, aligning closer to iOS unified loading overlay text hierarchy and shadow depth)
   - done: deals-error-notice-dialog parity pass #247 (Deals error handling now matches iOS notice-alert semantics by presenting a modal `Notice` dialog on error and removing Android-only inline error card from the list flow)
   - done: deals-sensitive-auth-alert-logout parity pass #259 (Deals `Notice` alert confirm now applies iOS-style sensitive-auth guard and force logout behavior for session-expired/unauthorized/restricted account error messages)
+  - done: deals-alert-explicit-ok-dismiss parity pass #261 (Deals `Notice` alert now disables outside/back dismiss so users must confirm via `OK`, matching iOS alert dismissal semantics)
 
 ## Book
 - `DONE` Store list (`StoresListView.swift` -> `StoresScreen.kt`)
@@ -63,6 +65,7 @@ Last updated: 2026-03-11
   - done: store-list-loading-overlay parity pass #239 (Store list loading state now follows iOS `StoresListView` semantics with centered `Loading stores...` overlay card shown whenever `isLoading`, while empty-state card appears only when not loading)
   - done: store-list-loading-card-border-padding parity pass #243 (Store list loading overlay now removes Android-only gold border and uses iOS-like uniform `20dp` inner padding for the `Loading stores...` card, matching `StoresListView` compact floating progress treatment)
   - done: store-list-error-notice-dialog parity pass #250 (Store list error handling now follows iOS `onChange(errorMessage) + alert` semantics by presenting a modal `Notice` dialog and removing Android-only inline error banner from the page body)
+  - done: store-list-alert-explicit-ok-dismiss parity pass #261 (Store list `Message` alert now disables outside/back dismiss so users must confirm via `OK`, matching iOS alert dismissal semantics)
 - `DONE` Store detail (`StoreDetailView.swift` -> `StoreDetailScreen` in `BookFlowScreens.kt`)
   - done: services/reviews/portfolio/details tabs + book action, enhanced store identity card, iOS-like tab underline bar with transitions, refined service rows/add states, hero media carousel with auto-rotate + indicator jump, unified map chooser bottom-sheet integration + map-open fallback messaging, richer reviews/portfolio cards, top back control parity, final gesture-level polish (iOS-style STEP top bar, hero floating favorite control, tab/service press feedback, details contact-hours expandable interaction + call/email actions)
   - done: store-detail-topbar-nav-token parity pass #180 (Store detail top bar now aligns with iOS nav tokens: black `0.96` header backdrop, `16/8/8` bar insets, back control `38dp` with `16dp` chevron, and title scale `17sp` with caption2-like step label sizing)
@@ -73,6 +76,7 @@ Last updated: 2026-03-11
   - done: store-detail-error-message-dialog parity pass #251 (Store detail page now presents API/map launch errors via modal `Message` dialog and removes Android-only inline red error rows from the list flow, aligning with iOS alert-driven error UX)
   - done: store-detail-non-services-book-button-removal parity pass #254 (Store detail no longer shows Android-only `Book This Store` CTA on non-`Services` tabs, aligning with iOS flow where booking entry remains scoped to services selection context)
   - done: store-detail-loading-overlay-card parity pass #255 (Store detail loading state now uses centered `Loading store...` floating card overlay with compact spinner+label hierarchy, replacing Android-only inline list spinner and matching iOS `ProgressView` overlay semantics)
+  - done: store-detail-alert-explicit-ok-dismiss parity pass #261 (Store detail `Message` alert now disables outside/back dismiss so users must confirm via `OK`, matching iOS alert dismissal semantics)
 - `DONE` Booking form (`BookAppointmentView.swift` -> `BookAppointmentScreen`)
   - done: service/technician/date/time/notes, style reference note auto-injection, success overlay transition, step header + card-based sections, sticky bottom summary/confirm bar, month calendar date picker, single/group toggle + guest service rows + group booking submit, pay-at-salon detailed module (safe badge shimmer + payment badges), black-gold typography/spacing polish for section titles/cards/chips/notes/bottom bar/calendar/summary overlay, micro-motion parity pass (group section animated expand/collapse, booking-type spring emphasis, calendar day animated state transitions, summary/CTA text transitions, success overlay fade+scale)
   - done: booking-form-topbar-token parity pass #181 (Book form `STEP 03` header now mirrors iOS top-bar token style: centered caption2 step label + `17sp` headline title, black `0.96` backdrop with bottom hairline divider, and form content horizontal page padding unified to `16dp`)
@@ -80,6 +84,7 @@ Last updated: 2026-03-11
   - done: booking-form-inline-success-row-removal parity pass #253 (Book form no longer renders Android-only inline success text row after submission; success feedback now stays aligned with iOS overlay-driven completion flow)
   - done: booking-form-loading-overlay-card parity pass #256 (Book form loading state now uses centered floating `Loading...` card overlay with compact spinner+label hierarchy, replacing Android-only inline list spinner and matching iOS `ProgressView` overlay behavior)
   - done: book-appointments-sensitive-auth-alert-logout parity pass #258 (Store list / store detail / booking form / my appointments alert confirmations now apply iOS-style sensitive-auth guard and force logout when message indicates session-expired/unauthorized/restricted account states)
+  - done: booking-form-alert-explicit-ok-dismiss parity pass #261 (Booking form `Message` alert now disables outside/back dismiss so users must confirm via `OK`, matching iOS alert dismissal semantics)
 
 ## Appointments
 - `DONE` My appointments (`MyAppointmentsView.swift` -> `AppointmentsScreen.kt`)
@@ -107,6 +112,7 @@ Last updated: 2026-03-11
   - done: appointments-date-time-pill-gap parity pass #245 (My Appointments date/time pill row now uses iOS-matched sibling spacing `10dp`, aligning `HStack(spacing: UITheme.spacing10)` layout rhythm instead of tighter Android `8dp` spacing)
   - done: appointments-error-notice-dialog parity pass #249 (My Appointments error handling now follows iOS notice-alert semantics with modal `Notice` dialog presentation and removes Android-only inline red error text row)
   - done: appointments-error-inline-message-title parity pass #257 (My Appointments now restores iOS-style inline footnote error text while keeping alert behavior, and alert title is aligned to `Message` to match iOS `alert(\"Message\")` semantics)
+  - done: appointments-alert-explicit-ok-dismiss parity pass #261 (My Appointments `Message` alert now disables outside/back dismiss so users must confirm via `OK`, matching iOS alert dismissal semantics)
 - `DONE` Appointment detail (`AppointmentDetailView` -> `AppointmentDetailScreen.kt`)
   - done: card-based detail, map open with map-app chooser sheet, status display, iOS-like top close action, bottom action bar helper text, dedicated cancel/reschedule action sheets, picker-based reschedule date/time, top auto-dismiss toast, loading overlay, fine-grained visual styling (dark + gold card system, action bar, sheets)
 

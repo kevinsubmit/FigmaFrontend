@@ -101,6 +101,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.nailsdash.android.data.model.ServiceItem
@@ -497,6 +498,10 @@ fun StoreDetailScreen(
                 noticeMessage = null
                 mapLaunchError = null
             },
+            properties = DialogProperties(
+                dismissOnBackPress = false,
+                dismissOnClickOutside = false,
+            ),
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -1686,6 +1691,10 @@ fun BookAppointmentScreen(
     noticeMessage?.let { message ->
         AlertDialog(
             onDismissRequest = { noticeMessage = null },
+            properties = DialogProperties(
+                dismissOnBackPress = false,
+                dismissOnClickOutside = false,
+            ),
             confirmButton = {
                 TextButton(
                     onClick = {

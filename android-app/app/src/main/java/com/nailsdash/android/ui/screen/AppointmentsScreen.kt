@@ -58,6 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nailsdash.android.data.model.Appointment
 import com.nailsdash.android.ui.state.AppSessionViewModel
@@ -192,6 +193,10 @@ fun AppointmentsScreen(
     noticeMessage?.let { message ->
         AlertDialog(
             onDismissRequest = { noticeMessage = null },
+            properties = DialogProperties(
+                dismissOnBackPress = false,
+                dismissOnClickOutside = false,
+            ),
             confirmButton = {
                 TextButton(
                     onClick = {
