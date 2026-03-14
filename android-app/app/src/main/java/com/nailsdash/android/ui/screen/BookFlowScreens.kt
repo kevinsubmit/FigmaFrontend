@@ -116,7 +116,9 @@ import com.nailsdash.android.ui.state.BookingStyleReference
 import com.nailsdash.android.ui.state.StoreDetailViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.YearMonth
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.delay
@@ -919,8 +921,12 @@ private fun StoreDetailContactHoursCard(
     onOpenDial: (String) -> Unit,
     onOpenEmail: (String) -> Unit,
 ) {
-    val todayIndex = currentBackendWeekdayIndex()
-    val todayHoursText = hoursTextForDay(storeHours = storeHours, dayIndex = todayIndex)
+    val todayHoursText = if (storeHours.isEmpty()) {
+        normalizedContact(store.opening_hours) ?: "-"
+    } else {
+        val todayIndex = currentBackendWeekdayIndex(store.time_zone)
+        hoursTextForDay(storeHours = storeHours, dayIndex = todayIndex)
+    }
     val weekToggleInteraction = remember { MutableInteractionSource() }
     val chevronRotation by animateFloatAsState(
         targetValue = if (showFullHours) 270f else 90f,
@@ -2670,9 +2676,16 @@ private fun dayLabel(dayOfWeek: Int): String {
     }
 }
 
-private fun currentBackendWeekdayIndex(): Int {
+private fun currentBackendWeekdayIndex(storeTimeZone: String?): Int {
     // java.time DayOfWeek: Monday = 1 ... Sunday = 7 -> backend: 0..6
-    return LocalDate.now().dayOfWeek.value - 1
+    val zoneId = parseStoreZoneId(storeTimeZone)
+    return LocalDate.now(zoneId).dayOfWeek.value - 1
+}
+
+private fun parseStoreZoneId(storeTimeZone: String?): ZoneId {
+    val raw = storeTimeZone?.trim().orEmpty()
+    if (raw.isEmpty()) return ZoneId.systemDefault()
+    return runCatching { ZoneId.of(raw) }.getOrDefault(ZoneId.systemDefault())
 }
 
 private fun hoursTextForDay(
@@ -2681,10 +2694,29 @@ private fun hoursTextForDay(
 ): String {
     val row = storeHours.firstOrNull { it.day_of_week == dayIndex } ?: return "Closed"
     if (row.is_closed) return "Closed"
-    val open = row.open_time?.trim().orEmpty()
-    val close = row.close_time?.trim().orEmpty()
-    if (open.isEmpty() || close.isEmpty()) return "Closed"
+    val open = formatStoreHourLabel(row.open_time)
+    val close = formatStoreHourLabel(row.close_time)
+    if (open == "-" || close == "-") return "Closed"
     return "$open - $close"
+}
+
+private val STORE_HOUR_INPUT_FORMATTERS: List<DateTimeFormatter> =
+    listOf(
+        DateTimeFormatter.ofPattern("HH:mm:ss", Locale.US),
+        DateTimeFormatter.ofPattern("HH:mm", Locale.US),
+    )
+private val STORE_HOUR_OUTPUT_FORMATTER: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("h:mm a", Locale.US)
+
+private fun formatStoreHourLabel(raw: String?): String {
+    val text = raw?.trim().orEmpty()
+    if (text.isEmpty()) return "-"
+    STORE_HOUR_INPUT_FORMATTERS.forEach { formatter ->
+        runCatching { LocalTime.parse(text, formatter) }.getOrNull()?.let { parsed ->
+            return parsed.format(STORE_HOUR_OUTPUT_FORMATTER)
+        }
+    }
+    return text
 }
 
 private fun normalizedContact(value: String?): String? {
