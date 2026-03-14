@@ -392,7 +392,7 @@ private fun StoreListCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(220.dp)
+                    .height(232.dp)
                     .padding(horizontal = 10.dp, vertical = 10.dp)
                     .clip(RoundedCornerShape(12.dp)),
             ) {
@@ -437,22 +437,20 @@ private fun StoreListCard(
                 }
             }
 
-            if (thumbs.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    repeat(4) { index ->
-                        StoreImageBlock(
-                            imageUrl = thumbs.getOrNull(index),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(76.dp)
-                                .clip(RoundedCornerShape(10.dp)),
-                        )
-                    }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                repeat(4) { index ->
+                    StoreImageBlock(
+                        imageUrl = thumbs.getOrNull(index),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(82.dp)
+                            .clip(RoundedCornerShape(10.dp)),
+                    )
                 }
             }
 
