@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.nailsdash.android.data.model.Appointment
 import com.nailsdash.android.data.repository.AppointmentsRepository
+import com.nailsdash.android.data.repository.StoresRepository
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
@@ -19,6 +20,7 @@ enum class AppointmentSegment(val label: String) {
 
 class AppointmentsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppointmentsRepository()
+    private val storesRepository = StoresRepository()
 
     var items by mutableStateOf(emptyList<Appointment>())
         private set
@@ -29,6 +31,9 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
+    var storeAddressByStoreId by mutableStateOf<Map<Int, String>>(emptyMap())
+        private set
+
     var selectedSegment by mutableStateOf(AppointmentSegment.Upcoming)
 
     fun load(bearerToken: String) {
@@ -37,10 +42,12 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
             repository.getMyAppointments(bearerToken = bearerToken, limit = 100)
                 .onSuccess {
                     items = it
+                    loadStoreAddressFallbacks(it)
                     errorMessage = null
                 }
                 .onFailure { err ->
                     items = emptyList()
+                    storeAddressByStoreId = emptyMap()
                     errorMessage = err.message
                 }
             isLoading = false
@@ -69,5 +76,33 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         } catch (_: Exception) {
             false
         }
+    }
+
+    private suspend fun loadStoreAddressFallbacks(appointments: List<Appointment>) {
+        val storeIds = appointments.map { it.store_id }.toSet()
+        if (storeIds.isEmpty()) {
+            storeAddressByStoreId = emptyMap()
+            return
+        }
+
+        val existing = storeAddressByStoreId
+        storesRepository.getStores(sortBy = "recommended", limit = 100)
+            .onSuccess { stores ->
+                val addressMap = buildMap<Int, String> {
+                    stores.forEach { store ->
+                        if (store.id in storeIds) {
+                            val fullAddress = store.formattedAddress.trim()
+                            if (fullAddress.isNotEmpty()) {
+                                put(store.id, fullAddress)
+                            }
+                        }
+                    }
+                }
+                storeAddressByStoreId = addressMap
+            }
+            .onFailure {
+                // Keep existing mapping if fallback lookup fails.
+                storeAddressByStoreId = existing
+            }
     }
 }

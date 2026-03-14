@@ -129,8 +129,13 @@ fun AppointmentsScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         items(displayItems, key = { it.id }) { appointment ->
+                            val displayAddress = resolvedStoreAddress(
+                                item = appointment,
+                                storeAddressByStoreId = appointmentsViewModel.storeAddressByStoreId,
+                            )
                             AppointmentCard(
                                 item = appointment,
+                                resolvedStoreAddress = displayAddress,
                                 onOpenAppointment = onOpenAppointment,
                                 onOpenMaps = { storeName, address ->
                                     mapTarget = AppointmentsMapTarget(
@@ -359,6 +364,7 @@ private fun EmptyAppointmentsState(
 @Composable
 private fun AppointmentCard(
     item: Appointment,
+    resolvedStoreAddress: String?,
     onOpenAppointment: (appointmentId: Int) -> Unit,
     onOpenMaps: (storeName: String?, address: String) -> Unit,
 ) {
@@ -441,7 +447,7 @@ private fun AppointmentCard(
                             color = AppointmentsPrimaryText,
                         )
                     }
-                    item.store_address?.trim()?.takeIf { it.isNotEmpty() }?.let { address ->
+                    resolvedStoreAddress?.let { address ->
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Icon(
                                 Icons.Outlined.LocationOn,
@@ -654,6 +660,19 @@ private fun formatTime(raw: String): String {
     return runCatching {
         LocalTime.parse(normalized).format(DateTimeFormatter.ofPattern("h:mm a", Locale.US))
     }.getOrElse { raw }
+}
+
+private fun resolvedStoreAddress(
+    item: Appointment,
+    storeAddressByStoreId: Map<Int, String>,
+): String? {
+    val mapped = storeAddressByStoreId[item.store_id]?.trim()
+    if (!mapped.isNullOrEmpty()) return mapped
+
+    val fallback = item.store_address?.trim()
+    if (!fallback.isNullOrEmpty()) return fallback
+
+    return null
 }
 
 private data class AppointmentsMapTarget(

@@ -71,6 +71,7 @@ Last updated: 2026-03-11
   - done: appointments-date-time-pill-icon-outline parity pass #212 (My Appointments date/time pills now use outlined calendar/clock icon semantics to align closer with iOS line-style `calendar` + `clock` glyph treatment)
   - done: appointments-status-system-color parity pass #217 (My Appointments status capsule color mapping now uses iOS system palette semantics: pending `#FFCC00`, confirmed `#34C759`, completed `#0A84FF`, cancelled `#FF3B30`, expired `#8E8E93`, fallback `#FF9500`)
   - done: appointments-status-pill-caption-alpha parity pass #219 (My Appointments status capsule now uses explicit `12sp` semibold caption typography and exact iOS-like background alpha `0.14` instead of Android-default label sizing and `0.15` fill)
+  - done: appointments-store-address-fallback parity pass #226 (My Appointments now mirrors iOS address resolution by loading store-address fallback mapping via `store_id` and prioritizing full store-address display over sparse appointment payload values)
 - `DONE` Appointment detail (`AppointmentDetailView` -> `AppointmentDetailScreen.kt`)
   - done: card-based detail, map open with map-app chooser sheet, status display, iOS-like top close action, bottom action bar helper text, dedicated cancel/reschedule action sheets, picker-based reschedule date/time, top auto-dismiss toast, loading overlay, fine-grained visual styling (dark + gold card system, action bar, sheets)
 
