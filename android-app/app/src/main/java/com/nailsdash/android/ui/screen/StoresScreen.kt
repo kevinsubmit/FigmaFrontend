@@ -88,6 +88,7 @@ fun StoresScreen(
     sessionViewModel: AppSessionViewModel,
     onOpenStore: (storeId: Int) -> Unit = {},
     onBack: () -> Unit = {},
+    hideTabBar: Boolean = false,
     storesViewModel: StoresViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -148,7 +149,9 @@ fun StoresScreen(
                 selected = storesViewModel.selectedSort,
                 onSelect = storesViewModel::onSortSelected,
                 onBack = {
-                    sessionViewModel.resetBookFlowSource()
+                    if (!hideTabBar) {
+                        sessionViewModel.resetBookFlowSource()
+                    }
                     onBack()
                 },
             )

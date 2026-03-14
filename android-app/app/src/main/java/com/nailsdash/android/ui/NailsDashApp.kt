@@ -255,9 +255,17 @@ fun NailsDashApp() {
                         navController.navigate("book/store/$storeId")
                     },
                     onBrowseStores = {
-                        navController.navigate(MainDestination.Book.route) {
-                            launchSingleTop = true
-                        }
+                        navController.navigate("deals/stores")
+                    },
+                )
+            }
+            composable("deals/stores") {
+                StoresScreen(
+                    sessionViewModel = sessionViewModel,
+                    hideTabBar = true,
+                    onBack = { navController.navigateUp() },
+                    onOpenStore = { storeId ->
+                        navController.navigate("book/store/$storeId")
                     },
                 )
             }
