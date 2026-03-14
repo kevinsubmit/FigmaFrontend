@@ -762,6 +762,7 @@ private fun StoreDetailLocationCard(
     val outerShape = RoundedCornerShape(20.dp)
     val innerPanelShape = RoundedCornerShape(22.dp)
     val ctaShape = RoundedCornerShape(999.dp)
+    val mapsCtaInteraction = remember { MutableInteractionSource() }
     val storeAvatarUrl = remember(store.images) {
         store.images.firstOrNull()?.image_url?.let { AssetUrlResolver.resolveURL(it) }
     }
@@ -883,7 +884,11 @@ private fun StoreDetailLocationCard(
                     .height(58.dp)
                     .clip(ctaShape)
                     .background(BookingGold)
-                    .clickable(onClick = onOpenInMaps),
+                    .clickable(
+                        interactionSource = mapsCtaInteraction,
+                        indication = null,
+                        onClick = onOpenInMaps,
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 Row(
