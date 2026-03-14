@@ -448,6 +448,7 @@ private fun AppointmentCard(
                         )
                     }
                     resolvedStoreAddress?.let { address ->
+                        val addressInteraction = remember(item.id, address) { MutableInteractionSource() }
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Icon(
                                 Icons.Outlined.LocationOn,
@@ -459,7 +460,10 @@ private fun AppointmentCard(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = AppointmentsSecondaryText,
                                 textDecoration = TextDecoration.Underline,
-                                modifier = Modifier.clickable { onOpenMaps(item.store_name, address) },
+                                modifier = Modifier.clickable(
+                                    interactionSource = addressInteraction,
+                                    indication = null,
+                                ) { onOpenMaps(item.store_name, address) },
                             )
                         }
                     }

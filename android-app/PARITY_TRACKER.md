@@ -79,6 +79,7 @@ Last updated: 2026-03-11
   - done: appointments-store-address-fallback parity pass #226 (My Appointments now mirrors iOS address resolution by loading store-address fallback mapping via `store_id` and prioritizing full store-address display over sparse appointment payload values)
   - done: appointments-past-card-opacity parity pass #228 (My Appointments past-card dimming now uses exact iOS opacity token `0.72` instead of Android `0.76`, matching `appointmentCardBody(...).opacity(isPast ? 0.72 : 1)` visual hierarchy)
   - done: appointments-upcoming-boundary-inclusive parity pass #233 (My Appointments segment filtering/count logic now treats appointments at the current timestamp as upcoming via inclusive `>= now` semantics, matching iOS boundary behavior and preventing edge-case misclassification at exact time boundaries)
+  - done: appointments-address-plain-tap parity pass #234 (My Appointments store-address tap action now uses plain no-ripple interaction semantics to align with iOS map-link button behavior and remove Android ripple chrome)
 - `DONE` Appointment detail (`AppointmentDetailView` -> `AppointmentDetailScreen.kt`)
   - done: card-based detail, map open with map-app chooser sheet, status display, iOS-like top close action, bottom action bar helper text, dedicated cancel/reschedule action sheets, picker-based reschedule date/time, top auto-dismiss toast, loading overlay, fine-grained visual styling (dark + gold card system, action bar, sheets)
 
