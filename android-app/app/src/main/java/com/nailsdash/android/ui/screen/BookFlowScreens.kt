@@ -59,6 +59,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
@@ -136,6 +137,8 @@ private val BookingBackground = Color.Black
 private val BookingCardBackground = Color(0xFF111111)
 private val BookingCardStroke = BookingGold.copy(alpha = 0.22f)
 private val BookingSecondaryText = Color.White.copy(alpha = 0.64f)
+private const val StoreDetailMapBackgroundURL =
+    "https://images.unsplash.com/photo-1664044056437-6330bcf8e2fe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaXR5JTIwc3RyZWV0JTIwbWFwJTIwZ3JhcGhpYyUyMHRvcCUyMHZpZXd8ZW58MXx8fHwxNzY1OTM3MzkzfDA&ixlib=rb-4.1.0&q=80&w=1080"
 
 @Composable
 fun StoreDetailScreen(
@@ -355,6 +358,13 @@ fun StoreDetailScreen(
                     }
 
                     else -> {
+                        item {
+                            StoreDetailLocationCard(
+                                store = store,
+                                onOpenInMaps = { showMapChooser = true },
+                            )
+                        }
+
                         item {
                             StoreDetailContactHoursCard(
                                 store = store,
@@ -738,6 +748,164 @@ private fun StoreServiceRow(
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
                 ),
             )
+        }
+    }
+}
+
+@Composable
+private fun StoreDetailLocationCard(
+    store: StoreDetail,
+    onOpenInMaps: () -> Unit,
+) {
+    val outerShape = RoundedCornerShape(20.dp)
+    val innerPanelShape = RoundedCornerShape(22.dp)
+    val ctaShape = RoundedCornerShape(999.dp)
+    val storeAvatarUrl = remember(store.images) {
+        store.images.firstOrNull()?.image_url?.let { AssetUrlResolver.resolveURL(it) }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(306.dp)
+            .clip(outerShape)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF232323),
+                        Color(0xFF121212),
+                    ),
+                ),
+            )
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = 0.16f),
+                shape = outerShape,
+            ),
+    ) {
+        AsyncImage(
+            model = StoreDetailMapBackgroundURL,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.08f),
+                            Color.Black.copy(alpha = 0.62f),
+                        ),
+                    ),
+                ),
+        )
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(14.dp)
+                .clip(innerPanelShape)
+                .background(Color.Black.copy(alpha = 0.62f))
+                .border(
+                    width = 1.dp,
+                    color = Color.White.copy(alpha = 0.16f),
+                    shape = innerPanelShape,
+                )
+                .padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (storeAvatarUrl != null) {
+                    AsyncImage(
+                        model = storeAvatarUrl,
+                        contentDescription = store.name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .border(
+                                width = 1.dp,
+                                color = Color.White.copy(alpha = 0.18f),
+                                shape = CircleShape,
+                            ),
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.08f))
+                            .border(
+                                width = 1.dp,
+                                color = Color.White.copy(alpha = 0.18f),
+                                shape = CircleShape,
+                            ),
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(
+                        text = store.name,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = store.formattedAddress,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                        ),
+                        color = Color.White.copy(alpha = 0.88f),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(58.dp)
+                    .clip(ctaShape)
+                    .background(BookingGold)
+                    .clickable(onClick = onOpenInMaps),
+                contentAlignment = Alignment.Center,
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.NearMe,
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .rotate(45f),
+                    )
+                    Text(
+                        text = "Open in Maps",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = Color.Black,
+                    )
+                }
+            }
         }
     }
 }
