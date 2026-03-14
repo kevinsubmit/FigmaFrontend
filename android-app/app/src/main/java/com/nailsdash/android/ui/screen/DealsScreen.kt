@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.Card
@@ -107,19 +108,7 @@ fun DealsScreen(
 
                 if (!dealsViewModel.isLoading && rows.isEmpty()) {
                     item {
-                        Card(
-                            shape = RoundedCornerShape(18.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = DealsCardBackground),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, DealsGold.copy(alpha = 0.18f)),
-                        ) {
-                            Text(
-                                text = "No active deals right now. Check back soon for new offers.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.78f),
-                                modifier = Modifier.padding(14.dp),
-                            )
-                        }
+                        DealsEmptyStateCard()
                     }
                 } else {
                     itemsIndexed(
@@ -250,6 +239,49 @@ private fun DealsErrorCard(message: String) {
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
         )
+    }
+}
+
+@Composable
+private fun DealsEmptyStateCard() {
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = DealsCardBackground),
+        border = androidx.compose.foundation.BorderStroke(1.dp, DealsGold.copy(alpha = 0.18f)),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .background(Color.White.copy(alpha = 0.05f), CircleShape)
+                    .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.LocalOffer,
+                    contentDescription = null,
+                    tint = DealsGold,
+                    modifier = Modifier.size(26.dp),
+                )
+            }
+            Text(
+                text = "No active deals right now",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = Color.White.copy(alpha = 0.90f),
+            )
+            Text(
+                text = "Check back soon for new offers.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.72f),
+            )
+        }
     }
 }
 
