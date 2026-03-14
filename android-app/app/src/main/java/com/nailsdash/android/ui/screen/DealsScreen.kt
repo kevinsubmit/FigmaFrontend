@@ -593,7 +593,7 @@ private fun DealsLoadingOverlay() {
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = DealsCardBackground.copy(alpha = 0.96f)),
             border = androidx.compose.foundation.BorderStroke(1.dp, DealsGold.copy(alpha = 0.16f)),
-            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
@@ -609,7 +609,7 @@ private fun DealsLoadingOverlay() {
                     text = "Loading deals...",
                     style = MaterialTheme.typography.bodySmall.copy(
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 12.sp,
+                        fontSize = 13.sp,
                     ),
                     color = Color.White.copy(alpha = 0.62f),
                 )
