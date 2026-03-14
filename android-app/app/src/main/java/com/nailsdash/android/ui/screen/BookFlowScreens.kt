@@ -276,33 +276,6 @@ fun StoreDetailScreen(
                                     color = MaterialTheme.colorScheme.primary,
                                 )
                             }
-                            if (store.images.isEmpty()) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    FilterChip(
-                                        selected = storeDetailViewModel.isFavorited,
-                                        onClick = onToggleFavorite,
-                                        label = {
-                                            Text(
-                                                if (storeDetailViewModel.isFavoriteLoading) {
-                                                    "Saving..."
-                                                } else if (storeDetailViewModel.isFavorited) {
-                                                    "Favorited"
-                                                } else {
-                                                    "Favorite"
-                                                },
-                                            )
-                                        },
-                                        enabled = !storeDetailViewModel.isFavoriteLoading,
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-                                            selectedLabelColor = MaterialTheme.colorScheme.primary,
-                                        ),
-                                    )
-                                }
-                            }
                         }
                     }
                 }
