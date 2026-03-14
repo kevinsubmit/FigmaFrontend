@@ -276,11 +276,11 @@ fun StoreDetailScreen(
                                     color = MaterialTheme.colorScheme.primary,
                                 )
                             }
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                if (store.images.isEmpty()) {
+                            if (store.images.isEmpty()) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
                                     FilterChip(
                                         selected = storeDetailViewModel.isFavorited,
                                         onClick = onToggleFavorite,
@@ -302,11 +302,6 @@ fun StoreDetailScreen(
                                         ),
                                     )
                                 }
-                                FilterChip(
-                                    selected = false,
-                                    onClick = { showMapChooser = true },
-                                    label = { Text("Map") },
-                                )
                             }
                         }
                     }
