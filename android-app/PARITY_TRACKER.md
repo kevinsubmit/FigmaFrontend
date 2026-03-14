@@ -20,6 +20,7 @@ Last updated: 2026-03-11
   - done: home-feed-grid-spacing-inset parity pass #223 (Home feed grid now matches iOS `HomeFeedModule` cadence by using `16dp` vertical card spacing and content insets `top=8dp/bottom=16dp` instead of Android-only wider top/bottom rhythm)
   - done: home-tab-switch-book-flow-reset parity pass #225 (Main tab navigation now resets book-flow source whenever active tab changes away from `Book`, matching iOS `HomeView.onChange(selectedTab)` behavior and preventing stale style-reference entry state)
   - done: home-header-tag-bottom-gap parity pass #227 (Home header tag scroller now includes extra `8dp` bottom spacing before the divider, matching iOS `headerSearchArea` container-level bottom padding rhythm)
+  - done: home-error-text-footnote-red parity pass #237 (Home feed inline error copy now uses iOS-like footnote scale `13sp` and `red@0.9` tone with full-width leading alignment, replacing Android default error text token rendering)
 - `DONE` Pin detail (`PinDetailModule.swift` -> `HomePinDetailScreen.kt`)
   - done: favorite, share, download, related pins, choose salon, advanced hero interactions (pinch-zoom + drag + double-tap reset + zoom-state scroll lock), floating top controls parity (left back + right share/favorite controls with gradient overlay), and iOS-like floating bottom booking strip + toast feedback
 - `DONE` Deals tab (`HomeView.swift DealsView` -> `DealsScreen.kt`)
