@@ -394,7 +394,7 @@ fun StoreDetailScreen(
                                     ),
                                     border = BorderStroke(
                                         width = 1.dp,
-                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+                                        color = BookingGold.copy(alpha = 0.18f),
                                     ),
                                 ) {
                                     Text(
@@ -942,7 +942,7 @@ private fun StoreDetailContactHoursCard(
         ),
         border = BorderStroke(
             width = 1.dp,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.16f),
+            color = BookingGold.copy(alpha = 0.18f),
         ),
     ) {
         Column(
