@@ -387,7 +387,7 @@ fun StoreDetailScreen(
                         store.description?.takeIf { it.isNotBlank() }?.let { description ->
                             item {
                                 Card(
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape = RoundedCornerShape(14.dp),
                                     modifier = Modifier.fillMaxWidth(),
                                     colors = CardDefaults.cardColors(
                                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.20f),
@@ -401,7 +401,7 @@ fun StoreDetailScreen(
                                         text = description.trim(),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(12.dp),
+                                        modifier = Modifier.padding(14.dp),
                                     )
                                 }
                             }
@@ -935,7 +935,7 @@ private fun StoreDetailContactHoursCard(
     )
 
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.20f),
@@ -946,7 +946,7 @@ private fun StoreDetailContactHoursCard(
         ),
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
