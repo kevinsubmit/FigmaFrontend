@@ -188,7 +188,6 @@ fun StoresScreen(
                         StoreListCard(
                             store = store,
                             rating = storesViewModel.displayRating(store),
-                            reviews = storesViewModel.displayReviewCount(store),
                             images = storesViewModel.storeImages[store.id].orEmpty(),
                             onOpenStore = { onOpenStore(store.id) },
                             onOpenMap = { mapTarget = store },
@@ -349,7 +348,6 @@ private fun StoreListEmptyCard() {
 private fun StoreListCard(
     store: Store,
     rating: Double,
-    reviews: Int,
     images: List<StoreImage>,
     onOpenStore: () -> Unit,
     onOpenMap: () -> Unit,
@@ -457,13 +455,13 @@ private fun StoreListCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 2.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
+                    .padding(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text(
                     text = store.name,
                     color = Color.White,
-                    fontSize = 26.sp,
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -471,14 +469,10 @@ private fun StoreListCard(
                 Text(
                     text = store.formattedAddress,
                     color = Color.White.copy(alpha = 0.64f),
-                    fontSize = 16.sp,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Normal,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = "$reviews reviews",
-                    color = Color.White.copy(alpha = 0.58f),
-                    fontSize = 12.sp,
                 )
             }
 
