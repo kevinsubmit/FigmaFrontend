@@ -63,6 +63,7 @@ import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
@@ -149,6 +150,7 @@ fun StoreDetailScreen(
     val context = LocalContext.current
     var showMapChooser by remember(storeId) { mutableStateOf(false) }
     var mapLaunchError by remember(storeId) { mutableStateOf<String?>(null) }
+    var noticeMessage by remember(storeId) { mutableStateOf<String?>(null) }
     var showFullHours by remember(storeId) { mutableStateOf(false) }
 
     val onToggleFavorite: () -> Unit = {
@@ -167,6 +169,18 @@ fun StoreDetailScreen(
     LaunchedEffect(selectedTab) {
         if (selectedTab != "Details") {
             showFullHours = false
+        }
+    }
+    LaunchedEffect(storeDetailViewModel.errorMessage) {
+        val message = storeDetailViewModel.errorMessage?.trim().orEmpty()
+        if (message.isNotEmpty()) {
+            noticeMessage = message
+        }
+    }
+    LaunchedEffect(mapLaunchError) {
+        val message = mapLaunchError?.trim().orEmpty()
+        if (message.isNotEmpty()) {
+            noticeMessage = message
         }
     }
 
@@ -425,18 +439,6 @@ fun StoreDetailScreen(
                 item { CircularProgressIndicator() }
             }
 
-            storeDetailViewModel.errorMessage?.let { message ->
-                item {
-                    Text(message, color = MaterialTheme.colorScheme.error)
-                }
-            }
-
-            mapLaunchError?.let { message ->
-                item {
-                    Text(message, color = MaterialTheme.colorScheme.error)
-                }
-            }
-
             if (selectedTab != "Services") {
                 item {
                     Button(
@@ -472,6 +474,27 @@ fun StoreDetailScreen(
                 )
             }
         }
+    }
+
+    noticeMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = {
+                noticeMessage = null
+                mapLaunchError = null
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        noticeMessage = null
+                        mapLaunchError = null
+                    },
+                ) {
+                    Text("OK")
+                }
+            },
+            title = { Text("Message") },
+            text = { Text(message) },
+        )
     }
 }
 
