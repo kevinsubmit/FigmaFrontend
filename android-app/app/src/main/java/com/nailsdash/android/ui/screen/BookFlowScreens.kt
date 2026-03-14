@@ -185,29 +185,30 @@ fun StoreDetailScreen(
         }
     }
 
-    Scaffold(
-        bottomBar = {
-            if (selectedTab == "Services" && selectedService != null) {
-                Button(
-                    onClick = { onBookNow(storeId, selectedService.id) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    Text(
-                        "Book ${selectedService.name} • $${String.format(Locale.US, "%.2f", selectedService.price)}",
-                    )
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            bottomBar = {
+                if (selectedTab == "Services" && selectedService != null) {
+                    Button(
+                        onClick = { onBookNow(storeId, selectedService.id) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    ) {
+                        Text(
+                            "Book ${selectedService.name} • $${String.format(Locale.US, "%.2f", selectedService.price)}",
+                        )
+                    }
                 }
-            }
-        },
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
+            },
+        ) { innerPadding ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
             item {
                 StoreDetailTopBar(onBack = onBack)
             }
@@ -436,31 +437,56 @@ fun StoreDetailScreen(
                 }
             }
 
-            if (storeDetailViewModel.isLoading && store == null) {
-                item { CircularProgressIndicator() }
             }
 
+            if (showMapChooser) {
+                val store = storeDetailViewModel.store
+                if (store != null) {
+                    MapChooserBottomSheet(
+                        placeTitle = store.name,
+                        onDismiss = { showMapChooser = false },
+                        onChoose = { option ->
+                            val opened = openMapWithOption(
+                                context = context,
+                                option = option,
+                                placeTitle = store.name,
+                                address = store.formattedAddress,
+                                latitude = store.latitude,
+                                longitude = store.longitude,
+                            )
+                            mapLaunchError = if (opened) null else "No map app available on this device."
+                            showMapChooser = false
+                        },
+                    )
+                }
+            }
         }
 
-        if (showMapChooser) {
-            val store = storeDetailViewModel.store
-            if (store != null) {
-                MapChooserBottomSheet(
-                    placeTitle = store.name,
-                    onDismiss = { showMapChooser = false },
-                    onChoose = { option ->
-                        val opened = openMapWithOption(
-                            context = context,
-                            option = option,
-                            placeTitle = store.name,
-                            address = store.formattedAddress,
-                            latitude = store.latitude,
-                            longitude = store.longitude,
-                        )
-                        mapLaunchError = if (opened) null else "No map app available on this device."
-                        showMapChooser = false
-                    },
-                )
+        if (storeDetailViewModel.isLoading) {
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = BookingCardBackground),
+                modifier = Modifier.align(Alignment.Center),
+            ) {
+                Row(
+                    modifier = Modifier.padding(20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = BookingGold,
+                    )
+                    Text(
+                        text = "Loading store...",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                        color = Color.White.copy(alpha = 0.72f),
+                    )
+                }
             }
         }
     }
