@@ -75,214 +75,250 @@ fun HomeScreen(
         homeViewModel.loadIfNeeded()
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color.Black, Color.Black.copy(alpha = 0.96f)),
-                    ),
-                ),
-        ) {
-            OutlinedTextField(
-                value = homeViewModel.searchDraft,
-                onValueChange = { homeViewModel.searchDraft = it },
-                placeholder = {
-                    Text(
-                        text = "Search by title (e.g. Classic French Set)",
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                        color = Color.White.copy(alpha = 0.58f),
-                    )
-                },
+        Column(modifier = Modifier.fillMaxSize()) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, top = 8.dp, end = 16.dp)
-                    .height(44.dp),
-                singleLine = true,
-                shape = RoundedCornerShape(999.dp),
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.None,
-                    autoCorrectEnabled = false,
-                    imeAction = ImeAction.Search,
-                ),
-                keyboardActions = KeyboardActions(onSearch = { homeViewModel.applySearch() }),
-                leadingIcon = {
-                    val searchIconInteraction = remember { MutableInteractionSource() }
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .clickable(
-                                interactionSource = searchIconInteraction,
-                                indication = null,
-                            ) { homeViewModel.applySearch() },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Search,
-                            contentDescription = "Search",
-                            tint = Color.White.copy(alpha = 0.72f),
-                            modifier = Modifier.size(15.dp),
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Black, Color.Black.copy(alpha = 0.96f)),
+                        ),
+                    ),
+            ) {
+                OutlinedTextField(
+                    value = homeViewModel.searchDraft,
+                    onValueChange = { homeViewModel.searchDraft = it },
+                    placeholder = {
+                        Text(
+                            text = "Search by title (e.g. Classic French Set)",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                            color = Color.White.copy(alpha = 0.58f),
                         )
-                    }
-                },
-                trailingIcon = {
-                    if (homeViewModel.searchDraft.isNotEmpty()) {
-                        val clearInteraction = remember { MutableInteractionSource() }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, top = 8.dp, end = 16.dp)
+                        .height(44.dp),
+                    singleLine = true,
+                    shape = RoundedCornerShape(999.dp),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.None,
+                        autoCorrectEnabled = false,
+                        imeAction = ImeAction.Search,
+                    ),
+                    keyboardActions = KeyboardActions(onSearch = { homeViewModel.applySearch() }),
+                    leadingIcon = {
+                        val searchIconInteraction = remember { MutableInteractionSource() }
                         Box(
                             modifier = Modifier
-                                .size(26.dp)
+                                .size(34.dp)
                                 .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.07f))
                                 .clickable(
-                                    interactionSource = clearInteraction,
+                                    interactionSource = searchIconInteraction,
                                     indication = null,
-                                ) { homeViewModel.clearSearch() },
+                                ) { homeViewModel.applySearch() },
                             contentAlignment = Alignment.Center,
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Clear,
-                                contentDescription = "Clear search",
+                                imageVector = Icons.Filled.Search,
+                                contentDescription = "Search",
                                 tint = Color.White.copy(alpha = 0.72f),
-                                modifier = Modifier.size(12.dp),
+                                modifier = Modifier.size(15.dp),
+                            )
+                        }
+                    },
+                    trailingIcon = {
+                        if (homeViewModel.searchDraft.isNotEmpty()) {
+                            val clearInteraction = remember { MutableInteractionSource() }
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.07f))
+                                    .clickable(
+                                        interactionSource = clearInteraction,
+                                        indication = null,
+                                    ) { homeViewModel.clearSearch() },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Clear,
+                                    contentDescription = "Clear search",
+                                    tint = Color.White.copy(alpha = 0.72f),
+                                    modifier = Modifier.size(12.dp),
+                                )
+                            }
+                        }
+                    },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color.White,
+                        fontSize = 14.sp,
+                    ),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = HomeHeaderFieldBackground,
+                        unfocusedContainerColor = HomeHeaderFieldBackground,
+                        focusedBorderColor = HomeGold.copy(alpha = 0.22f),
+                        unfocusedBorderColor = HomeGold.copy(alpha = 0.22f),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        cursorColor = HomeGold,
+                    ),
+                )
+
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(start = 16.dp, top = 0.dp, end = 16.dp, bottom = 6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp, bottom = 8.dp),
+                ) {
+                    items(homeViewModel.tags, key = { it }) { tag ->
+                        val selected = homeViewModel.selectedTag == tag
+                        val tagInteraction = remember(tag) { MutableInteractionSource() }
+                        Box(
+                            modifier = Modifier
+                                .heightIn(min = 40.dp)
+                                .shadow(
+                                    elevation = if (selected) 6.dp else 0.dp,
+                                    shape = RoundedCornerShape(999.dp),
+                                    ambientColor = HomeGold.copy(alpha = 0.25f),
+                                    spotColor = HomeGold.copy(alpha = 0.25f),
+                                )
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(if (selected) HomeGold else HomeHeaderFieldBackground)
+                                .border(
+                                    width = 1.dp,
+                                    color = if (selected) Color.Transparent else HomeGold.copy(alpha = 0.26f),
+                                    shape = RoundedCornerShape(999.dp),
+                                )
+                                .clickable(
+                                    interactionSource = tagInteraction,
+                                    indication = null,
+                                ) { homeViewModel.selectTag(tag) }
+                                .padding(horizontal = 14.dp, vertical = 9.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = tag,
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.sp,
+                                ),
+                                color = if (selected) Color.Black else Color.White,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                     }
-                },
-                textStyle = MaterialTheme.typography.bodyMedium.copy(
-                    color = Color.White,
-                    fontSize = 14.sp,
-                ),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = HomeHeaderFieldBackground,
-                    unfocusedContainerColor = HomeHeaderFieldBackground,
-                    focusedBorderColor = HomeGold.copy(alpha = 0.22f),
-                    unfocusedBorderColor = HomeGold.copy(alpha = 0.22f),
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
-                    cursorColor = HomeGold,
-                ),
-            )
+                }
 
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(start = 16.dp, top = 0.dp, end = 16.dp, bottom = 6.dp),
+                HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+            }
+
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 10.dp, bottom = 8.dp),
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(homeViewModel.tags, key = { it }) { tag ->
-                    val selected = homeViewModel.selectedTag == tag
-                    val tagInteraction = remember(tag) { MutableInteractionSource() }
-                    Box(
+                homeViewModel.errorMessage?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                        color = Color.Red.copy(alpha = 0.9f),
                         modifier = Modifier
-                            .heightIn(min = 40.dp)
-                            .shadow(
-                                elevation = if (selected) 6.dp else 0.dp,
-                                shape = RoundedCornerShape(999.dp),
-                                ambientColor = HomeGold.copy(alpha = 0.25f),
-                                spotColor = HomeGold.copy(alpha = 0.25f),
+                            .fillMaxWidth()
+                            .padding(horizontal = 2.dp),
+                    )
+                }
+
+                val emptyTitle = if (homeViewModel.searchQuery.isBlank() && homeViewModel.selectedTag == "All") {
+                    "No images yet"
+                } else {
+                    "No images found"
+                }
+                val emptySubtitle = if (homeViewModel.searchQuery.isBlank() && homeViewModel.selectedTag == "All") {
+                    "New inspiration will appear here."
+                } else {
+                    "Try another search keyword."
+                }
+
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
+                ) {
+                    itemsIndexed(homeViewModel.pins, key = { _, item -> item.id }) { index, pin ->
+                        if (index == homeViewModel.pins.lastIndex) {
+                            homeViewModel.loadMoreIfNeeded(pin.id)
+                        }
+
+                        HomePinCard(pin = pin, onClick = { onOpenPin(pin.id) })
+                    }
+
+                    if (!homeViewModel.isLoading && homeViewModel.pins.isEmpty()) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            HomeEmptyStateCard(
+                                title = emptyTitle,
+                                subtitle = emptySubtitle,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 8.dp),
                             )
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(if (selected) HomeGold else HomeHeaderFieldBackground)
-                            .border(
-                                width = 1.dp,
-                                color = if (selected) Color.Transparent else HomeGold.copy(alpha = 0.26f),
-                                shape = RoundedCornerShape(999.dp),
-                            )
-                            .clickable(
-                                interactionSource = tagInteraction,
-                                indication = null,
-                            ) { homeViewModel.selectTag(tag) }
-                            .padding(horizontal = 14.dp, vertical = 9.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = tag,
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 13.sp,
-                            ),
-                            color = if (selected) Color.Black else Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        }
+                    }
+
+                    if (homeViewModel.isLoadingMore) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            CircularProgressIndicator(modifier = Modifier.padding(vertical = 8.dp), color = HomeGold)
+                        }
                     }
                 }
             }
-
-            HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        if (homeViewModel.isLoading) {
+            HomeLoadingOverlay()
+        }
+    }
+}
+
+@Composable
+private fun HomeLoadingOverlay() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF111111).copy(alpha = 0.96f)),
+            border = BorderStroke(1.dp, HomeGold.copy(alpha = 0.22f)),
         ) {
-            homeViewModel.errorMessage?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                    color = Color.Red.copy(alpha = 0.9f),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 2.dp),
-                )
-            }
-
-            if (homeViewModel.isLoading && homeViewModel.pins.isEmpty()) {
-                CircularProgressIndicator(modifier = Modifier.padding(8.dp), color = HomeGold)
-            }
-
-            val emptyTitle = if (homeViewModel.searchQuery.isBlank() && homeViewModel.selectedTag == "All") {
-                "No images yet"
-            } else {
-                "No images found"
-            }
-            val emptySubtitle = if (homeViewModel.searchQuery.isBlank() && homeViewModel.selectedTag == "All") {
-                "New inspiration will appear here."
-            } else {
-                "Try another search keyword."
-            }
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
+            Column(
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                itemsIndexed(homeViewModel.pins, key = { _, item -> item.id }) { index, pin ->
-                    if (index == homeViewModel.pins.lastIndex) {
-                        homeViewModel.loadMoreIfNeeded(pin.id)
-                    }
-
-                    HomePinCard(pin = pin, onClick = { onOpenPin(pin.id) })
-                }
-
-                if (!homeViewModel.isLoading && homeViewModel.pins.isEmpty()) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        HomeEmptyStateCard(
-                            title = emptyTitle,
-                            subtitle = emptySubtitle,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 8.dp),
-                        )
-                    }
-                }
-
-                if (homeViewModel.isLoadingMore) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        CircularProgressIndicator(modifier = Modifier.padding(vertical = 8.dp), color = HomeGold)
-                    }
-                }
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = HomeGold,
+                )
+                Text(
+                    text = "Loading...",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp,
+                    ),
+                    color = Color.White.copy(alpha = 0.62f),
+                )
             }
         }
     }
