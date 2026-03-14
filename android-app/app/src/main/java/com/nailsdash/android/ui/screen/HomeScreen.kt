@@ -251,9 +251,9 @@ fun HomeScreen(
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 12.dp, bottom = 26.dp),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
             ) {
                 itemsIndexed(homeViewModel.pins, key = { _, item -> item.id }) { index, pin ->
                     if (index == homeViewModel.pins.lastIndex) {
