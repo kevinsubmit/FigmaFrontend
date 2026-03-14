@@ -122,6 +122,20 @@ fun AppointmentsScreen(
                     .padding(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                appointmentsViewModel.errorMessage
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { message ->
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                            color = Color.Red.copy(alpha = 0.9f),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 2.dp),
+                        )
+                    }
+
                 if (!appointmentsViewModel.isLoading && displayItems.isEmpty()) {
                     EmptyAppointmentsState(
                         isUpcoming = appointmentsViewModel.selectedSegment == AppointmentSegment.Upcoming,
@@ -183,7 +197,7 @@ fun AppointmentsScreen(
                     Text("OK")
                 }
             },
-            title = { Text("Notice") },
+            title = { Text("Message") },
             text = { Text(message) },
         )
     }

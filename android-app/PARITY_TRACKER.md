@@ -102,6 +102,7 @@ Last updated: 2026-03-11
   - done: appointments-loading-overlay-style parity pass #242 (My Appointments loading indicator now uses iOS-like centered compact card without full-screen dim layer, with stacked spinner+label treatment and subdued secondary loading text contrast)
   - done: appointments-date-time-pill-gap parity pass #245 (My Appointments date/time pill row now uses iOS-matched sibling spacing `10dp`, aligning `HStack(spacing: UITheme.spacing10)` layout rhythm instead of tighter Android `8dp` spacing)
   - done: appointments-error-notice-dialog parity pass #249 (My Appointments error handling now follows iOS notice-alert semantics with modal `Notice` dialog presentation and removes Android-only inline red error text row)
+  - done: appointments-error-inline-message-title parity pass #257 (My Appointments now restores iOS-style inline footnote error text while keeping alert behavior, and alert title is aligned to `Message` to match iOS `alert(\"Message\")` semantics)
 - `DONE` Appointment detail (`AppointmentDetailView` -> `AppointmentDetailScreen.kt`)
   - done: card-based detail, map open with map-app chooser sheet, status display, iOS-like top close action, bottom action bar helper text, dedicated cancel/reschedule action sheets, picker-based reschedule date/time, top auto-dismiss toast, loading overlay, fine-grained visual styling (dark + gold card system, action bar, sheets)
 
