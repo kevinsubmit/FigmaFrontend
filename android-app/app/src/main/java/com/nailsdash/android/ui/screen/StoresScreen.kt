@@ -159,7 +159,7 @@ fun StoresScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
+                    .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 storesViewModel.errorMessage?.let { StoreListMessageBanner(it, isError = true) }
@@ -177,14 +177,14 @@ fun StoresScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(12.dp),
+                        .padding(16.dp),
                 ) {
                     StoreListEmptyCard()
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                    contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 26.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     items(storesViewModel.stores, key = { it.id }) { store ->
