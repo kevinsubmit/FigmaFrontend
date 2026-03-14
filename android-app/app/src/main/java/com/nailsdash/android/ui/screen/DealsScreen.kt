@@ -367,7 +367,10 @@ private fun DealCard(
                         )
                         Text(
                             text = if (hasStoreTarget) store?.name ?: "Store Offer" else "Platform Offer",
-                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                            ),
                             color = Color.White.copy(alpha = 0.78f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
