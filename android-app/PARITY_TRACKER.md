@@ -72,6 +72,7 @@ Last updated: 2026-03-11
   - done: service/technician/date/time/notes, style reference note auto-injection, success overlay transition, step header + card-based sections, sticky bottom summary/confirm bar, month calendar date picker, single/group toggle + guest service rows + group booking submit, pay-at-salon detailed module (safe badge shimmer + payment badges), black-gold typography/spacing polish for section titles/cards/chips/notes/bottom bar/calendar/summary overlay, micro-motion parity pass (group section animated expand/collapse, booking-type spring emphasis, calendar day animated state transitions, summary/CTA text transitions, success overlay fade+scale)
   - done: booking-form-topbar-token parity pass #181 (Book form `STEP 03` header now mirrors iOS top-bar token style: centered caption2 step label + `17sp` headline title, black `0.96` backdrop with bottom hairline divider, and form content horizontal page padding unified to `16dp`)
   - done: booking-form-error-message-dialog parity pass #252 (Book form now listens to `errorMessage` and presents a modal `Message` dialog, removing Android-only inline error row while keeping iOS-aligned in-card slot hint messaging)
+  - done: booking-form-inline-success-row-removal parity pass #253 (Book form no longer renders Android-only inline success text row after submission; success feedback now stays aligned with iOS overlay-driven completion flow)
 
 ## Appointments
 - `DONE` My appointments (`MyAppointmentsView.swift` -> `AppointmentsScreen.kt`)

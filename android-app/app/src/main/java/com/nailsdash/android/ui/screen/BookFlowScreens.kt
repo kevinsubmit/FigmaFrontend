@@ -1616,12 +1616,6 @@ fun BookAppointmentScreen(
                     }
                 }
 
-                bookAppointmentViewModel.successMessage?.let { message ->
-                    item {
-                        Text(message, color = BookingGold)
-                    }
-                }
-
                 if (bookAppointmentViewModel.isLoading) {
                     item { CircularProgressIndicator() }
                 }
