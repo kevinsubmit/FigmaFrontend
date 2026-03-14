@@ -921,6 +921,7 @@ private fun StoreDetailContactHoursCard(
 ) {
     val todayIndex = currentBackendWeekdayIndex()
     val todayHoursText = hoursTextForDay(storeHours = storeHours, dayIndex = todayIndex)
+    val weekToggleInteraction = remember { MutableInteractionSource() }
     val chevronRotation by animateFloatAsState(
         targetValue = if (showFullHours) 270f else 90f,
         animationSpec = tween(durationMillis = 180),
@@ -940,7 +941,7 @@ private fun StoreDetailContactHoursCard(
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
                 text = "CONTACT & BUSINESS HOURS",
@@ -967,10 +968,14 @@ private fun StoreDetailContactHoursCard(
             if (storeHours.isNotEmpty()) {
                 Row(
                     modifier = Modifier
-                        .clickable(onClick = onToggleShowFullHours)
+                        .clickable(
+                            interactionSource = weekToggleInteraction,
+                            indication = null,
+                            onClick = onToggleShowFullHours,
+                        )
                         .padding(vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Text(
                         text = "Show full week",
@@ -997,7 +1002,9 @@ private fun StoreDetailContactHoursCard(
                     shrinkVertically(animationSpec = tween(durationMillis = 160)),
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     (0..6).forEach { dayIndex ->
@@ -1022,7 +1029,7 @@ private fun StoreDetailContactHoursCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(1.dp)
-                    .background(Color.White.copy(alpha = 0.10f)),
+                    .background(Color.White.copy(alpha = 0.08f)),
             )
 
             normalizedContact(store.phone)?.let { phone ->
