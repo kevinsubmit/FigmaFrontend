@@ -236,13 +236,13 @@ private fun StoreListTopHeader() {
             color = StoreListGold,
             fontWeight = FontWeight.Bold,
             fontSize = 11.sp,
-            letterSpacing = 2.1.sp,
+            letterSpacing = 2.2.sp,
         )
         Text(
             text = "Choose a salon",
             color = Color.White,
             fontWeight = FontWeight.Bold,
-            fontSize = 20.sp,
+            fontSize = 17.sp,
         )
     }
 }
