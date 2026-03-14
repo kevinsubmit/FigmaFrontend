@@ -72,7 +72,7 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
                 "${item.appointment_date}T${item.appointment_time.take(8)}",
                 DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"),
             )
-            dateTime.isAfter(LocalDateTime.now())
+            !dateTime.isBefore(LocalDateTime.now())
         } catch (_: Exception) {
             false
         }
