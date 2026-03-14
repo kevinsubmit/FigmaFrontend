@@ -174,7 +174,7 @@ fun HomeScreen(
                 contentPadding = PaddingValues(start = 16.dp, top = 0.dp, end = 16.dp, bottom = 6.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 10.dp),
+                    .padding(top = 10.dp, bottom = 8.dp),
             ) {
                 items(homeViewModel.tags, key = { it }) { tag ->
                     val selected = homeViewModel.selectedTag == tag
