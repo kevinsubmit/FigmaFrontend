@@ -28,6 +28,7 @@ Last updated: 2026-03-11
   - done: deals-card-top-accent-line parity pass #201 (Deals cards now render the iOS-style `1dp` top gold accent line with `0.42` alpha above the cover media, matching `dealRow` top overlay hierarchy in `HomeView.swift`)
   - done: deals-content-stack-spacing parity pass #202 (Deals card body now matches iOS `dealRow` content rhythm by using `12dp` inner stack spacing and `14dp` bottom inset with `top=12dp`, aligning `VStack(spacing: UITheme.spacing12)` + bottom `UITheme.cardPadding` geometry)
   - done: deals-meta-icon-outline-semantics parity pass #203 (Deals metadata rows now use outlined clock/location icon semantics to better match iOS `clock` and `mappin.and.ellipse` line-style glyph intent instead of filled Android icon treatment)
+  - done: deals-address-footnote-type-scale parity pass #211 (Deals store-address metadata now uses explicit `13sp` footnote-scale text styling to match iOS `Text(...).font(.footnote)` hierarchy instead of the smaller shared caption treatment)
 
 ## Book
 - `DONE` Store list (`StoresListView.swift` -> `StoresScreen.kt`)

@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -391,6 +392,7 @@ private fun DealCard(
                         text = address,
                         iconTint = DealsGold,
                         textColor = Color.White.copy(alpha = 0.72f),
+                        textStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                     )
                 }
 
@@ -506,6 +508,7 @@ private fun DealMetaRow(
     text: String,
     iconTint: Color,
     textColor: Color,
+    textStyle: TextStyle = MaterialTheme.typography.labelSmall,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(5.dp),
@@ -522,7 +525,7 @@ private fun DealMetaRow(
         )
         Text(
             text = text,
-            style = MaterialTheme.typography.labelSmall,
+            style = textStyle,
             color = textColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
