@@ -440,18 +440,6 @@ fun StoreDetailScreen(
                 item { CircularProgressIndicator() }
             }
 
-            if (selectedTab != "Services") {
-                item {
-                    Button(
-                        onClick = {
-                            onBookNow(storeId, storeDetailViewModel.selectedServiceId)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Book This Store")
-                    }
-                }
-            }
         }
 
         if (showMapChooser) {
