@@ -432,6 +432,7 @@ private fun AppointmentCard(
                             imageVector = Icons.Filled.ChevronRight,
                             contentDescription = "Open",
                             tint = Color.White.copy(alpha = 0.75f),
+                            modifier = Modifier.size(12.dp),
                         )
                     }
                 }
@@ -442,6 +443,7 @@ private fun AppointmentCard(
                             Icons.Filled.Storefront,
                             contentDescription = null,
                             tint = AppointmentsGold.copy(alpha = 0.95f),
+                            modifier = Modifier.size(12.dp),
                         )
                         Text(
                             text = item.store_name ?: "Store #${item.store_id}",
@@ -456,6 +458,7 @@ private fun AppointmentCard(
                                 Icons.Outlined.LocationOn,
                                 contentDescription = null,
                                 tint = AppointmentsGold,
+                                modifier = Modifier.size(12.dp),
                             )
                             Text(
                                 text = address,
@@ -585,7 +588,12 @@ private fun AppointmentPill(
             .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = Color.White.copy(alpha = 0.9f))
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.9f),
+            modifier = Modifier.size(12.dp),
+        )
         Text(
             value,
             style = MaterialTheme.typography.bodySmall,
