@@ -45,16 +45,12 @@ class StoresViewModel(application: Application) : AndroidViewModel(application) 
     var userLongitude by mutableStateOf<Double?>(null)
         private set
 
-    var locationStatus by mutableStateOf<String?>(null)
-        private set
-
     fun load(sortOption: StoreSortOption = selectedSort) {
         selectedSort = sortOption
         isLoading = true
         viewModelScope.launch {
             val hasLocation = userLatitude != null && userLongitude != null
             val effectiveSort = if (selectedSort == StoreSortOption.Nearest && !hasLocation) {
-                locationStatus = "Location unavailable, showing recommended salons."
                 StoreSortOption.Recommended.apiValue
             } else {
                 selectedSort.apiValue
@@ -85,14 +81,9 @@ class StoresViewModel(application: Application) : AndroidViewModel(application) 
     fun updateUserLocation(latitude: Double, longitude: Double) {
         userLatitude = latitude
         userLongitude = longitude
-        locationStatus = null
         if (stores.isEmpty() || selectedSort == StoreSortOption.Nearest) {
             load(selectedSort)
         }
-    }
-
-    fun onLocationUnavailable(message: String) {
-        locationStatus = message
     }
 
     fun loadStoreRatingIfNeeded(storeId: Int) {

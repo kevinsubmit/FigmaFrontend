@@ -102,11 +102,7 @@ fun StoresScreen(
             val location = resolveLastKnownLocation(context)
             if (location != null) {
                 storesViewModel.updateUserLocation(location.latitude, location.longitude)
-            } else {
-                storesViewModel.onLocationUnavailable("Location unavailable, showing recommended salons.")
             }
-        } else {
-            storesViewModel.onLocationUnavailable("Location permission denied. Using recommended salons.")
         }
         if (storesViewModel.stores.isEmpty()) {
             storesViewModel.load()
