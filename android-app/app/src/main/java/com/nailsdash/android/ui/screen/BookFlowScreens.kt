@@ -307,14 +307,6 @@ fun StoreDetailScreen(
                                     onClick = { showMapChooser = true },
                                     label = { Text("Map") },
                                 )
-                                Button(
-                                    modifier = Modifier.weight(1f),
-                                    onClick = {
-                                        onBookNow(store.id, storeDetailViewModel.selectedServiceId)
-                                    },
-                                ) {
-                                    Text("Book Now")
-                                }
                             }
                         }
                     }
