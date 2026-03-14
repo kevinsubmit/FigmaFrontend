@@ -25,9 +25,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.outlined.AttachMoney
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -478,18 +480,21 @@ private fun AppointmentCard(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         item.order_amount?.let { amount ->
                             AppointmentMetaTag(
+                                icon = Icons.Outlined.AttachMoney,
                                 text = "$${String.format(Locale.US, "%.2f", amount)}",
                                 textColor = AppointmentsGold,
                             )
                         }
                         item.service_duration?.let { duration ->
                             AppointmentMetaTag(
+                                icon = Icons.Outlined.AccessTime,
                                 text = "$duration min",
                                 textColor = AppointmentsSecondaryText,
                             )
                         }
                     }
                     AppointmentMetaTag(
+                        icon = Icons.Outlined.Person,
                         text = item.technician_name?.ifBlank { "Any technician" } ?: "Any technician",
                         textColor = AppointmentsSecondaryText,
                     )
@@ -538,17 +543,28 @@ private fun AppointmentInfoBlock(
 
 @Composable
 private fun AppointmentMetaTag(
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     text: String,
     textColor: Color,
 ) {
-    Box(
+    Row(
         modifier = Modifier
             .background(
                 color = Color.White.copy(alpha = 0.04f),
                 shape = RoundedCornerShape(999.dp),
             )
             .padding(horizontal = 10.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = textColor,
+                modifier = Modifier.size(12.dp),
+            )
+        }
         Text(
             text = text,
             style = MaterialTheme.typography.bodySmall,
