@@ -584,23 +584,23 @@ private fun resolveLastKnownLocation(context: Context): Location? {
 private fun BookingStyleReferenceBottomBar(
     content: @Composable () -> Unit,
 ) {
-    Card(
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.96f)),
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.Black.copy(alpha = 0.96f)),
     ) {
-        Column(
+        Spacer(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 2.dp, start = 12.dp, end = 12.dp, bottom = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+                .height(1.dp)
+                .background(Color.White.copy(alpha = 0.08f)),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Spacer(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(Color.White.copy(alpha = 0.12f)),
-            )
             content()
         }
     }
