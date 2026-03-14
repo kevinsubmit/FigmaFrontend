@@ -985,7 +985,7 @@ private fun StoreDetailContactHoursCard(
                 ) {
                     Text(
                         text = "Show full week",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                         color = BookingGold,
                         fontWeight = FontWeight.Medium,
                     )
@@ -994,7 +994,7 @@ private fun StoreDetailContactHoursCard(
                         contentDescription = null,
                         tint = BookingGold,
                         modifier = Modifier
-                            .size(14.dp)
+                            .size(11.dp)
                             .rotate(chevronRotation),
                     )
                 }
@@ -1042,6 +1042,7 @@ private fun StoreDetailContactHoursCard(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Phone,
@@ -1049,7 +1050,6 @@ private fun StoreDetailContactHoursCard(
                         tint = BookingGold,
                         modifier = Modifier.size(16.dp),
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = phone,
                         style = MaterialTheme.typography.bodyMedium,
@@ -1067,6 +1067,7 @@ private fun StoreDetailContactHoursCard(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Email,
@@ -1074,7 +1075,6 @@ private fun StoreDetailContactHoursCard(
                         tint = BookingGold,
                         modifier = Modifier.size(16.dp),
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = email,
                         style = MaterialTheme.typography.bodyMedium,
