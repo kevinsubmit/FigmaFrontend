@@ -394,6 +394,12 @@ fun StoreDetailScreen(
                                 }
                             }
                         }
+
+                        item {
+                            StoreDetailReportRow(
+                                onReport = { noticeMessage = "Report feature is coming soon." },
+                            )
+                        }
                     }
                 }
             }
@@ -898,6 +904,39 @@ private fun StoreDetailContactHoursCard(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun StoreDetailReportRow(onReport: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Color.White.copy(alpha = 0.08f)),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onReport)
+                .padding(vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Report",
+                style = MaterialTheme.typography.bodyMedium,
+                color = BookingSecondaryText,
+                fontWeight = FontWeight.Medium,
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Icon(
+                imageVector = Icons.Filled.ChevronRight,
+                contentDescription = null,
+                tint = BookingSecondaryText,
+                modifier = Modifier.size(14.dp),
+            )
         }
     }
 }
