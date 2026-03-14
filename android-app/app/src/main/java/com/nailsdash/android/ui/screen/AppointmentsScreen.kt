@@ -378,7 +378,7 @@ private fun AppointmentCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .alpha(if (isPast) 0.76f else 1f),
+            .alpha(if (isPast) 0.72f else 1f),
     ) {
         Card(
             shape = cardShape,
