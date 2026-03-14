@@ -200,11 +200,10 @@ fun StoresScreen(
                     Card(
                         shape = RoundedCornerShape(14.dp),
                         colors = CardDefaults.cardColors(containerColor = StoreListCardBackground),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, StoreListGold.copy(alpha = 0.22f)),
                         modifier = Modifier.align(Alignment.Center),
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            modifier = Modifier.padding(20.dp),
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
