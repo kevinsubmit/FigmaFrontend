@@ -519,7 +519,7 @@ private fun AppointmentCard(
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     AppointmentPill(icon = Icons.Outlined.CalendarMonth, value = formatDate(item.appointment_date))
                     AppointmentPill(icon = Icons.Outlined.AccessTime, value = formatTime(item.appointment_time))
                 }

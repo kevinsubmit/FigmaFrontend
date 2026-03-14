@@ -90,6 +90,7 @@ Last updated: 2026-03-11
   - done: appointments-card-icon-caption-scale parity pass #236 (My Appointments card iconography now uses compact caption-like sizing for chevron/store/location/date/time glyphs, removing oversized Android default `24dp` icon footprint and matching iOS small-symbol hierarchy)
   - done: appointments-technician-fallback-icon-contrast parity pass #240 (My Appointments technician metadata now differentiates assigned vs fallback semantics with distinct icon treatment and contrast (`0.72` for assigned technician, `0.58` for `Any technician`) to match iOS person/questionmark hierarchy)
   - done: appointments-loading-overlay-style parity pass #242 (My Appointments loading indicator now uses iOS-like centered compact card without full-screen dim layer, with stacked spinner+label treatment and subdued secondary loading text contrast)
+  - done: appointments-date-time-pill-gap parity pass #245 (My Appointments date/time pill row now uses iOS-matched sibling spacing `10dp`, aligning `HStack(spacing: UITheme.spacing10)` layout rhythm instead of tighter Android `8dp` spacing)
 - `DONE` Appointment detail (`AppointmentDetailView` -> `AppointmentDetailScreen.kt`)
   - done: card-based detail, map open with map-app chooser sheet, status display, iOS-like top close action, bottom action bar helper text, dedicated cancel/reschedule action sheets, picker-based reschedule date/time, top auto-dismiss toast, loading overlay, fine-grained visual styling (dark + gold card system, action bar, sheets)
 
