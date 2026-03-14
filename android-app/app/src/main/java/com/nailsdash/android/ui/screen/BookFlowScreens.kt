@@ -399,8 +399,8 @@ fun StoreDetailScreen(
                                 ) {
                                     Text(
                                         text = description.trim(),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                                        color = BookingSecondaryText,
                                         modifier = Modifier.padding(14.dp),
                                     )
                                 }
