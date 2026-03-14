@@ -37,6 +37,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
@@ -88,6 +89,7 @@ private val StoreListCardStroke = StoreListGold.copy(alpha = 0.22f)
 fun StoresScreen(
     sessionViewModel: AppSessionViewModel,
     onOpenStore: (storeId: Int) -> Unit = {},
+    onBack: () -> Unit = {},
     storesViewModel: StoresViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -149,6 +151,10 @@ fun StoresScreen(
             StoreListHeaderBlock(
                 selected = storesViewModel.selectedSort,
                 onSelect = storesViewModel::onSortSelected,
+                onBack = {
+                    sessionViewModel.resetBookFlowSource()
+                    onBack()
+                },
             )
 
             Column(
@@ -227,6 +233,7 @@ fun StoresScreen(
 private fun StoreListHeaderBlock(
     selected: StoreSortOption,
     onSelect: (StoreSortOption) -> Unit,
+    onBack: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -237,34 +244,60 @@ private fun StoreListHeaderBlock(
                 ),
             ),
     ) {
-        StoreListTopHeader()
+        StoreListTopHeader(onBack = onBack)
         StoreSortHeader(selected = selected, onSelect = onSelect)
         HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
     }
 }
 
 @Composable
-private fun StoreListTopHeader() {
-    Column(
+private fun StoreListTopHeader(onBack: () -> Unit) {
+    val backInteraction = remember { MutableInteractionSource() }
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+            .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 8.dp),
     ) {
-        Text(
-            text = "STEP 01",
-            color = StoreListGold,
-            fontWeight = FontWeight.Bold,
-            fontSize = 11.sp,
-            letterSpacing = 2.2.sp,
-        )
-        Text(
-            text = "Choose a salon",
-            color = Color.White,
-            fontWeight = FontWeight.Bold,
-            fontSize = 17.sp,
-        )
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = "STEP 01",
+                color = StoreListGold,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                letterSpacing = 2.2.sp,
+            )
+            Text(
+                text = "Choose a salon",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+                fontSize = 17.sp,
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .size(38.dp)
+                .background(Color.White.copy(alpha = 0.07f), CircleShape)
+                .clickable(
+                    interactionSource = backInteraction,
+                    indication = null,
+                    onClick = onBack,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.ChevronLeft,
+                contentDescription = "Back",
+                tint = Color.White,
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }
 

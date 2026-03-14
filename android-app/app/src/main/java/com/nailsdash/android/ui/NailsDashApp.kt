@@ -171,6 +171,15 @@ fun NailsDashApp() {
             composable(MainDestination.Book.route) {
                 StoresScreen(
                     sessionViewModel = sessionViewModel,
+                    onBack = {
+                        navController.navigate(MainDestination.Home.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
                     onOpenStore = { storeId ->
                         navController.navigate("book/store/$storeId")
                     },
