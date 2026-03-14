@@ -48,11 +48,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -92,6 +95,7 @@ fun StoresScreen(
     storesViewModel: StoresViewModel = viewModel(),
 ) {
     val context = LocalContext.current
+    var noticeMessage by rememberSaveable { mutableStateOf<String?>(null) }
     val requestLocationPermission = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -121,6 +125,12 @@ fun StoresScreen(
         } else {
             storesViewModel.load()
             requestLocationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+    LaunchedEffect(storesViewModel.errorMessage) {
+        val message = storesViewModel.errorMessage?.trim().orEmpty()
+        if (message.isNotEmpty()) {
+            noticeMessage = message
         }
     }
 
@@ -162,7 +172,6 @@ fun StoresScreen(
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                storesViewModel.errorMessage?.let { StoreListMessageBanner(it, isError = true) }
                 storesViewModel.locationStatus?.let { StoreListMessageBanner(it, isError = false) }
             }
 
@@ -225,6 +234,19 @@ fun StoresScreen(
                 }
             }
         }
+    }
+
+    noticeMessage?.let { message ->
+        AlertDialog(
+            onDismissRequest = { noticeMessage = null },
+            confirmButton = {
+                TextButton(onClick = { noticeMessage = null }) {
+                    Text("OK")
+                }
+            },
+            title = { Text("Notice") },
+            text = { Text(message) },
+        )
     }
 }
 
