@@ -26,8 +26,8 @@ import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -441,7 +441,7 @@ private fun AppointmentCard(
                     item.store_address?.trim()?.takeIf { it.isNotEmpty() }?.let { address ->
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Icon(
-                                Icons.Filled.LocationOn,
+                                Icons.Outlined.LocationOn,
                                 contentDescription = null,
                                 tint = AppointmentsGold,
                             )
