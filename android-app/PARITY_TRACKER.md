@@ -41,6 +41,7 @@ Last updated: 2026-03-11
   - done: deals-empty-state-unified-card parity pass #229 (Deals empty state now mirrors iOS unified compact card structure with centered tag icon badge, split title/subtitle copy, and dark-gold outlined card hierarchy instead of Android single-line text card)
   - done: deals-loading-overlay-card parity pass #241 (Deals loading state now follows iOS `UnifiedLoadingOverlay` composition: centered card-only overlay without full-screen dim layer, stacked spinner+label layout, and subtle dark-gold border/shadow tokens)
   - done: deals-loading-overlay-footnote-depth parity pass #246 (Deals loading overlay now uses footnote-scale `13sp` semibold label and deeper `8dp` card elevation, aligning closer to iOS unified loading overlay text hierarchy and shadow depth)
+  - done: deals-error-notice-dialog parity pass #247 (Deals error handling now matches iOS notice-alert semantics by presenting a modal `Notice` dialog on error and removing Android-only inline error card from the list flow)
 
 ## Book
 - `DONE` Store list (`StoresListView.swift` -> `StoresScreen.kt`)

@@ -38,10 +38,15 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,8 +83,16 @@ fun DealsScreen(
     onOpenStore: (Int) -> Unit = {},
     onBrowseStores: () -> Unit = {},
 ) {
+    var noticeMessage by rememberSaveable { mutableStateOf<String?>(null) }
+
     LaunchedEffect(Unit) {
         dealsViewModel.load()
+    }
+    LaunchedEffect(dealsViewModel.errorMessage) {
+        val message = dealsViewModel.errorMessage?.trim().orEmpty()
+        if (message.isNotEmpty()) {
+            noticeMessage = message
+        }
     }
 
     val rows = dealsViewModel.filteredPromotions()
@@ -100,12 +113,6 @@ fun DealsScreen(
                 contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 26.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                dealsViewModel.errorMessage?.let { message ->
-                    item {
-                        DealsErrorCard(message = message)
-                    }
-                }
-
                 if (!dealsViewModel.isLoading && rows.isEmpty()) {
                     item {
                         DealsEmptyStateCard()
@@ -131,6 +138,19 @@ fun DealsScreen(
 
         if (dealsViewModel.isLoading) {
             DealsLoadingOverlay()
+        }
+
+        noticeMessage?.let { message ->
+            AlertDialog(
+                onDismissRequest = { noticeMessage = null },
+                confirmButton = {
+                    TextButton(onClick = { noticeMessage = null }) {
+                        Text("OK")
+                    }
+                },
+                title = { Text("Notice") },
+                text = { Text(message) },
+            )
         }
     }
 }
@@ -222,23 +242,6 @@ private fun DealsHeader(
         }
 
         HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
-    }
-}
-
-@Composable
-private fun DealsErrorCard(message: String) {
-    Card(
-        shape = RoundedCornerShape(14.dp),
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A1414)),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF8D8D).copy(alpha = 0.42f)),
-    ) {
-        Text(
-            text = message,
-            color = Color(0xFFFFB4B4),
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-        )
     }
 }
 
