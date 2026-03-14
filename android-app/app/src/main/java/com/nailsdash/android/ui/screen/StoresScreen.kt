@@ -40,8 +40,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -93,8 +91,6 @@ fun StoresScreen(
     storesViewModel: StoresViewModel = viewModel(),
 ) {
     val context = LocalContext.current
-    var mapTarget by remember { mutableStateOf<Store?>(null) }
-    var mapError by remember { mutableStateOf<String?>(null) }
     val requestLocationPermission = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -165,7 +161,6 @@ fun StoresScreen(
             ) {
                 storesViewModel.errorMessage?.let { StoreListMessageBanner(it, isError = true) }
                 storesViewModel.locationStatus?.let { StoreListMessageBanner(it, isError = false) }
-                mapError?.let { StoreListMessageBanner(it, isError = true) }
             }
 
             if (storesViewModel.isLoading && storesViewModel.stores.isEmpty()) {
@@ -197,35 +192,11 @@ fun StoresScreen(
                             rating = storesViewModel.displayRating(store),
                             images = storesViewModel.storeImages[store.id].orEmpty(),
                             onOpenStore = { onOpenStore(store.id) },
-                            onOpenMap = { mapTarget = store },
                         )
                     }
                 }
             }
         }
-    }
-
-    mapTarget?.let { target ->
-        MapChooserBottomSheet(
-            placeTitle = target.name,
-            onDismiss = { mapTarget = null },
-            onChoose = { option ->
-                val opened = openMapWithOption(
-                    context = context,
-                    option = option,
-                    placeTitle = target.name,
-                    address = target.formattedAddress,
-                    latitude = target.latitude,
-                    longitude = target.longitude,
-                )
-                mapTarget = null
-                if (!opened) {
-                    mapError = "No map app available on this device."
-                } else {
-                    mapError = null
-                }
-            },
-        )
     }
 }
 
@@ -413,7 +384,6 @@ private fun StoreListCard(
     rating: Double,
     images: List<StoreImage>,
     onOpenStore: () -> Unit,
-    onOpenMap: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val imageUrls = storeCardImages(store, images)
@@ -537,50 +507,6 @@ private fun StoreListCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Button(
-                    onClick = onOpenMap,
-                    modifier = Modifier.height(40.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White.copy(alpha = 0.06f),
-                        contentColor = Color.White.copy(alpha = 0.88f),
-                    ),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, StoreListGold.copy(alpha = 0.22f)),
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.LocationOn,
-                        contentDescription = null,
-                        modifier = Modifier.size(15.dp),
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "Map", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                }
-                Button(
-                    onClick = onOpenStore,
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(40.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = StoreListGold,
-                        contentColor = Color.Black,
-                    ),
-                ) {
-                    Text(
-                        text = "View Services",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
             }
         }
     }
