@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -256,11 +257,12 @@ private fun StoreSortHeader(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         StoreSortOption.entries.forEach { option ->
             val active = option == selected
+            val optionInteraction = remember(option) { MutableInteractionSource() }
             val optionScale by animateFloatAsState(
                 targetValue = if (active) 1f else 0.97f,
                 animationSpec = spring(dampingRatio = 0.78f, stiffness = 520f),
@@ -276,22 +278,30 @@ private fun StoreSortHeader(
                 animationSpec = tween(durationMillis = 180),
                 label = "storeSortOptionContentColor",
             )
-            Button(
-                onClick = { onSelect(option) },
-                shape = CircleShape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = containerColor,
-                    contentColor = contentColor,
-                ),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            Box(
                 modifier = Modifier
-                    .height(36.dp)
-                    .scale(optionScale),
+                    .heightIn(min = 40.dp)
+                    .scale(optionScale)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(containerColor)
+                    .border(
+                        width = 1.dp,
+                        color = if (active) Color.Transparent else StoreListGold.copy(alpha = 0.24f),
+                        shape = RoundedCornerShape(999.dp),
+                    )
+                    .clickable(
+                        interactionSource = optionInteraction,
+                        indication = null,
+                        onClick = { onSelect(option) },
+                    )
+                    .padding(horizontal = 14.dp, vertical = 9.dp),
+                contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = option.label,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.sp,
+                    color = contentColor,
                 )
             }
         }
