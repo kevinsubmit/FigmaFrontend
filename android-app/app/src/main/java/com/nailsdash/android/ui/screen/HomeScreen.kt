@@ -299,7 +299,8 @@ private fun HomeLoadingOverlay() {
         Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF111111).copy(alpha = 0.96f)),
-            border = BorderStroke(1.dp, HomeGold.copy(alpha = 0.22f)),
+            border = BorderStroke(1.dp, HomeGold.copy(alpha = 0.16f)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
@@ -315,7 +316,7 @@ private fun HomeLoadingOverlay() {
                     text = "Loading...",
                     style = MaterialTheme.typography.bodySmall.copy(
                         fontWeight = FontWeight.SemiBold,
-                        fontSize = 12.sp,
+                        fontSize = 13.sp,
                     ),
                     color = Color.White.copy(alpha = 0.62f),
                 )
