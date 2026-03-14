@@ -242,6 +242,18 @@ fun HomeScreen(
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                homeViewModel.errorMessage
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { message ->
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                            color = Color.Red.copy(alpha = 0.9f),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+
                 val emptyTitle = if (homeViewModel.searchQuery.isBlank() && homeViewModel.selectedTag == "All") {
                     "No images yet"
                 } else {
