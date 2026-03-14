@@ -46,6 +46,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -181,6 +182,12 @@ fun HomeScreen(
                     Box(
                         modifier = Modifier
                             .heightIn(min = 40.dp)
+                            .shadow(
+                                elevation = if (selected) 6.dp else 0.dp,
+                                shape = RoundedCornerShape(999.dp),
+                                ambientColor = HomeGold.copy(alpha = 0.25f),
+                                spotColor = HomeGold.copy(alpha = 0.25f),
+                            )
                             .clip(RoundedCornerShape(999.dp))
                             .background(if (selected) HomeGold else HomeHeaderFieldBackground)
                             .border(
