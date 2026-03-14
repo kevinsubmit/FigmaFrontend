@@ -22,11 +22,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -483,8 +483,8 @@ private fun AppointmentCard(
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AppointmentPill(icon = Icons.Filled.CalendarMonth, value = formatDate(item.appointment_date))
-                    AppointmentPill(icon = Icons.Filled.AccessTime, value = formatTime(item.appointment_time))
+                    AppointmentPill(icon = Icons.Outlined.CalendarMonth, value = formatDate(item.appointment_date))
+                    AppointmentPill(icon = Icons.Outlined.AccessTime, value = formatTime(item.appointment_time))
                 }
             }
         }
