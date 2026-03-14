@@ -44,6 +44,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -145,8 +146,7 @@ fun StoresScreen(
                 .padding(innerPadding)
                 .background(StoreListBackground),
         ) {
-            StoreListTopHeader()
-            StoreSortHeader(
+            StoreListHeaderBlock(
                 selected = storesViewModel.selectedSort,
                 onSelect = storesViewModel::onSortSelected,
             )
@@ -220,6 +220,26 @@ fun StoresScreen(
                 }
             },
         )
+    }
+}
+
+@Composable
+private fun StoreListHeaderBlock(
+    selected: StoreSortOption,
+    onSelect: (StoreSortOption) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color.Black, Color.Black.copy(alpha = 0.96f)),
+                ),
+            ),
+    ) {
+        StoreListTopHeader()
+        StoreSortHeader(selected = selected, onSelect = onSelect)
+        HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
     }
 }
 
