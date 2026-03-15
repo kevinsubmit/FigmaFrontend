@@ -958,7 +958,10 @@ private fun StoreDetailContactHoursCard(
         ) {
             Text(
                 text = "CONTACT & BUSINESS HOURS",
-                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.8.sp),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 12.sp,
+                    letterSpacing = 2.sp,
+                ),
                 color = BookingSecondaryText,
                 fontWeight = FontWeight.SemiBold,
             )
