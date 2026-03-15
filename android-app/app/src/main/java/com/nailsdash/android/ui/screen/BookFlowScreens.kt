@@ -902,9 +902,7 @@ private fun StoreDetailLocationCard(
                         imageVector = Icons.AutoMirrored.Filled.Send,
                         contentDescription = null,
                         tint = Color.Black,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .rotate(45f),
+                        modifier = Modifier.size(16.dp),
                     )
                     Text(
                         text = "Open in Maps",
