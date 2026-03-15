@@ -59,6 +59,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.CardDefaults
@@ -935,7 +936,7 @@ private fun StoreDetailContactHoursCard(
     }
     val weekToggleInteraction = remember { MutableInteractionSource() }
     val chevronRotation by animateFloatAsState(
-        targetValue = if (showFullHours) 270f else 90f,
+        targetValue = if (showFullHours) 180f else 0f,
         animationSpec = tween(durationMillis = 180),
         label = "storeDetailHoursChevronRotation",
     )
@@ -996,7 +997,7 @@ private fun StoreDetailContactHoursCard(
                         fontWeight = FontWeight.Medium,
                     )
                     Icon(
-                        imageVector = Icons.Filled.ChevronRight,
+                        imageVector = Icons.Filled.KeyboardArrowDown,
                         contentDescription = null,
                         tint = BookingGold,
                         modifier = Modifier
