@@ -763,6 +763,7 @@ private fun StoreDetailLocationCard(
     onOpenInMaps: () -> Unit,
 ) {
     val outerShape = RoundedCornerShape(20.dp)
+    val innerMaterialShape = RoundedCornerShape(24.dp)
     val innerPanelShape = RoundedCornerShape(22.dp)
     val ctaShape = RoundedCornerShape(999.dp)
     val mapsCtaInteraction = remember { MutableInteractionSource() }
@@ -812,9 +813,15 @@ private fun StoreDetailLocationCard(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(14.dp)
+                .background(
+                    color = Color.White.copy(alpha = 0.08f),
+                    shape = innerMaterialShape,
+                )
+                .background(
+                    color = Color.Black.copy(alpha = 0.62f),
+                    shape = innerMaterialShape,
+                )
                 .clip(innerPanelShape)
-                .background(Color.White.copy(alpha = 0.08f))
-                .background(Color.Black.copy(alpha = 0.62f))
                 .border(
                     width = 1.dp,
                     color = Color.White.copy(alpha = 0.16f),
