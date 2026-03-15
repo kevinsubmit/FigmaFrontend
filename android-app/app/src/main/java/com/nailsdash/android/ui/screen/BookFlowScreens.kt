@@ -1067,10 +1067,12 @@ private fun StoreDetailContactHoursCard(
                         color = Color.White,
                         modifier = Modifier.weight(1f),
                     )
-                    StoreDetailContactActionChip(
-                        label = "Call",
-                        onClick = { onOpenDial(phone) },
-                    )
+                    if (phone.any { it.isDigit() }) {
+                        StoreDetailContactActionChip(
+                            label = "Call",
+                            onClick = { onOpenDial(phone) },
+                        )
+                    }
                 }
             }
 
@@ -2741,7 +2743,7 @@ private fun normalizedContact(value: String?): String? {
 }
 
 private fun openDialer(context: Context, phone: String): Boolean {
-    val digits = phone.filter { it.isDigit() || it == '+' }
+    val digits = phone.filter { it.isDigit() }
     if (digits.isBlank()) return false
     val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:$digits"))
     return runCatching {
