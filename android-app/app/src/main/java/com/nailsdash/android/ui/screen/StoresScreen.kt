@@ -500,8 +500,6 @@ private fun StoreListCard(
                     color = Color.White,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = store.formattedAddress,
