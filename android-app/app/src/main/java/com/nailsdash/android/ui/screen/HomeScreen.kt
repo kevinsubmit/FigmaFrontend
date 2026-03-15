@@ -59,12 +59,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import com.nailsdash.android.data.model.HomeFeedPin
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.HomeViewModel
@@ -420,6 +423,7 @@ private fun HomePinCard(
     onClick: () -> Unit,
 ) {
     val cardInteraction = remember(pin.id) { MutableInteractionSource() }
+    val imageModel = remember(pin.image_url) { AssetUrlResolver.resolveURL(pin.image_url) }
 
     Card(
         shape = RoundedCornerShape(24.dp),
@@ -437,13 +441,49 @@ private fun HomePinCard(
                 .fillMaxWidth()
                 .aspectRatio(3f / 4f),
         ) {
-            AsyncImage(
-                model = remember(pin.image_url) { AssetUrlResolver.resolveURL(pin.image_url) },
+            SubcomposeAsyncImage(
+                model = imageModel,
                 contentDescription = pin.title,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .matchParentSize(),
-            )
+                modifier = Modifier.matchParentSize(),
+            ) {
+                when (painter.state) {
+                    is AsyncImagePainter.State.Success -> {
+                        SubcomposeAsyncImageContent()
+                    }
+                    is AsyncImagePainter.State.Loading,
+                    is AsyncImagePainter.State.Empty,
+                    -> {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(Color.Gray.copy(alpha = 0.14f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = HomeGold,
+                            )
+                        }
+                    }
+                    is AsyncImagePainter.State.Error -> {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(Color.Gray.copy(alpha = 0.20f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "Image unavailable",
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                color = Color.White.copy(alpha = 0.72f),
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

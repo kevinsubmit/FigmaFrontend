@@ -27,6 +27,7 @@ Last updated: 2026-03-11
   - done: home-sensitive-auth-alert-logout parity pass #259 (Home feed `Notice` alert confirm now applies iOS-style sensitive-auth guard and force logout behavior for session-expired/unauthorized/restricted account error messages)
   - done: home-error-inline-row-restore parity pass #260 (Home feed now restores iOS-style inline footnote error row while retaining `Notice` alert behavior, matching current `HomeFeedModule` error presentation semantics)
   - done: home-alert-explicit-ok-dismiss parity pass #261 (Home `Notice` alert now disables outside/back dismiss so users must confirm via `OK`, matching iOS alert dismissal semantics)
+  - done: home-pin-card-loading-error-phase parity pass #295 (Home inspiration cards now mirror iOS image-phase rendering by showing a gray loading placeholder with gold spinner before image success, and a gray fallback surface with `Image unavailable` caption when media loading fails, instead of Android-only direct image draw)
 - `DONE` Pin detail (`PinDetailModule.swift` -> `HomePinDetailScreen.kt`)
   - done: favorite, share, download, related pins, choose salon, advanced hero interactions (pinch-zoom + drag + double-tap reset + zoom-state scroll lock), floating top controls parity (left back + right share/favorite controls with gradient overlay), and iOS-like floating bottom booking strip + toast feedback
 - `DONE` Deals tab (`HomeView.swift DealsView` -> `DealsScreen.kt`)
