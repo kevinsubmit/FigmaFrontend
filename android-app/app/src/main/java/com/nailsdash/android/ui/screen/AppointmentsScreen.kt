@@ -534,7 +534,7 @@ private fun AppointmentCard(
                         color = AppointmentsPrimaryText,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        item.order_amount?.let { amount ->
+                        (item.order_amount ?: item.service_price)?.let { amount ->
                             AppointmentMetaTag(
                                 icon = Icons.Outlined.AttachMoney,
                                 text = "$${String.format(Locale.US, "%.2f", amount)}",
