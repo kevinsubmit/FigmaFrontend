@@ -116,6 +116,7 @@ import com.nailsdash.android.ui.state.BookAppointmentViewModel
 import com.nailsdash.android.ui.state.BookingStyleReference
 import com.nailsdash.android.ui.state.StoreDetailViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
+import java.net.URI
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -1076,7 +1077,7 @@ private fun StoreDetailContactHoursCard(
                 }
             }
 
-            normalizedContact(store.email)?.let { email ->
+            normalizedMailtoTarget(store.email)?.let { email ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -2742,6 +2743,14 @@ private fun normalizedContact(value: String?): String? {
     return text.takeIf { it.isNotEmpty() }
 }
 
+private fun normalizedMailtoTarget(value: String?): String? {
+    val text = normalizedContact(value) ?: return null
+    return runCatching {
+        URI("mailto:$text")
+        text
+    }.getOrNull()
+}
+
 private fun openDialer(context: Context, phone: String): Boolean {
     val digits = phone.filter { it.isDigit() }
     if (digits.isBlank()) return false
@@ -2753,8 +2762,7 @@ private fun openDialer(context: Context, phone: String): Boolean {
 }
 
 private fun openEmailClient(context: Context, email: String): Boolean {
-    val target = email.trim()
-    if (target.isBlank()) return false
+    val target = normalizedMailtoTarget(email) ?: return false
     val intent = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$target"))
     return runCatching {
         context.startActivity(intent)
