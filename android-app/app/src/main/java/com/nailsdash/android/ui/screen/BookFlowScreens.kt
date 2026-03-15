@@ -139,6 +139,7 @@ private val BookingBackground = Color.Black
 private val BookingCardBackground = Color(0xFF111111)
 private val BookingCardStroke = BookingGold.copy(alpha = 0.22f)
 private val BookingSecondaryText = Color.White.copy(alpha = 0.64f)
+private val StoreDetailDetailsCardBackground = Color(0xFF181818)
 private const val StoreDetailMapBackgroundURL =
     "https://images.unsplash.com/photo-1664044056437-6330bcf8e2fe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaXR5JTIwc3RyZWV0JTIwbWFwJTIwZ3JhcGhpYyUyMHRvcCUyMHZpZXd8ZW58MXx8fHwxNzY1OTM3MzkzfDA&ixlib=rb-4.1.0&q=80&w=1080"
 
@@ -390,7 +391,7 @@ fun StoreDetailScreen(
                                     shape = RoundedCornerShape(14.dp),
                                     modifier = Modifier.fillMaxWidth(),
                                     colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.20f),
+                                        containerColor = StoreDetailDetailsCardBackground,
                                     ),
                                     border = BorderStroke(
                                         width = 1.dp,
@@ -943,7 +944,7 @@ private fun StoreDetailContactHoursCard(
         shape = RoundedCornerShape(14.dp),
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.20f),
+            containerColor = StoreDetailDetailsCardBackground,
         ),
         border = BorderStroke(
             width = 1.dp,
