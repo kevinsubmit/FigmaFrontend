@@ -246,44 +246,45 @@ fun StoreDetailScreen(
                 }
 
                 item {
-                    Card(
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.30f),
-                        ),
-                        border = BorderStroke(
-                            width = 1.dp,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
-                        ),
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 2.dp, vertical = 2.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Column(
-                            modifier = Modifier.padding(14.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        Text(
+                            text = store.name,
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontSize = 34.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = Color.White,
+                        )
+                        Text(
+                            text = store.formattedAddress,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
+                            color = BookingSecondaryText,
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(store.name, style = MaterialTheme.typography.titleLarge)
                             Text(
-                                store.formattedAddress,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.clickable { showMapChooser = true },
+                                text = "★",
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                                color = BookingGold,
                             )
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text("★", color = MaterialTheme.colorScheme.primary)
-                                Text(
-                                    storeDetailViewModel.ratingText(),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                                Text(
-                                    "(${storeDetailViewModel.reviewCountText()})",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
+                            Text(
+                                text = storeDetailViewModel.ratingText(),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                text = "(${storeDetailViewModel.reviewCountText()})",
+                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
+                                color = BookingGold,
+                            )
                         }
                     }
                 }
