@@ -61,7 +61,6 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
@@ -813,6 +812,7 @@ private fun StoreDetailLocationCard(
                 .align(Alignment.BottomCenter)
                 .padding(14.dp)
                 .clip(innerPanelShape)
+                .background(Color.White.copy(alpha = 0.08f))
                 .background(Color.Black.copy(alpha = 0.62f))
                 .border(
                     width = 1.dp,
