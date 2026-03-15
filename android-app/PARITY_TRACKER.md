@@ -52,6 +52,7 @@ Last updated: 2026-03-11
   - done: deals-expiry-countdown-ceil-day parity pass #293 (Deals expiry label now mirrors iOS `formatExpiry` semantics by computing remaining time from end timestamp with second-level delta and ceil-day mapping, so offers with <=24h remaining show `Ends today`, and timezone-naive date-times are parsed as UTC like iOS server-date normalization)
   - done: deals-address-row-background-removal parity pass #306 (Deals card store-address metadata now renders as plain icon+text row without Android-only capsule background container, matching iOS `dealRow` address line structure while preserving single-line footnote truncation)
   - done: deals-card-corner-token parity pass #307 (Deals offer cards and compact empty-state card now use `14dp` corner radius to match iOS `UITheme.cardCornerRadius = 14`, replacing Android-only `18dp` rounding)
+  - done: deals-scope-pill-token parity pass #308 (Deals `STORE DEAL/PLATFORM DEAL` scope badge now uses iOS-like token values: caption2-scale `11sp` semibold text, compact `8x4` insets, `white@0.05` capsule background, and secondary-toned label color instead of Android-shared metadata pill tokens)
 
 ## Book
 - `DONE` Store list (`StoresListView.swift` -> `StoresScreen.kt`)

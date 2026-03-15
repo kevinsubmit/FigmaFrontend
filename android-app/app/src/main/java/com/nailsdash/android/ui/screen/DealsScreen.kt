@@ -428,10 +428,7 @@ private fun DealCard(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    DealPill(
-                        text = scopeLabel,
-                        textColor = Color.White.copy(alpha = 0.72f),
-                    )
+                    DealScopePill(text = scopeLabel)
                 }
 
                 DealMetaRow(
@@ -611,6 +608,23 @@ private fun DealPill(
         modifier = Modifier
             .background(Color.White.copy(alpha = 0.04f), RoundedCornerShape(999.dp))
             .padding(horizontal = 10.dp, vertical = 5.dp),
+    )
+}
+
+@Composable
+private fun DealScopePill(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall.copy(
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 11.sp,
+        ),
+        color = Color.White.copy(alpha = 0.62f),
+        modifier = Modifier
+            .background(Color.White.copy(alpha = 0.05f), RoundedCornerShape(999.dp))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
     )
 }
 
