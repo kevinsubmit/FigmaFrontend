@@ -3,8 +3,10 @@ package com.nailsdash.android.ui.screen
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Spa
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -51,6 +54,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import com.nailsdash.android.data.model.VerificationPurpose
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import kotlinx.coroutines.delay
@@ -89,15 +93,13 @@ private fun SignInScreen(
     var isSendingCode by rememberSaveable { mutableStateOf(false) }
     var localError by rememberSaveable { mutableStateOf<String?>(null) }
     var noticeMessage by rememberSaveable { mutableStateOf<String?>(null) }
-    var lastNoticeMessage by rememberSaveable { mutableStateOf<String?>(null) }
     val activeMessage = localError?.takeIf { it.isNotBlank() }
         ?: sessionViewModel.authMessage?.takeIf { it.isNotBlank() }
 
     LaunchedEffect(activeMessage) {
         val message = activeMessage?.trim()
-        if (!message.isNullOrEmpty() && message != lastNoticeMessage) {
+        if (!message.isNullOrEmpty()) {
             noticeMessage = message
-            lastNoticeMessage = message
         }
     }
 
@@ -160,7 +162,9 @@ private fun SignInScreen(
             TextField(
                 value = phone,
                 onValueChange = { phone = it },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .authTextFieldFrame(),
                 placeholder = { Text("e.g. 4151234567") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
@@ -182,7 +186,9 @@ private fun SignInScreen(
                                 onValueChange = { input ->
                                     verificationCode = input.filter(Char::isDigit).take(6)
                                 },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .authTextFieldFrame(),
                                 placeholder = { Text("6-digit code") },
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -194,6 +200,10 @@ private fun SignInScreen(
                                     scope.launch {
                                         localError = null
                                         sessionViewModel.updateAuthMessage(null)
+                                        if (!isValidUSPhone(phone)) {
+                                            localError = "Enter a valid US phone number."
+                                            return@launch
+                                        }
                                         isSendingCode = true
                                         val result = sessionViewModel.sendVerificationCode(
                                             phone = phone,
@@ -225,7 +235,8 @@ private fun SignInScreen(
                                         AuthGold.copy(alpha = 0.45f)
                                     },
                                 ),
-                                modifier = Modifier.height(56.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                                modifier = Modifier.height(50.dp),
                             ) {
                                 Text(
                                     text = if (countdown > 0) "${countdown}s" else "Send Code",
@@ -243,7 +254,9 @@ private fun SignInScreen(
                             TextField(
                                 value = password,
                                 onValueChange = { password = it },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .authTextFieldFrame(),
                                 placeholder = { Text("Enter your password") },
                                 visualTransformation = if (showPassword) {
                                     VisualTransformation.None
@@ -257,10 +270,11 @@ private fun SignInScreen(
                             TextButton(
                                 onClick = { showPassword = !showPassword },
                                 modifier = Modifier
-                                    .height(56.dp)
+                                    .height(50.dp)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(Color.White.copy(alpha = 0.08f))
+                                    .background(Color.White.copy(alpha = 0.06f))
                                     .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp)),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                             ) {
                                 Text(
                                     text = if (showPassword) "Hide" else "Show",
@@ -320,15 +334,24 @@ private fun SignInScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Spacer(modifier = Modifier.weight(1f))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
                     text = "Don't have an account?",
                     color = Color.White.copy(alpha = 0.66f),
                     fontSize = 14.sp,
                 )
-                TextButton(onClick = onOpenRegister) {
+                Spacer(modifier = Modifier.width(5.dp))
+                TextButton(
+                    onClick = onOpenRegister,
+                    contentPadding = PaddingValues(0.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = AuthGold),
+                ) {
                     Text(
                         text = "Sign Up",
                         color = AuthGold,
@@ -336,10 +359,9 @@ private fun SignInScreen(
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
-                Spacer(modifier = Modifier.weight(1f))
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = "Admin/store accounts must use admin portal",
                 color = Color.White.copy(alpha = 0.52f),
@@ -380,16 +402,14 @@ private fun RegisterScreen(
     var isVerifyingCode by rememberSaveable { mutableStateOf(false) }
     var localError by rememberSaveable { mutableStateOf<String?>(null) }
     var noticeMessage by rememberSaveable { mutableStateOf<String?>(null) }
-    var lastNoticeMessage by rememberSaveable { mutableStateOf<String?>(null) }
     val activeMessage = localError?.takeIf { it.isNotBlank() }
         ?: sessionViewModel.authMessage?.takeIf { it.isNotBlank() }
     val isCompleteProfile = step == 1
 
     LaunchedEffect(activeMessage) {
         val message = activeMessage?.trim()
-        if (!message.isNullOrEmpty() && message != lastNoticeMessage) {
+        if (!message.isNullOrEmpty()) {
             noticeMessage = message
-            lastNoticeMessage = message
         }
     }
 
@@ -424,7 +444,7 @@ private fun RegisterScreen(
                         .clip(CircleShape)
                         .background(Color.White.copy(alpha = 0.08f)),
                     colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                    contentPadding = PaddingValues(0.dp),
                 ) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
@@ -490,7 +510,9 @@ private fun RegisterScreen(
                 TextField(
                     value = phone,
                     onValueChange = { phone = it },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .authTextFieldFrame(),
                     placeholder = { Text("e.g. 4151234567") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
@@ -506,7 +528,9 @@ private fun RegisterScreen(
                         onValueChange = { input ->
                             verificationCode = input.filter(Char::isDigit).take(6)
                         },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .authTextFieldFrame(),
                         placeholder = { Text("6-digit code") },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -518,6 +542,10 @@ private fun RegisterScreen(
                             scope.launch {
                                 localError = null
                                 sessionViewModel.updateAuthMessage(null)
+                                if (!isValidUSPhone(phone)) {
+                                    localError = "Enter a valid US phone number."
+                                    return@launch
+                                }
                                 isSendingCode = true
                                 val result = sessionViewModel.sendVerificationCode(
                                     phone = phone,
@@ -549,7 +577,8 @@ private fun RegisterScreen(
                                         AuthGold.copy(alpha = 0.45f)
                                     },
                                 ),
-                                modifier = Modifier.height(56.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                                modifier = Modifier.height(50.dp),
                             ) {
                         Text(
                             text = if (countdown > 0) "${countdown}s" else "Send Code",
@@ -625,7 +654,9 @@ private fun RegisterScreen(
                     TextField(
                         value = username,
                         onValueChange = { username = it },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .authTextFieldFrame(),
                         placeholder = { Text("At least 3 characters") },
                         singleLine = true,
                         colors = authTextFieldColors(),
@@ -635,7 +666,9 @@ private fun RegisterScreen(
                     TextField(
                         value = fullName,
                         onValueChange = { fullName = it },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .authTextFieldFrame(),
                         placeholder = { Text("Optional") },
                         singleLine = true,
                         colors = authTextFieldColors(),
@@ -646,7 +679,9 @@ private fun RegisterScreen(
                         TextField(
                             value = password,
                             onValueChange = { password = it },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .authTextFieldFrame(),
                             placeholder = { Text("At least 8 characters") },
                             visualTransformation = if (showPassword) {
                                 VisualTransformation.None
@@ -660,10 +695,11 @@ private fun RegisterScreen(
                                 TextButton(
                                     onClick = { showPassword = !showPassword },
                                     modifier = Modifier
-                                        .height(56.dp)
+                                        .height(50.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.White.copy(alpha = 0.08f))
+                                        .background(Color.White.copy(alpha = 0.06f))
                                         .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp)),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                                 ) {
                             Text(
                                 text = if (showPassword) "Hide" else "Show",
@@ -679,7 +715,9 @@ private fun RegisterScreen(
                         TextField(
                             value = confirmPassword,
                             onValueChange = { confirmPassword = it },
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .authTextFieldFrame(),
                             placeholder = { Text("Re-enter your password") },
                             visualTransformation = if (showConfirmPassword) {
                                 VisualTransformation.None
@@ -693,10 +731,11 @@ private fun RegisterScreen(
                                 TextButton(
                                     onClick = { showConfirmPassword = !showConfirmPassword },
                                     modifier = Modifier
-                                        .height(56.dp)
+                                        .height(50.dp)
                                         .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.White.copy(alpha = 0.08f))
+                                        .background(Color.White.copy(alpha = 0.06f))
                                         .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp)),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                                 ) {
                             Text(
                                 text = if (showConfirmPassword) "Hide" else "Show",
@@ -711,7 +750,9 @@ private fun RegisterScreen(
                     TextField(
                         value = referralCode,
                         onValueChange = { referralCode = it },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .authTextFieldFrame(),
                         placeholder = { Text("Optional referral code") },
                         singleLine = true,
                         colors = authTextFieldColors(),
@@ -895,17 +936,29 @@ private fun AuthMethodButton(
 
 @Composable
 private fun AuthErrorBanner(message: String) {
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0x66A51E2A))
+            .background(Color.Red.copy(alpha = 0.14f))
+            .border(1.dp, Color.Red.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
             .padding(10.dp),
+        verticalAlignment = Alignment.Top,
     ) {
+        Icon(
+            imageVector = Icons.Filled.Warning,
+            contentDescription = null,
+            tint = Color.Red,
+            modifier = Modifier
+                .size(12.dp)
+                .padding(top = 2.dp),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = message,
             fontSize = 13.sp,
             color = Color(0xFFFFDCDC),
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -916,7 +969,7 @@ private fun AuthNoticeDialog(
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {},
         containerColor = Color(0xFF141414),
         titleContentColor = Color.White,
         textContentColor = Color.White.copy(alpha = 0.86f),
@@ -927,6 +980,10 @@ private fun AuthNoticeDialog(
                 Text(text = "OK", color = AuthGold, fontWeight = FontWeight.SemiBold)
             }
         },
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false,
+        ),
     )
 }
 
@@ -994,9 +1051,9 @@ private fun authTextFieldColors() = TextFieldDefaults.colors(
     unfocusedTextColor = Color.White,
     disabledTextColor = Color.White.copy(alpha = 0.5f),
     cursorColor = AuthGold,
-    focusedIndicatorColor = AuthGold.copy(alpha = 0.55f),
-    unfocusedIndicatorColor = AuthGold.copy(alpha = 0.22f),
-    disabledIndicatorColor = Color.White.copy(alpha = 0.14f),
+    focusedIndicatorColor = Color.Transparent,
+    unfocusedIndicatorColor = Color.Transparent,
+    disabledIndicatorColor = Color.Transparent,
     focusedLabelColor = Color.White.copy(alpha = 0.85f),
     unfocusedLabelColor = Color.White.copy(alpha = 0.75f),
     focusedPlaceholderColor = Color.White.copy(alpha = 0.45f),
@@ -1004,6 +1061,14 @@ private fun authTextFieldColors() = TextFieldDefaults.colors(
 )
 
 private val AuthGold = Color(0xFFD4AF37)
+
+private fun Modifier.authTextFieldFrame(): Modifier {
+    val shape = RoundedCornerShape(14.dp)
+    return this
+        .height(50.dp)
+        .clip(shape)
+        .border(1.dp, AuthGold.copy(alpha = 0.22f), shape)
+}
 
 private fun isValidUSPhone(input: String): Boolean {
     val digits = input.filter(Char::isDigit)

@@ -1,6 +1,6 @@
 # Android <-> iOS Parity Tracker
 
-Last updated: 2026-03-11
+Last updated: 2026-03-14
 
 ## Status legend
 - `DONE`: UI + core behavior aligned
@@ -274,3 +274,4 @@ Last updated: 2026-03-11
 ## Auth
 - `DONE` Login/register (`LoginView.swift` -> `LoginScreen.kt`)
   - done: black+gold auth layout; animated login/register screen switch; password/SMS login switcher with animated content transitions; SMS send-code countdown; inline auth error banner + iOS-style Notice alert dialog; sign-up entry + 2-step register flow (verify phone -> complete profile) with animated step transition; register submit with auto-login and session handoff; refined switcher/button border system + step-indicator geometry + title typography + auth logo icon parity; final per-element spacing and font hierarchy polish
+  - done: auth-login-register-notice-validation-token parity pass #309 (Login/Register now mirrors iOS alert semantics by presenting `Notice` for every fresh auth message without duplicate suppression, pre-validating phone before send-code with iOS copy `Enter a valid US phone number.`, and forcing explicit `OK` dismissal only; auth field/button tokens were tuned to iOS values with 50dp text inputs/action side-controls, `14dp` rounded gold-outline field framing, and sign-up row spacing/content-padding parity)
