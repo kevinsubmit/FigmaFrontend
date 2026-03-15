@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
@@ -22,7 +21,6 @@ import androidx.compose.ui.unit.dp
 
 enum class MapAppOption {
     GoogleMaps,
-    Waze,
     SystemDefault,
 }
 
@@ -59,17 +57,11 @@ fun MapChooserBottomSheet(
                 Text("Google Maps")
             }
             Button(
-                onClick = { onChoose(MapAppOption.Waze) },
+                onClick = { onChoose(MapAppOption.SystemDefault) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Waze")
+                Text("System Maps")
             }
-            FilterChip(
-                selected = false,
-                onClick = { onChoose(MapAppOption.SystemDefault) },
-                label = { Text("Use System Map App") },
-                modifier = Modifier.fillMaxWidth(),
-            )
             androidx.compose.foundation.layout.Box(modifier = Modifier.height(8.dp))
         }
     }
@@ -88,11 +80,6 @@ fun openMapWithOption(
         MapAppOption.GoogleMaps -> {
             openGoogleMaps(context, query, latitude, longitude) || openSystemMap(context, query, latitude, longitude)
         }
-        MapAppOption.Waze -> {
-            openWaze(context, query, latitude, longitude) ||
-                openGoogleMaps(context, query, latitude, longitude) ||
-                openSystemMap(context, query, latitude, longitude)
-        }
         MapAppOption.SystemDefault -> openSystemMap(context, query, latitude, longitude)
     }
 }
@@ -110,20 +97,6 @@ private fun openGoogleMaps(
     }
     val intent = Intent(Intent.ACTION_VIEW, uri).setPackage("com.google.android.apps.maps")
     return tryStartActivity(context, intent)
-}
-
-private fun openWaze(
-    context: Context,
-    encodedQuery: String,
-    latitude: Double?,
-    longitude: Double?,
-): Boolean {
-    val uri = if (latitude != null && longitude != null) {
-        Uri.parse("waze://?ll=$latitude,$longitude&navigate=yes")
-    } else {
-        Uri.parse("waze://?q=$encodedQuery&navigate=yes")
-    }
-    return tryStartActivity(context, Intent(Intent.ACTION_VIEW, uri))
 }
 
 private fun openSystemMap(
