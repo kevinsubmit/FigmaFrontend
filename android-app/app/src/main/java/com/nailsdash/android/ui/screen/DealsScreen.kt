@@ -442,13 +442,24 @@ private fun DealCard(
                 )
 
                 store?.formattedAddress?.takeIf { it.isNotBlank() }?.let { address ->
-                    DealMetaRow(
-                        icon = Icons.Outlined.LocationOn,
-                        text = address,
-                        iconTint = DealsGold,
-                        textColor = Color.White.copy(alpha = 0.72f),
-                        textStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.LocationOn,
+                            contentDescription = null,
+                            tint = DealsGold,
+                            modifier = Modifier.size(12.dp),
+                        )
+                        Text(
+                            text = address,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                            color = Color.White.copy(alpha = 0.72f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

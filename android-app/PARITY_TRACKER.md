@@ -50,6 +50,7 @@ Last updated: 2026-03-11
   - done: deals-sensitive-auth-alert-logout parity pass #259 (Deals `Notice` alert confirm now applies iOS-style sensitive-auth guard and force logout behavior for session-expired/unauthorized/restricted account error messages)
   - done: deals-alert-explicit-ok-dismiss parity pass #261 (Deals `Notice` alert now disables outside/back dismiss so users must confirm via `OK`, matching iOS alert dismissal semantics)
   - done: deals-expiry-countdown-ceil-day parity pass #293 (Deals expiry label now mirrors iOS `formatExpiry` semantics by computing remaining time from end timestamp with second-level delta and ceil-day mapping, so offers with <=24h remaining show `Ends today`, and timezone-naive date-times are parsed as UTC like iOS server-date normalization)
+  - done: deals-address-row-background-removal parity pass #306 (Deals card store-address metadata now renders as plain icon+text row without Android-only capsule background container, matching iOS `dealRow` address line structure while preserving single-line footnote truncation)
 
 ## Book
 - `DONE` Store list (`StoresListView.swift` -> `StoresScreen.kt`)
