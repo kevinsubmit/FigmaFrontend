@@ -958,7 +958,7 @@ private fun StoreDetailContactHoursCard(
             Text(
                 text = "CONTACT & BUSINESS HOURS",
                 style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.8.sp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = BookingSecondaryText,
                 fontWeight = FontWeight.SemiBold,
             )
 
@@ -966,7 +966,7 @@ private fun StoreDetailContactHoursCard(
                 Text(
                     text = "Today",
                     style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = BookingSecondaryText,
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
@@ -1024,7 +1024,7 @@ private fun StoreDetailContactHoursCard(
                             Text(
                                 text = dayLabel(dayIndex),
                                 style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = BookingSecondaryText,
                             )
                             Spacer(modifier = Modifier.weight(1f))
                             Text(
