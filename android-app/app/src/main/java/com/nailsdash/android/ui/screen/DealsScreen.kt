@@ -265,7 +265,7 @@ private fun DealsHeader(
 @Composable
 private fun DealsEmptyStateCard() {
     Card(
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(14.dp),
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = DealsCardBackground),
         border = androidx.compose.foundation.BorderStroke(1.dp, DealsGold.copy(alpha = 0.18f)),
@@ -326,7 +326,7 @@ private fun DealCard(
     )
 
     Card(
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(14.dp),
         modifier = Modifier
             .fillMaxWidth()
             .scale(cardScale)
