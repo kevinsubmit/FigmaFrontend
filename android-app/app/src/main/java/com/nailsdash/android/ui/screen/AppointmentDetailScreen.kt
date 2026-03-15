@@ -385,7 +385,6 @@ fun AppointmentDetailScreen(
 
     mapTarget?.let { target ->
         MapChooserBottomSheet(
-            placeTitle = target.placeTitle,
             onDismiss = { mapTarget = null },
             onChoose = { option ->
                 openMapWithOption(

@@ -426,7 +426,6 @@ fun StoreDetailScreen(
                 val store = storeDetailViewModel.store
                 if (store != null) {
                     MapChooserBottomSheet(
-                        placeTitle = store.name,
                         onDismiss = { showMapChooser = false },
                         onChoose = { option ->
                             val opened = openMapWithOption(
