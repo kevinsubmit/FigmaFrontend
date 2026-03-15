@@ -384,7 +384,7 @@ private fun StoreSortHeader(
 private fun StoreListEmptyCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = StoreListCardBackground),
         border = androidx.compose.foundation.BorderStroke(1.dp, StoreListCardStroke),
     ) {
@@ -429,7 +429,7 @@ private fun StoreListCard(
                 indication = null,
                 onClick = onOpenStore,
             ),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = StoreListCardBackground),
         border = androidx.compose.foundation.BorderStroke(1.dp, StoreListCardStroke),
         elevation = CardDefaults.cardElevation(defaultElevation = cardElevation),
