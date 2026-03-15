@@ -1019,13 +1019,7 @@ private fun StoreDetailContactHoursCard(
                 }
             }
 
-            AnimatedVisibility(
-                visible = showFullHours && storeHours.isNotEmpty(),
-                enter = fadeIn(animationSpec = tween(durationMillis = 180)) +
-                    expandVertically(animationSpec = tween(durationMillis = 220)),
-                exit = fadeOut(animationSpec = tween(durationMillis = 130)) +
-                    shrinkVertically(animationSpec = tween(durationMillis = 160)),
-            ) {
+            if (showFullHours && storeHours.isNotEmpty()) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
