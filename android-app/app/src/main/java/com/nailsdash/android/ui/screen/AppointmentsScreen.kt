@@ -695,15 +695,11 @@ private fun isUpcomingAppointment(item: Appointment): Boolean {
     val status = item.status.lowercase()
     if (status == "cancelled" || status == "completed") return false
 
-    return try {
-        val dt = LocalDateTime.parse(
-            "${item.appointment_date}T${item.appointment_time.take(8)}",
-            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"),
-        )
-        dt >= LocalDateTime.now()
-    } catch (_: Exception) {
-        false
-    }
+    val dateTime = parseAppointmentDateTime(
+        appointmentDate = item.appointment_date,
+        appointmentTime = item.appointment_time,
+    ) ?: return false
+    return dateTime >= LocalDateTime.now()
 }
 
 private fun effectiveStatus(item: Appointment): String {
@@ -745,6 +741,23 @@ private fun formatTime(raw: String): String {
     return runCatching {
         LocalTime.parse(normalized).format(DateTimeFormatter.ofPattern("h:mm a", Locale.US))
     }.getOrElse { raw }
+}
+
+private fun parseAppointmentDateTime(
+    appointmentDate: String,
+    appointmentTime: String,
+): LocalDateTime? {
+    val date = runCatching { LocalDate.parse(appointmentDate.trim()) }.getOrNull() ?: return null
+    val timeParts = appointmentTime
+        .trim()
+        .split(":")
+        .mapNotNull { it.toIntOrNull() }
+    if (timeParts.isEmpty()) return null
+    val hour = timeParts.getOrNull(0) ?: return null
+    val minute = timeParts.getOrNull(1) ?: 0
+    val second = timeParts.getOrNull(2) ?: 0
+    if (hour !in 0..23 || minute !in 0..59 || second !in 0..59) return null
+    return LocalDateTime.of(date, LocalTime.of(hour, minute, second))
 }
 
 private fun resolvedStoreAddress(

@@ -145,6 +145,7 @@ Last updated: 2026-03-11
   - done: appointments-error-notice-dialog parity pass #249 (My Appointments error handling now follows iOS notice-alert semantics with modal `Notice` dialog presentation and removes Android-only inline red error text row)
   - done: appointments-error-inline-message-title parity pass #257 (My Appointments now restores iOS-style inline footnote error text while keeping alert behavior, and alert title is aligned to `Message` to match iOS `alert(\"Message\")` semantics)
   - done: appointments-alert-explicit-ok-dismiss parity pass #261 (My Appointments `Message` alert now disables outside/back dismiss so users must confirm via `OK`, matching iOS alert dismissal semantics)
+  - done: appointments-upcoming-time-parser-flex parity pass #294 (My Appointments upcoming/past classification now mirrors iOS flexible time parsing by accepting both `HH:mm` and `HH:mm:ss` appointment times with strict range validation in both ViewModel filtering and screen-level status helpers, preventing Android-only misclassification when seconds are absent)
 - `DONE` Appointment detail (`AppointmentDetailView` -> `AppointmentDetailScreen.kt`)
   - done: card-based detail, map open with map-app chooser sheet, status display, iOS-like top close action, bottom action bar helper text, dedicated cancel/reschedule action sheets, picker-based reschedule date/time, top auto-dismiss toast, loading overlay, fine-grained visual styling (dark + gold card system, action bar, sheets)
 
