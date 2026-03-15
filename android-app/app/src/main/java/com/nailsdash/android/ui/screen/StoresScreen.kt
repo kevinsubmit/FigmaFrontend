@@ -470,20 +470,6 @@ private fun StoreListCard(
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                         .align(Alignment.TopStart),
                 )
-                store.distance?.let { miles ->
-                    val text = if (miles < 0.1) "<0.1 mi" else String.format(Locale.US, "%.1f mi", miles)
-                    Text(
-                        text = text,
-                        color = Color.Black,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 11.sp,
-                        modifier = Modifier
-                            .padding(10.dp)
-                            .background(Color.White.copy(alpha = 0.88f), CircleShape)
-                            .padding(horizontal = 9.dp, vertical = 4.dp)
-                            .align(Alignment.TopEnd),
-                    )
-                }
             }
 
             Row(
