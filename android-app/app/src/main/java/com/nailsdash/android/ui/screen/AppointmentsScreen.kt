@@ -156,9 +156,8 @@ fun AppointmentsScreen(
                                 item = appointment,
                                 resolvedStoreAddress = displayAddress,
                                 onOpenAppointment = onOpenAppointment,
-                                onOpenMaps = { storeName, address ->
+                                onOpenMaps = { address ->
                                     mapTarget = AppointmentsMapTarget(
-                                        placeTitle = storeName?.trim()?.takeIf { it.isNotBlank() } ?: "Store",
                                         address = address,
                                     )
                                 },
@@ -181,7 +180,6 @@ fun AppointmentsScreen(
                 openMapWithOption(
                     context = context,
                     option = option,
-                    placeTitle = target.placeTitle,
                     address = target.address,
                 )
                 mapTarget = null
@@ -408,7 +406,7 @@ private fun AppointmentCard(
     item: Appointment,
     resolvedStoreAddress: String?,
     onOpenAppointment: (appointmentId: Int) -> Unit,
-    onOpenMaps: (storeName: String?, address: String) -> Unit,
+    onOpenMaps: (address: String) -> Unit,
 ) {
     val isUpcoming = isUpcomingAppointment(item)
     val isPast = !isUpcoming
@@ -508,7 +506,7 @@ private fun AppointmentCard(
                                 modifier = Modifier.clickable(
                                     interactionSource = addressInteraction,
                                     indication = null,
-                                ) { onOpenMaps(item.store_name, address) },
+                                ) { onOpenMaps(address) },
                             )
                         }
                     }
@@ -773,6 +771,5 @@ private fun resolvedStoreAddress(
 }
 
 private data class AppointmentsMapTarget(
-    val placeTitle: String,
     val address: String,
 )

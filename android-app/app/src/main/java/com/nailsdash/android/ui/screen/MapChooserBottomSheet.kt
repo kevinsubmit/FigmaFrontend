@@ -61,12 +61,11 @@ fun MapChooserBottomSheet(
 fun openMapWithOption(
     context: Context,
     option: MapAppOption,
-    placeTitle: String,
     address: String,
     latitude: Double? = null,
     longitude: Double? = null,
 ): Boolean {
-    val query = Uri.encode("$placeTitle, $address")
+    val query = Uri.encode(address.trim())
     return when (option) {
         MapAppOption.GoogleMaps -> {
             openGoogleMaps(context, query, latitude, longitude) || openSystemMap(context, query, latitude, longitude)

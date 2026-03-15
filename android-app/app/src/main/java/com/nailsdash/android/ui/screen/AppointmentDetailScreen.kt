@@ -296,7 +296,6 @@ fun AppointmentDetailScreen(
                             Button(
                                 onClick = {
                                     mapTarget = AppointmentDetailMapTarget(
-                                        placeTitle = item.store_name?.trim()?.takeIf { it.isNotBlank() } ?: "Store",
                                         address = address,
                                     )
                                 },
@@ -390,7 +389,6 @@ fun AppointmentDetailScreen(
                 openMapWithOption(
                     context = context,
                     option = option,
-                    placeTitle = target.placeTitle,
                     address = target.address,
                 )
                 mapTarget = null
@@ -957,6 +955,5 @@ private fun formatTime(raw: String): String {
 }
 
 private data class AppointmentDetailMapTarget(
-    val placeTitle: String,
     val address: String,
 )

@@ -431,7 +431,6 @@ fun StoreDetailScreen(
                             val opened = openMapWithOption(
                                 context = context,
                                 option = option,
-                                placeTitle = store.name,
                                 address = store.formattedAddress,
                                 latitude = store.latitude,
                                 longitude = store.longitude,
