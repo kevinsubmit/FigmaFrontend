@@ -64,14 +64,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import com.nailsdash.android.data.model.Store
 import com.nailsdash.android.data.model.StoreImage
 import com.nailsdash.android.ui.state.AppSessionViewModel
@@ -536,33 +537,55 @@ private fun StoreImageBlock(
 ) {
     val imageModel = AssetUrlResolver.resolveURL(imageUrl)
     if (imageModel != null) {
-        AsyncImage(
+        SubcomposeAsyncImage(
             model = imageModel,
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = modifier,
-        )
+        ) {
+            when (painter.state) {
+                is AsyncImagePainter.State.Success -> {
+                    SubcomposeAsyncImageContent()
+                }
+                is AsyncImagePainter.State.Loading,
+                is AsyncImagePainter.State.Empty,
+                -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.White.copy(alpha = 0.04f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = StoreListGold,
+                        )
+                    }
+                }
+                is AsyncImagePainter.State.Error -> {
+                    StoreFallbackCover(modifier = Modifier.fillMaxSize())
+                }
+            }
+        }
     } else {
-        Box(
-            modifier = modifier.background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        Color(0xFF272110),
-                        Color(0xFF181818),
-                        Color.Black,
-                    ),
+        StoreFallbackCover(modifier = modifier)
+    }
+}
+
+@Composable
+private fun StoreFallbackCover(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.background(
+            Brush.linearGradient(
+                colors = listOf(
+                    Color(0xFF272110),
+                    Color(0xFF141414),
+                    Color.Black,
                 ),
             ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "NailsDash",
-                color = Color.White.copy(alpha = 0.42f),
-                fontSize = 11.sp,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
+        ),
+    )
 }
 
 private fun storeCardImages(store: Store, images: List<StoreImage>): List<String> {
