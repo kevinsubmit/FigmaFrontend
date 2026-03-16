@@ -225,8 +225,13 @@ fun StoreDetailScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BookingBackground),
+    ) {
         Scaffold(
+            containerColor = BookingBackground,
             bottomBar = {
                 if (selectedTab == "Services" && selectedServices.isNotEmpty()) {
                     StoreDetailSelectedServicesBar(
@@ -242,7 +247,8 @@ fun StoreDetailScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
+                    .padding(innerPadding)
+                    .background(BookingBackground),
             ) {
                 StoreDetailTopBar(onBack = onBack)
 
@@ -696,7 +702,7 @@ private fun StoreDetailTabBar(
                         text = tab.uppercase(Locale.US),
                         style = MaterialTheme.typography.labelLarge.copy(
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
+                            fontSize = 12.sp,
                             letterSpacing = 1.5.sp,
                         ),
                         color = labelColor,
@@ -3520,9 +3526,13 @@ private fun BookingSheetServicesHeaderCard(
     selectedService: ServiceItem?,
     selectedServiceChips: List<ServiceItem>,
 ) {
-    val priceText = selectedService?.let {
-        "$${String.format(Locale.US, "%.2f", it.price)}+"
-    } ?: "-"
+    val totalPrice = selectedServiceChips.sumOf { it.price }
+    val displayPrice = when {
+        totalPrice > 0.0 -> totalPrice
+        selectedService != null -> selectedService.price
+        else -> null
+    }
+    val priceText = displayPrice?.let { "$${String.format(Locale.US, "%.2f", it)}+" } ?: "-"
     val durationText = selectedService?.let {
         formatStoreDetailDuration(it.duration_minutes)
     } ?: "-"
@@ -3558,16 +3568,20 @@ private fun BookingSheetServicesHeaderCard(
                 color = BookingSecondaryText,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
 
             Box(
                 modifier = Modifier
+                    .width(120.dp)
                     .clip(badgeShape)
                     .background(BookingGold),
+                contentAlignment = Alignment.Center,
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .matchParentSize()
                         .background(
                             brush = Brush.linearGradient(
                                 colors = listOf(
@@ -3588,13 +3602,20 @@ private fun BookingSheetServicesHeaderCard(
                     ),
                     color = Color.Black,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 6.dp, vertical = 6.dp),
                     maxLines = 1,
                 )
             }
+        }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Spacer(modifier = Modifier.weight(1f))
-
             Text(
                 text = priceText,
                 style = MaterialTheme.typography.titleLarge.copy(
@@ -3603,6 +3624,8 @@ private fun BookingSheetServicesHeaderCard(
                 ),
                 color = Color.White,
                 maxLines = 1,
+                textAlign = TextAlign.End,
+                modifier = Modifier.widthIn(min = 72.dp),
             )
         }
 

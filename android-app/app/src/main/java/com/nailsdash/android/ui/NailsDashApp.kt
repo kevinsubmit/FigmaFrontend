@@ -128,6 +128,19 @@ fun NailsDashApp() {
                         NavigationBarItem(
                             selected = selected,
                             onClick = {
+                                if (tab == MainDestination.Home) {
+                                    val poppedToHome = navController.popBackStack(
+                                        route = MainDestination.Home.route,
+                                        inclusive = false,
+                                    )
+                                    if (!poppedToHome || navController.currentDestination?.route != MainDestination.Home.route) {
+                                        navController.navigate(MainDestination.Home.route) {
+                                            launchSingleTop = true
+                                        }
+                                    }
+                                    return@NavigationBarItem
+                                }
+
                                 navController.navigate(tab.route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
                                         saveState = true
@@ -187,6 +200,7 @@ fun NailsDashApp() {
             composable(MainDestination.Book.route) {
                 StoresScreen(
                     sessionViewModel = sessionViewModel,
+                    showBackButton = false,
                     onBack = {
                         navController.navigate(MainDestination.Home.route) {
                             popUpTo(navController.graph.findStartDestination().id) {

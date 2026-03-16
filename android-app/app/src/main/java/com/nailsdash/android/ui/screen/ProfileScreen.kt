@@ -9,7 +9,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -73,7 +72,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImagePainter
-import coil.compose.rememberAsyncImagePainter
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.ProfileCenterViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
@@ -337,9 +337,6 @@ private fun ProfileHeaderCard(
     maskedPhone: String,
     avatarUrl: String?,
 ) {
-    val avatarPainter = rememberAsyncImagePainter(model = avatarUrl)
-    val avatarState = avatarPainter.state
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -355,27 +352,30 @@ private fun ProfileHeaderCard(
                 .border(BorderStroke(3.dp, ProfileGold), CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            when {
-                avatarUrl.isNullOrBlank() -> {
-                    ProfileAvatarFallback(userName = userName)
-                }
-                avatarState is AsyncImagePainter.State.Success -> {
-                    Image(
-                        painter = avatarPainter,
-                        contentDescription = "Avatar",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop,
-                    )
-                }
-                avatarState is AsyncImagePainter.State.Loading || avatarState is AsyncImagePainter.State.Empty -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = ProfileGold,
-                        strokeWidth = 2.dp,
-                    )
-                }
-                else -> {
-                    ProfileAvatarFallback(userName = userName)
+            if (avatarUrl.isNullOrBlank()) {
+                ProfileAvatarFallback(userName = userName)
+            } else {
+                SubcomposeAsyncImage(
+                    model = avatarUrl,
+                    contentDescription = "Avatar",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                ) {
+                    when (painter.state) {
+                        is AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
+                        is AsyncImagePainter.State.Loading,
+                        is AsyncImagePainter.State.Empty,
+                        -> {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = ProfileGold,
+                                strokeWidth = 2.dp,
+                            )
+                        }
+                        is AsyncImagePainter.State.Error -> {
+                            ProfileAvatarFallback(userName = userName)
+                        }
+                    }
                 }
             }
         }

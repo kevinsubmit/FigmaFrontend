@@ -238,15 +238,16 @@ struct BookAppointmentView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.9)
 
-                depositNeededBadge
-
                 Spacer(minLength: UITheme.spacing4)
 
-                VStack(alignment: .trailing, spacing: UITheme.spacing1) {
-                    Text(selectedServicePriceText)
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(.white)
-                }
+                depositNeededBadge
+            }
+
+            HStack(alignment: .center, spacing: UITheme.spacing8) {
+                Spacer(minLength: UITheme.spacing4)
+                Text(selectedServicePriceText)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(.white)
             }
 
             HStack(alignment: .center, spacing: UITheme.spacing8) {

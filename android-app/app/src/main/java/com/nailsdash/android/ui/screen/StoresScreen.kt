@@ -92,6 +92,7 @@ fun StoresScreen(
     onOpenStore: (storeId: Int) -> Unit = {},
     onBack: () -> Unit = {},
     hideTabBar: Boolean = false,
+    showBackButton: Boolean = true,
     storesViewModel: StoresViewModel = viewModel(),
 ) {
     val context = LocalContext.current
@@ -154,6 +155,7 @@ fun StoresScreen(
             StoreListHeaderBlock(
                 selected = storesViewModel.selectedSort,
                 onSelect = storesViewModel::onSortSelected,
+                showBackButton = showBackButton,
                 onBack = {
                     if (!hideTabBar) {
                         sessionViewModel.resetBookFlowSource()
@@ -252,6 +254,7 @@ fun StoresScreen(
 private fun StoreListHeaderBlock(
     selected: StoreSortOption,
     onSelect: (StoreSortOption) -> Unit,
+    showBackButton: Boolean,
     onBack: () -> Unit,
 ) {
     Column(
@@ -263,14 +266,20 @@ private fun StoreListHeaderBlock(
                 ),
             ),
     ) {
-        StoreListTopHeader(onBack = onBack)
+        StoreListTopHeader(
+            showBackButton = showBackButton,
+            onBack = onBack,
+        )
         StoreSortHeader(selected = selected, onSelect = onSelect)
         HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
     }
 }
 
 @Composable
-private fun StoreListTopHeader(onBack: () -> Unit) {
+private fun StoreListTopHeader(
+    showBackButton: Boolean,
+    onBack: () -> Unit,
+) {
     val backInteraction = remember { MutableInteractionSource() }
 
     Box(
@@ -298,24 +307,26 @@ private fun StoreListTopHeader(onBack: () -> Unit) {
             )
         }
 
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .size(38.dp)
-                .background(Color.White.copy(alpha = 0.07f), CircleShape)
-                .clickable(
-                    interactionSource = backInteraction,
-                    indication = null,
-                    onClick = onBack,
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Filled.ChevronLeft,
-                contentDescription = "Back",
-                tint = Color.White,
-                modifier = Modifier.size(16.dp),
-            )
+        if (showBackButton) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .size(38.dp)
+                    .background(Color.White.copy(alpha = 0.07f), CircleShape)
+                    .clickable(
+                        interactionSource = backInteraction,
+                        indication = null,
+                        onClick = onBack,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ChevronLeft,
+                    contentDescription = "Back",
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
         }
     }
 }
