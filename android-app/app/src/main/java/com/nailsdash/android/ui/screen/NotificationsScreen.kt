@@ -87,7 +87,7 @@ fun NotificationsScreen(
     var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(bearerToken) {
-        if (bearerToken != null) notificationsViewModel.load(bearerToken)
+        if (bearerToken != null) notificationsViewModel.loadIfNeeded(bearerToken)
     }
     LaunchedEffect(notificationsViewModel.errorMessage) {
         val message = notificationsViewModel.errorMessage?.trim().takeIf { !it.isNullOrEmpty() }

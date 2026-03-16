@@ -171,10 +171,13 @@ class AppointmentDetailViewModel(application: Application) : AndroidViewModel(ap
         storesRepository.getStoreDetail(current.store_id)
             .onSuccess { detail ->
                 val fullAddress = detail.formattedAddress.trim()
-                if (fullAddress.isNotEmpty()) {
-                    resolvedStoreAddress = fullAddress
-                    appointment = current.copy(store_address = fullAddress)
-                }
+                val resolvedName = detail.name.trim().ifEmpty { null }
+                val mergedAddress = if (fullAddress.isNotEmpty()) fullAddress else current.store_address
+                resolvedStoreAddress = normalizedAddress(mergedAddress)
+                appointment = current.copy(
+                    store_name = normalizedStoreName(current.store_name) ?: resolvedName,
+                    store_address = mergedAddress,
+                )
             }
             .onFailure {
                 resolvedStoreAddress = normalizedAddress(current.store_address)
@@ -186,7 +189,7 @@ class AppointmentDetailViewModel(application: Application) : AndroidViewModel(ap
         return primary.copy(
             order_number = primary.order_number ?: fallback.order_number,
             order_amount = primary.order_amount ?: fallback.order_amount,
-            store_name = primary.store_name ?: fallback.store_name,
+            store_name = normalizedStoreName(primary.store_name) ?: normalizedStoreName(fallback.store_name),
             store_address = primary.store_address ?: fallback.store_address,
             service_name = primary.service_name ?: fallback.service_name,
             service_price = primary.service_price ?: fallback.service_price,
@@ -212,6 +215,11 @@ class AppointmentDetailViewModel(application: Application) : AndroidViewModel(ap
     }
 
     private fun normalizedAddress(value: String?): String? {
+        val trimmed = value?.trim().orEmpty()
+        return trimmed.ifEmpty { null }
+    }
+
+    private fun normalizedStoreName(value: String?): String? {
         val trimmed = value?.trim().orEmpty()
         return trimmed.ifEmpty { null }
     }

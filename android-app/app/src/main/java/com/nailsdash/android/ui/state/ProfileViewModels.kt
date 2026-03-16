@@ -30,6 +30,8 @@ import kotlinx.coroutines.launch
 class ProfileCenterViewModel(application: Application) : AndroidViewModel(application) {
     private val profileRepository = ProfileRepository()
     private val appointmentsRepository = AppointmentsRepository()
+    private var loadedBearerToken: String? = null
+    private var hasLoadedOnce = false
 
     var unreadCount by mutableStateOf(0)
         private set
@@ -61,7 +63,16 @@ class ProfileCenterViewModel(application: Application) : AndroidViewModel(applic
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
-    fun load(bearerToken: String) {
+    fun loadIfNeeded(bearerToken: String) {
+        if (loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null && !isLoading) return
+        load(bearerToken)
+    }
+
+    fun load(bearerToken: String, force: Boolean = false) {
+        if (!force && isLoading) return
+        if (!force && loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null) return
+        loadedBearerToken = bearerToken
+        hasLoadedOnce = true
         isLoading = true
         viewModelScope.launch {
             coroutineScope {
@@ -117,6 +128,8 @@ class ProfileCenterViewModel(application: Application) : AndroidViewModel(applic
 
 class PointsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ProfileRepository()
+    private var loadedBearerToken: String? = null
+    private var hasLoadedOnce = false
 
     var balance by mutableStateOf<PointsBalance?>(null)
         private set
@@ -139,7 +152,16 @@ class PointsViewModel(application: Application) : AndroidViewModel(application) 
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
-    fun load(bearerToken: String) {
+    fun loadIfNeeded(bearerToken: String) {
+        if (loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null && !isLoading) return
+        load(bearerToken)
+    }
+
+    fun load(bearerToken: String, force: Boolean = false) {
+        if (!force && isLoading) return
+        if (!force && loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null) return
+        loadedBearerToken = bearerToken
+        hasLoadedOnce = true
         isLoading = true
         viewModelScope.launch {
             coroutineScope {
@@ -162,7 +184,7 @@ class PointsViewModel(application: Application) : AndroidViewModel(application) 
                 .onSuccess { redeemed ->
                     actionMessage = "Exchanged: ${redeemed.coupon.name}"
                     errorMessage = null
-                    load(bearerToken)
+                    load(bearerToken, force = true)
                 }
                 .onFailure { errorMessage = it.message }
             isRedeemingCouponId = null
@@ -172,6 +194,10 @@ class PointsViewModel(application: Application) : AndroidViewModel(application) 
 
 class CouponsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ProfileRepository()
+    private var loadedBearerToken: String? = null
+    private var loadedStatus: String? = null
+    private var hasLoadedOnce = false
+    private var loadRequestVersion = 0
 
     var selectedStatus by mutableStateOf("available")
 
@@ -184,7 +210,34 @@ class CouponsViewModel(application: Application) : AndroidViewModel(application)
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
-    fun load(bearerToken: String) {
+    fun loadIfNeeded(bearerToken: String) {
+        if (
+            loadedBearerToken == bearerToken &&
+            loadedStatus == selectedStatus &&
+            hasLoadedOnce &&
+            errorMessage == null &&
+            !isLoading
+        ) {
+            return
+        }
+        load(bearerToken)
+    }
+
+    fun load(bearerToken: String, force: Boolean = false) {
+        if (!force && isLoading) return
+        if (
+            !force &&
+            loadedBearerToken == bearerToken &&
+            loadedStatus == selectedStatus &&
+            hasLoadedOnce &&
+            errorMessage == null
+        ) {
+            return
+        }
+        loadedBearerToken = bearerToken
+        loadedStatus = selectedStatus
+        hasLoadedOnce = true
+        val requestVersion = ++loadRequestVersion
         isLoading = true
         viewModelScope.launch {
             repository.getMyCoupons(
@@ -192,12 +245,15 @@ class CouponsViewModel(application: Application) : AndroidViewModel(application)
                 status = selectedStatus,
                 limit = 100,
             ).onSuccess {
+                if (requestVersion != loadRequestVersion) return@onSuccess
                 coupons = it
                 errorMessage = null
             }.onFailure { err ->
+                if (requestVersion != loadRequestVersion) return@onFailure
                 coupons = emptyList()
                 errorMessage = err.message
             }
+            if (requestVersion != loadRequestVersion) return@launch
             isLoading = false
         }
     }
@@ -205,6 +261,8 @@ class CouponsViewModel(application: Application) : AndroidViewModel(application)
 
 class GiftCardsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ProfileRepository()
+    private var loadedBearerToken: String? = null
+    private var hasLoadedOnce = false
 
     var cards by mutableStateOf(emptyList<GiftCard>())
         private set
@@ -227,7 +285,16 @@ class GiftCardsViewModel(application: Application) : AndroidViewModel(applicatio
     var actionMessage by mutableStateOf<String?>(null)
         private set
 
-    fun load(bearerToken: String) {
+    fun loadIfNeeded(bearerToken: String) {
+        if (loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null && !isLoading) return
+        load(bearerToken)
+    }
+
+    fun load(bearerToken: String, force: Boolean = false) {
+        if (!force && isLoading) return
+        if (!force && loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null) return
+        loadedBearerToken = bearerToken
+        hasLoadedOnce = true
         isLoading = true
         viewModelScope.launch {
             repository.getMyGiftCards(bearerToken, limit = 100)
@@ -326,6 +393,8 @@ class OrderHistoryViewModel(application: Application) : AndroidViewModel(applica
     private val profileRepository = ProfileRepository()
     private val appointmentDateTimeSecondFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
     private val appointmentDateTimeMinuteFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
+    private var loadedBearerToken: String? = null
+    private var hasLoadedOnce = false
 
     var items by mutableStateOf(emptyList<Appointment>())
         private set
@@ -345,7 +414,16 @@ class OrderHistoryViewModel(application: Application) : AndroidViewModel(applica
     var isUploadingReviewImages by mutableStateOf(false)
         private set
 
-    fun load(bearerToken: String) {
+    fun loadIfNeeded(bearerToken: String) {
+        if (loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null && !isLoading) return
+        load(bearerToken)
+    }
+
+    fun load(bearerToken: String, force: Boolean = false) {
+        if (!force && isLoading) return
+        if (!force && loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null) return
+        loadedBearerToken = bearerToken
+        hasLoadedOnce = true
         isLoading = true
         viewModelScope.launch {
             appointmentsRepository.getMyAppointments(bearerToken, limit = 100)
@@ -425,6 +503,8 @@ class OrderHistoryViewModel(application: Application) : AndroidViewModel(applica
 class MyReviewsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ProfileRepository()
     private val storesRepository = StoresRepository()
+    private var loadedBearerToken: String? = null
+    private var hasLoadedOnce = false
 
     var items by mutableStateOf(emptyList<UserReview>())
         private set
@@ -447,7 +527,16 @@ class MyReviewsViewModel(application: Application) : AndroidViewModel(applicatio
     var actionMessage by mutableStateOf<String?>(null)
         private set
 
-    fun load(bearerToken: String) {
+    fun loadIfNeeded(bearerToken: String) {
+        if (loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null && !isLoading) return
+        load(bearerToken)
+    }
+
+    fun load(bearerToken: String, force: Boolean = false) {
+        if (!force && isLoading) return
+        if (!force && loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null) return
+        loadedBearerToken = bearerToken
+        hasLoadedOnce = true
         isLoading = true
         viewModelScope.launch {
             repository.getMyReviews(bearerToken, limit = 100)
@@ -550,6 +639,8 @@ class MyReviewsViewModel(application: Application) : AndroidViewModel(applicatio
 class MyFavoritesViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ProfileRepository()
     private val storesRepository = StoresRepository()
+    private var loadedBearerToken: String? = null
+    private var hasLoadedOnce = false
 
     var favoritePins by mutableStateOf(emptyList<com.nailsdash.android.data.model.HomeFeedPin>())
         private set
@@ -575,7 +666,16 @@ class MyFavoritesViewModel(application: Application) : AndroidViewModel(applicat
     var actionMessage by mutableStateOf<String?>(null)
         private set
 
-    fun load(bearerToken: String) {
+    fun loadIfNeeded(bearerToken: String) {
+        if (loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null && !isLoading) return
+        load(bearerToken)
+    }
+
+    fun load(bearerToken: String, force: Boolean = false) {
+        if (!force && isLoading) return
+        if (!force && loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null) return
+        loadedBearerToken = bearerToken
+        hasLoadedOnce = true
         isLoading = true
         viewModelScope.launch {
             coroutineScope {
@@ -674,6 +774,8 @@ class MyFavoritesViewModel(application: Application) : AndroidViewModel(applicat
 
 class VipViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ProfileRepository()
+    private var loadedBearerToken: String? = null
+    private var hasLoadedOnce = false
 
     var vipStatus by mutableStateOf<VipStatus?>(null)
         private set
@@ -684,7 +786,16 @@ class VipViewModel(application: Application) : AndroidViewModel(application) {
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
-    fun load(bearerToken: String) {
+    fun loadIfNeeded(bearerToken: String) {
+        if (loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null && !isLoading) return
+        load(bearerToken)
+    }
+
+    fun load(bearerToken: String, force: Boolean = false) {
+        if (!force && isLoading) return
+        if (!force && loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null) return
+        loadedBearerToken = bearerToken
+        hasLoadedOnce = true
         isLoading = true
         viewModelScope.launch {
             repository.getVipStatus(bearerToken)
@@ -703,6 +814,8 @@ class VipViewModel(application: Application) : AndroidViewModel(application) {
 
 class ReferralViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = ProfileRepository()
+    private var loadedBearerToken: String? = null
+    private var hasLoadedOnce = false
 
     var referralCode by mutableStateOf<String?>(null)
         private set
@@ -719,7 +832,16 @@ class ReferralViewModel(application: Application) : AndroidViewModel(application
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
-    fun load(bearerToken: String) {
+    fun loadIfNeeded(bearerToken: String) {
+        if (loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null && !isLoading) return
+        load(bearerToken)
+    }
+
+    fun load(bearerToken: String, force: Boolean = false) {
+        if (!force && isLoading) return
+        if (!force && loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null) return
+        loadedBearerToken = bearerToken
+        hasLoadedOnce = true
         isLoading = true
         viewModelScope.launch {
             coroutineScope {

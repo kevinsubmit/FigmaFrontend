@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.nailsdash.android.benchmark.BenchmarkFixtures
+import com.nailsdash.android.benchmark.BenchmarkOverrides
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.nailsdash.android.data.model.HomeFeedPin
@@ -39,6 +41,14 @@ class HomePinDetailViewModel(application: Application) : AndroidViewModel(applic
         isLoading = true
         errorMessage = null
 
+        if (BenchmarkOverrides.isEnabled()) {
+            pin = BenchmarkFixtures.homePin(pinId)
+            relatedPins = BenchmarkFixtures.relatedPins(pinId)
+            errorMessage = if (pin == null) "Pin unavailable." else null
+            isLoading = false
+            return
+        }
+
         viewModelScope.launch {
             repository.getPinById(pinId)
                 .onSuccess { detail ->
@@ -60,6 +70,10 @@ class HomePinDetailViewModel(application: Application) : AndroidViewModel(applic
             isFavorited = false
             return
         }
+        if (BenchmarkOverrides.isEnabled()) {
+            isFavorited = false
+            return
+        }
 
         viewModelScope.launch {
             repository.checkFavorite(pinId = pinId, bearerToken = bearerToken)
@@ -71,6 +85,11 @@ class HomePinDetailViewModel(application: Application) : AndroidViewModel(applic
     suspend fun toggleFavorite(bearerToken: String) {
         val pinId = pin?.id ?: return
         if (isFavoriteLoading) return
+        if (BenchmarkOverrides.isEnabled()) {
+            isFavorited = !isFavorited
+            errorMessage = null
+            return
+        }
         isFavoriteLoading = true
         val targetState = !isFavorited
         errorMessage = null

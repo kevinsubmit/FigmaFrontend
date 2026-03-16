@@ -65,6 +65,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.nailsdash.android.data.model.Promotion
 import com.nailsdash.android.data.model.Store
+import com.nailsdash.android.ui.component.ImagePrefetchEffect
+import com.nailsdash.android.ui.component.ReportScreenDrawnWhen
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.DealsSegment
 import com.nailsdash.android.ui.state.DealsViewModel
@@ -92,7 +94,14 @@ fun DealsScreen(
     var noticeMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        dealsViewModel.load()
+        dealsViewModel.loadIfNeeded()
+    }
+    LaunchedEffect(
+        dealsViewModel.selectedSegment,
+        dealsViewModel.promotions.size,
+        dealsViewModel.hasMore,
+    ) {
+        dealsViewModel.loadMoreForSelectedSegmentIfNeeded()
     }
     LaunchedEffect(dealsViewModel.errorMessage) {
         val message = dealsViewModel.errorMessage?.trim().orEmpty()
@@ -101,17 +110,32 @@ fun DealsScreen(
         }
     }
 
-    val rows = dealsViewModel.filteredPromotions()
+    ReportScreenDrawnWhen(
+        isReady = dealsViewModel.initialLoadResolved && !dealsViewModel.isLoading,
+    )
+
+    val rows = remember(dealsViewModel.promotions, dealsViewModel.selectedSegment) {
+        dealsViewModel.filteredPromotions()
+    }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(DealsBackground),
     ) {
+        ImagePrefetchEffect(
+            urls = rows.mapNotNull { promotion ->
+                AssetUrlResolver.resolveURL(
+                    promotion.image_url ?: promotion.store_id?.let { dealsViewModel.storesById[it]?.image_url },
+                )
+            },
+            maxCount = 10,
+        )
+
         Column(modifier = Modifier.fillMaxSize()) {
             DealsHeader(
                 selectedSegment = dealsViewModel.selectedSegment,
-                onSelectSegment = { dealsViewModel.selectedSegment = it },
+                onSelectSegment = dealsViewModel::onSegmentSelected,
             )
 
             LazyColumn(
@@ -119,7 +143,7 @@ fun DealsScreen(
                 contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 26.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (!dealsViewModel.isLoading && rows.isEmpty()) {
+                if (!dealsViewModel.isLoading && !dealsViewModel.isLoadingMore && rows.isEmpty()) {
                     item {
                         DealsEmptyStateCard()
                     }
@@ -128,6 +152,7 @@ fun DealsScreen(
                         items = rows,
                         key = { _, item -> item.id },
                     ) { index, promotion ->
+                        dealsViewModel.loadMoreIfNeeded(index)
                         val store = promotion.store_id?.let { dealsViewModel.storesById[it] }
                         DealCard(
                             promotion = promotion,
@@ -137,6 +162,23 @@ fun DealsScreen(
                             onOpenStore = onOpenStore,
                             onBrowseStores = onBrowseStores,
                         )
+                    }
+
+                    if (dealsViewModel.isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = DealsGold,
+                                )
+                            }
+                        }
                     }
                 }
             }

@@ -1,5 +1,6 @@
 package com.nailsdash.android.data.repository
 
+import com.nailsdash.android.core.cache.TimedMemoryCache
 import com.nailsdash.android.core.network.toUserMessage
 import com.nailsdash.android.data.model.AuthUser
 import com.nailsdash.android.data.model.SendVerificationCodeRequest
@@ -21,15 +22,26 @@ import okhttp3.RequestBody.Companion.toRequestBody
 class SettingsRepository {
     private val api get() = ServiceLocator.api
 
-    suspend fun getCurrentUser(bearerToken: String): Result<AuthUser> =
-        runCatching { api.getMe(bearerToken) }.mapFailure()
+    private data class TokenKey(
+        val bearerToken: String,
+    )
+
+    suspend fun getCurrentUser(bearerToken: String): Result<AuthUser> {
+        val cacheKey = TokenKey(bearerToken)
+        currentUserCache.get(cacheKey)?.let { return Result.success(it) }
+        return runCatching { api.getMe(bearerToken) }
+            .mapFailure()
+            .onSuccess { currentUserCache.put(cacheKey, it) }
+    }
 
     suspend fun updateProfile(
         bearerToken: String,
         payload: SettingsUpdateProfileRequest,
     ): Result<SettingsUpdateProfileResponse> = runCatching {
         api.updateProfile(bearerToken, payload)
-    }.mapFailure()
+    }.mapFailure().onSuccess {
+        currentUserCache.clear()
+    }
 
     suspend fun updatePassword(
         bearerToken: String,
@@ -49,7 +61,9 @@ class SettingsRepository {
         payload: SettingsUpdatePhoneRequest,
     ): Result<SettingsUpdatePhoneResponse> = runCatching {
         api.updatePhone(bearerToken, payload)
-    }.mapFailure()
+    }.mapFailure().onSuccess {
+        currentUserCache.clear()
+    }
 
     suspend fun updateSettings(
         bearerToken: String,
@@ -72,10 +86,17 @@ class SettingsRepository {
         )
         val response = api.uploadAvatar(bearerToken = bearerToken, file = part)
         response["avatar_url"].orEmpty()
-    }.mapFailure()
+    }.mapFailure().onSuccess {
+        currentUserCache.clear()
+    }
 
     private fun <T> Result<T>.mapFailure(): Result<T> {
         exceptionOrNull() ?: return this
         return Result.failure(IllegalStateException(exceptionOrNull()?.toUserMessage() ?: "Request failed."))
+    }
+
+    private companion object {
+        private const val CACHE_TTL_MS = 30 * 1000L
+        private val currentUserCache = TimedMemoryCache<TokenKey, AuthUser>(CACHE_TTL_MS, maxEntries = 4)
     }
 }

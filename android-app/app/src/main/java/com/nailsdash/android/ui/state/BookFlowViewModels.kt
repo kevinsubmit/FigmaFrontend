@@ -6,6 +6,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.nailsdash.android.benchmark.BenchmarkFixtures
+import com.nailsdash.android.benchmark.BenchmarkOverrides
 import com.nailsdash.android.data.model.AppointmentCreateRequest
 import com.nailsdash.android.data.model.AppointmentGroupCreateRequest
 import com.nailsdash.android.data.model.AppointmentGroupGuestCreateRequest
@@ -32,6 +34,8 @@ import kotlinx.coroutines.launch
 
 class StoreDetailViewModel(application: Application) : AndroidViewModel(application) {
     private val storesRepository = StoresRepository()
+    private var loadedStoreId: Int? = null
+    private var loadedFavoriteToken: String? = null
 
     var store by mutableStateOf<StoreDetail?>(null)
         private set
@@ -68,8 +72,36 @@ class StoreDetailViewModel(application: Application) : AndroidViewModel(applicat
 
     private var selectedTab by mutableStateOf("Services")
 
-    fun loadStore(storeId: Int, bearerToken: String?) {
+    fun loadStore(storeId: Int, bearerToken: String?, force: Boolean = false) {
+        val shouldReloadContent = force || loadedStoreId != storeId || store == null
+        val shouldRefreshFavorite = loadedStoreId != storeId || loadedFavoriteToken != bearerToken
+        loadedStoreId = storeId
+        loadedFavoriteToken = bearerToken
+
+        if (!shouldReloadContent) {
+            if (shouldRefreshFavorite) {
+                refreshFavoriteState(storeId = storeId, bearerToken = bearerToken)
+            }
+            return
+        }
+
         isLoading = true
+        errorMessage = null
+        if (BenchmarkOverrides.isEnabled()) {
+            store = BenchmarkFixtures.storeDetail(storeId)
+            services = BenchmarkFixtures.storeServices(storeId)
+            reviews = BenchmarkFixtures.storeReviews(storeId)
+            portfolio = BenchmarkFixtures.storePortfolio(storeId)
+            ratingSummary = BenchmarkFixtures.storeRating(storeId)
+            storeHours = BenchmarkFixtures.storeHours(storeId)
+            selectedServiceIds = selectedServiceIds.filter { selectedId ->
+                services.any { it.id == selectedId }
+            }
+            isFavorited = false
+            isLoading = false
+            errorMessage = if (store == null) "Store unavailable." else null
+            return
+        }
         viewModelScope.launch {
             coroutineScope {
                 val detailTask = async { storesRepository.getStoreDetail(storeId) }
@@ -98,12 +130,8 @@ class StoreDetailViewModel(application: Application) : AndroidViewModel(applicat
                 portfolioTask.await().onSuccess { portfolio = it }
                 ratingTask.await().onSuccess { ratingSummary = it }
                 hoursTask.await().onSuccess { storeHours = it }
-
-                if (bearerToken != null) {
-                    storesRepository.checkFavorite(storeId, bearerToken)
-                        .onSuccess { isFavorited = it.is_favorited }
-                }
             }
+            refreshFavoriteState(storeId = storeId, bearerToken = bearerToken)
             isLoading = false
         }
     }
@@ -147,6 +175,11 @@ class StoreDetailViewModel(application: Application) : AndroidViewModel(applicat
 
     fun toggleFavorite(storeId: Int, bearerToken: String) {
         if (isFavoriteLoading) return
+        if (BenchmarkOverrides.isEnabled()) {
+            isFavorited = !isFavorited
+            errorMessage = null
+            return
+        }
         isFavoriteLoading = true
         viewModelScope.launch {
             val next = !isFavorited
@@ -159,11 +192,27 @@ class StoreDetailViewModel(application: Application) : AndroidViewModel(applicat
             isFavoriteLoading = false
         }
     }
+
+    private fun refreshFavoriteState(storeId: Int, bearerToken: String?) {
+        if (bearerToken == null) {
+            isFavorited = false
+            return
+        }
+        if (BenchmarkOverrides.isEnabled()) {
+            isFavorited = false
+            return
+        }
+        viewModelScope.launch {
+            storesRepository.checkFavorite(storeId, bearerToken)
+                .onSuccess { isFavorited = it.is_favorited }
+        }
+    }
 }
 
 class BookAppointmentViewModel(application: Application) : AndroidViewModel(application) {
     private val storesRepository = StoresRepository()
     private val appointmentsRepository = AppointmentsRepository()
+    private var slotRequestVersion = 0
 
     var storeDetail by mutableStateOf<StoreDetail?>(null)
         private set
@@ -214,9 +263,31 @@ class BookAppointmentViewModel(application: Application) : AndroidViewModel(appl
 
     private var activeStoreId: Int? = null
 
-    fun loadData(storeId: Int, preselectedServiceId: Int? = null) {
+    fun loadData(storeId: Int, preselectedServiceId: Int? = null, force: Boolean = false) {
+        val shouldReloadContent = force || activeStoreId != storeId || storeDetail == null
         activeStoreId = storeId
+        if (!shouldReloadContent) {
+            applySelectedService(preselectedServiceId)
+            reloadAvailableSlots()
+            return
+        }
+
         isLoading = true
+        errorMessage = null
+        if (BenchmarkOverrides.isEnabled()) {
+            storeDetail = BenchmarkFixtures.storeDetail(storeId)
+            services = BenchmarkFixtures.storeServices(storeId)
+            technicians = BenchmarkFixtures.storeTechnicians(storeId)
+            storeHours = BenchmarkFixtures.storeHours(storeId)
+            activeZoneId = parseZoneId(storeDetail?.time_zone)
+            selectedTechnicianId = technicians.firstOrNull()?.id
+            selectedDate = LocalDate.now().plusDays(1)
+            applySelectedService(preselectedServiceId)
+            reloadAvailableSlots()
+            isLoading = false
+            errorMessage = if (storeDetail == null) "Store unavailable." else null
+            return
+        }
         viewModelScope.launch {
             coroutineScope {
                 val storeTask = async { storesRepository.getStoreDetail(storeId) }
@@ -232,12 +303,7 @@ class BookAppointmentViewModel(application: Application) : AndroidViewModel(appl
 
                 servicesTask.await().onSuccess { rows ->
                     services = rows.filter { it.is_active == 1 }
-                    val fallback = services.firstOrNull()?.id
-                    selectedServiceId = when {
-                        preselectedServiceId != null && services.any { it.id == preselectedServiceId } -> preselectedServiceId
-                        selectedServiceId != null && services.any { it.id == selectedServiceId } -> selectedServiceId
-                        else -> fallback
-                    }
+                    applySelectedService(preselectedServiceId)
                 }.onFailure { if (errorMessage == null) errorMessage = it.message }
 
                 techTask.await().onSuccess { rows ->
@@ -281,6 +347,7 @@ class BookAppointmentViewModel(application: Application) : AndroidViewModel(appl
     }
 
     private suspend fun reloadAvailableSlotsInternal() {
+        val requestVersion = ++slotRequestVersion
         val serviceId = selectedServiceId
         val storeId = activeStoreId
         if (serviceId == null || storeId == null) {
@@ -293,7 +360,20 @@ class BookAppointmentViewModel(application: Application) : AndroidViewModel(appl
         slotHintMessage = null
         successMessage = null
 
+        if (BenchmarkOverrides.isEnabled()) {
+            val syntheticSlots = listOf("10:00", "11:30", "1:00", "3:30", "5:00")
+            val filtered = filterPastSlots(syntheticSlots)
+            if (requestVersion != slotRequestVersion) return
+            availableSlots = filtered
+            selectedSlot = selectedSlot?.takeIf { it in filtered } ?: filtered.firstOrNull()
+            slotHintMessage = if (filtered.isEmpty()) "No available times for this date." else null
+            errorMessage = null
+            isLoadingSlots = false
+            return
+        }
+
         if (isStoreClosed(selectedDate)) {
+            if (requestVersion != slotRequestVersion) return
             availableSlots = emptyList()
             selectedSlot = null
             slotHintMessage = "The salon is closed on this date."
@@ -313,6 +393,7 @@ class BookAppointmentViewModel(application: Application) : AndroidViewModel(appl
             } else {
                 val activeTechIds = technicians.map { it.id }
                 if (activeTechIds.isEmpty()) {
+                    if (requestVersion != slotRequestVersion) return
                     availableSlots = emptyList()
                     selectedSlot = null
                     slotHintMessage = "No available technicians for this store."
@@ -333,6 +414,7 @@ class BookAppointmentViewModel(application: Application) : AndroidViewModel(appl
                 }
             }
         } catch (error: Exception) {
+            if (requestVersion != slotRequestVersion) return
             availableSlots = emptyList()
             selectedSlot = null
             errorMessage = error.message
@@ -341,6 +423,7 @@ class BookAppointmentViewModel(application: Application) : AndroidViewModel(appl
             return
         }
 
+        if (requestVersion != slotRequestVersion) return
         val normalized = normalizeSlots(slotRows.map { it.start_time })
         val filtered = filterPastSlots(normalized)
 
@@ -581,6 +664,15 @@ class BookAppointmentViewModel(application: Application) : AndroidViewModel(appl
 
     private fun slotToRequestTime(slot: String): String {
         return if (slot.length == 5) "$slot:00" else slot
+    }
+
+    private fun applySelectedService(preselectedServiceId: Int?) {
+        val fallback = services.firstOrNull()?.id
+        selectedServiceId = when {
+            preselectedServiceId != null && services.any { it.id == preselectedServiceId } -> preselectedServiceId
+            selectedServiceId != null && services.any { it.id == selectedServiceId } -> selectedServiceId
+            else -> fallback
+        }
     }
 
     companion object {

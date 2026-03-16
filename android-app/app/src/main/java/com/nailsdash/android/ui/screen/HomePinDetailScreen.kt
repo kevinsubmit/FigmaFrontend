@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -597,6 +598,10 @@ private fun FloatingBookNowStrip(
             Button(
                 onClick = onChooseSalon,
                 shape = RoundedCornerShape(999.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PinDetailGold,
+                    contentColor = Color.Black,
+                ),
             ) {
                 Text(
                     text = "Choose a salon",

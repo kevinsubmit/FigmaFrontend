@@ -15,6 +15,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -32,7 +33,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,6 +64,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -71,10 +74,12 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImagePainter
-import coil.compose.SubcomposeAsyncImage
-import coil.compose.SubcomposeAsyncImageContent
+import coil.compose.rememberAsyncImagePainter
+import com.nailsdash.android.benchmark.BenchmarkOverrides
 import com.nailsdash.android.data.model.Store
 import com.nailsdash.android.data.model.StoreImage
+import com.nailsdash.android.ui.component.ImagePrefetchEffect
+import com.nailsdash.android.ui.component.ReportScreenDrawnWhen
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.StoreSortOption
 import com.nailsdash.android.ui.state.StoresViewModel
@@ -97,6 +102,7 @@ fun StoresScreen(
 ) {
     val context = LocalContext.current
     var noticeMessage by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingNearestSelection by rememberSaveable { mutableStateOf(false) }
     val requestLocationPermission = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
@@ -104,14 +110,44 @@ fun StoresScreen(
             val location = resolveLastKnownLocation(context)
             if (location != null) {
                 storesViewModel.updateUserLocation(location.latitude, location.longitude)
+                if (pendingNearestSelection) {
+                    storesViewModel.onSortSelected(StoreSortOption.Nearest)
+                }
+            } else if (pendingNearestSelection) {
+                storesViewModel.onSortSelected(StoreSortOption.Recommended)
+                noticeMessage = "Location unavailable. Please enable location services and try Nearest again."
             }
+        } else if (pendingNearestSelection) {
+            storesViewModel.onSortSelected(StoreSortOption.Recommended)
+            noticeMessage = "Location permission is required to sort by Nearest."
         }
+        pendingNearestSelection = false
         if (storesViewModel.stores.isEmpty()) {
             storesViewModel.load()
         }
     }
+    val applyNearestSortOrExplain = {
+        if (hasLocationPermission(context)) {
+            val location = resolveLastKnownLocation(context)
+            if (location != null) {
+                storesViewModel.updateUserLocation(location.latitude, location.longitude)
+                storesViewModel.onSortSelected(StoreSortOption.Nearest)
+            } else {
+                storesViewModel.onSortSelected(StoreSortOption.Recommended)
+                noticeMessage = "Location unavailable. Please enable location services and try Nearest again."
+            }
+            pendingNearestSelection = false
+        } else {
+            pendingNearestSelection = true
+            requestLocationPermission.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
 
     LaunchedEffect(Unit) {
+        if (BenchmarkOverrides.isEnabled()) {
+            storesViewModel.load(force = true)
+            return@LaunchedEffect
+        }
         if (hasLocationPermission(context)) {
             val location = resolveLastKnownLocation(context)
             if (location != null) {
@@ -131,6 +167,10 @@ fun StoresScreen(
         }
     }
 
+    ReportScreenDrawnWhen(
+        isReady = storesViewModel.initialLoadResolved && !storesViewModel.isLoading,
+    )
+
     val styleReference = sessionViewModel.bookingStyleReference
 
     Scaffold(
@@ -146,6 +186,16 @@ fun StoresScreen(
         },
         containerColor = StoreListBackground,
     ) { innerPadding ->
+        ImagePrefetchEffect(
+            urls = storesViewModel.stores.flatMap { store ->
+                storeCardImages(
+                    store = store,
+                    images = storesViewModel.storeImages[store.id].orEmpty(),
+                ).mapNotNull(AssetUrlResolver::resolveURL)
+            },
+            maxCount = 14,
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -154,7 +204,14 @@ fun StoresScreen(
         ) {
             StoreListHeaderBlock(
                 selected = storesViewModel.selectedSort,
-                onSelect = storesViewModel::onSortSelected,
+                onSelect = { option ->
+                    if (option == StoreSortOption.Nearest) {
+                        applyNearestSortOrExplain()
+                    } else {
+                        pendingNearestSelection = false
+                        storesViewModel.onSortSelected(option)
+                    }
+                },
                 showBackButton = showBackButton,
                 onBack = {
                     if (!hideTabBar) {
@@ -181,7 +238,8 @@ fun StoresScreen(
                         contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 26.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        items(storesViewModel.stores, key = { it.id }) { store ->
+                        itemsIndexed(storesViewModel.stores, key = { _, item -> item.id }) { index, store ->
+                            storesViewModel.loadMoreIfNeeded(index)
                             storesViewModel.loadStoreRatingIfNeeded(store.id)
                             storesViewModel.loadStoreImagesIfNeeded(store.id)
                             StoreListCard(
@@ -190,6 +248,24 @@ fun StoresScreen(
                                 images = storesViewModel.storeImages[store.id].orEmpty(),
                                 onOpenStore = { onOpenStore(store.id) },
                             )
+                        }
+
+                        if (storesViewModel.isLoadingMore) {
+                            item {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp,
+                                        color = StoreListGold,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -435,6 +511,7 @@ private fun StoreListCard(
         modifier = modifier
             .fillMaxWidth()
             .scale(cardScale)
+            .semantics { contentDescription = "benchmark-store-${store.id}" }
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -530,37 +607,37 @@ private fun StoreImageBlock(
     imageUrl: String?,
     modifier: Modifier = Modifier,
 ) {
-    val imageModel = AssetUrlResolver.resolveURL(imageUrl)
+    val imageModel = remember(imageUrl) { AssetUrlResolver.resolveURL(imageUrl) }
     if (imageModel != null) {
-        SubcomposeAsyncImage(
-            model = imageModel,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = modifier,
-        ) {
-            when (painter.state) {
-                is AsyncImagePainter.State.Success -> {
-                    SubcomposeAsyncImageContent()
+        val imagePainter = rememberAsyncImagePainter(model = imageModel)
+        val imageState = imagePainter.state
+        when (imageState) {
+            is AsyncImagePainter.State.Success -> {
+                Image(
+                    painter = imagePainter,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = modifier,
+                )
+            }
+            is AsyncImagePainter.State.Loading,
+            is AsyncImagePainter.State.Empty,
+            -> {
+                Box(
+                    modifier = modifier
+                        .fillMaxSize()
+                        .background(Color.White.copy(alpha = 0.04f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = StoreListGold,
+                    )
                 }
-                is AsyncImagePainter.State.Loading,
-                is AsyncImagePainter.State.Empty,
-                -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.White.copy(alpha = 0.04f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = StoreListGold,
-                        )
-                    }
-                }
-                is AsyncImagePainter.State.Error -> {
-                    StoreFallbackCover(modifier = Modifier.fillMaxSize())
-                }
+            }
+            is AsyncImagePainter.State.Error -> {
+                StoreFallbackCover(modifier = modifier.fillMaxSize())
             }
         }
     } else {

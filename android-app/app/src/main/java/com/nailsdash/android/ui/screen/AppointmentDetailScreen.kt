@@ -209,6 +209,7 @@ fun AppointmentDetailScreen(
                 if (item != null) {
                     val status = item.status.lowercase()
                     val statusColor = statusColor(status)
+                    val storeDisplayName = item.store_name?.trim().takeUnless { it.isNullOrEmpty() } ?: "Store"
 
                     AppointmentDetailCardContainer {
                         Row(
@@ -231,12 +232,12 @@ fun AppointmentDetailScreen(
                             )
                         }
                         Text(
-                            item.store_name ?: "Store #${item.store_id}",
+                            storeDisplayName,
                             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                             color = DetailPrimaryText,
                         )
                         Text(
-                            item.service_name ?: "Service #${item.service_id}",
+                            item.service_name?.trim().takeUnless { it.isNullOrEmpty() } ?: "Service",
                             style = MaterialTheme.typography.bodyMedium,
                             color = DetailSecondaryText,
                         )
@@ -276,7 +277,7 @@ fun AppointmentDetailScreen(
                                 color = DetailMutedText,
                             )
                             Text(
-                                item.store_name ?: "Store #${item.store_id}",
+                                storeDisplayName,
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = DetailPrimaryText,
                             )

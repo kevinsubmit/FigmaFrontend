@@ -19,6 +19,10 @@ enum class NotificationsFilter(val label: String, val unreadOnly: Boolean) {
 
 class NotificationsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = NotificationsRepository()
+    private var loadedBearerToken: String? = null
+    private var loadedFilter: NotificationsFilter? = null
+    private var hasLoadedOnce = false
+    private var loadRequestVersion = 0
 
     var items by mutableStateOf(emptyList<AppNotification>())
         private set
@@ -41,7 +45,34 @@ class NotificationsViewModel(application: Application) : AndroidViewModel(applic
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
-    fun load(bearerToken: String) {
+    fun loadIfNeeded(bearerToken: String) {
+        if (
+            loadedBearerToken == bearerToken &&
+            loadedFilter == selectedFilter &&
+            hasLoadedOnce &&
+            errorMessage == null &&
+            !isLoading
+        ) {
+            return
+        }
+        load(bearerToken)
+    }
+
+    fun load(bearerToken: String, force: Boolean = false) {
+        if (!force && isLoading) return
+        if (
+            !force &&
+            loadedBearerToken == bearerToken &&
+            loadedFilter == selectedFilter &&
+            hasLoadedOnce &&
+            errorMessage == null
+        ) {
+            return
+        }
+        loadedBearerToken = bearerToken
+        loadedFilter = selectedFilter
+        hasLoadedOnce = true
+        val requestVersion = ++loadRequestVersion
         isLoading = true
         viewModelScope.launch {
             coroutineScope {
@@ -58,6 +89,7 @@ class NotificationsViewModel(application: Application) : AndroidViewModel(applic
                 val unreadResult = unreadTask.await()
                 val preferencesResult = preferencesTask.await()
 
+                if (requestVersion != loadRequestVersion) return@coroutineScope
                 notificationsResult.onSuccess { items = it }
                     .onFailure { errorMessage = it.message }
 
@@ -67,6 +99,7 @@ class NotificationsViewModel(application: Application) : AndroidViewModel(applic
                 preferencesResult.onSuccess { pushEnabled = it.push_enabled }
                     .onFailure { if (errorMessage == null) errorMessage = it.message }
             }
+            if (requestVersion != loadRequestVersion) return@launch
             isLoading = false
         }
     }
@@ -74,7 +107,7 @@ class NotificationsViewModel(application: Application) : AndroidViewModel(applic
     fun selectFilter(filter: NotificationsFilter, bearerToken: String) {
         if (filter == selectedFilter) return
         selectedFilter = filter
-        load(bearerToken)
+        load(bearerToken, force = true)
     }
 
     fun markAsRead(notificationId: Int, bearerToken: String) {

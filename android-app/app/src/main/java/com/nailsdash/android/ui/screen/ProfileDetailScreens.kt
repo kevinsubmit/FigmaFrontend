@@ -287,7 +287,7 @@ fun PointsScreen(
     var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(token) {
-        if (token != null) pointsViewModel.load(token)
+        if (token != null) pointsViewModel.loadIfNeeded(token)
     }
     LaunchedEffect(pointsViewModel.errorMessage, pointsViewModel.actionMessage) {
         val message = pointsViewModel.errorMessage?.trim().takeIf { !it.isNullOrEmpty() }
@@ -1188,7 +1188,7 @@ fun CouponsScreen(
     var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(token, couponsViewModel.selectedStatus) {
-        if (token != null) couponsViewModel.load(token)
+        if (token != null) couponsViewModel.loadIfNeeded(token)
     }
     LaunchedEffect(couponsViewModel.errorMessage) {
         val message = couponsViewModel.errorMessage?.trim().orEmpty()
@@ -1523,7 +1523,7 @@ fun GiftCardsScreen(
     var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(token) {
-        if (token != null) giftCardsViewModel.load(token)
+        if (token != null) giftCardsViewModel.loadIfNeeded(token)
     }
     LaunchedEffect(giftCardsViewModel.errorMessage) {
         val message = giftCardsViewModel.errorMessage?.trim().orEmpty()
@@ -2683,7 +2683,7 @@ fun OrderHistoryScreen(
     }
 
     LaunchedEffect(token) {
-        if (token != null) orderHistoryViewModel.load(token)
+        if (token != null) orderHistoryViewModel.loadIfNeeded(token)
     }
     LaunchedEffect(orderHistoryViewModel.errorMessage, orderHistoryViewModel.actionMessage) {
         val message = orderHistoryViewModel.errorMessage?.trim().takeIf { !it.isNullOrEmpty() }
@@ -3558,7 +3558,7 @@ fun ReviewsScreen(
     var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(token) {
-        if (token != null) myReviewsViewModel.load(token)
+        if (token != null) myReviewsViewModel.loadIfNeeded(token)
     }
     LaunchedEffect(myReviewsViewModel.errorMessage, myReviewsViewModel.actionMessage) {
         val message = myReviewsViewModel.errorMessage?.trim().takeIf { !it.isNullOrEmpty() }
@@ -4025,7 +4025,7 @@ fun FavoritesScreen(
     var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(token) {
-        if (token != null) myFavoritesViewModel.load(token)
+        if (token != null) myFavoritesViewModel.loadIfNeeded(token)
     }
     LaunchedEffect(myFavoritesViewModel.errorMessage, myFavoritesViewModel.actionMessage) {
         val message = myFavoritesViewModel.errorMessage?.trim().takeIf { !it.isNullOrEmpty() }
@@ -4685,7 +4685,7 @@ fun ReferralScreen(
     var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(token) {
-        if (token != null) referralViewModel.load(token)
+        if (token != null) referralViewModel.loadIfNeeded(token)
     }
     LaunchedEffect(referralViewModel.errorMessage) {
         val message = referralViewModel.errorMessage?.trim().takeIf { !it.isNullOrEmpty() }

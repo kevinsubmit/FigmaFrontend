@@ -1,5 +1,13 @@
 package com.nailsdash.android.ui
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
@@ -20,6 +28,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -61,11 +71,20 @@ import com.nailsdash.android.ui.screen.StoreDetailScreen
 import com.nailsdash.android.ui.screen.StoresScreen
 import com.nailsdash.android.ui.screen.VipScreen
 import com.nailsdash.android.ui.screen.ChangePasswordScreen
+import com.nailsdash.android.ui.component.ReportScreenDrawnWhen
 import com.nailsdash.android.ui.state.AppSessionViewModel
 
 private val BottomNavBackgroundColor = Color.Black
 private val BottomNavSelectedColor = Color(0xFFD4AF37)
 private val BottomNavUnselectedColor = Color.White.copy(alpha = 0.62f)
+private const val NavTransitionDurationMs = 260
+private const val BottomBarTransitionDurationMs = 220
+
+private fun routeDepth(route: String?): Int {
+    val base = route?.substringBefore("?").orEmpty()
+    if (base.isBlank()) return 0
+    return base.count { it == '/' }
+}
 
 private enum class MainDestination(
     val route: String,
@@ -103,11 +122,8 @@ private enum class MainDestination(
 fun NailsDashApp() {
     val sessionViewModel: AppSessionViewModel = viewModel()
 
-    LaunchedEffect(Unit) {
-        sessionViewModel.bootstrap()
-    }
-
     if (!sessionViewModel.isLoggedIn) {
+        ReportScreenDrawnWhen(isReady = !sessionViewModel.isLoadingAuth)
         LoginScreen(sessionViewModel = sessionViewModel)
         return
     }
@@ -127,7 +143,19 @@ fun NailsDashApp() {
 
     Scaffold(
         bottomBar = {
-            if (showBottomBar) {
+            AnimatedVisibility(
+                visible = showBottomBar,
+                enter = fadeIn(animationSpec = tween(durationMillis = BottomBarTransitionDurationMs)) +
+                    slideInVertically(
+                        animationSpec = tween(durationMillis = BottomBarTransitionDurationMs),
+                        initialOffsetY = { it / 2 },
+                    ),
+                exit = fadeOut(animationSpec = tween(durationMillis = BottomBarTransitionDurationMs - 40)) +
+                    slideOutVertically(
+                        animationSpec = tween(durationMillis = BottomBarTransitionDurationMs - 40),
+                        targetOffsetY = { it / 2 },
+                    ),
+            ) {
                 NavigationBar(
                     containerColor = BottomNavBackgroundColor,
                     tonalElevation = 0.dp,
@@ -138,6 +166,9 @@ fun NailsDashApp() {
                             ?.any { it.route == tab.route } == true
 
                         NavigationBarItem(
+                            modifier = Modifier.semantics {
+                                contentDescription = "tab-${tab.route}"
+                            },
                             selected = selected,
                             onClick = {
                                 if (tab == MainDestination.Home) {
@@ -190,6 +221,65 @@ fun NailsDashApp() {
             navController = navController,
             startDestination = MainDestination.Home.route,
             modifier = Modifier.padding(innerPadding),
+            enterTransition = {
+                val from = initialState.destination.route
+                val to = targetState.destination.route
+                val tabToTab = from in tabRoutes && to in tabRoutes
+                if (tabToTab) {
+                    fadeIn(animationSpec = tween(durationMillis = NavTransitionDurationMs - 60))
+                } else {
+                    slideInHorizontally(
+                        animationSpec = tween(durationMillis = NavTransitionDurationMs),
+                        initialOffsetX = { fullWidth -> (fullWidth * 0.16f).toInt() },
+                    ) + fadeIn(animationSpec = tween(durationMillis = NavTransitionDurationMs))
+                }
+            },
+            exitTransition = {
+                val from = initialState.destination.route
+                val to = targetState.destination.route
+                val fromDepth = routeDepth(from)
+                val toDepth = routeDepth(to)
+                val tabToTab = from in tabRoutes && to in tabRoutes
+                if (tabToTab) {
+                    fadeOut(animationSpec = tween(durationMillis = NavTransitionDurationMs - 80))
+                } else if (toDepth >= fromDepth) {
+                    slideOutHorizontally(
+                        animationSpec = tween(durationMillis = NavTransitionDurationMs),
+                        targetOffsetX = { fullWidth -> -(fullWidth * 0.10f).toInt() },
+                    ) + fadeOut(animationSpec = tween(durationMillis = NavTransitionDurationMs))
+                } else {
+                    slideOutHorizontally(
+                        animationSpec = tween(durationMillis = NavTransitionDurationMs),
+                        targetOffsetX = { fullWidth -> (fullWidth * 0.10f).toInt() },
+                    ) + fadeOut(animationSpec = tween(durationMillis = NavTransitionDurationMs))
+                }
+            },
+            popEnterTransition = {
+                val from = initialState.destination.route
+                val to = targetState.destination.route
+                val tabToTab = from in tabRoutes && to in tabRoutes
+                if (tabToTab) {
+                    fadeIn(animationSpec = tween(durationMillis = NavTransitionDurationMs - 60))
+                } else {
+                    slideInHorizontally(
+                        animationSpec = tween(durationMillis = NavTransitionDurationMs),
+                        initialOffsetX = { fullWidth -> -(fullWidth * 0.16f).toInt() },
+                    ) + fadeIn(animationSpec = tween(durationMillis = NavTransitionDurationMs))
+                }
+            },
+            popExitTransition = {
+                val from = initialState.destination.route
+                val to = targetState.destination.route
+                val tabToTab = from in tabRoutes && to in tabRoutes
+                if (tabToTab) {
+                    fadeOut(animationSpec = tween(durationMillis = NavTransitionDurationMs - 80))
+                } else {
+                    slideOutHorizontally(
+                        animationSpec = tween(durationMillis = NavTransitionDurationMs),
+                        targetOffsetX = { fullWidth -> (fullWidth * 0.10f).toInt() },
+                    ) + fadeOut(animationSpec = tween(durationMillis = NavTransitionDurationMs))
+                }
+            },
         ) {
             composable(MainDestination.Home.route) {
                 HomeScreen(

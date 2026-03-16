@@ -1,5 +1,6 @@
 package com.nailsdash.android.data.repository
 
+import com.nailsdash.android.core.cache.TimedMemoryCache
 import com.nailsdash.android.core.network.toUserMessage
 import com.nailsdash.android.data.model.CountDTO
 import com.nailsdash.android.data.model.CouponTemplate
@@ -26,36 +27,86 @@ import okhttp3.RequestBody.Companion.toRequestBody
 class ProfileRepository {
     private val api get() = ServiceLocator.api
 
-    suspend fun getUnreadCount(bearerToken: String): Result<UnreadCount> =
-        runCatching { api.getUnreadNotificationCount(bearerToken) }.mapFailure()
+    private data class TokenKey(
+        val bearerToken: String,
+    )
 
-    suspend fun getPointsBalance(bearerToken: String): Result<PointsBalance> =
-        runCatching { api.getPointsBalance(bearerToken) }.mapFailure()
+    private data class TokenLimitKey(
+        val bearerToken: String,
+        val limit: Int,
+    )
 
-    suspend fun getPointTransactions(bearerToken: String, limit: Int = 50): Result<List<PointTransaction>> =
-        runCatching { api.getPointTransactions(bearerToken, skip = 0, limit = limit) }.mapFailure()
+    private data class TokenStatusKey(
+        val bearerToken: String,
+        val status: String?,
+        val limit: Int,
+    )
 
-    suspend fun getExchangeableCoupons(bearerToken: String): Result<List<CouponTemplate>> =
-        runCatching { api.getExchangeableCoupons(bearerToken) }.mapFailure()
+    suspend fun getUnreadCount(bearerToken: String): Result<UnreadCount> {
+        val cacheKey = TokenKey(bearerToken)
+        unreadCountCache.get(cacheKey)?.let { return Result.success(it) }
+        return runCatching { api.getUnreadNotificationCount(bearerToken) }
+            .mapFailure()
+            .onSuccess { unreadCountCache.put(cacheKey, it) }
+    }
+
+    suspend fun getPointsBalance(bearerToken: String): Result<PointsBalance> {
+        val cacheKey = TokenKey(bearerToken)
+        pointsBalanceCache.get(cacheKey)?.let { return Result.success(it) }
+        return runCatching { api.getPointsBalance(bearerToken) }
+            .mapFailure()
+            .onSuccess { pointsBalanceCache.put(cacheKey, it) }
+    }
+
+    suspend fun getPointTransactions(bearerToken: String, limit: Int = 50): Result<List<PointTransaction>> {
+        val cacheKey = TokenLimitKey(bearerToken, limit)
+        pointTransactionsCache.get(cacheKey)?.let { return Result.success(it) }
+        return runCatching { api.getPointTransactions(bearerToken, skip = 0, limit = limit) }
+            .mapFailure()
+            .onSuccess { pointTransactionsCache.put(cacheKey, it) }
+    }
+
+    suspend fun getExchangeableCoupons(bearerToken: String): Result<List<CouponTemplate>> {
+        val cacheKey = TokenKey(bearerToken)
+        exchangeableCouponsCache.get(cacheKey)?.let { return Result.success(it) }
+        return runCatching { api.getExchangeableCoupons(bearerToken) }
+            .mapFailure()
+            .onSuccess { exchangeableCouponsCache.put(cacheKey, it) }
+    }
 
     suspend fun exchangeCoupon(bearerToken: String, couponId: Int): Result<UserCoupon> =
-        runCatching { api.exchangeCoupon(bearerToken, couponId) }.mapFailure()
+        runCatching { api.exchangeCoupon(bearerToken, couponId) }
+            .mapFailure()
+            .onSuccess {
+                pointsBalanceCache.clear()
+                exchangeableCouponsCache.clear()
+                myCouponsCache.clear()
+            }
 
     suspend fun getMyCoupons(
         bearerToken: String,
         status: String? = null,
         limit: Int = 100,
-    ): Result<List<UserCoupon>> = runCatching {
-        api.getMyCoupons(
-            bearerToken = bearerToken,
-            skip = 0,
-            limit = limit,
-            status = status,
-        )
-    }.mapFailure()
+    ): Result<List<UserCoupon>> {
+        val cacheKey = TokenStatusKey(bearerToken, status, limit)
+        myCouponsCache.get(cacheKey)?.let { return Result.success(it) }
+        return runCatching {
+            api.getMyCoupons(
+                bearerToken = bearerToken,
+                skip = 0,
+                limit = limit,
+                status = status,
+            )
+        }.mapFailure().onSuccess { myCouponsCache.put(cacheKey, it) }
+    }
 
-    suspend fun getMyGiftCards(bearerToken: String, limit: Int = 100): Result<List<GiftCard>> =
-        runCatching { api.getMyGiftCards(bearerToken = bearerToken, skip = 0, limit = limit) }.mapFailure()
+    suspend fun getMyGiftCards(bearerToken: String, limit: Int = 100): Result<List<GiftCard>> {
+        val cacheKey = TokenLimitKey(bearerToken, limit)
+        myGiftCardsCache.get(cacheKey)?.let { return Result.success(it) }
+        return runCatching {
+            api.getMyGiftCards(bearerToken = bearerToken, skip = 0, limit = limit)
+        }.mapFailure().onSuccess { myGiftCardsCache.put(cacheKey, it) }
+    }
 
     suspend fun transferGiftCard(
         bearerToken: String,
@@ -69,14 +120,18 @@ class ProfileRepository {
             giftCardId = giftCardId,
             request = request,
         ).gift_card
-    }.mapFailure()
+    }.mapFailure().onSuccess {
+        myGiftCardsCache.clear()
+    }
 
     suspend fun claimGiftCard(bearerToken: String, claimCode: String): Result<GiftCard> = runCatching {
         api.claimGiftCard(
             bearerToken = bearerToken,
             request = GiftCardClaimRequest(claim_code = claimCode),
         ).gift_card
-    }.mapFailure()
+    }.mapFailure().onSuccess {
+        myGiftCardsCache.clear()
+    }
 
     suspend fun revokeGiftCard(bearerToken: String, giftCardId: Int): Result<GiftCard> = runCatching {
         val response: GiftCardRevokeResponse = api.revokeGiftCard(
@@ -84,10 +139,17 @@ class ProfileRepository {
             giftCardId = giftCardId,
         )
         response.gift_card
-    }.mapFailure()
+    }.mapFailure().onSuccess {
+        myGiftCardsCache.clear()
+    }
 
-    suspend fun getMyReviews(bearerToken: String, limit: Int = 100): Result<List<UserReview>> =
-        runCatching { api.getMyReviews(bearerToken, skip = 0, limit = limit) }.mapFailure()
+    suspend fun getMyReviews(bearerToken: String, limit: Int = 100): Result<List<UserReview>> {
+        val cacheKey = TokenLimitKey(bearerToken, limit)
+        myReviewsCache.get(cacheKey)?.let { return Result.success(it) }
+        return runCatching { api.getMyReviews(bearerToken, skip = 0, limit = limit) }
+            .mapFailure()
+            .onSuccess { myReviewsCache.put(cacheKey, it) }
+    }
 
     suspend fun createReview(
         bearerToken: String,
@@ -105,7 +167,9 @@ class ProfileRepository {
                 images = images,
             ),
         )
-    }.mapFailure()
+    }.mapFailure().onSuccess {
+        myReviewsCache.clear()
+    }
 
     suspend fun uploadReviewImages(
         bearerToken: String,
@@ -147,31 +211,60 @@ class ProfileRepository {
                 images = images,
             ),
         )
-    }.mapFailure()
+    }.mapFailure().onSuccess {
+        myReviewsCache.clear()
+    }
 
     suspend fun deleteReview(bearerToken: String, reviewId: Int): Result<Unit> = runCatching {
         api.deleteReview(bearerToken = bearerToken, reviewId = reviewId)
-    }.mapFailure()
+    }.mapFailure().onSuccess {
+        myReviewsCache.clear()
+    }
 
-    suspend fun getFavoritePinsCount(bearerToken: String): Result<CountDTO> =
-        runCatching { api.getFavoritePinsCount(bearerToken) }.mapFailure()
+    suspend fun getFavoritePinsCount(bearerToken: String): Result<CountDTO> {
+        val cacheKey = TokenKey(bearerToken)
+        favoritePinsCountCache.get(cacheKey)?.let { return Result.success(it) }
+        return runCatching { api.getFavoritePinsCount(bearerToken) }
+            .mapFailure()
+            .onSuccess { favoritePinsCountCache.put(cacheKey, it) }
+    }
 
-    suspend fun getFavoritePins(bearerToken: String, limit: Int = 100): Result<List<com.nailsdash.android.data.model.HomeFeedPin>> =
-        runCatching { api.getFavoritePins(bearerToken, skip = 0, limit = limit) }.mapFailure()
+    suspend fun getFavoritePins(bearerToken: String, limit: Int = 100): Result<List<com.nailsdash.android.data.model.HomeFeedPin>> {
+        val cacheKey = TokenLimitKey(bearerToken, limit)
+        favoritePinsCache.get(cacheKey)?.let { return Result.success(it) }
+        return runCatching { api.getFavoritePins(bearerToken, skip = 0, limit = limit) }
+            .mapFailure()
+            .onSuccess { favoritePinsCache.put(cacheKey, it) }
+    }
 
-    suspend fun getFavoriteStores(bearerToken: String, limit: Int = 100): Result<List<com.nailsdash.android.data.model.Store>> =
-        runCatching { api.getFavoriteStores(bearerToken, skip = 0, limit = limit) }.mapFailure()
+    suspend fun getFavoriteStores(bearerToken: String, limit: Int = 100): Result<List<com.nailsdash.android.data.model.Store>> {
+        val cacheKey = TokenLimitKey(bearerToken, limit)
+        favoriteStoresCache.get(cacheKey)?.let { return Result.success(it) }
+        return runCatching { api.getFavoriteStores(bearerToken, skip = 0, limit = limit) }
+            .mapFailure()
+            .onSuccess { favoriteStoresCache.put(cacheKey, it) }
+    }
 
     suspend fun removeFavoritePin(bearerToken: String, pinId: Int): Result<Unit> = runCatching {
         api.removeFavoritePin(bearerToken = bearerToken, pinId = pinId)
-    }.mapFailure()
+    }.mapFailure().onSuccess {
+        favoritePinsCountCache.clear()
+        favoritePinsCache.clear()
+    }
 
     suspend fun removeFavoriteStore(bearerToken: String, storeId: Int): Result<Unit> = runCatching {
         api.removeStoreFavorite(bearerToken = bearerToken, storeId = storeId)
-    }.mapFailure()
+    }.mapFailure().onSuccess {
+        favoriteStoresCache.clear()
+    }
 
-    suspend fun getVipStatus(bearerToken: String): Result<VipStatus> =
-        runCatching { api.getVipStatus(bearerToken) }.mapFailure()
+    suspend fun getVipStatus(bearerToken: String): Result<VipStatus> {
+        val cacheKey = TokenKey(bearerToken)
+        vipStatusCache.get(cacheKey)?.let { return Result.success(it) }
+        return runCatching { api.getVipStatus(bearerToken) }
+            .mapFailure()
+            .onSuccess { vipStatusCache.put(cacheKey, it) }
+    }
 
     suspend fun getReferralCode(bearerToken: String): Result<ReferralCode> =
         runCatching { api.getReferralCode(bearerToken) }.mapFailure()
@@ -185,5 +278,21 @@ class ProfileRepository {
     private fun <T> Result<T>.mapFailure(): Result<T> {
         exceptionOrNull() ?: return this
         return Result.failure(IllegalStateException(exceptionOrNull()?.toUserMessage() ?: "Request failed."))
+    }
+
+    private companion object {
+        private const val SHORT_TTL_MS = 30 * 1000L
+        private const val LONG_TTL_MS = 60 * 1000L
+        private val unreadCountCache = TimedMemoryCache<TokenKey, UnreadCount>(SHORT_TTL_MS, maxEntries = 4)
+        private val pointsBalanceCache = TimedMemoryCache<TokenKey, PointsBalance>(SHORT_TTL_MS, maxEntries = 4)
+        private val pointTransactionsCache = TimedMemoryCache<TokenLimitKey, List<PointTransaction>>(SHORT_TTL_MS, maxEntries = 8)
+        private val exchangeableCouponsCache = TimedMemoryCache<TokenKey, List<CouponTemplate>>(LONG_TTL_MS, maxEntries = 4)
+        private val myCouponsCache = TimedMemoryCache<TokenStatusKey, List<UserCoupon>>(SHORT_TTL_MS, maxEntries = 12)
+        private val myGiftCardsCache = TimedMemoryCache<TokenLimitKey, List<GiftCard>>(SHORT_TTL_MS, maxEntries = 8)
+        private val myReviewsCache = TimedMemoryCache<TokenLimitKey, List<UserReview>>(SHORT_TTL_MS, maxEntries = 8)
+        private val favoritePinsCountCache = TimedMemoryCache<TokenKey, CountDTO>(SHORT_TTL_MS, maxEntries = 4)
+        private val favoritePinsCache = TimedMemoryCache<TokenLimitKey, List<com.nailsdash.android.data.model.HomeFeedPin>>(SHORT_TTL_MS, maxEntries = 8)
+        private val favoriteStoresCache = TimedMemoryCache<TokenLimitKey, List<com.nailsdash.android.data.model.Store>>(SHORT_TTL_MS, maxEntries = 8)
+        private val vipStatusCache = TimedMemoryCache<TokenKey, VipStatus>(LONG_TTL_MS, maxEntries = 4)
     }
 }

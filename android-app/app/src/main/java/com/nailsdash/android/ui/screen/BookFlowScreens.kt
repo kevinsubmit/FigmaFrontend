@@ -9,6 +9,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -119,7 +120,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
-import coil.compose.SubcomposeAsyncImage
+import coil.compose.AsyncImagePainter
+import coil.compose.rememberAsyncImagePainter
 import com.nailsdash.android.data.model.ServiceItem
 import com.nailsdash.android.data.model.StoreDetail
 import com.nailsdash.android.data.model.StoreHour
@@ -1640,12 +1642,19 @@ private fun StoreReviewImageViewerDialog(
                             .background(Color.Black),
                         contentAlignment = Alignment.Center,
                     ) {
-                        SubcomposeAsyncImage(
-                            model = imageUrl,
-                            contentDescription = "Review image ${index + 1}",
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxSize(),
-                            loading = {
+                        val imagePainter = rememberAsyncImagePainter(model = imageUrl)
+                        when (imagePainter.state) {
+                            is AsyncImagePainter.State.Success -> {
+                                Image(
+                                    painter = imagePainter,
+                                    contentDescription = "Review image ${index + 1}",
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
+                            is AsyncImagePainter.State.Loading,
+                            is AsyncImagePainter.State.Empty,
+                            -> {
                                 Box(
                                     modifier = Modifier.fillMaxSize(),
                                     contentAlignment = Alignment.Center,
@@ -1656,8 +1665,8 @@ private fun StoreReviewImageViewerDialog(
                                         color = Color.White,
                                     )
                                 }
-                            },
-                            error = {
+                            }
+                            is AsyncImagePainter.State.Error -> {
                                 Column(
                                     modifier = Modifier.fillMaxSize(),
                                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -1676,8 +1685,8 @@ private fun StoreReviewImageViewerDialog(
                                         color = Color.White.copy(alpha = 0.80f),
                                     )
                                 }
-                            },
-                        )
+                            }
+                        }
                     }
                 }
             }
@@ -2308,7 +2317,7 @@ fun BookAppointmentScreen(
         selectedTime,
     ) {
         val dateText = bookAppointmentViewModel.selectedDate.format(BOOKING_SUCCESS_DATE_FORMATTER)
-        val timeText = bookAppointmentViewModel.selectedSlot ?: selectedTime
+        val timeText = selectedTime
         "$dateText at $timeText"
     }
     val summaryPriceText = selectedService?.let {
@@ -2814,8 +2823,7 @@ private fun PayAtSalonCard() {
                                     fontWeight = FontWeight.Medium,
                                 ),
                                 color = Color.White.copy(alpha = 0.64f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                maxLines = 2,
                             )
                             Text(
                                 text = "prepayment or deposit is required today.",
@@ -2824,8 +2832,7 @@ private fun PayAtSalonCard() {
                                     fontWeight = FontWeight.Medium,
                                 ),
                                 color = Color.White.copy(alpha = 0.64f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                maxLines = 2,
                             )
                             Text(
                                 text = "Just show up and pay after your service.",
@@ -2834,8 +2841,7 @@ private fun PayAtSalonCard() {
                                     fontWeight = FontWeight.Medium,
                                 ),
                                 color = Color.White.copy(alpha = 0.64f),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                maxLines = 2,
                             )
                         }
                     }
@@ -2883,8 +2889,7 @@ private fun PayAtSalonCard() {
                         ),
                         color = Color.White.copy(alpha = 0.56f),
                         fontStyle = FontStyle.Italic,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                        maxLines = 2,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -3191,17 +3196,18 @@ private fun BookingDateTimeCard(
                                             indication = null,
                                             onClick = { onSelectSlot(slot) },
                                         )
-                                        .padding(horizontal = 6.dp),
+                                        .padding(horizontal = 4.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Text(
                                         text = displaySlotTime(slot),
                                         style = MaterialTheme.typography.bodySmall.copy(
-                                            fontSize = 13.sp,
-                                            fontWeight = FontWeight.SemiBold,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Medium,
                                         ),
                                         color = if (selected) Color.Black else Color.White,
                                         maxLines = 1,
+                                        softWrap = false,
                                     )
                                 }
                             }

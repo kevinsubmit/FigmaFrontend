@@ -12,6 +12,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -72,8 +73,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImagePainter
-import coil.compose.SubcomposeAsyncImage
-import coil.compose.SubcomposeAsyncImageContent
+import coil.compose.rememberAsyncImagePainter
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.ProfileCenterViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
@@ -116,7 +116,7 @@ fun ProfileScreen(
 
     LaunchedEffect(bearerToken) {
         if (bearerToken != null) {
-            profileCenterViewModel.load(bearerToken)
+            profileCenterViewModel.loadIfNeeded(bearerToken)
         }
     }
     LaunchedEffect(profileCenterViewModel.errorMessage) {
@@ -355,26 +355,27 @@ private fun ProfileHeaderCard(
             if (avatarUrl.isNullOrBlank()) {
                 ProfileAvatarFallback(userName = userName)
             } else {
-                SubcomposeAsyncImage(
-                    model = avatarUrl,
-                    contentDescription = "Avatar",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop,
-                ) {
-                    when (painter.state) {
-                        is AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
-                        is AsyncImagePainter.State.Loading,
-                        is AsyncImagePainter.State.Empty,
-                        -> {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = ProfileGold,
-                                strokeWidth = 2.dp,
-                            )
-                        }
-                        is AsyncImagePainter.State.Error -> {
-                            ProfileAvatarFallback(userName = userName)
-                        }
+                val avatarPainter = rememberAsyncImagePainter(model = avatarUrl)
+                when (avatarPainter.state) {
+                    is AsyncImagePainter.State.Success -> {
+                        Image(
+                            painter = avatarPainter,
+                            contentDescription = "Avatar",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
+                    is AsyncImagePainter.State.Loading,
+                    is AsyncImagePainter.State.Empty,
+                    -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = ProfileGold,
+                            strokeWidth = 2.dp,
+                        )
+                    }
+                    is AsyncImagePainter.State.Error -> {
+                        ProfileAvatarFallback(userName = userName)
                     }
                 }
             }

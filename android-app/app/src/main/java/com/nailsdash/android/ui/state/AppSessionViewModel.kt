@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.nailsdash.android.benchmark.BenchmarkOverrides
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.nailsdash.android.data.model.AuthUser
@@ -58,6 +59,19 @@ class AppSessionViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     private val authRepository = AuthRepository()
+    private val benchmarkUser = AuthUser(
+        id = -1,
+        phone = "0000000000",
+        username = "benchmark",
+        full_name = "Benchmark User",
+        email = null,
+        avatar_url = null,
+        gender = null,
+        date_of_birth = null,
+        phone_verified = true,
+        is_admin = false,
+        store_id = null,
+    )
 
     var isLoadingAuth by mutableStateOf(false)
         private set
@@ -87,6 +101,10 @@ class AppSessionViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun refreshSession() {
+        if (BenchmarkOverrides.isEnabled()) {
+            applyBenchmarkSession()
+            return
+        }
         viewModelScope.launch {
             val token = authRepository.accessTokenOrNull()
             if (token.isNullOrBlank()) {
@@ -223,6 +241,11 @@ class AppSessionViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun forceLogout(message: String? = null) {
+        if (BenchmarkOverrides.isEnabled()) {
+            applyBenchmarkSession()
+            authMessage = message
+            return
+        }
         authRepository.logout()
         isLoggedIn = false
         currentUser = null
@@ -232,6 +255,7 @@ class AppSessionViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun accessTokenOrNull(): String? {
+        if (BenchmarkOverrides.isEnabled()) return null
         val token = authRepository.accessTokenOrNull() ?: return null
         return "Bearer $token"
     }
@@ -273,6 +297,13 @@ class AppSessionViewModel(application: Application) : AndroidViewModel(applicati
     private fun applyAuthenticatedUser(user: AuthUser) {
         currentUser = user
         isLoggedIn = true
+        authMessage = null
+    }
+
+    private fun applyBenchmarkSession() {
+        currentUser = benchmarkUser
+        isLoggedIn = true
+        isLoadingAuth = false
         authMessage = null
     }
 

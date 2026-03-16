@@ -24,6 +24,8 @@ private const val LEGACY_SETTINGS_LANGUAGE_KEY = "language"
 
 class ProfileSettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = SettingsRepository()
+    private var loadedBearerToken: String? = null
+    private var hasLoadedOnce = false
 
     var fullName by mutableStateOf("")
     var username by mutableStateOf("-")
@@ -50,7 +52,16 @@ class ProfileSettingsViewModel(application: Application) : AndroidViewModel(appl
     var actionMessage by mutableStateOf<String?>(null)
         private set
 
-    fun load(bearerToken: String) {
+    fun loadIfNeeded(bearerToken: String) {
+        if (loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null && !isLoading) return
+        load(bearerToken)
+    }
+
+    fun load(bearerToken: String, force: Boolean = false) {
+        if (!force && isLoading) return
+        if (!force && loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null) return
+        loadedBearerToken = bearerToken
+        hasLoadedOnce = true
         isLoading = true
         viewModelScope.launch {
             repository.getCurrentUser(bearerToken)
@@ -227,6 +238,8 @@ class ChangePasswordViewModel(application: Application) : AndroidViewModel(appli
 
 class PhoneNumberSettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = SettingsRepository()
+    private var loadedBearerToken: String? = null
+    private var hasLoadedOnce = false
 
     var currentPhone by mutableStateOf("-")
     var isPhoneVerified by mutableStateOf(false)
@@ -252,7 +265,15 @@ class PhoneNumberSettingsViewModel(application: Application) : AndroidViewModel(
 
     private var countdownJob: Job? = null
 
-    fun load(bearerToken: String) {
+    fun loadIfNeeded(bearerToken: String) {
+        if (loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null) return
+        load(bearerToken)
+    }
+
+    fun load(bearerToken: String, force: Boolean = false) {
+        if (!force && loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null) return
+        loadedBearerToken = bearerToken
+        hasLoadedOnce = true
         viewModelScope.launch {
             repository.getCurrentUser(bearerToken)
                 .onSuccess { user ->
@@ -319,7 +340,7 @@ class PhoneNumberSettingsViewModel(application: Application) : AndroidViewModel(
                 verificationCode = ""
                 currentPassword = ""
                 countdown = 0
-                load(bearerToken)
+                load(bearerToken, force = true)
                 onSaved()
             }.onFailure { err ->
                 errorMessage = err.message

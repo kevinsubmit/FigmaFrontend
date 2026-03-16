@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -60,7 +60,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.nailsdash.android.benchmark.BenchmarkOverrides
 import com.nailsdash.android.data.model.Appointment
+import com.nailsdash.android.ui.component.ReportScreenDrawnWhen
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.AppointmentSegment
 import com.nailsdash.android.ui.state.AppointmentsViewModel
@@ -92,9 +94,16 @@ fun AppointmentsScreen(
     var noticeMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(bearerToken) {
-        if (bearerToken != null) {
-            appointmentsViewModel.load(bearerToken)
+        if (bearerToken != null || BenchmarkOverrides.isEnabled()) {
+            appointmentsViewModel.loadIfNeeded(bearerToken.orEmpty())
         }
+    }
+    LaunchedEffect(
+        appointmentsViewModel.selectedSegment,
+        appointmentsViewModel.items.size,
+        appointmentsViewModel.hasMore,
+    ) {
+        appointmentsViewModel.loadMoreForSelectedSegmentIfNeeded()
     }
     LaunchedEffect(appointmentsViewModel.errorMessage) {
         val message = appointmentsViewModel.errorMessage?.trim().orEmpty()
@@ -103,7 +112,13 @@ fun AppointmentsScreen(
         }
     }
 
-    val displayItems = appointmentsViewModel.filteredItems()
+    ReportScreenDrawnWhen(
+        isReady = appointmentsViewModel.initialLoadResolved && !appointmentsViewModel.isLoading,
+    )
+
+    val displayItems = remember(appointmentsViewModel.items, appointmentsViewModel.selectedSegment) {
+        appointmentsViewModel.filteredItems()
+    }
 
     Box(
         modifier = Modifier
@@ -114,7 +129,7 @@ fun AppointmentsScreen(
             AppointmentsHeader(
                 selectedSegment = appointmentsViewModel.selectedSegment,
                 upcomingCount = appointmentsViewModel.upcomingCount(),
-                onSelectSegment = { appointmentsViewModel.selectedSegment = it },
+                onSelectSegment = appointmentsViewModel::onSegmentSelected,
             )
 
             Column(
@@ -137,7 +152,7 @@ fun AppointmentsScreen(
                         )
                     }
 
-                if (!appointmentsViewModel.isLoading && displayItems.isEmpty()) {
+                if (!appointmentsViewModel.isLoading && !appointmentsViewModel.isLoadingMore && displayItems.isEmpty()) {
                     EmptyAppointmentsState(
                         isUpcoming = appointmentsViewModel.selectedSegment == AppointmentSegment.Upcoming,
                         onBookNow = onOpenBook,
@@ -147,7 +162,8 @@ fun AppointmentsScreen(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        items(displayItems, key = { it.id }) { appointment ->
+                        itemsIndexed(displayItems, key = { _, item -> item.id }) { index, appointment ->
+                            appointmentsViewModel.loadMoreIfNeeded(index)
                             val displayAddress = resolvedStoreAddress(
                                 item = appointment,
                                 storeAddressByStoreId = appointmentsViewModel.storeAddressByStoreId,
@@ -155,6 +171,7 @@ fun AppointmentsScreen(
                             AppointmentCard(
                                 item = appointment,
                                 resolvedStoreAddress = displayAddress,
+                                storeNameByStoreId = appointmentsViewModel.storeNameByStoreId,
                                 onOpenAppointment = onOpenAppointment,
                                 onOpenMaps = { address ->
                                     mapTarget = AppointmentsMapTarget(
@@ -162,6 +179,24 @@ fun AppointmentsScreen(
                                     )
                                 },
                             )
+                        }
+
+                        if (appointmentsViewModel.isLoadingMore) {
+                            item {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 6.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(18.dp),
+                                        strokeWidth = 2.dp,
+                                        color = AppointmentsGold,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -405,6 +440,7 @@ private fun EmptyAppointmentsState(
 private fun AppointmentCard(
     item: Appointment,
     resolvedStoreAddress: String?,
+    storeNameByStoreId: Map<Int, String>,
     onOpenAppointment: (appointmentId: Int) -> Unit,
     onOpenMaps: (address: String) -> Unit,
 ) {
@@ -483,8 +519,12 @@ private fun AppointmentCard(
                             tint = AppointmentsGold.copy(alpha = 0.95f),
                             modifier = Modifier.size(12.dp),
                         )
+                        val storeName = resolvedStoreName(
+                            item = item,
+                            storeNameByStoreId = storeNameByStoreId,
+                        )
                         Text(
-                            text = item.store_name ?: "Store #${item.store_id}",
+                            text = storeName,
                             style = MaterialTheme.typography.titleMedium,
                             color = AppointmentsPrimaryText,
                         )
@@ -529,7 +569,7 @@ private fun AppointmentCard(
                     }
 
                     Text(
-                        text = item.service_name ?: "Service #${item.service_id}",
+                        text = item.service_name?.trim().takeUnless { it.isNullOrEmpty() } ?: "Service",
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                         color = AppointmentsPrimaryText,
                     )
@@ -768,6 +808,19 @@ private fun resolvedStoreAddress(
     if (!fallback.isNullOrEmpty()) return fallback
 
     return null
+}
+
+private fun resolvedStoreName(
+    item: Appointment,
+    storeNameByStoreId: Map<Int, String>,
+): String {
+    val mapped = storeNameByStoreId[item.store_id]?.trim()
+    if (!mapped.isNullOrEmpty()) return mapped
+
+    val fallback = item.store_name?.trim()
+    if (!fallback.isNullOrEmpty()) return fallback
+
+    return "Salon"
 }
 
 private data class AppointmentsMapTarget(

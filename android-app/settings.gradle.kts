@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "NailsDashAndroid"
 include(":app")
+include(":baselineprofile")

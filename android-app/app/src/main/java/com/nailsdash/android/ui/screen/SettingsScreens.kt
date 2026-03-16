@@ -463,7 +463,7 @@ fun ProfileSettingsScreen(
     }
 
     LaunchedEffect(bearerToken) {
-        if (bearerToken != null) profileSettingsViewModel.load(bearerToken)
+        if (bearerToken != null) profileSettingsViewModel.loadIfNeeded(bearerToken)
     }
 
     Box(
@@ -873,7 +873,7 @@ fun PhoneSettingsScreen(
     val bearerToken = sessionViewModel.accessTokenOrNull()
 
     LaunchedEffect(bearerToken) {
-        if (bearerToken != null) phoneNumberSettingsViewModel.load(bearerToken)
+        if (bearerToken != null) phoneNumberSettingsViewModel.loadIfNeeded(bearerToken)
     }
 
     Box(

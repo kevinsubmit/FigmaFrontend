@@ -2,6 +2,7 @@ package com.nailsdash.android.ui.screen
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -56,6 +57,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
@@ -66,9 +69,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImagePainter
-import coil.compose.SubcomposeAsyncImage
-import coil.compose.SubcomposeAsyncImageContent
+import coil.compose.rememberAsyncImagePainter
 import com.nailsdash.android.data.model.HomeFeedPin
+import com.nailsdash.android.ui.component.ImagePrefetchEffect
+import com.nailsdash.android.ui.component.ReportScreenDrawnWhen
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.HomeViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
@@ -95,11 +99,20 @@ fun HomeScreen(
         }
     }
 
+    ReportScreenDrawnWhen(
+        isReady = homeViewModel.initialLoadResolved && !homeViewModel.isLoading,
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black),
     ) {
+        ImagePrefetchEffect(
+            urls = homeViewModel.pins.mapNotNull { pin -> AssetUrlResolver.resolveURL(pin.image_url) },
+            maxCount = 10,
+        )
+
         Column(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
@@ -277,9 +290,7 @@ fun HomeScreen(
                     contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
                 ) {
                     itemsIndexed(homeViewModel.pins, key = { _, item -> item.id }) { index, pin ->
-                        if (index == homeViewModel.pins.lastIndex) {
-                            homeViewModel.loadMoreIfNeeded(pin.id)
-                        }
+                        homeViewModel.loadMoreIfNeeded(index)
 
                         HomePinCard(pin = pin, onClick = { onOpenPin(pin.id) })
                     }
@@ -424,63 +435,65 @@ private fun HomePinCard(
 ) {
     val cardInteraction = remember(pin.id) { MutableInteractionSource() }
     val imageModel = remember(pin.image_url) { AssetUrlResolver.resolveURL(pin.image_url) }
+    val imagePainter = rememberAsyncImagePainter(model = imageModel)
+    val imageState = imagePainter.state
 
     Card(
         shape = RoundedCornerShape(24.dp),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.06f)),
         colors = CardDefaults.cardColors(containerColor = Color.Gray.copy(alpha = 0.08f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = Modifier.clickable(
-            interactionSource = cardInteraction,
-            indication = null,
-            onClick = onClick,
-        ),
+        modifier = Modifier
+            .semantics { contentDescription = "benchmark-pin-${pin.id}" }
+            .clickable(
+                interactionSource = cardInteraction,
+                indication = null,
+                onClick = onClick,
+            ),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(3f / 4f),
         ) {
-            SubcomposeAsyncImage(
-                model = imageModel,
-                contentDescription = pin.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.matchParentSize(),
-            ) {
-                when (painter.state) {
-                    is AsyncImagePainter.State.Success -> {
-                        SubcomposeAsyncImageContent()
+            when (imageState) {
+                is AsyncImagePainter.State.Success -> {
+                    Image(
+                        painter = imagePainter,
+                        contentDescription = pin.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.matchParentSize(),
+                    )
+                }
+                is AsyncImagePainter.State.Loading,
+                is AsyncImagePainter.State.Empty,
+                -> {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(Color.Gray.copy(alpha = 0.14f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = HomeGold,
+                        )
                     }
-                    is AsyncImagePainter.State.Loading,
-                    is AsyncImagePainter.State.Empty,
-                    -> {
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .background(Color.Gray.copy(alpha = 0.14f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
-                                color = HomeGold,
-                            )
-                        }
-                    }
-                    is AsyncImagePainter.State.Error -> {
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .background(Color.Gray.copy(alpha = 0.20f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = "Image unavailable",
-                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                                color = Color.White.copy(alpha = 0.72f),
-                                textAlign = TextAlign.Center,
-                            )
-                        }
+                }
+                is AsyncImagePainter.State.Error -> {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(Color.Gray.copy(alpha = 0.20f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "Image unavailable",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                            color = Color.White.copy(alpha = 0.72f),
+                            textAlign = TextAlign.Center,
+                        )
                     }
                 }
             }
