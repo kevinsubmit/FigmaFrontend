@@ -1,3 +1,25 @@
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    val propertiesFile = rootProject.file("local.properties")
+    if (propertiesFile.exists()) {
+        propertiesFile.inputStream().use(::load)
+    }
+}
+
+fun escapeBuildConfigString(value: String): String {
+    return value
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+}
+
+val defaultDebugApiBaseUrl = "http://10.0.2.2:8000/api/v1/"
+val debugApiBaseUrl = (
+    localProperties.getProperty("API_BASE_URL_DEBUG")
+        ?: System.getenv("API_BASE_URL_DEBUG")
+        ?: defaultDebugApiBaseUrl
+).ifBlank { defaultDebugApiBaseUrl }
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -19,12 +41,12 @@ android {
             useSupportLibrary = true
         }
 
-        buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000/api/v1/\"")
+        buildConfigField("String", "API_BASE_URL", "\"${escapeBuildConfigString(debugApiBaseUrl)}\"")
     }
 
     buildTypes {
         debug {
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8000/api/v1/\"")
+            buildConfigField("String", "API_BASE_URL", "\"${escapeBuildConfigString(debugApiBaseUrl)}\"")
         }
         release {
             isMinifyEnabled = false

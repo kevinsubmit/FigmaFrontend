@@ -26,7 +26,11 @@ This directory contains the native Android client for NailsDash.
 3. Run the `app` configuration on emulator or device.
 
 ## Backend integration
-- Debug build points to: `http://10.0.2.2:8000/api/v1/`
+- Debug build default: `http://10.0.2.2:8000/api/v1/` (Android emulator)
+- Real device debug override: add `API_BASE_URL_DEBUG=http://<YOUR_MAC_LAN_IP>:8000/api/v1/` to `android-app/local.properties`
+  - Example: `API_BASE_URL_DEBUG=http://192.168.1.225:8000/api/v1/`
+  - Backend should bind `0.0.0.0` and phone/Mac must be on the same Wi-Fi
+- Debug manifest enables cleartext HTTP for local development (`app/src/debug/AndroidManifest.xml`)
 - Release build currently uses a placeholder URL in `app/build.gradle.kts`
 
 ## iOS parity status (current)

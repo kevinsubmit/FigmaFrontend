@@ -6,12 +6,8 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
@@ -19,6 +15,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,7 +24,9 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,6 +35,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -54,30 +54,41 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
@@ -96,6 +107,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -103,14 +115,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.nailsdash.android.data.model.ServiceItem
 import com.nailsdash.android.data.model.StoreDetail
 import com.nailsdash.android.data.model.StoreHour
 import com.nailsdash.android.data.model.StorePortfolio
 import com.nailsdash.android.data.model.StoreReview
+import com.nailsdash.android.data.model.Technician
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.BookAppointmentViewModel
 import com.nailsdash.android.ui.state.BookingStyleReference
@@ -118,9 +133,13 @@ import com.nailsdash.android.ui.state.StoreDetailViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
 import java.net.URI
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.OffsetDateTime
+import java.time.Instant
 import java.time.YearMonth
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.delay
@@ -129,6 +148,11 @@ import kotlinx.coroutines.launch
 private enum class BookingTypeSelection {
     Single,
     Group,
+}
+
+enum class BookAppointmentPresentationStyle {
+    FullPage,
+    BottomSheet,
 }
 
 private data class GroupGuestRow(
@@ -145,23 +169,30 @@ private val StoreDetailDetailsCardBackground = Color(0xFF181818)
 private const val StoreDetailMapBackgroundURL =
     "https://images.unsplash.com/photo-1664044056437-6330bcf8e2fe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaXR5JTIwc3RyZWV0JTIwbWFwJTIwZ3JhcGhpYyUyMHRvcCUyMHZpZXd8ZW58MXx8fHwxNzY1OTM3MzkzfDA&ixlib=rb-4.1.0&q=80&w=1080"
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StoreDetailScreen(
     storeId: Int,
     sessionViewModel: AppSessionViewModel,
     onBack: () -> Unit,
-    onBookNow: (storeId: Int, preselectedServiceId: Int?) -> Unit,
+    onBookingCompleted: () -> Unit,
     storeDetailViewModel: StoreDetailViewModel = viewModel(),
 ) {
     val bearerToken = sessionViewModel.accessTokenOrNull()
     val styleReference = sessionViewModel.bookingStyleReference
-    val selectedService = storeDetailViewModel.selectedServiceOrNull()
+    val selectedServices = storeDetailViewModel.selectedServices()
     val selectedTab = storeDetailViewModel.currentTabLabel()
     val context = LocalContext.current
     var showMapChooser by remember(storeId) { mutableStateOf(false) }
     var mapLaunchError by remember(storeId) { mutableStateOf<String?>(null) }
     var noticeMessage by remember(storeId) { mutableStateOf<String?>(null) }
     var showFullHours by remember(storeId) { mutableStateOf(false) }
+    var showBookServicesSheet by remember(storeId) { mutableStateOf(false) }
+    var bookSheetServiceIds by remember(storeId) { mutableStateOf<List<Int>>(emptyList()) }
+    var showReviewGallery by remember(storeId) { mutableStateOf(false) }
+    var reviewGalleryImages by remember(storeId) { mutableStateOf<List<String>>(emptyList()) }
+    var reviewGalleryStartIndex by remember(storeId) { mutableStateOf(0) }
+    val bookSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     val onToggleFavorite: () -> Unit = {
         val activeStore = storeDetailViewModel.store
@@ -197,229 +228,247 @@ fun StoreDetailScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             bottomBar = {
-                if (selectedTab == "Services" && selectedService != null) {
-                    Button(
-                        onClick = { onBookNow(storeId, selectedService.id) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                    ) {
-                        Text(
-                            "Book ${selectedService.name} • $${String.format(Locale.US, "%.2f", selectedService.price)}",
-                        )
-                    }
+                if (selectedTab == "Services" && selectedServices.isNotEmpty()) {
+                    StoreDetailSelectedServicesBar(
+                        services = selectedServices,
+                        onContinue = {
+                            bookSheetServiceIds = selectedServices.map { it.id }
+                            showBookServicesSheet = true
+                        },
+                    )
                 }
             },
         ) { innerPadding ->
-            LazyColumn(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .padding(innerPadding),
             ) {
-            item {
                 StoreDetailTopBar(onBack = onBack)
-            }
 
-            if (styleReference != null) {
-                item {
-                    BookingStyleReferenceCard(
-                        reference = styleReference,
-                        onClear = { sessionViewModel.clearBookingStyleReference() },
-                    )
-                }
-            }
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
 
-            val store = storeDetailViewModel.store
-            if (store != null) {
-                if (store.images.isNotEmpty()) {
-                    item {
-                        StoreHeroCarousel(
-                            imageUrls = store.images.map { it.image_url },
-                            storeName = store.name,
-                            isFavorited = storeDetailViewModel.isFavorited,
-                            isFavoriteLoading = storeDetailViewModel.isFavoriteLoading,
-                            onToggleFavorite = onToggleFavorite,
-                        )
-                    }
-                }
-
-                item {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 2.dp, vertical = 2.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            text = store.name,
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontSize = 34.sp,
-                                fontWeight = FontWeight.Bold,
-                            ),
-                            color = Color.White,
-                        )
-                        Text(
-                            text = store.formattedAddress,
-                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
-                            color = BookingSecondaryText,
-                        )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = "★",
-                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
-                                color = BookingGold,
-                            )
-                            Text(
-                                text = storeDetailViewModel.ratingText(),
-                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                            )
-                            Text(
-                                text = "(${storeDetailViewModel.reviewCountText()})",
-                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
-                                color = BookingGold,
+                    if (styleReference != null) {
+                        item {
+                            BookingStyleReferenceCard(
+                                reference = styleReference,
+                                onClear = { sessionViewModel.clearBookingStyleReference() },
                             )
                         }
                     }
-                }
 
-                item {
-                    StoreDetailTabBar(
-                        tabs = storeDetailViewModel.visibleTabs(),
-                        selectedTab = selectedTab,
-                        onPickTab = storeDetailViewModel::pickTab,
-                    )
-                }
-
-                when (selectedTab) {
-                    "Services" -> {
-                        if (storeDetailViewModel.services.isEmpty()) {
+                    val store = storeDetailViewModel.store
+                    if (store != null) {
+                        if (store.images.isNotEmpty()) {
                             item {
-                                Text(
-                                    "No services available right now.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                StoreHeroCarousel(
+                                    imageUrls = store.images.map { it.image_url },
+                                    storeName = store.name,
+                                    isFavorited = storeDetailViewModel.isFavorited,
+                                    isFavoriteLoading = storeDetailViewModel.isFavoriteLoading,
+                                    onToggleFavorite = onToggleFavorite,
                                 )
                             }
                         }
-                        items(storeDetailViewModel.services, key = { it.id }) { service ->
-                            val selected = service.id == storeDetailViewModel.selectedServiceId
-                            StoreServiceRow(
-                                service = service,
-                                selected = selected,
-                                onSelect = { storeDetailViewModel.selectService(service.id) },
-                            )
-                        }
-                    }
 
-                    "Reviews" -> {
-                        if (storeDetailViewModel.reviews.isEmpty()) {
-                            item { Text("No reviews yet.") }
-                        }
                         item {
-                            Card(
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.20f),
-                                ),
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 2.dp, vertical = 2.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
+                                Text(
+                                    text = store.name,
+                                    style = MaterialTheme.typography.titleLarge.copy(
+                                        fontSize = 34.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    ),
+                                    color = Color.White,
+                                )
+                                Text(
+                                    text = store.formattedAddress,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
+                                    color = BookingSecondaryText,
+                                )
                                 Row(
-                                    modifier = Modifier.padding(12.dp),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Text("★", color = MaterialTheme.colorScheme.primary)
                                     Text(
-                                        storeDetailViewModel.ratingText(),
-                                        style = MaterialTheme.typography.titleMedium,
+                                        text = "★",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                                        color = BookingGold,
+                                    )
+                                    Text(
+                                        text = storeDetailViewModel.ratingText(),
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
+                                        color = Color.White,
                                         fontWeight = FontWeight.Bold,
                                     )
                                     Text(
-                                        "• ${storeDetailViewModel.reviewCountText()}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        text = "(${storeDetailViewModel.reviewCountText()})",
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
+                                        color = BookingGold,
                                     )
                                 }
                             }
                         }
-                        items(storeDetailViewModel.reviews, key = { it.id }) { review ->
-                            StoreReviewCard(review = review)
+
+                        item {
+                            StoreDetailTabBar(
+                                tabs = storeDetailViewModel.visibleTabs(),
+                                selectedTab = selectedTab,
+                                onPickTab = storeDetailViewModel::pickTab,
+                            )
                         }
-                    }
+
+                        when (selectedTab) {
+                            "Services" -> {
+                                if (storeDetailViewModel.services.isEmpty()) {
+                                    item {
+                                        Text(
+                                            "No services available right now.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                                itemsIndexed(storeDetailViewModel.services, key = { _, service -> service.id }) { index, service ->
+                                    val selected = storeDetailViewModel.selectedServiceIds.contains(service.id)
+                                    StoreServiceRow(
+                                        service = service,
+                                        selected = selected,
+                                        showDivider = index != storeDetailViewModel.services.lastIndex,
+                                        onToggle = { storeDetailViewModel.toggleServiceSelection(service.id) },
+                                    )
+                                }
+                            }
+
+                            "Reviews" -> {
+                                item {
+                                    StoreDetailReviewsSection(
+                                        ratingText = storeDetailViewModel.ratingText(),
+                                        reviewCountText = storeDetailViewModel.reviewCountText(),
+                                        reviews = storeDetailViewModel.reviews,
+                                        onOpenReviewImage = { imageUrls, startIndex ->
+                                            if (imageUrls.isNotEmpty()) {
+                                                reviewGalleryImages = imageUrls
+                                                reviewGalleryStartIndex = startIndex.coerceIn(0, imageUrls.lastIndex)
+                                                showReviewGallery = true
+                                            }
+                                        },
+                                    )
+                                }
+                            }
 
                     "Portfolio" -> {
                         if (storeDetailViewModel.portfolio.isEmpty()) {
-                            item { Text("No portfolio images yet.") }
-                        }
-                        items(storeDetailViewModel.portfolio, key = { it.id }) { row ->
-                            StorePortfolioCard(row = row)
+                            item {
+                                Text(
+                                    text = "No portfolio images yet.",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                                    color = BookingSecondaryText,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 24.dp),
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                        } else {
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 2.dp, vertical = 6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    storeDetailViewModel.portfolio.chunked(2).forEach { rowItems ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        ) {
+                                            StorePortfolioCard(
+                                                row = rowItems.first(),
+                                                modifier = Modifier.weight(1f),
+                                            )
+                                            if (rowItems.size > 1) {
+                                                StorePortfolioCard(
+                                                    row = rowItems[1],
+                                                    modifier = Modifier.weight(1f),
+                                                )
+                                            } else {
+                                                Spacer(modifier = Modifier.weight(1f))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 
-                    else -> {
-                        item {
-                            StoreDetailLocationCard(
-                                store = store,
-                                onOpenInMaps = { showMapChooser = true },
-                            )
-                        }
+                            else -> {
+                                item {
+                                    StoreDetailLocationCard(
+                                        store = store,
+                                        onOpenInMaps = { showMapChooser = true },
+                                    )
+                                }
 
-                        item {
-                            StoreDetailContactHoursCard(
-                                store = store,
-                                storeHours = storeDetailViewModel.storeHours,
-                                showFullHours = showFullHours,
-                                onToggleShowFullHours = { showFullHours = !showFullHours },
-                                onOpenDial = { phone ->
-                                    val opened = openDialer(context = context, phone = phone)
-                                    mapLaunchError = if (opened) null else "No phone app available on this device."
-                                },
-                                onOpenEmail = { email ->
-                                    val opened = openEmailClient(context = context, email = email)
-                                    mapLaunchError = if (opened) null else "No email app available on this device."
-                                },
-                            )
-                        }
+                                item {
+                                    StoreDetailContactHoursCard(
+                                        store = store,
+                                        storeHours = storeDetailViewModel.storeHours,
+                                        showFullHours = showFullHours,
+                                        onToggleShowFullHours = { showFullHours = !showFullHours },
+                                        onOpenDial = { phone ->
+                                            val opened = openDialer(context = context, phone = phone)
+                                            mapLaunchError = if (opened) null else "No phone app available on this device."
+                                        },
+                                        onOpenEmail = { email ->
+                                            val opened = openEmailClient(context = context, email = email)
+                                            mapLaunchError = if (opened) null else "No email app available on this device."
+                                        },
+                                    )
+                                }
 
-                        store.description?.takeIf { it.isNotBlank() }?.let { description ->
-                            item {
-                                Card(
-                                    shape = RoundedCornerShape(14.dp),
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = StoreDetailDetailsCardBackground,
-                                    ),
-                                    border = BorderStroke(
-                                        width = 1.dp,
-                                        color = BookingGold.copy(alpha = 0.18f),
-                                    ),
-                                ) {
-                                    Text(
-                                        text = description.trim(),
-                                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                                        color = BookingSecondaryText,
-                                        modifier = Modifier.padding(14.dp),
+                                store.description?.takeIf { it.isNotBlank() }?.let { description ->
+                                    item {
+                                        Card(
+                                            shape = RoundedCornerShape(14.dp),
+                                            modifier = Modifier.fillMaxWidth(),
+                                            colors = CardDefaults.cardColors(
+                                                containerColor = StoreDetailDetailsCardBackground,
+                                            ),
+                                            border = BorderStroke(
+                                                width = 1.dp,
+                                                color = BookingGold.copy(alpha = 0.18f),
+                                            ),
+                                        ) {
+                                            Text(
+                                                text = description.trim(),
+                                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                                                color = BookingSecondaryText,
+                                                modifier = Modifier.padding(14.dp),
+                                            )
+                                        }
+                                    }
+                                }
+
+                                item {
+                                    StoreDetailReportRow(
+                                        onReport = { noticeMessage = "Report feature is coming soon." },
                                     )
                                 }
                             }
                         }
-
-                        item {
-                            StoreDetailReportRow(
-                                onReport = { noticeMessage = "Report feature is coming soon." },
-                            )
-                        }
                     }
                 }
-            }
-
             }
 
             if (showMapChooser) {
@@ -469,6 +518,37 @@ fun StoreDetailScreen(
                     )
                 }
             }
+        }
+
+        if (showBookServicesSheet && bookSheetServiceIds.isNotEmpty()) {
+            ModalBottomSheet(
+                onDismissRequest = { showBookServicesSheet = false },
+                sheetState = bookSheetState,
+                dragHandle = null,
+                containerColor = Color(0xFF121212),
+                contentColor = Color.White,
+            ) {
+                BookAppointmentScreen(
+                    storeId = storeId,
+                    preselectedServiceId = bookSheetServiceIds.firstOrNull(),
+                    preselectedServiceIds = bookSheetServiceIds,
+                    sessionViewModel = sessionViewModel,
+                    presentationStyle = BookAppointmentPresentationStyle.BottomSheet,
+                    onClose = { showBookServicesSheet = false },
+                    onBookSuccess = {
+                        showBookServicesSheet = false
+                        onBookingCompleted()
+                    },
+                )
+            }
+        }
+
+        if (showReviewGallery && reviewGalleryImages.isNotEmpty()) {
+            StoreReviewImageViewerDialog(
+                imageUrls = reviewGalleryImages,
+                initialIndex = reviewGalleryStartIndex,
+                onDismiss = { showReviewGallery = false },
+            )
         }
     }
 
@@ -590,32 +670,20 @@ private fun StoreDetailTabBar(
             tabs.forEach { tab ->
                 val selected = selectedTab == tab
                 val tabInteraction = remember(tab) { MutableInteractionSource() }
-                val tabScale by animateFloatAsState(
-                    targetValue = if (selected) 1f else 0.96f,
-                    animationSpec = spring(dampingRatio = 0.78f, stiffness = 540f),
-                    label = "storeTabScale",
-                )
-                val labelColor by animateColorAsState(
-                    targetValue = if (selected) {
-                        Color.White
-                    } else {
-                        Color.White.copy(alpha = 0.56f)
-                    },
-                    label = "storeTabLabelColor",
-                )
-                val indicatorColor by animateColorAsState(
-                    targetValue = if (selected) {
-                        BookingGold
-                    } else {
-                        Color.Transparent
-                    },
-                    label = "storeTabIndicatorColor",
-                )
+                val labelColor = if (selected) {
+                    Color.White
+                } else {
+                    Color.White.copy(alpha = 0.56f)
+                }
+                val indicatorColor = if (selected) {
+                    BookingGold
+                } else {
+                    Color.Transparent
+                }
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = 48.dp)
-                        .scale(tabScale)
                         .clickable(
                             interactionSource = tabInteraction,
                             indication = null,
@@ -639,10 +707,7 @@ private fun StoreDetailTabBar(
                         modifier = Modifier
                             .width(74.dp)
                             .height(3.dp)
-                            .background(
-                                color = indicatorColor,
-                                shape = RoundedCornerShape(999.dp),
-                            ),
+                            .background(indicatorColor),
                     )
                 }
             }
@@ -661,53 +726,23 @@ private fun StoreDetailTabBar(
 private fun StoreServiceRow(
     service: ServiceItem,
     selected: Boolean,
-    onSelect: () -> Unit,
+    showDivider: Boolean,
+    onToggle: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
-    val rowScale by animateFloatAsState(
-        targetValue = if (pressed) 0.986f else 1f,
-        animationSpec = tween(durationMillis = 120),
-        label = "storeServiceRowScale",
-    )
-    val rowElevation by animateDpAsState(
-        targetValue = if (pressed) 1.dp else 4.dp,
-        animationSpec = tween(durationMillis = 120),
-        label = "storeServiceRowElevation",
-    )
-
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .scale(rowScale)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onSelect,
-            ),
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f)
-            },
-        ),
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (selected) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.42f)
-            } else {
-                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)
-            },
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = rowElevation),
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .background(if (selected) BookingGold.copy(alpha = 0.08f) else Color.Transparent)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onToggle,
+                )
                 .padding(horizontal = 12.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(
@@ -716,43 +751,213 @@ private fun StoreServiceRow(
             ) {
                 Text(
                     text = service.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = if (selected) BookingGold else Color.White,
                 )
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
                         text = "$${String.format(Locale.US, "%.2f", service.price)}+",
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                        color = Color.White,
                     )
                     Box(
                         modifier = Modifier
                             .size(3.dp)
                             .background(
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.35f),
+                                color = Color.White.copy(alpha = 0.35f),
                                 shape = CircleShape,
                             ),
                     )
                     Text(
                         text = "${service.duration_minutes}m",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                        color = BookingSecondaryText,
                     )
                 }
             }
-            FilterChip(
-                selected = selected,
-                onClick = onSelect,
-                label = { Text(if (selected) "ADDED" else "ADD") },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+
+            Row(
+                modifier = Modifier
+                    .heightIn(min = 40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (selected) BookingGold else Color.Transparent)
+                    .border(
+                        width = if (selected) 0.dp else 1.dp,
+                        color = BookingGold,
+                        shape = RoundedCornerShape(10.dp),
+                    )
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        onClick = onToggle,
+                    )
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (selected) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(10.dp),
+                        tint = Color.Black,
+                    )
+                }
+                Text(
+                    text = if (selected) "ADDED" else "ADD",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = if (selected) Color.Black else BookingGold,
+                )
+            }
+        }
+
+        if (showDivider) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(Color.White.copy(alpha = 0.08f)),
             )
         }
+    }
+}
+
+@Composable
+private fun StoreDetailSelectedServicesBar(
+    services: List<ServiceItem>,
+    onContinue: () -> Unit,
+) {
+    val primaryService = services.firstOrNull()
+    val serviceCountText = "${services.size} ${if (services.size == 1) "SERVICE" else "SERVICES"} SELECTED"
+    val priceText = primaryService?.let { "$${String.format(Locale.US, "%.2f", it.price)}+" } ?: "$0.00+"
+    val durationText = primaryService?.let { formatStoreDetailDuration(it.duration_minutes) } ?: "0m"
+    val continueInteraction = remember { MutableInteractionSource() }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.Black.copy(alpha = 0.96f)),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Color.White.copy(alpha = 0.12f)),
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = serviceCountText,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.2.sp,
+                    ),
+                    color = BookingSecondaryText,
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            text = priceText,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = "Est. Total",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                            color = BookingSecondaryText,
+                            maxLines = 1,
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(28.dp)
+                            .background(Color.White.copy(alpha = 0.18f)),
+                    )
+
+                    Icon(
+                        imageVector = Icons.Filled.AccessTime,
+                        contentDescription = null,
+                        tint = BookingGold,
+                        modifier = Modifier.size(13.dp),
+                    )
+                    Text(
+                        text = durationText,
+                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                        color = BookingSecondaryText,
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .widthIn(min = 180.dp)
+                    .height(66.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(BookingGold)
+                    .clickable(
+                        interactionSource = continueInteraction,
+                        indication = null,
+                        onClick = onContinue,
+                    )
+                    .padding(horizontal = 22.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "Continue",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = Color.Black,
+                )
+            }
+        }
+    }
+}
+
+private fun formatStoreDetailDuration(minutes: Int): String {
+    val hours = minutes / 60
+    val mins = minutes % 60
+    return if (hours > 0) {
+        "${hours}h ${mins}m"
+    } else {
+        "${mins}m"
     }
 }
 
@@ -1171,16 +1376,88 @@ private fun StoreDetailReportRow(onReport: () -> Unit) {
 }
 
 @Composable
-private fun StoreReviewCard(review: StoreReview) {
+private fun StoreDetailReviewsSection(
+    ratingText: String,
+    reviewCountText: String,
+    reviews: List<StoreReview>,
+    onOpenReviewImage: (List<String>, Int) -> Unit,
+) {
     Card(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = BookingCardBackground),
+        border = BorderStroke(1.dp, BookingGold.copy(alpha = 0.22f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = null,
+                    tint = BookingGold,
+                    modifier = Modifier.size(13.dp),
+                )
+                Text(
+                    text = ratingText,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = Color.White,
+                )
+                Text(
+                    text = "• $reviewCountText",
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                    color = BookingSecondaryText,
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(Color.White.copy(alpha = 0.08f)),
+            )
+
+            if (reviews.isEmpty()) {
+                Text(
+                    text = "No reviews yet.",
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                    color = BookingSecondaryText,
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    reviews.forEach { review ->
+                        StoreReviewCard(
+                            review = review,
+                            onOpenReviewImage = onOpenReviewImage,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StoreReviewCard(
+    review: StoreReview,
+    onOpenReviewImage: (List<String>, Int) -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(10.dp),
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f),
+            containerColor = Color.White.copy(alpha = 0.02f),
         ),
         border = BorderStroke(
             width = 1.dp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+            color = Color.White.copy(alpha = 0.06f),
         ),
     ) {
         Column(
@@ -1200,14 +1477,16 @@ private fun StoreReviewCard(review: StoreReview) {
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                            .background(Color.White.copy(alpha = 0.08f))
+                            .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape),
                     )
                 } else {
                     Box(
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                            .background(Color.White.copy(alpha = 0.08f))
+                            .border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape),
                     )
                 }
 
@@ -1221,15 +1500,19 @@ private fun StoreReviewCard(review: StoreReview) {
                     ) {
                         Text(
                             text = review.user_name ?: "User",
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                            color = Color.White,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
                             text = reviewDateLabel(review.created_at),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                            color = BookingSecondaryText,
                         )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -1237,7 +1520,7 @@ private fun StoreReviewCard(review: StoreReview) {
                         (1..5).forEach { idx ->
                             Text(
                                 text = if (idx <= rounded) "★" else "☆",
-                                color = MaterialTheme.colorScheme.primary,
+                                color = BookingGold,
                             )
                         }
                     }
@@ -1248,8 +1531,8 @@ private fun StoreReviewCard(review: StoreReview) {
             if (comment.isNotEmpty()) {
                 Text(
                     text = comment,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                    color = BookingSecondaryText,
                 )
             }
 
@@ -1257,19 +1540,214 @@ private fun StoreReviewCard(review: StoreReview) {
                 .mapNotNull { AssetUrlResolver.resolveURL(it) }
             if (reviewImages.isNotEmpty()) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(reviewImages) { imageUrl ->
+                    itemsIndexed(reviewImages) { index, imageUrl ->
+                        val imageInteraction = remember(imageUrl) { MutableInteractionSource() }
                         AsyncImage(
                             model = imageUrl,
-                            contentDescription = "Review image",
+                            contentDescription = "Review image ${index + 1}",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .size(74.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .border(
                                     width = 1.dp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+                                    color = Color.White.copy(alpha = 0.08f),
                                     shape = RoundedCornerShape(8.dp),
-                                ),
+                                )
+                                .clickable(
+                                    interactionSource = imageInteraction,
+                                    indication = null,
+                                ) {
+                                    onOpenReviewImage(reviewImages, index)
+                                },
+                        )
+                    }
+                }
+            }
+
+            val replyContent = review.reply?.content?.trim().orEmpty()
+            if (replyContent.isNotEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Color.White.copy(alpha = 0.05f))
+                        .padding(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = "Reply from ${review.reply?.admin_name?.takeIf { it.isNotBlank() } ?: "Store"}",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        ),
+                        color = Color.White.copy(alpha = 0.9f),
+                    )
+                    Text(
+                        text = replyContent,
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                        color = BookingSecondaryText,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StoreReviewImageViewerDialog(
+    imageUrls: List<String>,
+    initialIndex: Int,
+    onDismiss: () -> Unit,
+) {
+    if (imageUrls.isEmpty()) return
+
+    val safeIndex = initialIndex.coerceIn(0, imageUrls.lastIndex)
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = safeIndex)
+    val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+    val galleryScope = rememberCoroutineScope()
+    val currentIndex by remember {
+        derivedStateOf { listState.firstVisibleItemIndex.coerceIn(0, imageUrls.lastIndex) }
+    }
+    val closeInteraction = remember { MutableInteractionSource() }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+        ) {
+            LazyRow(
+                state = listState,
+                flingBehavior = flingBehavior,
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+                itemsIndexed(imageUrls) { index, imageUrl ->
+                    Box(
+                        modifier = Modifier
+                            .fillParentMaxWidth()
+                            .fillMaxSize()
+                            .background(Color.Black),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        SubcomposeAsyncImage(
+                            model = imageUrl,
+                            contentDescription = "Review image ${index + 1}",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize(),
+                            loading = {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp,
+                                        color = Color.White,
+                                    )
+                                }
+                            },
+                            error = {
+                                Column(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Photo,
+                                        contentDescription = null,
+                                        tint = Color.White.copy(alpha = 0.82f),
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Image unavailable",
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
+                                        color = Color.White.copy(alpha = 0.80f),
+                                    )
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 20.dp, end = 16.dp),
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = "${(currentIndex + 1).coerceAtMost(imageUrls.size)}/${imageUrls.size}",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = Color.White.copy(alpha = 0.9f),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Color.Black.copy(alpha = 0.50f))
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                )
+
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.55f))
+                        .clickable(
+                            interactionSource = closeInteraction,
+                            indication = null,
+                            onClick = onDismiss,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "Close viewer",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+
+            if (imageUrls.size > 1) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    imageUrls.indices.forEach { idx ->
+                        val selected = idx == currentIndex
+                        val dotWidth by animateDpAsState(
+                            targetValue = if (selected) 14.dp else 6.dp,
+                            label = "reviewViewerDotWidth",
+                        )
+                        val dotColor by animateColorAsState(
+                            targetValue = if (selected) {
+                                Color.White.copy(alpha = 0.92f)
+                            } else {
+                                Color.White.copy(alpha = 0.46f)
+                            },
+                            label = "reviewViewerDotColor",
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(dotWidth)
+                                .height(6.dp)
+                                .background(dotColor, RoundedCornerShape(999.dp))
+                                .clickable {
+                                    if (idx != currentIndex) {
+                                        galleryScope.launch { listState.animateScrollToItem(idx) }
+                                    }
+                                },
                         )
                     }
                 }
@@ -1279,19 +1757,20 @@ private fun StoreReviewCard(review: StoreReview) {
 }
 
 @Composable
-private fun StorePortfolioCard(row: StorePortfolio) {
+private fun StorePortfolioCard(
+    row: StorePortfolio,
+    modifier: Modifier = Modifier,
+) {
     val image = AssetUrlResolver.resolveURL(row.image_url)
     Card(
         shape = RoundedCornerShape(12.dp),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(214.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f),
-        ),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.02f)),
         border = BorderStroke(
             width = 1.dp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f),
+            color = Color.White.copy(alpha = 0.08f),
         ),
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -1306,7 +1785,7 @@ private fun StorePortfolioCard(row: StorePortfolio) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                        .background(Color.Gray.copy(alpha = 0.20f)),
                 )
             }
 
@@ -1315,36 +1794,11 @@ private fun StorePortfolioCard(row: StorePortfolio) {
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.48f)),
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)),
+                            startY = 0f,
                         ),
                     ),
             )
-
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(10.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = row.title ?: "Portfolio #${row.id}",
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                val desc = row.description?.trim().orEmpty()
-                if (desc.isNotEmpty()) {
-                    Text(
-                        text = desc,
-                        color = Color.White.copy(alpha = 0.88f),
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
         }
     }
 }
@@ -1401,7 +1855,7 @@ private fun StoreHeroCarousel(
                 state = listState,
                 flingBehavior = flingBehavior,
                 modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(0.dp),
             ) {
                 itemsIndexed(resolvedUrls) { index, imageUrl ->
                     AsyncImage(
@@ -1414,6 +1868,19 @@ private fun StoreHeroCarousel(
                     )
                 }
             }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.5f to Color.Transparent,
+                                1f to Color.Black.copy(alpha = 0.55f),
+                            ),
+                        ),
+                    ),
+            )
 
             Box(
                 modifier = Modifier
@@ -1441,6 +1908,7 @@ private fun StoreHeroCarousel(
                         imageVector = if (isFavorited) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                         contentDescription = if (isFavorited) "Favorited" else "Favorite",
                         tint = if (isFavorited) BookingGold else Color.White,
+                        modifier = Modifier.size(16.dp),
                     )
                 }
             }
@@ -1460,9 +1928,9 @@ private fun StoreHeroCarousel(
                         )
                         val dotColor by animateColorAsState(
                             targetValue = if (selected) {
-                                MaterialTheme.colorScheme.primary
+                                BookingGold
                             } else {
-                                Color.White.copy(alpha = 0.58f)
+                                Color.White.copy(alpha = 0.5f)
                             },
                             label = "heroIndicatorColor",
                         )
@@ -1490,8 +1958,213 @@ private fun StoreHeroCarousel(
 
 private fun reviewDateLabel(raw: String?): String {
     val text = raw?.trim().orEmpty()
+    parseStoreReviewServerDate(text)?.let { parsed ->
+        return parsed.format(STORE_REVIEW_DISPLAY_DATE_FORMATTER)
+    }
     if (text.length >= 10) return text.take(10)
     return if (text.isNotEmpty()) text else "-"
+}
+
+private val STORE_REVIEW_DISPLAY_DATE_FORMATTER: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
+
+private val STORE_REVIEW_NAIVE_UTC_PARSERS: List<DateTimeFormatter> = listOf(
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS", Locale.US),
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS", Locale.US),
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.US),
+    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS", Locale.US),
+    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US),
+    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss", Locale.US),
+)
+
+private fun parseStoreReviewServerDate(raw: String): LocalDate? {
+    val trimmed = raw.trim()
+    if (trimmed.isEmpty()) return null
+
+    runCatching {
+        OffsetDateTime.parse(trimmed)
+            .toInstant()
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+    }.getOrNull()?.let { return it }
+
+    runCatching {
+        Instant.parse(trimmed)
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+    }.getOrNull()?.let { return it }
+
+    if (!hasTimezoneInfo(trimmed)) {
+        val normalizedIso = if (trimmed.contains("T")) {
+            "${trimmed}Z"
+        } else {
+            trimmed.replace(" ", "T") + "Z"
+        }
+        runCatching {
+            OffsetDateTime.parse(normalizedIso)
+                .toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+        }.getOrNull()?.let { return it }
+
+        runCatching {
+            Instant.parse(normalizedIso)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+        }.getOrNull()?.let { return it }
+    }
+
+    runCatching {
+        LocalDateTime.parse(trimmed, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            .atOffset(ZoneOffset.UTC)
+            .toInstant()
+            .atZone(ZoneId.systemDefault())
+            .toLocalDate()
+    }.getOrNull()?.let { return it }
+
+    STORE_REVIEW_NAIVE_UTC_PARSERS.forEach { parser ->
+        runCatching {
+            LocalDateTime.parse(trimmed, parser)
+                .atOffset(ZoneOffset.UTC)
+                .toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+        }.getOrNull()?.let { return it }
+    }
+
+    return null
+}
+
+private fun hasTimezoneInfo(value: String): Boolean {
+    return value.endsWith("Z", ignoreCase = true) ||
+        Regex("[+-]\\d{2}:\\d{2}$").containsMatchIn(value)
+}
+
+@Composable
+private fun BookingStoreHeroCard(store: StoreDetail) {
+    val resolvedUrls = remember(store.images) {
+        store.images
+            .mapNotNull { img -> AssetUrlResolver.resolveURL(img.image_url) }
+            .distinct()
+    }
+    val listState = rememberLazyListState()
+    val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
+    val currentIndex by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex.coerceIn(0, (resolvedUrls.size - 1).coerceAtLeast(0))
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 2.dp, vertical = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        if (resolvedUrls.isNotEmpty()) {
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp),
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    LazyRow(
+                        state = listState,
+                        flingBehavior = flingBehavior,
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalArrangement = Arrangement.spacedBy(0.dp),
+                    ) {
+                        itemsIndexed(resolvedUrls) { index, imageUrl ->
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = "${store.name} image ${index + 1}",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillParentMaxWidth()
+                                    .fillMaxSize(),
+                            )
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.45f)),
+                                ),
+                            ),
+                    )
+
+                    if (resolvedUrls.size > 1) {
+                        Row(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = 10.dp, bottom = 10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        ) {
+                            resolvedUrls.indices.forEach { idx ->
+                                val selected = idx == currentIndex
+                                val dotWidth by animateDpAsState(
+                                    targetValue = if (selected) 14.dp else 6.dp,
+                                    label = "bookingHeroIndicatorWidth",
+                                )
+                                val dotColor by animateColorAsState(
+                                    targetValue = if (selected) BookingGold else Color.White.copy(alpha = 0.5f),
+                                    label = "bookingHeroIndicatorColor",
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .width(dotWidth)
+                                        .height(6.dp)
+                                        .background(dotColor, RoundedCornerShape(999.dp)),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Text(
+            text = store.name,
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            color = Color.White,
+        )
+        Text(
+            text = store.formattedAddress,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+            color = BookingSecondaryText,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Star,
+                contentDescription = "Store rating",
+                tint = BookingGold,
+                modifier = Modifier.size(12.dp),
+            )
+            Text(
+                text = String.format(Locale.US, "%.1f", store.rating),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                ),
+                color = Color.White,
+            )
+            Text(
+                text = "(${store.review_count} reviews)",
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp),
+                color = BookingGold,
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -1499,7 +2172,10 @@ private fun reviewDateLabel(raw: String?): String {
 fun BookAppointmentScreen(
     storeId: Int,
     preselectedServiceId: Int?,
+    preselectedServiceIds: List<Int> = emptyList(),
     sessionViewModel: AppSessionViewModel,
+    presentationStyle: BookAppointmentPresentationStyle = BookAppointmentPresentationStyle.FullPage,
+    onClose: (() -> Unit)? = null,
     onBookSuccess: () -> Unit,
     bookAppointmentViewModel: BookAppointmentViewModel = viewModel(),
 ) {
@@ -1512,10 +2188,45 @@ fun BookAppointmentScreen(
     var guestRows by remember(storeId) { mutableStateOf(emptyList<GroupGuestRow>()) }
     var nextGuestRowId by remember(storeId) { mutableStateOf(1L) }
     var noticeMessage by rememberSaveable(storeId) { mutableStateOf<String?>(null) }
+    var showServicePickerMenu by remember(storeId) { mutableStateOf(false) }
     val uiScope = rememberCoroutineScope()
 
-    LaunchedEffect(storeId, preselectedServiceId) {
+    LaunchedEffect(storeId, preselectedServiceId, preselectedServiceIds.joinToString(",")) {
         bookAppointmentViewModel.loadData(storeId = storeId, preselectedServiceId = preselectedServiceId)
+
+        val preferredServiceIds = if (preselectedServiceIds.isNotEmpty()) {
+            preselectedServiceIds
+        } else {
+            preselectedServiceId?.let { listOf(it) } ?: emptyList()
+        }
+
+        val validServiceIds = preferredServiceIds
+            .distinct()
+            .filter { preferredId ->
+                bookAppointmentViewModel.services.any { service -> service.id == preferredId }
+            }
+
+        if (validServiceIds.isNotEmpty()) {
+            val hostServiceId = validServiceIds.first()
+            if (bookAppointmentViewModel.selectedServiceId != hostServiceId) {
+                bookAppointmentViewModel.chooseService(hostServiceId)
+            } else {
+                bookAppointmentViewModel.reloadAvailableSlots()
+            }
+
+            val guestServiceIds = validServiceIds.drop(1)
+            if (guestServiceIds.isNotEmpty()) {
+                bookingType = BookingTypeSelection.Group
+                guestRows = guestServiceIds.mapIndexed { index, serviceId ->
+                    GroupGuestRow(id = index.toLong() + 1L, serviceId = serviceId)
+                }
+                nextGuestRowId = guestRows.size.toLong() + 1L
+            } else {
+                bookingType = BookingTypeSelection.Single
+                guestRows = emptyList()
+                nextGuestRowId = 1L
+            }
+        }
     }
 
     LaunchedEffect(styleReference?.pinId) {
@@ -1556,10 +2267,48 @@ fun BookAppointmentScreen(
     }
 
     val selectedService = bookAppointmentViewModel.selectedServiceOrNull()
+    val sheetHeaderServiceChips = remember(
+        preselectedServiceIds,
+        bookAppointmentViewModel.services,
+        selectedService?.id,
+    ) {
+        val preferredChips = preselectedServiceIds
+            .distinct()
+            .mapNotNull { serviceId ->
+                bookAppointmentViewModel.services.firstOrNull { it.id == serviceId }
+            }
+        if (preferredChips.isEmpty()) listOfNotNull(selectedService) else preferredChips
+    }
+    val selectedServiceSubtext = selectedService?.let {
+        "$${String.format(Locale.US, "%.2f", it.price)} • ${it.duration_minutes} mins"
+    } ?: "Choose from store service list"
+    val successServicesText = remember(sheetHeaderServiceChips, selectedService?.name) {
+        val names = sheetHeaderServiceChips.map { it.name }
+        when {
+            names.isEmpty() -> selectedService?.name ?: "-"
+            names.size == 1 -> "Host: ${names.first()}"
+            else -> names.joinToString(separator = ", ")
+        }
+    }
+    val successTotalText = remember(sheetHeaderServiceChips, selectedService?.price) {
+        val sum = sheetHeaderServiceChips.sumOf { it.price }
+        val total = if (sum > 0.0) sum else (selectedService?.price ?: 0.0)
+        "$${String.format(Locale.US, "%.2f", total)}+"
+    }
     val selectedTime = bookAppointmentViewModel.selectedSlot?.let { bookAppointmentViewModel.displayTime(it) } ?: "Select a time"
+    val successTimeText = remember(
+        bookAppointmentViewModel.selectedDate,
+        bookAppointmentViewModel.selectedSlot,
+        selectedTime,
+    ) {
+        val dateText = bookAppointmentViewModel.selectedDate.format(BOOKING_SUCCESS_DATE_FORMATTER)
+        val timeText = bookAppointmentViewModel.selectedSlot ?: selectedTime
+        "$dateText at $timeText"
+    }
     val summaryPriceText = selectedService?.let {
         "$${String.format(Locale.US, "%.2f", it.price)}+"
     } ?: "-"
+    val isBottomSheetPresentation = presentationStyle == BookAppointmentPresentationStyle.BottomSheet
     val guestServicesComplete = guestRows.isNotEmpty() && guestRows.all { it.serviceId != null }
     val canSubmit = selectedService != null &&
         bookAppointmentViewModel.selectedSlot != null &&
@@ -1571,6 +2320,50 @@ fun BookAppointmentScreen(
             "${selectedService.name} + ${guestRows.size} guest${if (guestRows.size > 1) "s" else ""}"
         else -> selectedService.name
     }
+    val slotHintText = when {
+        bookAppointmentViewModel.availableSlots.isEmpty() ->
+            "Times are based on store hours and staff availability."
+        !bookAppointmentViewModel.slotHintMessage.isNullOrBlank() ->
+            bookAppointmentViewModel.slotHintMessage!!
+        else ->
+            "Times are based on store hours and staff availability."
+    }
+    val blockedSlotWarning = bookAppointmentViewModel.slotHintMessage
+        ?.takeIf {
+            it.isNotBlank() &&
+                bookAppointmentViewModel.availableSlots.isNotEmpty() &&
+                it.lowercase(Locale.US).contains("blocked")
+        }
+    val confirmButtonTitle = if (isBottomSheetPresentation) "Confirm Appointment" else "Create Appointment"
+    val handleConfirmBooking: () -> Unit = {
+        if (bearerToken != null) {
+            val onSubmitSuccess: () -> Unit = {
+                if (!isTransitioningAfterSuccess) {
+                    isTransitioningAfterSuccess = true
+                    showBookingSuccessOverlay = true
+                    uiScope.launch {
+                        delay(1500)
+                        showBookingSuccessOverlay = false
+                        delay(120)
+                        onBookSuccess()
+                        isTransitioningAfterSuccess = false
+                    }
+                }
+            }
+
+            if (bookingType == BookingTypeSelection.Group) {
+                bookAppointmentViewModel.submitGroup(
+                    bearerToken = bearerToken,
+                    guestServiceIds = guestRows.mapNotNull { it.serviceId },
+                    onSuccess = onSubmitSuccess,
+                )
+            } else {
+                bookAppointmentViewModel.submit(bearerToken, onSubmitSuccess)
+            }
+        } else {
+            sessionViewModel.updateAuthMessage("Session expired, please sign in again.")
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -1580,298 +2373,289 @@ fun BookAppointmentScreen(
         Scaffold(
             containerColor = BookingBackground,
             bottomBar = {
-                BookingBottomBar(
-                    serviceTitle = summaryServiceTitle,
-                    selectedTime = selectedTime,
-                    priceText = summaryPriceText,
-                    isSubmitting = bookAppointmentViewModel.isSubmitting || isTransitioningAfterSuccess,
-                    enabled = canSubmit && !isTransitioningAfterSuccess,
-                    onConfirm = {
-                        if (bearerToken != null) {
-                            val onSubmitSuccess: () -> Unit = {
-                                if (!isTransitioningAfterSuccess) {
-                                    isTransitioningAfterSuccess = true
-                                    showBookingSuccessOverlay = true
-                                    uiScope.launch {
-                                        delay(1500)
-                                        showBookingSuccessOverlay = false
-                                        delay(120)
-                                        onBookSuccess()
-                                        isTransitioningAfterSuccess = false
+                if (!isBottomSheetPresentation) {
+                    BookingBottomBar(
+                        serviceTitle = summaryServiceTitle,
+                        selectedTime = selectedTime,
+                        priceText = summaryPriceText,
+                        isSubmitting = bookAppointmentViewModel.isSubmitting || isTransitioningAfterSuccess,
+                        enabled = canSubmit,
+                        confirmButtonLabel = confirmButtonTitle,
+                        onConfirm = handleConfirmBooking,
+                    )
+                }
+            },
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            ) {
+                if (!isBottomSheetPresentation) {
+                    BookingFullPageTopBar(
+                        step = "STEP 02",
+                        title = "Book Services",
+                        onBack = onClose,
+                    )
+                }
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = if (isBottomSheetPresentation) 12.dp else 10.dp)
+                        .padding(bottom = if (isBottomSheetPresentation) 8.dp else 28.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    if (isBottomSheetPresentation) {
+                        item {
+                            BookingBottomSheetHeader()
+                        }
+                    }
+
+                val detail = bookAppointmentViewModel.storeDetail
+                if (!isBottomSheetPresentation && detail != null) {
+                    item {
+                        BookingStoreHeroCard(store = detail)
+                    }
+                }
+
+                if (isBottomSheetPresentation) {
+                    item {
+                        BookingSheetServicesHeaderCard(
+                            selectedService = selectedService,
+                            selectedServiceChips = sheetHeaderServiceChips,
+                        )
+                    }
+                } else {
+                    item {
+                        BookingSectionCard(
+                            title = "Select Service",
+                        ) {
+                            val serviceRowInteraction = remember { MutableInteractionSource() }
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 44.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color.White.copy(alpha = 0.04f))
+                                        .border(
+                                            width = 1.dp,
+                                            color = BookingGold.copy(alpha = 0.26f),
+                                            shape = RoundedCornerShape(12.dp),
+                                        )
+                                        .clickable(
+                                            interactionSource = serviceRowInteraction,
+                                            indication = null,
+                                        ) {
+                                            showServicePickerMenu = true
+                                        }
+                                        .padding(horizontal = 14.dp, vertical = 2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                                    ) {
+                                        Text(
+                                            text = selectedService?.name ?: "Select Service",
+                                            style = MaterialTheme.typography.titleSmall.copy(
+                                                fontSize = 17.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                            ),
+                                            color = Color.White,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        Text(
+                                            text = selectedServiceSubtext,
+                                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                                            color = BookingSecondaryText,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                    Icon(
+                                        imageVector = Icons.Filled.ChevronRight,
+                                        contentDescription = "Open service selector",
+                                        tint = BookingSecondaryText,
+                                        modifier = Modifier.size(14.dp),
+                                    )
+                                }
+
+                                DropdownMenu(
+                                    expanded = showServicePickerMenu,
+                                    onDismissRequest = { showServicePickerMenu = false },
+                                ) {
+                                    bookAppointmentViewModel.services.forEach { service ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    "${service.name} • $${String.format(Locale.US, "%.2f", service.price)}",
+                                                )
+                                            },
+                                            onClick = {
+                                                bookAppointmentViewModel.chooseService(service.id)
+                                                showServicePickerMenu = false
+                                            },
+                                        )
                                     }
                                 }
                             }
-
-                            if (bookingType == BookingTypeSelection.Group) {
-                                bookAppointmentViewModel.submitGroup(
-                                    bearerToken = bearerToken,
-                                    guestServiceIds = guestRows.mapNotNull { it.serviceId },
-                                    onSuccess = onSubmitSuccess,
-                                )
-                            } else {
-                                bookAppointmentViewModel.submit(bearerToken, onSubmitSuccess)
-                            }
-                        } else {
-                            sessionViewModel.updateAuthMessage("Session expired, please sign in again.")
-                        }
-                    },
-                )
-            },
-        ) { innerPadding ->
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                item {
-                    StepHeader(step = "STEP 03", title = "Confirm Appointment")
-                }
-
-                val detail = bookAppointmentViewModel.storeDetail
-                if (detail != null) {
-                    item {
-                        Card(
-                            shape = RoundedCornerShape(14.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = BookingCardBackground,
-                            ),
-                            border = BorderStroke(1.dp, BookingCardStroke),
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
-                            ) {
-                                Text(
-                                    text = detail.name,
-                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                    color = Color.White,
-                                )
-                                Text(
-                                    text = detail.formattedAddress,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = BookingSecondaryText,
-                                )
-                                Text(
-                                    "Timezone: ${detail.time_zone ?: "Local"}",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = Color.White.copy(alpha = 0.50f),
-                                )
-                            }
                         }
                     }
                 }
 
-                if (styleReference != null) {
+                if (!isBottomSheetPresentation) {
                     item {
-                        BookingStyleReferenceCard(
-                            reference = styleReference,
-                            onClear = { sessionViewModel.clearBookingStyleReference() },
+                        BookingTechnicianCard(
+                            selectedTechnicianId = bookAppointmentViewModel.selectedTechnicianId,
+                            technicians = bookAppointmentViewModel.technicians,
+                            onChooseTechnician = { bookAppointmentViewModel.chooseTechnician(it) },
                         )
                     }
                 }
 
                 item {
-                    BookingSectionCard(
-                        title = "Select Service",
-                        subtitle = "Choose from store service list",
-                    ) {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            bookAppointmentViewModel.services.forEach { service ->
-                                val selected = service.id == bookAppointmentViewModel.selectedServiceId
-                                FilterChip(
-                                    selected = selected,
-                                    onClick = { bookAppointmentViewModel.chooseService(service.id) },
-                                    label = {
-                                        Text(
-                                            "${service.name} • $${String.format(Locale.US, "%.2f", service.price)}",
-                                        )
-                                    },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = BookingGold,
-                                        selectedLabelColor = Color.Black,
-                                    ),
-                                )
-                            }
-                        }
-                    }
-                }
-
-                item {
-                    BookingSectionCard(
-                        title = "Select Technician",
-                        subtitle = "Optional",
-                    ) {
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            FilterChip(
-                                selected = bookAppointmentViewModel.selectedTechnicianId == null,
-                                onClick = { bookAppointmentViewModel.chooseTechnician(null) },
-                                label = { Text("Any") },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = BookingGold,
-                                    selectedLabelColor = Color.Black,
-                                ),
-                            )
-                            bookAppointmentViewModel.technicians.forEach { tech ->
-                                FilterChip(
-                                    selected = tech.id == bookAppointmentViewModel.selectedTechnicianId,
-                                    onClick = { bookAppointmentViewModel.chooseTechnician(tech.id) },
-                                    label = { Text(tech.name) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = BookingGold,
-                                        selectedLabelColor = Color.Black,
-                                    ),
-                                )
-                            }
-                        }
-                    }
-                }
-
-                item {
-                    BookingSectionCard(
-                        title = "Select Date",
-                    ) {
-                        BookingCalendar(
-                            displayedMonth = displayedMonth,
-                            today = todayInStoreZone,
-                            selectedDate = bookAppointmentViewModel.selectedDate,
-                            onPreviousMonth = {
-                                if (canGoToPreviousMonth(displayedMonth, todayInStoreZone)) {
-                                    displayedMonth = displayedMonth.minusMonths(1)
-                                }
-                            },
-                            onNextMonth = { displayedMonth = displayedMonth.plusMonths(1) },
-                            onSelectDate = { date ->
-                                bookAppointmentViewModel.chooseDate(date)
-                            },
-                        )
-                    }
-                }
-
-                item {
-                    BookingSectionCard(
-                        title = "Select Time",
-                        subtitle = "Times are based on store hours and staff availability.",
-                    ) {
-                        if (bookAppointmentViewModel.isLoadingSlots) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                CircularProgressIndicator()
-                                Text("Loading available times...")
-                            }
-                        } else if (bookAppointmentViewModel.availableSlots.isEmpty()) {
-                            Text(
-                                bookAppointmentViewModel.slotHintMessage ?: "No available times for this date.",
-                                color = MaterialTheme.colorScheme.error,
-                            )
-                        } else {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                maxItemsInEachRow = 4,
-                            ) {
-                                bookAppointmentViewModel.availableSlots.forEach { slot ->
-                                    val selected = slot == bookAppointmentViewModel.selectedSlot
-                                    FilterChip(
-                                        selected = selected,
-                                        onClick = { bookAppointmentViewModel.selectSlot(slot) },
-                                        label = { Text(bookAppointmentViewModel.displayTime(slot)) },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = BookingGold,
-                                            selectedLabelColor = Color.Black,
-                                        ),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                item {
-                    BookingTypeCard(
-                        bookingType = bookingType,
-                        onSelectSingle = { bookingType = BookingTypeSelection.Single },
-                        onSelectGroup = {
-                            bookingType = BookingTypeSelection.Group
-                            if (guestRows.isEmpty()) {
-                                guestRows = listOf(GroupGuestRow(id = nextGuestRowId))
-                                nextGuestRowId += 1
+                    BookingDateTimeCard(
+                        displayedMonth = displayedMonth,
+                        today = todayInStoreZone,
+                        selectedDate = bookAppointmentViewModel.selectedDate,
+                        onPreviousMonth = {
+                            if (canGoToPreviousMonth(displayedMonth, todayInStoreZone)) {
+                                displayedMonth = displayedMonth.minusMonths(1)
                             }
                         },
+                        onNextMonth = { displayedMonth = displayedMonth.plusMonths(1) },
+                        onSelectDate = { date ->
+                            bookAppointmentViewModel.chooseDate(date)
+                        },
+                        isLoadingSlots = bookAppointmentViewModel.isLoadingSlots,
+                        availableSlots = bookAppointmentViewModel.availableSlots,
+                        selectedSlot = bookAppointmentViewModel.selectedSlot,
+                        onSelectSlot = { slot ->
+                            bookAppointmentViewModel.selectSlot(slot)
+                        },
+                        displaySlotTime = { slot ->
+                            bookAppointmentViewModel.displayTime(slot)
+                        },
+                        slotHintText = slotHintText,
+                        noSlotsMessage = bookAppointmentViewModel.slotHintMessage
+                            ?: "No available times for this date.",
+                        blockedSlotWarning = blockedSlotWarning,
                     )
                 }
 
-                item {
-                    AnimatedVisibility(
-                        visible = bookingType == BookingTypeSelection.Group,
-                        enter = fadeIn(animationSpec = tween(durationMillis = 220)) +
-                            expandVertically(animationSpec = tween(durationMillis = 240)),
-                        exit = fadeOut(animationSpec = tween(durationMillis = 140)) +
-                            shrinkVertically(animationSpec = tween(durationMillis = 180)),
-                    ) {
-                        GroupGuestServicesCard(
-                            services = bookAppointmentViewModel.services,
-                            guestRows = guestRows,
-                            onUpdateGuestService = { rowId, serviceId ->
-                                guestRows = guestRows.map { row ->
-                                    if (row.id == rowId) row.copy(serviceId = serviceId) else row
+                if (isBottomSheetPresentation) {
+                    item {
+                        BookingTypeCard(
+                            bookingType = bookingType,
+                            onSelectSingle = { bookingType = BookingTypeSelection.Single },
+                            onSelectGroup = {
+                                bookingType = BookingTypeSelection.Group
+                                if (guestRows.isEmpty()) {
+                                    guestRows = listOf(GroupGuestRow(id = nextGuestRowId))
+                                    nextGuestRowId += 1
                                 }
                             },
-                            onAddGuest = {
-                                guestRows = guestRows + GroupGuestRow(id = nextGuestRowId)
-                                nextGuestRowId += 1
-                            },
-                            onRemoveGuest = { rowId ->
-                                guestRows = guestRows.filterNot { it.id == rowId }
-                            },
+                        )
+                    }
+                    item {
+                        if (bookingType == BookingTypeSelection.Group) {
+                            GroupGuestServicesCard(
+                                services = bookAppointmentViewModel.services,
+                                guestRows = guestRows,
+                                onUpdateGuestService = { rowId, serviceId ->
+                                    guestRows = guestRows.map { row ->
+                                        if (row.id == rowId) row.copy(serviceId = serviceId) else row
+                                    }
+                                },
+                                onAddGuest = {
+                                    guestRows = guestRows + GroupGuestRow(id = nextGuestRowId)
+                                    nextGuestRowId += 1
+                                },
+                                onRemoveGuest = { rowId ->
+                                    guestRows = guestRows.filterNot { it.id == rowId }
+                                },
+                            )
+                        }
+                    }
+                    item {
+                        BookingTechnicianCard(
+                            selectedTechnicianId = bookAppointmentViewModel.selectedTechnicianId,
+                            technicians = bookAppointmentViewModel.technicians,
+                            onChooseTechnician = { bookAppointmentViewModel.chooseTechnician(it) },
+                        )
+                    }
+                    item {
+                        PayAtSalonCard()
+                    }
+                    item {
+                        BookingBottomSheetSummaryAndActions(
+                            storeDetail = detail,
+                            selectedService = selectedService,
+                            selectedTime = selectedTime,
+                            priceText = summaryPriceText,
+                            isSubmitting = bookAppointmentViewModel.isSubmitting || isTransitioningAfterSuccess,
+                            enabled = canSubmit,
+                            confirmButtonLabel = confirmButtonTitle,
+                            onConfirm = handleConfirmBooking,
+                            onChangeService = onClose,
                         )
                     }
                 }
 
-                item {
-                    PayAtSalonCard()
-                }
-
-                item {
-                    BookingSectionCard(
-                        title = "Notes",
-                        subtitle = "Add special requests or reminders for the salon (optional).",
-                    ) {
-                        OutlinedTextField(
-                            value = bookAppointmentViewModel.notes,
-                            onValueChange = { bookAppointmentViewModel.notes = it },
-                            label = { Text("Optional notes", color = Color.White.copy(alpha = 0.64f)) },
-                            modifier = Modifier.fillMaxWidth(),
-                            minLines = 3,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White,
-                                focusedContainerColor = Color.White.copy(alpha = 0.04f),
-                                unfocusedContainerColor = Color.White.copy(alpha = 0.04f),
-                                focusedBorderColor = BookingGold.copy(alpha = 0.36f),
-                                unfocusedBorderColor = BookingGold.copy(alpha = 0.22f),
-                                cursorColor = BookingGold,
-                            ),
-                        )
+                if (!isBottomSheetPresentation) {
+                    item {
+                        BookingSectionCard(
+                            title = "Notes",
+                            subtitle = "Add special requests or reminders for the salon (optional).",
+                        ) {
+                            val notesShape = RoundedCornerShape(12.dp)
+                            BasicTextField(
+                                value = bookAppointmentViewModel.notes,
+                                onValueChange = { bookAppointmentViewModel.notes = it },
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                ),
+                                cursorBrush = SolidColor(BookingGold),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 88.dp),
+                                minLines = 4,
+                                maxLines = 7,
+                                decorationBox = { innerTextField ->
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(
+                                                color = Color.White.copy(alpha = 0.04f),
+                                                shape = notesShape,
+                                            )
+                                            .border(
+                                                width = 1.dp,
+                                                color = BookingGold.copy(alpha = 0.26f),
+                                                shape = notesShape,
+                                            )
+                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    ) {
+                                        if (bookAppointmentViewModel.notes.isBlank()) {
+                                            Text(
+                                                text = "Optional notes",
+                                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp),
+                                                color = Color.White.copy(alpha = 0.64f),
+                                            )
+                                        }
+                                        innerTextField()
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
-
-                item {
-                    Text(
-                        "By confirming, you agree to contact the salon if you need changes.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = BookingSecondaryText,
-                    )
                 }
             }
         }
@@ -1906,13 +2690,15 @@ fun BookAppointmentScreen(
 
         AnimatedVisibility(
             visible = showBookingSuccessOverlay,
-            enter = fadeIn(animationSpec = tween(durationMillis = 200)) +
-                scaleIn(initialScale = 0.97f, animationSpec = tween(durationMillis = 200)),
-            exit = fadeOut(animationSpec = tween(durationMillis = 150)) +
-                scaleOut(targetScale = 0.98f, animationSpec = tween(durationMillis = 150)),
+            enter = fadeIn(animationSpec = tween(durationMillis = 200)),
+            exit = fadeOut(animationSpec = tween(durationMillis = 150)),
             modifier = Modifier.align(Alignment.Center),
         ) {
-            BookingSuccessOverlay()
+            BookingSuccessOverlay(
+                servicesText = successServicesText,
+                totalText = successTotalText,
+                timeText = successTimeText,
+            )
         }
     }
 
@@ -1943,7 +2729,7 @@ fun BookAppointmentScreen(
 
 @Composable
 private fun PayAtSalonCard() {
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(16.dp)
     Card(
         shape = shape,
         modifier = Modifier.fillMaxWidth(),
@@ -1969,24 +2755,17 @@ private fun PayAtSalonCard() {
         ) {
             Column(
                 modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Text(
-                    text = "PAY AT SALON",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = BookingGold,
-                    fontWeight = FontWeight.Bold,
-                )
-
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.Top,
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(72.dp)
+                            .size(74.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(BookingGold.copy(alpha = 0.14f))
+                            .background(BookingGold.copy(alpha = 0.13f))
                             .border(
                                 width = 1.dp,
                                 color = BookingGold.copy(alpha = 0.30f),
@@ -1995,10 +2774,10 @@ private fun PayAtSalonCard() {
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.CheckCircle,
-                            contentDescription = "Safe",
+                            imageVector = Icons.Filled.Security,
+                            contentDescription = "Secure payment",
                             tint = BookingGold,
-                            modifier = Modifier.size(30.dp),
+                            modifier = Modifier.size(26.dp),
                         )
                     }
 
@@ -2007,28 +2786,52 @@ private fun PayAtSalonCard() {
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
                                 text = "Pay at Salon",
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleMedium.copy(fontSize = 17.sp),
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
                             )
                             SafeSecureBadge()
                         }
 
-                        Text(
-                            text = "Your appointment is secured instantly. No prepayment or deposit is required today.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = BookingSecondaryText,
-                        )
-                        Text(
-                            text = "Just show up and pay after your service.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = BookingSecondaryText,
-                        )
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                text = "Your appointment is secured instantly. No",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                ),
+                                color = Color.White.copy(alpha = 0.64f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = "prepayment or deposit is required today.",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                ),
+                                color = Color.White.copy(alpha = 0.64f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = "Just show up and pay after your service.",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                ),
+                                color = Color.White.copy(alpha = 0.64f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
 
@@ -2036,17 +2839,17 @@ private fun PayAtSalonCard() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(1.dp)
-                        .background(Color.White.copy(alpha = 0.12f)),
+                        .background(Color.White.copy(alpha = 0.10f)),
                 )
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Box(
                         modifier = Modifier
-                            .width(86.dp)
-                            .height(36.dp),
+                            .width(94.dp)
+                            .height(38.dp),
                     ) {
                         PaymentMethodBadge(
                             label = "C",
@@ -2056,21 +2859,26 @@ private fun PayAtSalonCard() {
                             label = "A",
                             modifier = Modifier
                                 .align(Alignment.CenterStart)
-                                .offset(x = 18.dp),
+                                .offset(x = 28.dp),
                         )
                         PaymentMethodBadge(
                             label = "$",
                             modifier = Modifier
                                 .align(Alignment.CenterStart)
-                                .offset(x = 36.dp),
+                                .offset(x = 56.dp),
                         )
                     }
 
                     Text(
                         text = "Accepted: Credit Card, Apple Pay, Cash",
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                        ),
                         color = Color.White.copy(alpha = 0.56f),
                         fontStyle = FontStyle.Italic,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
                 }
@@ -2081,50 +2889,25 @@ private fun PayAtSalonCard() {
 
 @Composable
 private fun SafeSecureBadge() {
-    val shimmer = rememberInfiniteTransition(label = "safeSecureShimmer")
-    val shimmerOffset by shimmer.animateFloat(
-        initialValue = -80f,
-        targetValue = 160f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1300, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart,
-        ),
-        label = "safeSecureShimmerOffset",
-    )
     val badgeShape = RoundedCornerShape(999.dp)
 
-    Box(
+    Text(
+        text = "Safe & Secure",
+        style = MaterialTheme.typography.labelSmall.copy(
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+        ),
+        color = BookingGold,
         modifier = Modifier
             .clip(badgeShape)
-            .background(BookingGold.copy(alpha = 0.16f))
+            .background(Color.Black.copy(alpha = 0.22f))
             .border(
                 width = 1.dp,
                 color = BookingGold.copy(alpha = 0.36f),
                 shape = badgeShape,
-            ),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.White.copy(alpha = 0.34f),
-                            Color.Transparent,
-                        ),
-                        start = Offset(shimmerOffset, 0f),
-                        end = Offset(shimmerOffset + 64f, 64f),
-                    ),
-                ),
-        )
-        Text(
-            text = "SAFE & SECURE",
-            style = MaterialTheme.typography.labelSmall,
-            color = BookingGold,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-        )
-    }
+            )
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+    )
 }
 
 @Composable
@@ -2134,22 +2917,318 @@ private fun PaymentMethodBadge(
 ) {
     Box(
         modifier = modifier
-            .size(34.dp)
+            .size(38.dp)
             .clip(CircleShape)
             .background(Color(0xFF1A2948))
             .border(
-                width = 1.5.dp,
-                color = Color.Black.copy(alpha = 0.72f),
+                width = 2.dp,
+                color = Color.Black.copy(alpha = 0.78f),
                 shape = CircleShape,
             ),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = Color.White.copy(alpha = 0.88f),
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            color = Color.White.copy(alpha = 0.85f),
             fontWeight = FontWeight.Bold,
         )
+    }
+}
+
+@Composable
+private fun BookingTechnicianCard(
+    selectedTechnicianId: Int?,
+    technicians: List<Technician>,
+    onChooseTechnician: (Int?) -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = BookingCardBackground,
+        ),
+        border = BorderStroke(1.dp, BookingCardStroke),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "SELECT TECHNICIAN",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        letterSpacing = 2.sp,
+                        fontSize = 12.sp,
+                    ),
+                    color = BookingSecondaryText,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = "OPTIONAL",
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                    color = BookingGold,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(BookingGold.copy(alpha = 0.16f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                )
+            }
+
+            Text(
+                text = "Tap a preferred technician or choose Any.",
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                color = BookingSecondaryText,
+            )
+
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                contentPadding = PaddingValues(horizontal = 2.dp),
+            ) {
+                item {
+                    BookingTechnicianChip(
+                        name = "Any",
+                        selected = selectedTechnicianId == null,
+                        onClick = { onChooseTechnician(null) },
+                    )
+                }
+                items(technicians, key = { it.id }) { tech ->
+                    BookingTechnicianChip(
+                        name = tech.name,
+                        selected = selectedTechnicianId == tech.id,
+                        onClick = { onChooseTechnician(tech.id) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BookingTechnicianChip(
+    name: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) BookingGold else Color.White.copy(alpha = 0.15f),
+        animationSpec = tween(durationMillis = 150),
+        label = "technicianChipBorderColor",
+    )
+    val fillColor by animateColorAsState(
+        targetValue = if (selected) BookingGold.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.02f),
+        animationSpec = tween(durationMillis = 150),
+        label = "technicianChipFillColor",
+    )
+    val iconColor by animateColorAsState(
+        targetValue = if (selected) BookingGold else Color.White.copy(alpha = 0.58f),
+        animationSpec = tween(durationMillis = 150),
+        label = "technicianChipIconColor",
+    )
+    val textColor by animateColorAsState(
+        targetValue = if (selected) BookingGold else Color.White,
+        animationSpec = tween(durationMillis = 150),
+        label = "technicianChipTextColor",
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+        modifier = Modifier.clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            onClick = onClick,
+        ),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(64.dp)
+                .clip(CircleShape)
+                .background(fillColor)
+                .border(2.dp, borderColor, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Person,
+                contentDescription = null,
+                tint = iconColor,
+                modifier = Modifier.size(20.dp),
+            )
+        }
+        Text(
+            text = name,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+            ),
+            color = textColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.width(80.dp),
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+@OptIn(ExperimentalLayoutApi::class)
+private fun BookingDateTimeCard(
+    displayedMonth: YearMonth,
+    today: LocalDate,
+    selectedDate: LocalDate,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    onSelectDate: (LocalDate) -> Unit,
+    isLoadingSlots: Boolean,
+    availableSlots: List<String>,
+    selectedSlot: String?,
+    onSelectSlot: (String) -> Unit,
+    displaySlotTime: (String) -> String,
+    slotHintText: String,
+    noSlotsMessage: String,
+    blockedSlotWarning: String?,
+) {
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = BookingCardBackground,
+        ),
+        border = BorderStroke(1.dp, BookingCardStroke),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text(
+                text = "SELECT DATE",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    letterSpacing = 2.sp,
+                    fontSize = 12.sp,
+                ),
+                color = BookingSecondaryText,
+                fontWeight = FontWeight.Bold,
+            )
+
+            BookingCalendar(
+                displayedMonth = displayedMonth,
+                today = today,
+                selectedDate = selectedDate,
+                onPreviousMonth = onPreviousMonth,
+                onNextMonth = onNextMonth,
+                onSelectDate = onSelectDate,
+            )
+
+            Text(
+                text = "SELECT TIME",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    letterSpacing = 2.sp,
+                    fontSize = 12.sp,
+                ),
+                color = BookingSecondaryText,
+                fontWeight = FontWeight.Bold,
+            )
+
+            if (isLoadingSlots) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = BookingGold,
+                    )
+                    Text(
+                        text = "Loading available times...",
+                        color = BookingSecondaryText,
+                    )
+                }
+            } else if (availableSlots.isEmpty()) {
+                Text(
+                    text = noSlotsMessage,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    ),
+                    color = Color.Red.copy(alpha = 0.95f),
+                )
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    availableSlots.chunked(4).forEach { rowSlots ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            rowSlots.forEach { slot ->
+                                val selected = slot == selectedSlot
+                                val interactionSource = remember(slot, selectedSlot) { MutableInteractionSource() }
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .heightIn(min = 40.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(if (selected) BookingGold else Color.White.copy(alpha = 0.04f))
+                                        .border(
+                                            width = 1.dp,
+                                            color = if (selected) Color.Transparent else BookingGold.copy(alpha = 0.25f),
+                                            shape = RoundedCornerShape(10.dp),
+                                        )
+                                        .clickable(
+                                            interactionSource = interactionSource,
+                                            indication = null,
+                                            onClick = { onSelectSlot(slot) },
+                                        )
+                                        .padding(horizontal = 6.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = displaySlotTime(slot),
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                        ),
+                                        color = if (selected) Color.Black else Color.White,
+                                        maxLines = 1,
+                                    )
+                                }
+                            }
+                            repeat(4 - rowSlots.size) {
+                                Spacer(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(40.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Text(
+                text = slotHintText.uppercase(Locale.US),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 11.sp,
+                    letterSpacing = 1.6.sp,
+                ),
+                color = BookingSecondaryText,
+                fontWeight = FontWeight.SemiBold,
+            )
+
+            if (!blockedSlotWarning.isNullOrBlank()) {
+                Text(
+                    text = blockedSlotWarning,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                    color = Color.Red.copy(alpha = 0.92f),
+                )
+            }
+        }
     }
 }
 
@@ -2159,66 +3238,84 @@ private fun BookingTypeCard(
     onSelectSingle: () -> Unit,
     onSelectGroup: () -> Unit,
 ) {
-    val singleScale by animateFloatAsState(
-        targetValue = if (bookingType == BookingTypeSelection.Single) 1.02f else 1f,
-        animationSpec = spring(dampingRatio = 0.72f, stiffness = 520f),
-        label = "bookingTypeSingleScale",
-    )
-    val groupScale by animateFloatAsState(
-        targetValue = if (bookingType == BookingTypeSelection.Group) 1.02f else 1f,
-        animationSpec = spring(dampingRatio = 0.72f, stiffness = 520f),
-        label = "bookingTypeGroupScale",
-    )
-
     BookingSectionCard(
         title = "Booking Type",
-        subtitle = "Choose single booking or group booking with friends.",
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            FilterChip(
+            BookingTypeOptionButton(
+                label = "Single",
                 selected = bookingType == BookingTypeSelection.Single,
                 onClick = onSelectSingle,
-                label = {
-                    Text(
-                        text = "Single",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = BookingGold,
-                    selectedLabelColor = Color.Black,
-                ),
                 modifier = Modifier
                     .weight(1f)
-                    .scale(singleScale),
             )
-            FilterChip(
+            BookingTypeOptionButton(
+                label = "Group (Friends)",
                 selected = bookingType == BookingTypeSelection.Group,
                 onClick = onSelectGroup,
-                label = {
-                    Text(
-                        text = "Group (Friends)",
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = BookingGold,
-                    selectedLabelColor = Color.Black,
-                ),
                 modifier = Modifier
                     .weight(1f)
-                    .scale(groupScale),
             )
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun BookingTypeOptionButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(10.dp)
+    val interactionSource = remember { MutableInteractionSource() }
+    val backgroundColor by animateColorAsState(
+        targetValue = if (selected) {
+            BookingGold.copy(alpha = 0.14f)
+        } else {
+            Color.White.copy(alpha = 0.04f)
+        },
+        animationSpec = tween(durationMillis = 150),
+        label = "bookingTypeOptionBackground",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) BookingGold else Color.White.copy(alpha = 0.16f),
+        animationSpec = tween(durationMillis = 150),
+        label = "bookingTypeOptionBorder",
+    )
+    val textColor by animateColorAsState(
+        targetValue = if (selected) BookingGold else Color.White.copy(alpha = 0.8f),
+        animationSpec = tween(durationMillis = 150),
+        label = "bookingTypeOptionText",
+    )
+
+    Box(
+        modifier = modifier
+            .heightIn(min = 58.dp)
+            .clip(shape)
+            .background(backgroundColor)
+            .border(1.dp, borderColor, shape)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = textColor,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+        )
+    }
+}
+
 @Composable
 private fun GroupGuestServicesCard(
     services: List<ServiceItem>,
@@ -2227,122 +3324,584 @@ private fun GroupGuestServicesCard(
     onAddGuest: () -> Unit,
     onRemoveGuest: (rowId: Long) -> Unit,
 ) {
-    BookingSectionCard(
-        title = "Group Guest Services",
-        subtitle = "Host uses selected service. Each guest needs one service.",
+    var expandedRowId by remember { mutableStateOf<Long?>(null) }
+
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = BookingCardBackground,
+        ),
+        border = BorderStroke(1.dp, BookingCardStroke),
     ) {
-        if (guestRows.isEmpty()) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             Text(
-                "No guests added yet.",
-                style = MaterialTheme.typography.bodySmall,
+                text = "Host uses selected service. Each guest needs one service.",
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                 color = BookingSecondaryText,
             )
-        } else {
+
             guestRows.forEachIndexed { index, row ->
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White.copy(alpha = 0.02f),
-                    ),
-                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+                val selectedGuestServiceName = services.firstOrNull { it.id == row.serviceId }?.name ?: "Select service"
+                val servicePickerInteraction = remember(row.id) { MutableInteractionSource() }
+                val removeInteraction = remember(row.id) { MutableInteractionSource() }
+                val controlShape = RoundedCornerShape(10.dp)
+
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .animateContentSize(animationSpec = tween(durationMillis = 180)),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Column(
-                        modifier = Modifier.padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 44.dp)
+                            .clip(controlShape)
+                            .background(Color.White.copy(alpha = 0.02f))
+                            .border(1.dp, Color.White.copy(alpha = 0.14f), controlShape)
+                            .padding(horizontal = 14.dp),
+                        contentAlignment = Alignment.CenterStart,
                     ) {
                         Text(
                             text = "Guest ${index + 1}",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Color.White,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                            color = Color.White.copy(alpha = 0.9f),
+                            maxLines = 1,
                         )
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                    }
+
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 44.dp)
+                                .clip(controlShape)
+                                .background(Color.White.copy(alpha = 0.02f))
+                                .border(1.dp, Color.White.copy(alpha = 0.14f), controlShape)
+                                .clickable(
+                                    interactionSource = servicePickerInteraction,
+                                    indication = null,
+                                ) {
+                                    expandedRowId = row.id
+                                }
+                                .padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text(
+                                text = selectedGuestServiceName,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
+                                color = if (row.serviceId == null) {
+                                    Color.White.copy(alpha = 0.72f)
+                                } else {
+                                    Color.White
+                                },
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowDown,
+                                contentDescription = "Select service",
+                                tint = BookingSecondaryText,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = expandedRowId == row.id,
+                            onDismissRequest = { expandedRowId = null },
                         ) {
                             services.forEach { service ->
-                                val isSelected = row.serviceId == service.id
-                                FilterChip(
-                                    selected = isSelected,
-                                    onClick = { onUpdateGuestService(row.id, service.id) },
-                                    label = { Text(service.name) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = BookingGold,
-                                        selectedLabelColor = Color.Black,
-                                    ),
+                                DropdownMenuItem(
+                                    text = { Text(service.name) },
+                                    onClick = {
+                                        onUpdateGuestService(row.id, service.id)
+                                        expandedRowId = null
+                                    },
                                 )
                             }
                         }
-                        Button(
-                            onClick = { onRemoveGuest(row.id) },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color.Transparent,
-                                contentColor = Color(0xFFE85A5A),
-                            ),
-                            border = BorderStroke(1.dp, Color(0xFFE85A5A).copy(alpha = 0.9f)),
-                            shape = RoundedCornerShape(10.dp),
-                        ) {
-                            Text("Remove Guest")
-                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 34.dp)
+                            .clip(controlShape)
+                            .border(1.dp, Color.Red.copy(alpha = 0.9f), controlShape)
+                            .clickable(
+                                interactionSource = removeInteraction,
+                                indication = null,
+                            ) {
+                                onRemoveGuest(row.id)
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = "Remove guest",
+                            tint = Color.Red.copy(alpha = 0.9f),
+                            modifier = Modifier.size(18.dp),
+                        )
                     }
                 }
             }
-        }
 
-        Button(
-            onClick = onAddGuest,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Transparent,
-                contentColor = BookingGold,
-            ),
-            border = BorderStroke(1.dp, BookingGold.copy(alpha = 0.45f)),
-            shape = RoundedCornerShape(10.dp),
-        ) {
-            Text("Add Guest")
+            val addGuestInteraction = remember { MutableInteractionSource() }
+            Row(
+                modifier = Modifier
+                    .heightIn(min = 42.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .border(1.dp, BookingGold.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
+                    .clickable(
+                        interactionSource = addGuestInteraction,
+                        indication = null,
+                        onClick = onAddGuest,
+                    )
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = "+",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = BookingGold,
+                )
+                Text(
+                    text = "Add Guest",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = BookingGold,
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun StepHeader(step: String, title: String) {
+private fun BookingBottomSheetHeader() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.Black.copy(alpha = 0.96f))
+            .background(Color.Black.copy(alpha = 0.98f))
             .padding(top = 12.dp, bottom = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(1.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(
-            text = step,
-            style = MaterialTheme.typography.labelSmall.copy(
-                letterSpacing = 2.2.sp,
-                fontSize = 11.sp,
-            ),
-            color = BookingGold,
-            fontWeight = FontWeight.Bold,
+        Box(
+            modifier = Modifier
+                .width(168.dp)
+                .height(12.dp)
+                .background(Color.White.copy(alpha = 0.9f), RoundedCornerShape(999.dp)),
         )
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontWeight = FontWeight.Bold,
-                fontSize = 17.sp,
-            ),
-            color = Color.White,
+        Box(
+            modifier = Modifier
+                .width(78.dp)
+                .height(4.dp)
+                .background(Color.White.copy(alpha = 0.22f), RoundedCornerShape(999.dp)),
         )
+    }
+}
 
+@Composable
+private fun BookingSheetServicesHeaderCard(
+    selectedService: ServiceItem?,
+    selectedServiceChips: List<ServiceItem>,
+) {
+    val priceText = selectedService?.let {
+        "$${String.format(Locale.US, "%.2f", it.price)}+"
+    } ?: "-"
+    val durationText = selectedService?.let {
+        formatStoreDetailDuration(it.duration_minutes)
+    } ?: "-"
+    val shimmer = rememberInfiniteTransition(label = "depositBadgeShimmer")
+    val shimmerOffset by shimmer.animateFloat(
+        initialValue = -180f,
+        targetValue = 180f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1250, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "depositBadgeShimmerOffset",
+    )
+    val badgeShape = RoundedCornerShape(10.dp)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "SERVICE SELECTION",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    letterSpacing = 2.sp,
+                ),
+                color = BookingSecondaryText,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+            )
+
+            Box(
+                modifier = Modifier
+                    .clip(badgeShape)
+                    .background(BookingGold),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            brush = Brush.linearGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.White.copy(alpha = 0.58f),
+                                    Color.Transparent,
+                                ),
+                                start = Offset(shimmerOffset, 0f),
+                                end = Offset(shimmerOffset + 72f, 72f),
+                            ),
+                        ),
+                )
+                Text(
+                    text = "NO DEPOSIT NEEDED",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 9.sp,
+                        letterSpacing = 0.9.sp,
+                    ),
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                    maxLines = 1,
+                )
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            Text(
+                text = priceText,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+                color = Color.White,
+                maxLines = 1,
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            LazyRow(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (selectedServiceChips.isEmpty()) {
+                    item {
+                        Text(
+                            text = "Select service",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+                            color = Color.White.copy(alpha = 0.72f),
+                        )
+                    }
+                } else {
+                    items(selectedServiceChips, key = { it.id }) { service ->
+                        Text(
+                            text = service.name,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
+                            color = Color.White.copy(alpha = 0.88f),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .border(1.dp, Color.White.copy(alpha = 0.24f), RoundedCornerShape(10.dp))
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text = durationText,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                ),
+                color = BookingSecondaryText,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BookingBottomSheetSummaryAndActions(
+    storeDetail: StoreDetail?,
+    selectedService: ServiceItem?,
+    selectedTime: String,
+    priceText: String,
+    isSubmitting: Boolean,
+    enabled: Boolean,
+    confirmButtonLabel: String,
+    onConfirm: () -> Unit,
+    onChangeService: (() -> Unit)?,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp)
                 .height(1.dp)
                 .background(Color.White.copy(alpha = 0.08f)),
         )
+        if (storeDetail != null) {
+            BookingAppointmentSummaryCard(
+                storeDetail = storeDetail,
+                selectedService = selectedService,
+                selectedTime = selectedTime,
+                priceText = priceText,
+            )
+        }
+        val confirmInteraction = remember { MutableInteractionSource() }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 2.dp)
+                .heightIn(min = 46.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(
+                    if (enabled) BookingGold else Color.White.copy(alpha = 0.10f),
+                )
+                .clickable(
+                    interactionSource = confirmInteraction,
+                    indication = null,
+                    enabled = enabled && !isSubmitting,
+                    onClick = onConfirm,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (isSubmitting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = Color.Black,
+                )
+            } else {
+                Text(
+                    text = confirmButtonLabel,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (enabled) Color.Black else Color.White.copy(alpha = 0.66f),
+                )
+            }
+        }
+        if (onChangeService != null) {
+            val changeServiceInteraction = remember { MutableInteractionSource() }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(
+                        interactionSource = changeServiceInteraction,
+                        indication = null,
+                        onClick = onChangeService,
+                    )
+                    .padding(vertical = 4.dp)
+                    .navigationBarsPadding()
+                    .padding(bottom = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "Change Service",
+                    color = Color.White.copy(alpha = 0.82f),
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
     }
+}
+
+@Composable
+private fun BookingAppointmentSummaryCard(
+    storeDetail: StoreDetail,
+    selectedService: ServiceItem?,
+    selectedTime: String,
+    priceText: String,
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = BookingCardBackground,
+        ),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "APPOINTMENT SUMMARY",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 12.sp,
+                        letterSpacing = 2.2.sp,
+                    ),
+                    color = BookingSecondaryText,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = priceText,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = BookingGold,
+                )
+            }
+            BookingAppointmentSummaryRow(
+                label = "Service",
+                value = selectedService?.name ?: "Select service",
+            )
+            BookingAppointmentSummaryRow(
+                label = "Duration",
+                value = selectedService?.let { formatStoreDetailDuration(it.duration_minutes) } ?: "-",
+            )
+            BookingAppointmentSummaryRow(
+                label = "Time",
+                value = if (selectedTime == "Select a time") "Select date & time" else selectedTime,
+            )
+            BookingAppointmentSummaryRow(
+                label = "Location",
+                value = storeDetail.formattedAddress,
+            )
+        }
+    }
+}
+
+@Composable
+private fun BookingAppointmentSummaryRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 14.sp),
+            color = BookingSecondaryText,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.width(78.dp),
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+            ),
+            color = Color.White,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun BookingFullPageTopBar(
+    step: String,
+    title: String,
+    onBack: (() -> Unit)?,
+) {
+    val backInteraction = remember { MutableInteractionSource() }
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.Black.copy(alpha = 0.96f))
+            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+    ) {
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(1.dp),
+        ) {
+            Text(
+                text = step,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    letterSpacing = 2.2.sp,
+                    fontSize = 11.sp,
+                ),
+                color = BookingGold,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp,
+                ),
+                color = Color.White,
+            )
+        }
+
+        if (onBack != null) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.07f))
+                    .clickable(
+                        interactionSource = backInteraction,
+                        indication = null,
+                        onClick = onBack,
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ChevronLeft,
+                    contentDescription = "Back",
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(Color.White.copy(alpha = 0.08f)),
+    )
 }
 
 @Composable
@@ -2367,14 +3926,17 @@ private fun BookingSectionCard(
         ) {
             Text(
                 text = title.uppercase(Locale.US),
-                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.8.sp),
-                color = BookingGold,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 12.sp,
+                    letterSpacing = 2.2.sp,
+                ),
+                color = BookingSecondaryText,
                 fontWeight = FontWeight.Bold,
             )
             if (!subtitle.isNullOrBlank()) {
                 Text(
                     subtitle,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                     color = BookingSecondaryText,
                 )
             }
@@ -2396,6 +3958,8 @@ private fun BookingCalendar(
     val canGoPrevious = remember(displayedMonth, today) {
         canGoToPreviousMonth(displayedMonth, today)
     }
+    val previousMonthInteraction = remember { MutableInteractionSource() }
+    val nextMonthInteraction = remember { MutableInteractionSource() }
 
     Card(
         shape = RoundedCornerShape(12.dp),
@@ -2410,29 +3974,67 @@ private fun BookingCalendar(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = displayedMonth.atDay(1).format(MONTH_HEADER_FORMATTER),
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White,
+                Row(
                     modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = onPreviousMonth, enabled = canGoPrevious) {
-                    Icon(
-                        imageVector = Icons.Filled.ChevronLeft,
-                        contentDescription = "Previous month",
-                        tint = if (canGoPrevious) {
-                            BookingGold
-                        } else {
-                            Color.White.copy(alpha = 0.24f)
-                        },
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = displayedMonth.atDay(1).format(MONTH_HEADER_FORMATTER),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = Color.White,
                     )
-                }
-                IconButton(onClick = onNextMonth) {
                     Icon(
                         imageVector = Icons.Filled.ChevronRight,
-                        contentDescription = "Next month",
+                        contentDescription = null,
                         tint = BookingGold,
+                        modifier = Modifier.size(14.dp),
                     )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clickable(
+                                interactionSource = previousMonthInteraction,
+                                indication = null,
+                                enabled = canGoPrevious,
+                            ) { onPreviousMonth() },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.ChevronLeft,
+                            contentDescription = "Previous month",
+                            tint = if (canGoPrevious) {
+                                BookingGold
+                            } else {
+                                Color.White.copy(alpha = 0.24f)
+                            },
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clickable(
+                                interactionSource = nextMonthInteraction,
+                                indication = null,
+                                onClick = onNextMonth,
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.ChevronRight,
+                            contentDescription = "Next month",
+                            tint = BookingGold,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
             }
 
@@ -2440,10 +4042,16 @@ private fun BookingCalendar(
                 CALENDAR_WEEKDAY_HEADERS.forEach { dayLabel ->
                     Text(
                         text = dayLabel,
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 11.sp,
+                            letterSpacing = 0.6.sp,
+                        ),
                         color = Color.White.copy(alpha = 0.36f),
+                        fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 18.dp),
                     )
                 }
             }
@@ -2475,7 +4083,7 @@ private fun RowScope.BookingCalendarDayCell(
         Box(
             modifier = Modifier
                 .weight(1f)
-                .height(38.dp),
+                .height(40.dp),
         )
         return
     }
@@ -2508,37 +4116,38 @@ private fun RowScope.BookingCalendarDayCell(
         animationSpec = tween(durationMillis = 150),
         label = "calendarDayBackgroundColor",
     )
-    val dayScale by animateFloatAsState(
-        targetValue = if (isSelected) 1.05f else 1f,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = 650f),
-        label = "calendarDayScale",
-    )
-
     Box(
         modifier = Modifier
             .weight(1f)
-            .height(38.dp)
-            .scale(dayScale)
-            .border(
-                width = 1.dp,
-                color = borderColor,
-                shape = CircleShape,
-            )
-            .background(
-                color = backgroundColor,
-                shape = CircleShape,
-            )
-            .clickable(enabled = !isPast) {
-                onSelectDate(day)
-            },
+            .height(40.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = day.dayOfMonth.toString(),
-            style = MaterialTheme.typography.bodyMedium,
-            color = textColor,
-            fontWeight = if (isSelected || isToday) FontWeight.SemiBold else FontWeight.Normal,
-        )
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .border(
+                    width = 1.dp,
+                    color = borderColor,
+                    shape = CircleShape,
+                )
+                .background(
+                    color = backgroundColor,
+                    shape = CircleShape,
+                )
+                .clickable(enabled = !isPast) {
+                    onSelectDate(day)
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = day.dayOfMonth.toString(),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                ),
+                color = textColor,
+            )
+        }
     }
 }
 
@@ -2549,135 +4158,301 @@ private fun BookingBottomBar(
     priceText: String,
     isSubmitting: Boolean,
     enabled: Boolean,
+    confirmButtonLabel: String,
     onConfirm: () -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(BookingBackground.copy(alpha = 0.96f))
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .background(BookingBackground.copy(alpha = 0.96f)),
     ) {
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White.copy(alpha = 0.04f),
-            ),
-            border = BorderStroke(1.dp, BookingGold.copy(alpha = 0.16f)),
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .animateContentSize(animationSpec = tween(durationMillis = 180)),
+                .height(1.dp)
+                .background(Color.White.copy(alpha = 0.08f)),
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 10.dp),
         ) {
-            Row(
+            Card(
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White.copy(alpha = 0.04f),
+                ),
+                border = BorderStroke(1.dp, BookingGold.copy(alpha = 0.16f)),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                    .animateContentSize(animationSpec = tween(durationMillis = 180)),
             ) {
-                Box(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 44.dp)
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     AnimatedContent(
                         targetState = serviceTitle,
                         label = "bookingSummaryServiceTitle",
+                        modifier = Modifier.weight(1f, fill = false),
                     ) { value ->
                         Text(
                             text = value,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
                             color = Color.White,
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
-                }
-                Text("•", modifier = Modifier.padding(horizontal = 6.dp))
-                Box(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "•",
+                        color = BookingSecondaryText,
+                        modifier = Modifier.padding(horizontal = 8.dp),
+                    )
                     AnimatedContent(
                         targetState = selectedTime,
                         label = "bookingSummarySelectedTime",
                     ) { value ->
                         Text(
                             text = value,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                             color = BookingSecondaryText,
                             maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                     }
-                }
-                Box(modifier = Modifier.width(68.dp)) {
+                    Spacer(modifier = Modifier.weight(1f))
                     AnimatedContent(
                         targetState = priceText,
                         label = "bookingSummaryPriceText",
                     ) { value ->
                         Text(
                             text = value,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            ),
                             color = BookingGold,
                         )
                     }
                 }
             }
-        }
 
-        Button(
-            onClick = onConfirm,
-            enabled = enabled,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = BookingGold,
-                contentColor = Color.Black,
-                disabledContainerColor = Color.White.copy(alpha = 0.14f),
-                disabledContentColor = Color.White.copy(alpha = 0.56f),
-            ),
-            shape = RoundedCornerShape(12.dp),
-        ) {
-            AnimatedContent(
-                targetState = if (isSubmitting) "Booking..." else "Confirm Appointment",
-                label = "bookingConfirmButtonLabel",
-            ) { value ->
-                Text(
-                    text = value,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
+            val confirmInteraction = remember { MutableInteractionSource() }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .padding(bottom = 12.dp)
+                    .heightIn(min = 46.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        if (enabled) BookingGold else Color.White.copy(alpha = 0.10f),
+                    )
+                .clickable(
+                    interactionSource = confirmInteraction,
+                    indication = null,
+                    enabled = enabled && !isSubmitting,
+                    onClick = onConfirm,
+                ),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = Color.Black,
+                    )
+                } else {
+                    Text(
+                        text = confirmButtonLabel,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (enabled) Color.Black else Color.White.copy(alpha = 0.66f),
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun BookingSuccessOverlay(modifier: Modifier = Modifier) {
-    Box(
-        modifier = Modifier
+private fun BookingSuccessOverlay(
+    servicesText: String,
+    totalText: String,
+    timeText: String,
+    modifier: Modifier = Modifier,
+) {
+    BoxWithConstraints(
+        modifier = modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.38f)),
-        contentAlignment = Alignment.Center,
+            .background(Color.Black.copy(alpha = 0.96f)),
     ) {
-        Card(
-            shape = RoundedCornerShape(18.dp),
-            modifier = modifier,
-            colors = CardDefaults.cardColors(containerColor = BookingCardBackground),
-            border = BorderStroke(1.dp, BookingGold.copy(alpha = 0.24f)),
+        val compact = maxHeight < 760.dp
+        val titleSize = if (compact) 42.sp else 52.sp
+        val subtitleSize = if (compact) 16.sp else 17.sp
+        val iconRingSize = if (compact) 92.dp else 104.dp
+        val iconSize = if (compact) 50.dp else 56.dp
+        val summaryLabelSize = if (compact) 16.sp else 17.sp
+        val summaryValueSize = if (compact) 17.sp else 18.sp
+
+        Column(
+            modifier = Modifier.fillMaxSize(),
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp, bottom = if (compact) 42.dp else 72.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Filled.CheckCircle,
-                    contentDescription = "Success",
-                    tint = BookingGold,
+                Box(
+                    modifier = Modifier
+                        .width(168.dp)
+                        .height(12.dp)
+                        .background(Color.White.copy(alpha = 0.92f), RoundedCornerShape(999.dp)),
                 )
-                Text(
-                    text = "Appointment booked",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                )
-                Text(
-                    "Redirecting to appointments...",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = BookingSecondaryText,
+                Box(
+                    modifier = Modifier
+                        .width(78.dp)
+                        .height(4.dp)
+                        .background(Color.White.copy(alpha = 0.22f), RoundedCornerShape(999.dp)),
                 )
             }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(if (compact) 16.dp else 20.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(iconRingSize)
+                        .clip(CircleShape)
+                        .background(BookingGold.copy(alpha = 0.14f))
+                        .border(1.dp, BookingGold.copy(alpha = 0.32f), CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CheckCircle,
+                        contentDescription = "Appointment set",
+                        tint = BookingGold,
+                        modifier = Modifier.size(iconSize),
+                    )
+                }
+
+                Text(
+                    text = "Appointment Set!",
+                    style = MaterialTheme.typography.displayMedium.copy(
+                        fontSize = titleSize,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = Color.White,
+                    maxLines = 1,
+                )
+
+                Text(
+                    text = "We've sent a confirmation to your app notifications.",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = subtitleSize,
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    color = BookingSecondaryText,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.widthIn(max = 330.dp),
+                )
+
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = BookingCardBackground),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.14f)),
+                    modifier = Modifier.widthIn(max = 430.dp),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(
+                            horizontal = if (compact) 14.dp else 16.dp,
+                            vertical = if (compact) 14.dp else 16.dp,
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        BookingSuccessSummaryRow(
+                            label = "Services",
+                            value = servicesText,
+                            labelSize = summaryLabelSize,
+                            valueSize = summaryValueSize,
+                        )
+                        BookingSuccessSummaryRow(
+                            label = "Total",
+                            value = totalText,
+                            highlight = true,
+                            labelSize = summaryLabelSize,
+                            valueSize = summaryValueSize,
+                        )
+                        BookingSuccessSummaryRow(
+                            label = "Time",
+                            value = timeText,
+                            labelSize = summaryLabelSize,
+                            valueSize = summaryValueSize,
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun BookingSuccessSummaryRow(
+    label: String,
+    value: String,
+    highlight: Boolean = false,
+    labelSize: androidx.compose.ui.unit.TextUnit = 17.sp,
+    valueSize: androidx.compose.ui.unit.TextUnit = 18.sp,
+) {
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontSize = labelSize,
+                    fontWeight = FontWeight.Medium,
+                ),
+                color = BookingSecondaryText,
+            )
+            Spacer(
+                modifier = Modifier
+                    .widthIn(min = 8.dp)
+                    .weight(1f),
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontSize = valueSize,
+                    fontWeight = FontWeight.Bold,
+                ),
+                color = if (highlight) BookingGold else Color.White,
+                textAlign = TextAlign.End,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
 }
@@ -2794,3 +4569,5 @@ private val CALENDAR_WEEKDAY_HEADERS: List<String> =
 
 private val MONTH_HEADER_FORMATTER: DateTimeFormatter =
     DateTimeFormatter.ofPattern("MMMM yyyy", Locale.US)
+private val BOOKING_SUCCESS_DATE_FORMATTER: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("MMM d", Locale.US)

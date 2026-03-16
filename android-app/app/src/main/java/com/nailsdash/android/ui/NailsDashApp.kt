@@ -17,6 +17,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -136,7 +137,14 @@ fun NailsDashApp() {
                                 }
                             },
                             icon = tab.icon,
-                            label = { Text(text = stringResource(id = tab.titleRes)) },
+                            label = {
+                                Text(
+                                    text = stringResource(id = tab.titleRes),
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            },
                         )
                     }
                 }
@@ -202,28 +210,42 @@ fun NailsDashApp() {
                     storeId = storeId,
                     sessionViewModel = sessionViewModel,
                     onBack = { navController.navigateUp() },
-                    onBookNow = { routeStoreId, preselectedServiceId ->
-                        val serviceArg = preselectedServiceId ?: -1
-                        navController.navigate("book/form/$routeStoreId?serviceId=$serviceArg")
+                    onBookingCompleted = {
+                        sessionViewModel.resetBookFlowSource()
+                        navController.navigate(MainDestination.Appointments.route) {
+                            popUpTo(MainDestination.Book.route)
+                            launchSingleTop = true
+                        }
                     },
                 )
             }
             composable(
-                route = "book/form/{storeId}?serviceId={serviceId}",
+                route = "book/form/{storeId}?serviceId={serviceId}&serviceIds={serviceIds}",
                 arguments = listOf(
                     navArgument("storeId") { type = NavType.IntType },
                     navArgument("serviceId") {
                         type = NavType.IntType
                         defaultValue = -1
                     },
+                    navArgument("serviceIds") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                    },
                 ),
             ) { backStackEntry ->
                 val storeId = backStackEntry.arguments?.getInt("storeId") ?: return@composable
                 val serviceId = backStackEntry.arguments?.getInt("serviceId") ?: -1
+                val serviceIdsArg = backStackEntry.arguments?.getString("serviceIds").orEmpty()
+                val preselectedServiceIds = serviceIdsArg
+                    .split(",")
+                    .mapNotNull { value -> value.trim().toIntOrNull() }
+                    .distinct()
                 BookAppointmentScreen(
                     storeId = storeId,
                     preselectedServiceId = serviceId.takeIf { it > 0 },
+                    preselectedServiceIds = preselectedServiceIds,
                     sessionViewModel = sessionViewModel,
+                    onClose = { navController.navigateUp() },
                     onBookSuccess = {
                         sessionViewModel.resetBookFlowSource()
                         navController.navigate(MainDestination.Appointments.route) {

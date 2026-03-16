@@ -51,7 +51,7 @@ class StoreDetailViewModel(application: Application) : AndroidViewModel(applicat
     var storeHours by mutableStateOf(emptyList<StoreHour>())
         private set
 
-    var selectedServiceId by mutableStateOf<Int?>(null)
+    var selectedServiceIds by mutableStateOf<List<Int>>(emptyList())
         private set
 
     var isFavorited by mutableStateOf(false)
@@ -88,8 +88,8 @@ class StoreDetailViewModel(application: Application) : AndroidViewModel(applicat
                 servicesTask.await()
                     .onSuccess { rows ->
                         services = rows.filter { it.is_active == 1 }
-                        if (selectedServiceId == null) {
-                            selectedServiceId = services.firstOrNull()?.id
+                        selectedServiceIds = selectedServiceIds.filter { selectedId ->
+                            services.any { it.id == selectedId }
                         }
                     }
                     .onFailure { if (errorMessage == null) errorMessage = it.message }
@@ -118,12 +118,22 @@ class StoreDetailViewModel(application: Application) : AndroidViewModel(applicat
 
     fun visibleTabs(): List<String> = listOf("Services", "Reviews", "Portfolio", "Details")
 
-    fun selectService(serviceId: Int) {
-        selectedServiceId = serviceId
+    fun toggleServiceSelection(serviceId: Int) {
+        selectedServiceIds = if (selectedServiceIds.contains(serviceId)) {
+            selectedServiceIds.filterNot { it == serviceId }
+        } else {
+            selectedServiceIds + serviceId
+        }
         selectedTab = "Services"
     }
 
-    fun selectedServiceOrNull(): ServiceItem? = services.firstOrNull { it.id == selectedServiceId }
+    fun selectedServices(): List<ServiceItem> {
+        return selectedServiceIds.mapNotNull { selectedId ->
+            services.firstOrNull { it.id == selectedId }
+        }
+    }
+
+    fun selectedServiceOrNull(): ServiceItem? = selectedServices().firstOrNull()
 
     fun ratingText(): String {
         val rating = ratingSummary?.average_rating ?: store?.rating ?: 0.0

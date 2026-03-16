@@ -2,7 +2,7 @@
     <string name="app_name">NailsDash</string>
     <string name="nav_home">Home</string>
     <string name="nav_book">Book</string>
-    <string name="nav_appointments">Appointments</string>
+    <string name="nav_appointments">Appoint</string>
     <string name="nav_deals">Deals</string>
     <string name="nav_profile">Profile</string>
 </resources>
