@@ -586,6 +586,6 @@ class BookAppointmentViewModel(application: Application) : AndroidViewModel(appl
     companion object {
         private val DATE_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
         private val SLOT_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
-        private val DISPLAY_SLOT_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm a")
+        private val DISPLAY_SLOT_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.US)
     }
 }

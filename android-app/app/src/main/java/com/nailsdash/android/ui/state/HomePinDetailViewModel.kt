@@ -31,9 +31,6 @@ class HomePinDetailViewModel(application: Application) : AndroidViewModel(applic
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
-    var actionMessage by mutableStateOf<String?>(null)
-        private set
-
     private var loadedPinId: Int? = null
 
     fun load(pinId: Int, force: Boolean = false) {
@@ -41,7 +38,6 @@ class HomePinDetailViewModel(application: Application) : AndroidViewModel(applic
         loadedPinId = pinId
         isLoading = true
         errorMessage = null
-        actionMessage = null
 
         viewModelScope.launch {
             repository.getPinById(pinId)
@@ -72,22 +68,18 @@ class HomePinDetailViewModel(application: Application) : AndroidViewModel(applic
         }
     }
 
-    fun toggleFavorite(bearerToken: String) {
+    suspend fun toggleFavorite(bearerToken: String) {
         val pinId = pin?.id ?: return
         if (isFavoriteLoading) return
         isFavoriteLoading = true
         val targetState = !isFavorited
+        errorMessage = null
 
-        viewModelScope.launch {
+        try {
             repository.setFavorite(pinId = pinId, bearerToken = bearerToken, favorited = targetState)
                 .onSuccess {
                     isFavorited = targetState
                     errorMessage = null
-                    actionMessage = if (targetState) {
-                        "Added to favorites."
-                    } else {
-                        "Removed from favorites."
-                    }
                 }
                 .onFailure { err ->
                     val detail = err.message.orEmpty()
@@ -95,12 +87,34 @@ class HomePinDetailViewModel(application: Application) : AndroidViewModel(applic
                         errorMessage = detail.ifBlank { "Failed to update favorite state." }
                     }
                 }
+        } catch (_: Throwable) {
+            errorMessage = "Failed to update favorite state."
+        } finally {
             isFavoriteLoading = false
         }
     }
 
-    fun consumeActionMessage() {
-        actionMessage = null
+    private fun recoverFavoriteState(message: String, targetState: Boolean): Boolean {
+        val normalized = message.lowercase()
+        if (normalized.contains("already in favorites")) {
+            isFavorited = true
+            errorMessage = null
+            return true
+        }
+
+        if (normalized.contains("not in favorites")) {
+            isFavorited = false
+            errorMessage = null
+            return true
+        }
+
+        if (normalized.contains("favorite") && (normalized.contains("already") || normalized.contains("not"))) {
+            isFavorited = targetState
+            errorMessage = null
+            return true
+        }
+
+        return false
     }
 
     private suspend fun loadRelatedPins(detail: HomeFeedPin) {
@@ -120,35 +134,5 @@ class HomePinDetailViewModel(application: Application) : AndroidViewModel(applic
         }.onFailure {
             relatedPins = emptyList()
         }
-    }
-
-    private fun recoverFavoriteState(message: String, targetState: Boolean): Boolean {
-        val normalized = message.lowercase()
-        if (normalized.contains("already in favorites")) {
-            isFavorited = true
-            errorMessage = null
-            actionMessage = "Added to favorites."
-            return true
-        }
-
-        if (normalized.contains("not in favorites")) {
-            isFavorited = false
-            errorMessage = null
-            actionMessage = "Removed from favorites."
-            return true
-        }
-
-        if (normalized.contains("favorite") && (normalized.contains("already") || normalized.contains("not"))) {
-            isFavorited = targetState
-            errorMessage = null
-            actionMessage = if (targetState) {
-                "Added to favorites."
-            } else {
-                "Removed from favorites."
-            }
-            return true
-        }
-
-        return false
     }
 }

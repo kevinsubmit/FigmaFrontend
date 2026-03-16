@@ -7,10 +7,14 @@ import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.provider.MediaStore
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,7 +31,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -65,6 +69,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.imageLoader
@@ -79,7 +84,6 @@ import kotlinx.coroutines.withContext
 
 private val PinDetailGold = Color(0xFFD4AF37)
 private val PinDetailCardBg = Color(0xFF111111)
-private val PinDetailSecondaryText = Color.White.copy(alpha = 0.64f)
 
 @Composable
 fun HomePinDetailScreen(
@@ -111,14 +115,6 @@ fun HomePinDetailScreen(
 
     LaunchedEffect(pinId, bearerToken, homePinDetailViewModel.pin?.id) {
         homePinDetailViewModel.loadFavoriteState(bearerToken)
-    }
-
-    LaunchedEffect(homePinDetailViewModel.actionMessage) {
-        val message = homePinDetailViewModel.actionMessage?.trim().orEmpty()
-        if (message.isNotEmpty()) {
-            showToast(message = message, isError = false)
-            homePinDetailViewModel.consumeActionMessage()
-        }
     }
 
     LaunchedEffect(homePinDetailViewModel.errorMessage) {
@@ -250,9 +246,24 @@ fun HomePinDetailScreen(
             },
             onToggleFavorite = {
                 if (bearerToken == null) {
-                    sessionViewModel.updateAuthMessage("Please sign in to save favorites.")
+                    showToast(message = "Please sign in to save favorites.", isError = true)
                 } else {
-                    homePinDetailViewModel.toggleFavorite(bearerToken)
+                    if (homePinDetailViewModel.isFavoriteLoading) return@PinDetailTopOverlay
+                    scope.launch {
+                        val wasFavorited = homePinDetailViewModel.isFavorited
+                        homePinDetailViewModel.toggleFavorite(bearerToken)
+                        val latestError = homePinDetailViewModel.errorMessage?.trim().orEmpty()
+                        if (latestError.isEmpty() && homePinDetailViewModel.isFavorited != wasFavorited) {
+                            showToast(
+                                message = if (homePinDetailViewModel.isFavorited) {
+                                    "Added to favorites."
+                                } else {
+                                    "Removed from favorites."
+                                },
+                                isError = false,
+                            )
+                        }
+                    }
                 }
             },
         )
@@ -316,6 +327,7 @@ private fun HeroImageSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(heroHeight)
+                .clipToBounds()
                 .onSizeChanged { size ->
                     containerWidthPx = size.width.toFloat()
                     containerHeightPx = size.height.toFloat()
@@ -378,54 +390,25 @@ private fun PinTitleSection(pin: HomeFeedPin) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
             text = "CHOSEN DESIGN",
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
             color = Color.White.copy(alpha = 0.50f),
-            letterSpacing = androidx.compose.ui.unit.TextUnit.Unspecified,
+            letterSpacing = 2.6.sp,
         )
         Text(
             text = pin.title,
-            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontWeight = FontWeight.Bold,
+                fontSize = 24.sp,
+            ),
             color = Color.White,
             maxLines = 3,
             overflow = TextOverflow.Ellipsis,
         )
-        pin.description?.trim()?.takeIf { it.isNotEmpty() }?.let { description ->
-            Text(
-                text = description,
-                style = MaterialTheme.typography.bodyMedium,
-                color = PinDetailSecondaryText,
-            )
-        }
-        if (pin.tags.isNotEmpty()) {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(pin.tags.filter { it.isNotBlank() }, key = { it }) { tag ->
-                    Card(
-                        shape = RoundedCornerShape(999.dp),
-                        modifier = Modifier.height(30.dp),
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .background(Color.White.copy(alpha = 0.06f))
-                                .padding(horizontal = 12.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Text(
-                                text = tag,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Color.White.copy(alpha = 0.86f),
-                            )
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -470,6 +453,7 @@ private fun PinDetailTopOverlay(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
                     tint = Color.White,
+                    modifier = Modifier.size(16.dp),
                 )
             }
 
@@ -481,6 +465,7 @@ private fun PinDetailTopOverlay(
                         imageVector = Icons.Filled.Share,
                         contentDescription = "Share",
                         tint = Color.White,
+                        modifier = Modifier.size(16.dp),
                     )
                 }
                 DropdownMenu(
@@ -528,6 +513,7 @@ private fun PinDetailTopOverlay(
                         imageVector = if (isFavorited) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                         contentDescription = "Favorite",
                         tint = if (isFavorited) PinDetailGold else Color.White,
+                        modifier = Modifier.size(16.dp),
                     )
                 }
             }
@@ -541,12 +527,29 @@ private fun FloatingControlButton(
     enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed && enabled) 0.92f else 1f,
+        animationSpec = tween(durationMillis = 120),
+        label = "pinDetailControlScale",
+    )
+
     Box(
         modifier = Modifier
             .size(40.dp)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
             .clip(CircleShape)
             .background(Color.Black.copy(alpha = 0.62f))
-            .clickable(enabled = enabled, onClick = onClick),
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.Center,
     ) {
         content()

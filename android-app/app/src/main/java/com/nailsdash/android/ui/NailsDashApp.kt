@@ -8,16 +8,21 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -57,6 +62,10 @@ import com.nailsdash.android.ui.screen.StoresScreen
 import com.nailsdash.android.ui.screen.VipScreen
 import com.nailsdash.android.ui.screen.ChangePasswordScreen
 import com.nailsdash.android.ui.state.AppSessionViewModel
+
+private val BottomNavBackgroundColor = Color.Black
+private val BottomNavSelectedColor = Color(0xFFD4AF37)
+private val BottomNavUnselectedColor = Color.White.copy(alpha = 0.62f)
 
 private enum class MainDestination(
     val route: String,
@@ -119,7 +128,10 @@ fun NailsDashApp() {
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = BottomNavBackgroundColor,
+                    tonalElevation = 0.dp,
+                ) {
                     MainDestination.entries.forEach { tab ->
                         val selected = currentDestination
                             ?.hierarchy
@@ -150,9 +162,19 @@ fun NailsDashApp() {
                                 }
                             },
                             icon = tab.icon,
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = BottomNavSelectedColor,
+                                selectedTextColor = BottomNavSelectedColor,
+                                unselectedIconColor = BottomNavUnselectedColor,
+                                unselectedTextColor = BottomNavUnselectedColor,
+                                indicatorColor = Color.Transparent,
+                            ),
                             label = {
                                 Text(
                                     text = stringResource(id = tab.titleRes),
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                                    ),
                                     maxLines = 1,
                                     softWrap = false,
                                     overflow = TextOverflow.Ellipsis,

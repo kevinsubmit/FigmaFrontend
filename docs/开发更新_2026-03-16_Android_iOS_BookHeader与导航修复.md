@@ -41,7 +41,31 @@
 - Android：Home / Book / Store Detail / Profile / Book Services Bottom Sheet。
 - iOS：Book Services Bottom Sheet 头部布局。
 
+## 6) Android 底部导航选中态与背景对齐 iOS
+- 文件：`android-app/app/src/main/java/com/nailsdash/android/ui/NailsDashApp.kt`
+- 变更：
+  - 底部导航背景改为黑色。
+  - 选中态图标与文字改为金色（`#D4AF37`）。
+  - 未选中态改为低透明白色，并关闭默认选中指示背景。
+
+## 7) Android 预约时间文案统一为 AM/PM
+- 文件：`android-app/app/src/main/java/com/nailsdash/android/ui/state/BookFlowViewModels.kt`
+- 变更：预约时间展示格式器指定 `Locale.US`，稳定输出 `h:mm a`（AM/PM）。
+
+## 8) Android 图片详情页（Home Pin Detail）交互与样式对齐 iOS
+- 文件：
+  - `android-app/app/src/main/java/com/nailsdash/android/ui/screen/HomePinDetailScreen.kt`
+  - `android-app/app/src/main/java/com/nailsdash/android/ui/state/HomePinDetailViewModel.kt`
+- 变更：
+  - 顶部收藏按钮逻辑改为与 iOS 一致：未登录 toast、成功后按状态变化提示 Added/Removed、失败走 error toast。
+  - 收藏请求改为 `suspend` 流程并加强 loading 保护，避免重复点击和异常卡死。
+  - 顶部返回/分享/收藏图标尺寸与按钮点击反馈对齐 iOS（无 ripple + 按压反馈）。
+  - 图片中部信息区改为 iOS 同款结构：`CHOSEN DESIGN + 标题`。
+  - 修复图片放大后溢出覆盖下方内容：hero 容器增加边界裁剪。
+
 ## 回归建议
 - Android 真机路径验证：`Home图片详情 -> Book -> Home`。
 - Android Profile 顶部头像：正常加载与失败回退。
 - iOS/Android 预约弹窗头部：两排布局、金额位置与对齐方式。
+- Android 底部导航：选中态金色、背景黑色、`Appoint` 单行显示。
+- Android 图片详情页：收藏按钮状态切换、toast、图片放大不溢出、标题区显示与 iOS 一致。
