@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,7 +45,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -276,7 +276,7 @@ private fun ProfileTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = ProfilePagePadding, end = ProfilePagePadding, top = 10.dp, bottom = 2.dp),
-        horizontalArrangement = Arrangement.End,
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
     ) {
         ProfileTopActionButton(
             icon = Icons.Outlined.Notifications,
@@ -297,33 +297,41 @@ private fun ProfileTopActionButton(
     unreadCount: Int,
     onClick: () -> Unit,
 ) {
-    Box(modifier = Modifier.padding(start = 10.dp)) {
-        IconButton(
-            onClick = onClick,
+    Box {
+        Box(
             modifier = Modifier
-                .size(34.dp)
+                .size(24.dp)
+                .clip(CircleShape)
                 .background(Color.White.copy(alpha = 0.05f), CircleShape)
-                .border(BorderStroke(1.dp, ProfileGold.copy(alpha = 0.28f)), CircleShape),
+                .border(BorderStroke(0.75.dp, ProfileGold.copy(alpha = 0.22f)), CircleShape)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClick,
+                ),
+            contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
                 tint = ProfilePrimaryText,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(11.dp),
             )
         }
         if (unreadCount > 0 && icon == Icons.Outlined.Notifications) {
             Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(end = 1.dp)
                     .padding(top = 1.dp)
                     .background(ProfileGold, RoundedCornerShape(999.dp))
-                    .padding(horizontal = 5.dp, vertical = 2.dp),
+                    .padding(horizontal = 4.dp, vertical = 1.dp),
             ) {
                 Text(
                     text = if (unreadCount > 99) "99+" else unreadCount.toString(),
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 9.sp,
+                    ),
                     color = Color.Black,
                 )
             }
@@ -356,15 +364,14 @@ private fun ProfileHeaderCard(
                 ProfileAvatarFallback(userName = userName)
             } else {
                 val avatarPainter = rememberAsyncImagePainter(model = avatarUrl)
+                Image(
+                    painter = avatarPainter,
+                    contentDescription = "Avatar",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
                 when (avatarPainter.state) {
-                    is AsyncImagePainter.State.Success -> {
-                        Image(
-                            painter = avatarPainter,
-                            contentDescription = "Avatar",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop,
-                        )
-                    }
+                    is AsyncImagePainter.State.Success -> Unit
                     is AsyncImagePainter.State.Loading,
                     is AsyncImagePainter.State.Empty,
                     -> {

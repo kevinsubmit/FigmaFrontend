@@ -1643,15 +1643,14 @@ private fun StoreReviewImageViewerDialog(
                         contentAlignment = Alignment.Center,
                     ) {
                         val imagePainter = rememberAsyncImagePainter(model = imageUrl)
+                        Image(
+                            painter = imagePainter,
+                            contentDescription = "Review image ${index + 1}",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize(),
+                        )
                         when (imagePainter.state) {
-                            is AsyncImagePainter.State.Success -> {
-                                Image(
-                                    painter = imagePainter,
-                                    contentDescription = "Review image ${index + 1}",
-                                    contentScale = ContentScale.Fit,
-                                    modifier = Modifier.fillMaxSize(),
-                                )
-                            }
+                            is AsyncImagePainter.State.Success -> Unit
                             is AsyncImagePainter.State.Loading,
                             is AsyncImagePainter.State.Empty,
                             -> {

@@ -608,24 +608,28 @@ private fun StoreImageBlock(
     modifier: Modifier = Modifier,
 ) {
     val imageModel = remember(imageUrl) { AssetUrlResolver.resolveURL(imageUrl) }
-    if (imageModel != null) {
-        val imagePainter = rememberAsyncImagePainter(model = imageModel)
-        val imageState = imagePainter.state
-        when (imageState) {
-            is AsyncImagePainter.State.Success -> {
-                Image(
-                    painter = imagePainter,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = modifier,
-                )
+    val imagePainter = rememberAsyncImagePainter(model = imageModel)
+
+    Box(modifier = modifier) {
+        if (imageModel != null) {
+            Image(
+                painter = imagePainter,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+        }
+
+        when {
+            imageModel == null -> {
+                StoreFallbackCover(modifier = Modifier.matchParentSize())
             }
-            is AsyncImagePainter.State.Loading,
-            is AsyncImagePainter.State.Empty,
-            -> {
+            imagePainter.state is AsyncImagePainter.State.Success -> Unit
+            imagePainter.state is AsyncImagePainter.State.Loading ||
+                imagePainter.state is AsyncImagePainter.State.Empty -> {
                 Box(
-                    modifier = modifier
-                        .fillMaxSize()
+                    modifier = Modifier
+                        .matchParentSize()
                         .background(Color.White.copy(alpha = 0.04f)),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -636,12 +640,10 @@ private fun StoreImageBlock(
                     )
                 }
             }
-            is AsyncImagePainter.State.Error -> {
-                StoreFallbackCover(modifier = modifier.fillMaxSize())
+            imagePainter.state is AsyncImagePainter.State.Error -> {
+                StoreFallbackCover(modifier = Modifier.matchParentSize())
             }
         }
-    } else {
-        StoreFallbackCover(modifier = modifier)
     }
 }
 

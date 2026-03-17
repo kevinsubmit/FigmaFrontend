@@ -436,7 +436,6 @@ private fun HomePinCard(
     val cardInteraction = remember(pin.id) { MutableInteractionSource() }
     val imageModel = remember(pin.image_url) { AssetUrlResolver.resolveURL(pin.image_url) }
     val imagePainter = rememberAsyncImagePainter(model = imageModel)
-    val imageState = imagePainter.state
 
     Card(
         shape = RoundedCornerShape(24.dp),
@@ -456,18 +455,34 @@ private fun HomePinCard(
                 .fillMaxWidth()
                 .aspectRatio(3f / 4f),
         ) {
-            when (imageState) {
-                is AsyncImagePainter.State.Success -> {
-                    Image(
-                        painter = imagePainter,
-                        contentDescription = pin.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.matchParentSize(),
-                    )
+            if (imageModel != null) {
+                Image(
+                    painter = imagePainter,
+                    contentDescription = pin.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
+
+            when {
+                imageModel == null -> {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(Color.Gray.copy(alpha = 0.20f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "Image unavailable",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                            color = Color.White.copy(alpha = 0.72f),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
-                is AsyncImagePainter.State.Loading,
-                is AsyncImagePainter.State.Empty,
-                -> {
+                imagePainter.state is AsyncImagePainter.State.Success -> Unit
+                imagePainter.state is AsyncImagePainter.State.Loading ||
+                    imagePainter.state is AsyncImagePainter.State.Empty -> {
                     Box(
                         modifier = Modifier
                             .matchParentSize()
@@ -481,7 +496,7 @@ private fun HomePinCard(
                         )
                     }
                 }
-                is AsyncImagePainter.State.Error -> {
+                imagePainter.state is AsyncImagePainter.State.Error -> {
                     Box(
                         modifier = Modifier
                             .matchParentSize()
