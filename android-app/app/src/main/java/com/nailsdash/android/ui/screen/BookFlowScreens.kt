@@ -1888,13 +1888,6 @@ private fun StoreHeroCarousel(
         }
     }
 
-    LaunchedEffect(currentIndex, resolvedUrls.size) {
-        if (resolvedUrls.size <= 1) return@LaunchedEffect
-        delay(3200)
-        val nextIndex = (currentIndex + 1) % resolvedUrls.size
-        listState.animateScrollToItem(nextIndex)
-    }
-
     Card(
         shape = RoundedCornerShape(14.dp),
         modifier = Modifier.fillMaxWidth(),
