@@ -62,6 +62,12 @@ struct GiftCardDTO: Decodable, Identifiable {
     let updated_at: String
 }
 
+struct GiftCardSummaryDTO: Decodable {
+    let total_balance: Double
+    let active_count: Int
+    let total_count: Int
+}
+
 struct GiftCardTransferRequestDTO: Encodable {
     let recipient_phone: String
     let message: String?

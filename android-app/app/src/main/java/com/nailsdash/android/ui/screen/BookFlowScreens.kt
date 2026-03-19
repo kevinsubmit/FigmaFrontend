@@ -249,7 +249,7 @@ fun StoreDetailScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
+                    .padding(bottom = innerPadding.calculateBottomPadding())
                     .background(BookingBackground),
             ) {
                 StoreDetailTopBar(onBack = onBack)
@@ -606,13 +606,14 @@ private fun StoreDetailTopBar(onBack: () -> Unit) {
             Column(
                 modifier = Modifier.align(Alignment.Center),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                verticalArrangement = Arrangement.spacedBy(1.dp),
             ) {
                 Text(
                     text = "STEP 02",
                     style = MaterialTheme.typography.labelSmall.copy(
                         letterSpacing = 2.2.sp,
                         fontSize = 11.sp,
+                        lineHeight = 11.sp,
                     ),
                     color = BookingGold,
                     fontWeight = FontWeight.Bold,
@@ -622,6 +623,7 @@ private fun StoreDetailTopBar(onBack: () -> Unit) {
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         fontSize = 17.sp,
+                        lineHeight = 17.sp,
                     ),
                     color = Color.White,
                 )
@@ -2403,7 +2405,7 @@ fun BookAppointmentScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
+                    .padding(bottom = innerPadding.calculateBottomPadding()),
             ) {
                 if (!isBottomSheetPresentation) {
                     BookingFullPageTopBar(
@@ -3886,6 +3888,7 @@ private fun BookingFullPageTopBar(
                 style = MaterialTheme.typography.labelSmall.copy(
                     letterSpacing = 2.2.sp,
                     fontSize = 11.sp,
+                    lineHeight = 11.sp,
                 ),
                 color = BookingGold,
                 fontWeight = FontWeight.Bold,
@@ -3895,6 +3898,7 @@ private fun BookingFullPageTopBar(
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontWeight = FontWeight.Bold,
                     fontSize = 17.sp,
+                    lineHeight = 17.sp,
                 ),
                 color = Color.White,
             )

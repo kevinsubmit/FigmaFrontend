@@ -18,33 +18,92 @@ private struct ProfileCenterSecondarySummary {
 private struct ProfileCenterSummaryService {
     private let rewardsService = ProfileRewardsService()
 
-    func loadPrimarySummary(token: String) async throws -> ProfileCenterPrimarySummary {
-        let summary = try await rewardsService.getProfileSummary(token: token)
+    func loadPrimarySummary(token: String) async -> ProfileCenterPrimarySummary {
+        async let unreadTask: Int? = {
+            do {
+                return try await rewardsService.getUnreadCount(token: token)
+            } catch {
+                return nil
+            }
+        }()
+
+        async let pointsTask: Int? = {
+            do {
+                let points = try await rewardsService.getPointsBalance(token: token)
+                return points.available_points
+            } catch {
+                return nil
+            }
+        }()
+
+        async let favoriteCountTask: Int? = {
+            do {
+                return try await rewardsService.getMyFavoritePinsCount(token: token)
+            } catch {
+                return nil
+            }
+        }()
+
+        async let vipStatusTask: VipStatusDTO? = {
+            do {
+                return try await rewardsService.getVipStatus(token: token)
+            } catch {
+                return nil
+            }
+        }()
+
+        let unreadCount = await unreadTask
+        let points = await pointsTask
+        let favoriteCount = await favoriteCountTask
+        let vipStatus = await vipStatusTask
 
         return ProfileCenterPrimarySummary(
-            unreadCount: summary.unread_count,
-            points: summary.points,
-            favoriteCount: max(summary.favorite_count, 0),
-            completedOrders: max(summary.completed_orders, 0),
-            vipStatus: summary.vip_status
+            unreadCount: max(unreadCount ?? 0, 0),
+            points: max(points ?? 0, 0),
+            favoriteCount: favoriteCount.map { max($0, 0) },
+            completedOrders: vipStatus.map { max($0.total_visits, 0) },
+            vipStatus: vipStatus
         )
     }
 
     func loadSecondarySummary(token: String) async -> ProfileCenterSecondarySummary {
-        do {
-            let summary = try await rewardsService.getProfileSummary(token: token)
-            return ProfileCenterSecondarySummary(
-                couponCount: max(summary.coupon_count, 0),
-                giftBalance: max(summary.gift_balance, 0),
-                reviewCount: max(summary.review_count, 0)
-            )
-        } catch {
-            return ProfileCenterSecondarySummary(
-                couponCount: nil,
-                giftBalance: nil,
-                reviewCount: nil
-            )
-        }
+        async let couponCountTask: Int? = {
+            do {
+                let coupons = try await rewardsService.getMyCoupons(
+                    token: token,
+                    status: "available",
+                    skip: 0,
+                    limit: 100
+                )
+                return coupons.count
+            } catch {
+                return nil
+            }
+        }()
+
+        async let giftBalanceTask: Double? = {
+            do {
+                let summary = try await rewardsService.getGiftCardSummary(token: token)
+                return summary.total_balance
+            } catch {
+                return nil
+            }
+        }()
+
+        async let reviewCountTask: Int? = {
+            do {
+                let reviews = try await rewardsService.getMyReviews(token: token, skip: 0, limit: 100)
+                return reviews.count
+            } catch {
+                return nil
+            }
+        }()
+
+        return ProfileCenterSecondarySummary(
+            couponCount: (await couponCountTask).map { max($0, 0) },
+            giftBalance: (await giftBalanceTask).map { max($0, 0.0) },
+            reviewCount: (await reviewCountTask).map { max($0, 0) }
+        )
     }
 }
 
@@ -81,49 +140,39 @@ private final class ProfileCenterViewModel: ObservableObject {
         let currentRequestToken = requestToken
         isLoading = true
 
-        do {
-            let primarySummary = try await summaryService.loadPrimarySummary(token: token)
-            guard currentRequestToken == requestToken else { return }
+        let primarySummary = await summaryService.loadPrimarySummary(token: token)
+        guard currentRequestToken == requestToken else { return }
 
-            unreadCount = primarySummary.unreadCount
-            PushNotificationManager.shared.setAppBadge(
-                PushNotificationManager.shared.isPushPreferenceEnabled()
-                ? primarySummary.unreadCount
-                : 0
-            )
-            points = primarySummary.points
-            if let favoriteCount = primarySummary.favoriteCount {
-                self.favoriteCount = favoriteCount
-            }
-            if let completedOrders = primarySummary.completedOrders {
-                self.completedOrders = completedOrders
-            }
-            if let resolvedVipStatus = primarySummary.vipStatus {
-                vipStatus = resolvedVipStatus
-            }
-            errorMessage = nil
-            isLoading = false
+        unreadCount = primarySummary.unreadCount
+        PushNotificationManager.shared.setAppBadge(
+            PushNotificationManager.shared.isPushPreferenceEnabled()
+            ? primarySummary.unreadCount
+            : 0
+        )
+        points = primarySummary.points
+        if let favoriteCount = primarySummary.favoriteCount {
+            self.favoriteCount = favoriteCount
+        }
+        if let completedOrders = primarySummary.completedOrders {
+            self.completedOrders = completedOrders
+        }
+        if let resolvedVipStatus = primarySummary.vipStatus {
+            vipStatus = resolvedVipStatus
+        }
+        errorMessage = nil
+        isLoading = false
 
-            let secondarySummary = await summaryService.loadSecondarySummary(token: token)
-            guard currentRequestToken == requestToken else { return }
+        let secondarySummary = await summaryService.loadSecondarySummary(token: token)
+        guard currentRequestToken == requestToken else { return }
 
-            if let resolvedCouponCount = secondarySummary.couponCount {
-                couponCount = resolvedCouponCount
-            }
-            if let resolvedGiftBalance = secondarySummary.giftBalance {
-                giftBalance = resolvedGiftBalance
-            }
-            if let resolvedReviewCount = secondarySummary.reviewCount {
-                reviewCount = resolvedReviewCount
-            }
-        } catch let err as APIError {
-            guard currentRequestToken == requestToken else { return }
-            isLoading = false
-            errorMessage = mapError(err)
-        } catch {
-            guard currentRequestToken == requestToken else { return }
-            isLoading = false
-            errorMessage = error.localizedDescription
+        if let resolvedCouponCount = secondarySummary.couponCount {
+            couponCount = resolvedCouponCount
+        }
+        if let resolvedGiftBalance = secondarySummary.giftBalance {
+            giftBalance = resolvedGiftBalance
+        }
+        if let resolvedReviewCount = secondarySummary.reviewCount {
+            reviewCount = resolvedReviewCount
         }
     }
 }

@@ -7,46 +7,56 @@ struct ReviewUploadImagePayload {
 }
 
 struct ProfileRewardsService {
+    private struct UnreadCountDTO: Decodable {
+        let unread_count: Int
+    }
+
     private enum CacheTTL {
+        static let unreadCount: TimeInterval = 20
         static let pointsBalance: TimeInterval = 30
         static let pointTransactions: TimeInterval = 30
         static let coupons: TimeInterval = 30
         static let giftCards: TimeInterval = 30
+        static let giftCardSummary: TimeInterval = 30
         static let reviews: TimeInterval = 30
         static let favoriteCounts: TimeInterval = 30
         static let favorites: TimeInterval = 30
         static let storeImages: TimeInterval = 180
         static let vipStatus: TimeInterval = 60
-        static let profileSummary: TimeInterval = 30
         static let exchangeableCoupons: TimeInterval = 60
         static let referral: TimeInterval = 60
     }
 
+    private static let unreadCountCache = TimedAsyncRequestCache<String, Int>()
     private static let pointsBalanceCache = TimedAsyncRequestCache<String, PointsBalanceDTO>()
     private static let pointTransactionsCache = TimedAsyncRequestCache<String, [PointTransactionDTO]>()
     private static let couponsCache = TimedAsyncRequestCache<String, [UserCouponDTO]>()
     private static let giftCardsCache = TimedAsyncRequestCache<String, [GiftCardDTO]>()
+    private static let giftCardSummaryCache = TimedAsyncRequestCache<String, GiftCardSummaryDTO>()
     private static let reviewsCache = TimedAsyncRequestCache<String, [UserReviewDTO]>()
     private static let favoritePinsCountCache = TimedAsyncRequestCache<String, Int>()
     private static let favoritePinsCache = TimedAsyncRequestCache<String, [HomeFeedPinDTO]>()
     private static let favoriteStoresCache = TimedAsyncRequestCache<String, [StoreDTO]>()
     private static let storeImagesCache = TimedAsyncRequestCache<Int, [StoreImageDTO]>()
     private static let vipStatusCache = TimedAsyncRequestCache<String, VipStatusDTO>()
-    private static let profileSummaryCache = TimedAsyncRequestCache<String, ProfileSummaryDTO>()
     private static let exchangeableCouponsCache = TimedAsyncRequestCache<String, [CouponTemplateDTO]>()
     private static let referralCodeCache = TimedAsyncRequestCache<String, ReferralCodeDTO>()
     private static let referralStatsCache = TimedAsyncRequestCache<String, ReferralStatsDTO>()
     private static let referralListCache = TimedAsyncRequestCache<String, [ReferralListItemDTO]>()
 
-    func getPointsBalance(token: String) async throws -> PointsBalanceDTO {
-        try await Self.pointsBalanceCache.value(for: token, ttl: CacheTTL.pointsBalance) {
-            try await APIClient.shared.request(path: "/points/balance", token: token)
+    func getUnreadCount(token: String) async throws -> Int {
+        try await Self.unreadCountCache.value(for: token, ttl: CacheTTL.unreadCount) {
+            let payload: UnreadCountDTO = try await APIClient.shared.request(
+                path: "/notifications/stats/unread-count",
+                token: token
+            )
+            return payload.unread_count
         }
     }
 
-    func getProfileSummary(token: String) async throws -> ProfileSummaryDTO {
-        try await Self.profileSummaryCache.value(for: token, ttl: CacheTTL.profileSummary) {
-            try await APIClient.shared.request(path: "/profile/summary", token: token)
+    func getPointsBalance(token: String) async throws -> PointsBalanceDTO {
+        try await Self.pointsBalanceCache.value(for: token, ttl: CacheTTL.pointsBalance) {
+            try await APIClient.shared.request(path: "/points/balance", token: token)
         }
     }
 
@@ -72,6 +82,12 @@ struct ProfileRewardsService {
         let path = "/gift-cards/my-cards?skip=\(skip)&limit=\(limit)"
         return try await Self.giftCardsCache.value(for: cacheKey, ttl: CacheTTL.giftCards) {
             try await APIClient.shared.request(path: path, token: token)
+        }
+    }
+
+    func getGiftCardSummary(token: String) async throws -> GiftCardSummaryDTO {
+        try await Self.giftCardSummaryCache.value(for: token, ttl: CacheTTL.giftCardSummary) {
+            try await APIClient.shared.request(path: "/gift-cards/summary", token: token)
         }
     }
 
@@ -354,21 +370,19 @@ struct ProfileRewardsService {
     }
 
     private static func invalidateGiftCards(for token: String) {
-        profileSummaryCache.removeValue(for: token)
+        giftCardSummaryCache.removeValue(for: token)
         giftCardsCache.removeValues { key in
             key.hasPrefix("\(token)|")
         }
     }
 
     private static func invalidateReviews(for token: String) {
-        profileSummaryCache.removeValue(for: token)
         reviewsCache.removeValues { key in
             key.hasPrefix("\(token)|")
         }
     }
 
     private static func invalidateFavoritePins(for token: String) {
-        profileSummaryCache.removeValue(for: token)
         favoritePinsCountCache.removeValue(for: token)
         favoritePinsCache.removeValues { key in
             key.hasPrefix("\(token)|")
@@ -382,7 +396,6 @@ struct ProfileRewardsService {
     }
 
     private static func invalidatePointsAndCoupons(for token: String) {
-        profileSummaryCache.removeValue(for: token)
         pointsBalanceCache.removeValue(for: token)
         pointTransactionsCache.removeValues { key in
             key.hasPrefix("\(token)|")

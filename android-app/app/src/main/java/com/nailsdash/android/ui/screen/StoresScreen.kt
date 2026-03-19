@@ -199,7 +199,7 @@ fun StoresScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(bottom = innerPadding.calculateBottomPadding())
                 .background(StoreListBackground),
         ) {
             StoreListHeaderBlock(
@@ -366,13 +366,14 @@ private fun StoreListTopHeader(
         Column(
             modifier = Modifier.align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+            verticalArrangement = Arrangement.spacedBy(1.dp),
         ) {
             Text(
                 text = "STEP 01",
                 color = StoreListGold,
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.sp,
+                lineHeight = 11.sp,
                 letterSpacing = 2.2.sp,
             )
             Text(
@@ -380,6 +381,7 @@ private fun StoreListTopHeader(
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
                 fontSize = 17.sp,
+                lineHeight = 17.sp,
             )
         }
 

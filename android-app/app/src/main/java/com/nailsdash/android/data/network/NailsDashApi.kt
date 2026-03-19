@@ -16,6 +16,7 @@ import com.nailsdash.android.data.model.GiftCardClaimRequest
 import com.nailsdash.android.data.model.GiftCardClaimResponse
 import com.nailsdash.android.data.model.GiftCardPurchaseResponse
 import com.nailsdash.android.data.model.GiftCardRevokeResponse
+import com.nailsdash.android.data.model.GiftCardSummary
 import com.nailsdash.android.data.model.GiftCardTransferRequest
 import com.nailsdash.android.data.model.HomeFeedPin
 import com.nailsdash.android.data.model.LoginRequest
@@ -339,6 +340,11 @@ interface NailsDashApi {
         @Query("skip") skip: Int,
         @Query("limit") limit: Int,
     ): List<GiftCard>
+
+    @GET("gift-cards/summary")
+    suspend fun getGiftCardSummary(
+        @Header("Authorization") bearerToken: String,
+    ): GiftCardSummary
 
     @POST("gift-cards/{giftCardId}/transfer")
     suspend fun transferGiftCard(

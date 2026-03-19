@@ -7,10 +7,10 @@ import com.nailsdash.android.data.model.CouponTemplate
 import com.nailsdash.android.data.model.GiftCard
 import com.nailsdash.android.data.model.GiftCardClaimRequest
 import com.nailsdash.android.data.model.GiftCardRevokeResponse
+import com.nailsdash.android.data.model.GiftCardSummary
 import com.nailsdash.android.data.model.GiftCardTransferRequest
 import com.nailsdash.android.data.model.PointTransaction
 import com.nailsdash.android.data.model.PointsBalance
-import com.nailsdash.android.data.model.ProfileSummary
 import com.nailsdash.android.data.model.ReferralCode
 import com.nailsdash.android.data.model.ReferralListItem
 import com.nailsdash.android.data.model.ReferralStats
@@ -24,6 +24,8 @@ import com.nailsdash.android.data.network.ServiceLocator
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 
 data class ProfileCenterPrimarySummary(
     val unreadCount: Int,
@@ -51,43 +53,53 @@ class ProfileRepository {
         val limit: Int,
     )
 
+    private data class GiftSummaryKey(
+        val bearerToken: String,
+    )
+
     private data class TokenStatusKey(
         val bearerToken: String,
         val status: String?,
         val limit: Int,
     )
 
-    suspend fun getProfileCenterPrimarySummary(bearerToken: String): Result<ProfileCenterPrimarySummary> {
-        val summary = getProfileSummary(bearerToken).getOrElse { return Result.failure(it) }
-        return Result.success(
+    suspend fun getProfileCenterPrimarySummary(bearerToken: String): Result<ProfileCenterPrimarySummary> = runCatching {
+        coroutineScope {
+            val unreadTask = async { getUnreadCount(bearerToken).getOrThrow() }
+            val pointsTask = async { getPointsBalance(bearerToken).getOrThrow() }
+            val favoritesTask = async { getFavoritePinsCount(bearerToken).getOrThrow() }
+            val vipTask = async { getVipStatus(bearerToken).getOrThrow() }
+
+            val vip = vipTask.await()
             ProfileCenterPrimarySummary(
-                unreadCount = summary.unread_count,
-                points = summary.points,
-                favoriteCount = summary.favorite_count.coerceAtLeast(0),
-                completedOrders = summary.completed_orders.coerceAtLeast(0),
-                vipStatus = summary.vip_status,
-            ),
-        )
-    }
+                unreadCount = unreadTask.await().unread_count.coerceAtLeast(0),
+                points = pointsTask.await().available_points.coerceAtLeast(0),
+                favoriteCount = favoritesTask.await().count.coerceAtLeast(0),
+                completedOrders = vip.total_visits.coerceAtLeast(0),
+                vipStatus = vip,
+            )
+        }
+    }.mapFailure()
 
-    suspend fun getProfileCenterSecondarySummary(bearerToken: String): Result<ProfileCenterSecondarySummary> {
-        val summary = getProfileSummary(bearerToken).getOrElse { return Result.failure(it) }
-        return Result.success(
+    suspend fun getProfileCenterSecondarySummary(bearerToken: String): Result<ProfileCenterSecondarySummary> = runCatching {
+        coroutineScope {
+            val couponsTask = async {
+                getMyCoupons(
+                    bearerToken = bearerToken,
+                    status = "available",
+                    limit = 100,
+                ).getOrThrow()
+            }
+            val giftSummaryTask = async { getGiftCardSummary(bearerToken).getOrThrow() }
+            val reviewsTask = async { getMyReviews(bearerToken, limit = 100).getOrThrow() }
+
             ProfileCenterSecondarySummary(
-                couponCount = summary.coupon_count.coerceAtLeast(0),
-                giftBalance = summary.gift_balance.coerceAtLeast(0.0),
-                reviewCount = summary.review_count.coerceAtLeast(0),
-            ),
-        )
-    }
-
-    private suspend fun getProfileSummary(bearerToken: String): Result<ProfileSummary> {
-        val cacheKey = TokenKey(bearerToken)
-        profileSummaryCache.get(cacheKey)?.let { return Result.success(it) }
-        return runCatching { api.getProfileSummary(bearerToken) }
-            .mapFailure()
-            .onSuccess { profileSummaryCache.put(cacheKey, it) }
-    }
+                couponCount = couponsTask.await().size.coerceAtLeast(0),
+                giftBalance = giftSummaryTask.await().total_balance.coerceAtLeast(0.0),
+                reviewCount = reviewsTask.await().size.coerceAtLeast(0),
+            )
+        }
+    }.mapFailure()
 
     suspend fun getUnreadCount(bearerToken: String): Result<UnreadCount> {
         val cacheKey = TokenKey(bearerToken)
@@ -125,7 +137,6 @@ class ProfileRepository {
         runCatching { api.exchangeCoupon(bearerToken, couponId) }
             .mapFailure()
             .onSuccess {
-                profileSummaryCache.clear()
                 pointsBalanceCache.clear()
                 exchangeableCouponsCache.clear()
                 myCouponsCache.clear()
@@ -156,6 +167,14 @@ class ProfileRepository {
         }.mapFailure().onSuccess { myGiftCardsCache.put(cacheKey, it) }
     }
 
+    suspend fun getGiftCardSummary(bearerToken: String): Result<GiftCardSummary> {
+        val cacheKey = GiftSummaryKey(bearerToken)
+        giftCardSummaryCache.get(cacheKey)?.let { return Result.success(it) }
+        return runCatching { api.getGiftCardSummary(bearerToken) }
+            .mapFailure()
+            .onSuccess { giftCardSummaryCache.put(cacheKey, it) }
+    }
+
     suspend fun transferGiftCard(
         bearerToken: String,
         giftCardId: Int,
@@ -169,7 +188,7 @@ class ProfileRepository {
             request = request,
         ).gift_card
     }.mapFailure().onSuccess {
-        profileSummaryCache.clear()
+        giftCardSummaryCache.clear()
         myGiftCardsCache.clear()
     }
 
@@ -179,7 +198,7 @@ class ProfileRepository {
             request = GiftCardClaimRequest(claim_code = claimCode),
         ).gift_card
     }.mapFailure().onSuccess {
-        profileSummaryCache.clear()
+        giftCardSummaryCache.clear()
         myGiftCardsCache.clear()
     }
 
@@ -190,7 +209,7 @@ class ProfileRepository {
         )
         response.gift_card
     }.mapFailure().onSuccess {
-        profileSummaryCache.clear()
+        giftCardSummaryCache.clear()
         myGiftCardsCache.clear()
     }
 
@@ -219,7 +238,6 @@ class ProfileRepository {
             ),
         )
     }.mapFailure().onSuccess {
-        profileSummaryCache.clear()
         myReviewsCache.clear()
     }
 
@@ -264,14 +282,12 @@ class ProfileRepository {
             ),
         )
     }.mapFailure().onSuccess {
-        profileSummaryCache.clear()
         myReviewsCache.clear()
     }
 
     suspend fun deleteReview(bearerToken: String, reviewId: Int): Result<Unit> = runCatching {
         api.deleteReview(bearerToken = bearerToken, reviewId = reviewId)
     }.mapFailure().onSuccess {
-        profileSummaryCache.clear()
         myReviewsCache.clear()
     }
 
@@ -302,7 +318,6 @@ class ProfileRepository {
     suspend fun removeFavoritePin(bearerToken: String, pinId: Int): Result<Unit> = runCatching {
         api.removeFavoritePin(bearerToken = bearerToken, pinId = pinId)
     }.mapFailure().onSuccess {
-        profileSummaryCache.clear()
         favoritePinsCountCache.clear()
         favoritePinsCache.clear()
     }
@@ -340,7 +355,7 @@ class ProfileRepository {
         private const val LONG_TTL_MS = 60 * 1000L
         private val unreadCountCache = TimedMemoryCache<TokenKey, UnreadCount>(SHORT_TTL_MS, maxEntries = 4)
         private val pointsBalanceCache = TimedMemoryCache<TokenKey, PointsBalance>(SHORT_TTL_MS, maxEntries = 4)
-        private val profileSummaryCache = TimedMemoryCache<TokenKey, ProfileSummary>(SHORT_TTL_MS, maxEntries = 4)
+        private val giftCardSummaryCache = TimedMemoryCache<GiftSummaryKey, GiftCardSummary>(SHORT_TTL_MS, maxEntries = 4)
         private val pointTransactionsCache = TimedMemoryCache<TokenLimitKey, List<PointTransaction>>(SHORT_TTL_MS, maxEntries = 8)
         private val exchangeableCouponsCache = TimedMemoryCache<TokenKey, List<CouponTemplate>>(LONG_TTL_MS, maxEntries = 4)
         private val myCouponsCache = TimedMemoryCache<TokenStatusKey, List<UserCoupon>>(SHORT_TTL_MS, maxEntries = 12)

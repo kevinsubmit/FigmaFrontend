@@ -63,6 +63,12 @@ data class GiftCard(
     val updated_at: String,
 )
 
+data class GiftCardSummary(
+    val total_balance: Double,
+    val active_count: Int,
+    val total_count: Int,
+)
+
 data class GiftCardTransferRequest(
     val recipient_phone: String,
     val message: String? = null,
