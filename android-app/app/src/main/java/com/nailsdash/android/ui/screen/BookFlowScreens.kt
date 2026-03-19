@@ -184,10 +184,12 @@ fun StoreDetailScreen(
     val styleReference = sessionViewModel.bookingStyleReference
     val selectedServices = storeDetailViewModel.selectedServices()
     val selectedTab = storeDetailViewModel.currentTabLabel()
+    val uiScope = rememberCoroutineScope()
     val context = LocalContext.current
     var showMapChooser by remember(storeId) { mutableStateOf(false) }
     var mapLaunchError by remember(storeId) { mutableStateOf<String?>(null) }
     var noticeMessage by remember(storeId) { mutableStateOf<String?>(null) }
+    var favoriteToast by remember(storeId) { mutableStateOf<StoreDetailToastPayload?>(null) }
     var showFullHours by remember(storeId) { mutableStateOf(false) }
     var showBookServicesSheet by remember(storeId) { mutableStateOf(false) }
     var bookSheetServiceIds by remember(storeId) { mutableStateOf<List<Int>>(emptyList()) }
@@ -196,12 +198,39 @@ fun StoreDetailScreen(
     var reviewGalleryStartIndex by remember(storeId) { mutableStateOf(0) }
     val bookSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    fun showFavoriteToast(message: String, isError: Boolean) {
+        favoriteToast = StoreDetailToastPayload(message = message, isError = isError)
+    }
+
     val onToggleFavorite: () -> Unit = {
         val activeStore = storeDetailViewModel.store
         if (activeStore != null && bearerToken != null) {
-            storeDetailViewModel.toggleFavorite(activeStore.id, bearerToken)
+            if (!storeDetailViewModel.isFavoriteLoading) {
+                uiScope.launch {
+                    val wasFavorited = storeDetailViewModel.isFavorited
+                    storeDetailViewModel.toggleFavorite(activeStore.id, bearerToken)
+                        .onSuccess { latestState ->
+                            if (latestState != wasFavorited) {
+                                showFavoriteToast(
+                                    message = if (latestState) {
+                                        "Added to favorites."
+                                    } else {
+                                        "Removed from favorites."
+                                    },
+                                    isError = false,
+                                )
+                            }
+                        }
+                        .onFailure { err ->
+                            showFavoriteToast(
+                                message = err.message ?: "Failed to update favorite state.",
+                                isError = true,
+                            )
+                        }
+                }
+            }
         } else {
-            sessionViewModel.updateAuthMessage("Please sign in to save favorites.")
+            showFavoriteToast("Please sign in to save favorites.", isError = true)
         }
     }
 
@@ -224,6 +253,13 @@ fun StoreDetailScreen(
         val message = mapLaunchError?.trim().orEmpty()
         if (message.isNotEmpty()) {
             noticeMessage = message
+        }
+    }
+    LaunchedEffect(favoriteToast?.id) {
+        val payload = favoriteToast ?: return@LaunchedEffect
+        delay(2200)
+        if (favoriteToast?.id == payload.id) {
+            favoriteToast = null
         }
     }
 
@@ -556,6 +592,15 @@ fun StoreDetailScreen(
                 imageUrls = reviewGalleryImages,
                 initialIndex = reviewGalleryStartIndex,
                 onDismiss = { showReviewGallery = false },
+            )
+        }
+
+        favoriteToast?.let { payload ->
+            StoreDetailToast(
+                payload = payload,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 56.dp, start = 12.dp, end = 12.dp),
             )
         }
     }
@@ -4576,6 +4621,47 @@ private fun openEmailClient(context: Context, email: String): Boolean {
         true
     }.getOrDefault(false)
 }
+
+@Composable
+private fun StoreDetailToast(
+    payload: StoreDetailToastPayload,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    if (payload.isError) Color(0xFFCC3D3D) else Color(0xFF2F9D57),
+                )
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = if (payload.isError) "!" else "✓",
+                color = Color.White,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = payload.message,
+                color = Color.White,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+private data class StoreDetailToastPayload(
+    val message: String,
+    val isError: Boolean,
+    val id: Long = System.currentTimeMillis(),
+)
 
 private fun calendarDaysForMonth(month: YearMonth): List<LocalDate?> {
     val firstDay = month.atDay(1)

@@ -194,6 +194,7 @@ fun AppointmentDetailScreen(
                         disabledReason = disabledReason,
                         onOpenReschedule = { activeSheet = AppointmentDetailActionSheet.Reschedule },
                         onOpenCancel = { activeSheet = AppointmentDetailActionSheet.Cancel },
+                        onClose = onBack,
                     )
                 }
             },
@@ -300,6 +301,7 @@ fun AppointmentDetailScreen(
                                         address = address,
                                     )
                                 },
+                                modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = DetailGold,
                                     contentColor = Color.Black,
@@ -572,6 +574,7 @@ private fun AppointmentDetailActionBar(
     disabledReason: String?,
     onOpenReschedule: () -> Unit,
     onOpenCancel: () -> Unit,
+    onClose: () -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -594,12 +597,16 @@ private fun AppointmentDetailActionBar(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            OutlinedButton(
+            Button(
                 onClick = onOpenReschedule,
                 enabled = canManage && !isSubmitting,
                 modifier = Modifier.weight(1f),
-                border = BorderStroke(1.dp, DetailGold.copy(alpha = 0.28f)),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = DetailPrimaryText),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = DetailGold,
+                    contentColor = Color.Black,
+                    disabledContainerColor = DetailGold.copy(alpha = 0.32f),
+                    disabledContentColor = Color.Black.copy(alpha = 0.55f),
+                ),
             ) {
                 Text("Reschedule")
             }
@@ -614,6 +621,14 @@ private fun AppointmentDetailActionBar(
             ) {
                 Text("Cancel")
             }
+        }
+        OutlinedButton(
+            onClick = onClose,
+            modifier = Modifier.fillMaxWidth(),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f)),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = DetailPrimaryText),
+        ) {
+            Text("Close")
         }
     }
 }

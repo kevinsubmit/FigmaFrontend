@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
@@ -531,7 +532,15 @@ private fun AppointmentCard(
                     }
                     resolvedStoreAddress?.let { address ->
                         val addressInteraction = remember(item.id, address) { MutableInteractionSource() }
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = addressInteraction,
+                                    indication = null,
+                                ) { onOpenMaps(address) },
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
                             Icon(
                                 Icons.Outlined.LocationOn,
                                 contentDescription = null,
@@ -543,10 +552,7 @@ private fun AppointmentCard(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = AppointmentsSecondaryText,
                                 textDecoration = TextDecoration.Underline,
-                                modifier = Modifier.clickable(
-                                    interactionSource = addressInteraction,
-                                    indication = null,
-                                ) { onOpenMaps(address) },
+                                modifier = Modifier.weight(1f),
                             )
                         }
                     }
@@ -557,11 +563,6 @@ private fun AppointmentCard(
                         ?.trim()
                         ?.takeIf { it.isNotEmpty() }
                     val technicianText = technicianName ?: "Any technician"
-                    val technicianIcon = if (technicianName != null) {
-                        Icons.Outlined.Person
-                    } else {
-                        Icons.AutoMirrored.Outlined.HelpOutline
-                    }
                     val technicianTextColor = if (technicianName != null) {
                         AppointmentsSecondaryText
                     } else {
@@ -573,27 +574,32 @@ private fun AppointmentCard(
                         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
                         color = AppointmentsPrimaryText,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         (item.order_amount ?: item.service_price)?.let { amount ->
-                            AppointmentMetaTag(
+                            AppointmentInlineMeta(
                                 icon = Icons.Outlined.AttachMoney,
                                 text = "$${String.format(Locale.US, "%.2f", amount)}",
                                 textColor = AppointmentsGold,
                             )
                         }
                         item.service_duration?.let { duration ->
-                            AppointmentMetaTag(
+                            AppointmentInlineMeta(
                                 icon = Icons.Outlined.AccessTime,
                                 text = "$duration min",
                                 textColor = AppointmentsSecondaryText,
                             )
                         }
+                        AppointmentInlineMeta(
+                            modifier = Modifier.weight(1f),
+                            icon = Icons.Outlined.Person,
+                            text = technicianText,
+                            textColor = technicianTextColor,
+                        )
                     }
-                    AppointmentMetaTag(
-                        icon = technicianIcon,
-                        text = technicianText,
-                        textColor = technicianTextColor,
-                    )
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -638,33 +644,29 @@ private fun AppointmentInfoBlock(
 }
 
 @Composable
-private fun AppointmentMetaTag(
-    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+private fun AppointmentInlineMeta(
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     text: String,
     textColor: Color,
 ) {
     Row(
-        modifier = Modifier
-            .background(
-                color = Color.White.copy(alpha = 0.04f),
-                shape = RoundedCornerShape(999.dp),
-            )
-            .padding(horizontal = 10.dp, vertical = 4.dp),
+        modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (icon != null) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = textColor,
-                modifier = Modifier.size(12.dp),
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = textColor,
+            modifier = Modifier.size(12.dp),
+        )
         Text(
             text = text,
             style = MaterialTheme.typography.bodySmall,
             color = textColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

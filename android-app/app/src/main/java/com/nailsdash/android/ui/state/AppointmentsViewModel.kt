@@ -33,6 +33,7 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
     private var hasLoadedOnce = false
     private var offset = 0
     private var loadRequestVersion = 0
+    private val detailResolvedStoreIds = mutableSetOf<Int>()
 
     var items by mutableStateOf(emptyList<Appointment>())
         private set
@@ -157,6 +158,7 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
             offset = 0
             hasMore = true
             initialLoadResolved = false
+            detailResolvedStoreIds.clear()
         } else {
             isLoadingMore = true
         }
@@ -251,14 +253,9 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         requestVersion: Int,
     ) = coroutineScope {
         val storeIds = appointments
-            .filter {
-                normalizedText(it.store_name) == null || normalizedText(it.store_address) == null
-            }
             .map { it.store_id }
             .toSet()
-            .filterNot { storeId ->
-                storeNameByStoreId[storeId] != null && storeAddressByStoreId[storeId] != null
-            }
+            .filterNot(detailResolvedStoreIds::contains)
 
         if (storeIds.isEmpty()) return@coroutineScope
 
@@ -266,6 +263,7 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
         val existingNames = storeNameByStoreId
         val addressMap = mutableMapOf<Int, String>()
         val nameMap = mutableMapOf<Int, String>()
+        val resolvedStoreIds = mutableSetOf<Int>()
         val tasks = storeIds.map { storeId ->
             async {
                 storesRepository.getStoreDetail(storeId).getOrNull()?.let { detail ->
@@ -287,6 +285,9 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
             if (address != null) {
                 addressMap[storeId] = address
             }
+            if (name != null || address != null) {
+                resolvedStoreIds += storeId
+            }
         }
 
         if (requestVersion != loadRequestVersion) return@coroutineScope
@@ -294,13 +295,14 @@ class AppointmentsViewModel(application: Application) : AndroidViewModel(applica
 
         val mergedAddresses = existingAddresses + addressMap
         val mergedNames = existingNames + nameMap
+        detailResolvedStoreIds += resolvedStoreIds
         storeAddressByStoreId = mergedAddresses
         storeNameByStoreId = mergedNames
         applyItems(
             items.map { item ->
                 item.copy(
-                    store_name = normalizedText(item.store_name) ?: mergedNames[item.store_id],
-                    store_address = normalizedText(item.store_address) ?: mergedAddresses[item.store_id],
+                    store_name = mergedNames[item.store_id] ?: normalizedText(item.store_name),
+                    store_address = mergedAddresses[item.store_id] ?: normalizedText(item.store_address),
                 )
             },
         )

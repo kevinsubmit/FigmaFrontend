@@ -683,19 +683,16 @@ private struct AppointmentDetailView: View {
             topBar
 
             ScrollView {
-                VStack(alignment: .leading, spacing: UITheme.spacing14) {
+                VStack(alignment: .leading, spacing: UITheme.spacing10) {
                     statusCard
+                    appointmentInfoCard
                     locationCard
-                    serviceCard
-                    dateTimeGrid
-                    technicianCard
                     notesCard
-                    cutoffCard
-                    metaCard
                     cancelReasonCard
+                    detailChipsRow
                 }
-                .padding(.horizontal, UITheme.pagePadding)
-                .padding(.top, UITheme.spacing12)
+                .padding(.horizontal, 12)
+                .padding(.top, 10)
                 .padding(.bottom, UITheme.spacing28)
             }
         }
@@ -780,19 +777,59 @@ private struct AppointmentDetailView: View {
     }
 
     private var statusCard: some View {
-        HStack {
-            Text("STATUS")
-                .font(.caption.weight(.semibold))
-                .kerning(UITheme.sectionHeaderKerning)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(formattedStatusText(viewModel.appointment.status))
-                .font(.caption.weight(.semibold))
-                .padding(.horizontal, UITheme.pillHorizontalPadding)
-                .padding(.vertical, UITheme.pillVerticalPadding - 1)
-                .background(statusColor(viewModel.appointment.status).opacity(0.15))
-                .clipShape(Capsule())
-                .foregroundStyle(statusColor(viewModel.appointment.status))
+        VStack(alignment: .leading, spacing: UITheme.spacing8) {
+            HStack {
+                Text("STATUS")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.65))
+                Spacer()
+                Text(formattedStatusText(viewModel.appointment.status))
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, UITheme.pillHorizontalPadding)
+                    .padding(.vertical, UITheme.pillVerticalPadding - 1)
+                    .background(statusColor(viewModel.appointment.status).opacity(0.15))
+                    .clipShape(Capsule())
+                    .foregroundStyle(statusColor(viewModel.appointment.status))
+            }
+            Text(resolvedStoreDisplayName)
+                .font(.title2.weight(.bold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.86)
+            Text(resolvedServiceName)
+                .font(.subheadline)
+                .foregroundStyle(Color.white.opacity(0.78))
+                .lineLimit(2)
+        }
+        .modifier(AppointmentDetailCard(cardBG: cardBG, brandGold: brandGold))
+    }
+
+    private var appointmentInfoCard: some View {
+        VStack(alignment: .leading, spacing: UITheme.spacing8) {
+            androidStyleDetailRow(
+                systemImage: "calendar",
+                title: "DATE",
+                value: AppointmentLocalFormatter.friendlyDate(viewModel.appointment.appointment_date) ?? viewModel.appointment.appointment_date
+            )
+            androidStyleDetailRow(
+                systemImage: "clock",
+                title: "TIME",
+                value: AppointmentLocalFormatter.friendlyTime(viewModel.appointment.appointment_time) ?? viewModel.appointment.appointment_time
+            )
+            androidStyleDetailRow(
+                systemImage: "person",
+                title: "TECHNICIAN",
+                value: viewModel.appointment.technician_name?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+                    ? (viewModel.appointment.technician_name ?? "Any technician")
+                    : "Any technician"
+            )
+            if let orderNumber = viewModel.appointment.order_number?.trimmingCharacters(in: .whitespacesAndNewlines), !orderNumber.isEmpty {
+                androidStyleDetailRow(
+                    systemImage: "storefront",
+                    title: "ORDER",
+                    value: "#\(orderNumber)"
+                )
+            }
         }
         .modifier(AppointmentDetailCard(cardBG: cardBG, brandGold: brandGold))
     }
@@ -801,32 +838,48 @@ private struct AppointmentDetailView: View {
     private var locationCard: some View {
         let displayAddress = resolvedDetailStoreAddress
         if viewModel.appointment.store_name != nil || displayAddress != nil {
-            VStack(alignment: .leading, spacing: UITheme.spacing10) {
-                sectionHeader("LOCATION", systemImage: "mappin.and.ellipse")
-                Text(viewModel.appointment.store_name ?? "Store #\(viewModel.appointment.store_id)")
-                    .font(.title2.weight(.bold))
+            VStack(alignment: .leading, spacing: UITheme.spacing8) {
+                Text("LOCATION")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.65))
+                Text(resolvedStoreDisplayName)
+                    .font(.title3.weight(.bold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.86)
                 if let address = displayAddress {
+                    HStack(alignment: .top, spacing: UITheme.spacing8) {
+                        Image(systemName: "location.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(brandGold)
+                            .padding(.top, UITheme.spacing1)
+                        Text(address)
+                            .font(.subheadline)
+                            .underline()
+                            .foregroundStyle(Color.white.opacity(0.78))
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(nil)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
                     Button {
                         presentMapChooser(for: address)
                     } label: {
-                        HStack(alignment: .top, spacing: UITheme.spacing8) {
-                            Image(systemName: "location")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(brandGold)
-                                .padding(.top, UITheme.spacing1)
-                            Text(address)
-                                .font(.subheadline)
-                                .underline()
-                                .foregroundStyle(Color.white.opacity(0.78))
-                                .multilineTextAlignment(.leading)
-                                .lineLimit(nil)
-                                .fixedSize(horizontal: false, vertical: true)
+                        HStack {
+                            Spacer(minLength: 0)
+                            Text("Open in Maps")
+                                .font(.subheadline.weight(.semibold))
+                            Spacer(minLength: 0)
                         }
+                        .frame(maxWidth: .infinity, minHeight: UITheme.controlHeight)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity)
+                    .foregroundStyle(.black)
+                    .background(brandGold)
+                    .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius))
+                    .contentShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius))
                 }
             }
             .modifier(AppointmentDetailCard(cardBG: cardBG, brandGold: brandGold))
@@ -897,7 +950,9 @@ private struct AppointmentDetailView: View {
     private var notesCard: some View {
         if let note = viewModel.appointment.notes, !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             VStack(alignment: .leading, spacing: UITheme.spacing8) {
-                sectionHeader("NOTES", systemImage: "note.text")
+                Text("NOTES")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color.white.opacity(0.65))
                 Text(note)
                     .font(.subheadline)
                     .foregroundStyle(.white)
@@ -950,7 +1005,9 @@ private struct AppointmentDetailView: View {
     private var cancelReasonCard: some View {
         if let reason = viewModel.appointment.cancel_reason, !reason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             VStack(alignment: .leading, spacing: UITheme.spacing8) {
-                sectionHeader("CANCEL REASON", systemImage: "xmark.circle")
+                Text("CANCEL REASON")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color(red: 1.0, green: 138.0 / 255.0, blue: 138.0 / 255.0))
                 Text(reason)
                     .font(.subheadline)
                     .foregroundStyle(.white)
@@ -960,96 +1017,78 @@ private struct AppointmentDetailView: View {
         }
     }
 
+    @ViewBuilder
+    private var detailChipsRow: some View {
+        let price = viewModel.appointment.service_price
+        let duration = viewModel.appointment.service_duration
+        if price != nil || duration != nil {
+            HStack(spacing: UITheme.spacing8) {
+                if let price {
+                    detailChip(title: moneyText(price), foreground: brandGold)
+                }
+                if let duration {
+                    detailChip(title: durationText(duration), foreground: Color.white.opacity(0.78))
+                }
+            }
+        }
+    }
+
     private var actionBar: some View {
-        VStack(alignment: .leading, spacing: UITheme.spacing10) {
-            if !canReschedule || !canCancel {
-                HStack(spacing: UITheme.spacing6) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                    Text(disabledReasonText)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: UITheme.spacing8) {
+            Text(actionMessageText)
+                .font(.footnote)
+                .foregroundStyle(actionMessageColor)
+
+            HStack(spacing: UITheme.spacing8) {
+                Button {
+                    showRescheduleSheet = true
+                } label: {
+                    Text("Reschedule")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: UITheme.ctaHeight)
                 }
-                .padding(.horizontal, UITheme.spacing10)
-                .padding(.vertical, UITheme.spacing8)
-                .background(Color.white.opacity(0.04))
+                .buttonStyle(.plain)
+                .foregroundStyle(.black)
+                .background(canReschedule ? brandGold : brandGold.opacity(0.32))
                 .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius))
-            }
+                .disabled(viewModel.isSubmitting || !canReschedule)
 
-            Button {
-                showRescheduleSheet = true
-            } label: {
-                HStack(spacing: UITheme.spacing8) {
-                    Image(systemName: "calendar")
-                    if viewModel.isSubmitting && showRescheduleSheet {
-                        ProgressView()
-                            .tint(.black)
-                    } else {
-                        Text("Reschedule")
-                            .font(.headline.weight(.bold))
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: UITheme.ctaHeight + 2)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(canReschedule ? .black : Color.white.opacity(0.66))
-            .background(canReschedule ? brandGold : Color.white.opacity(0.08))
-            .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius))
-            .disabled(viewModel.isSubmitting || !canReschedule)
-
-            HStack(spacing: UITheme.spacing10) {
                 Button {
                     showCancelSheet = true
                 } label: {
-                    HStack(spacing: UITheme.spacing8) {
-                        Image(systemName: "xmark.circle")
-                        if viewModel.isSubmitting && showCancelSheet {
-                            ProgressView()
-                                .tint(.white)
-                        } else {
-                            Text("Cancel Appointment")
-                                .font(.subheadline.weight(.semibold))
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: UITheme.ctaHeight - 2)
+                    Text("Cancel")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: UITheme.ctaHeight)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(canCancel ? Color.red.opacity(0.95) : Color.white.opacity(0.5))
-                .background(Color.clear)
+                .foregroundStyle(.white)
+                .background(canCancel ? Color(red: 138.0 / 255.0, green: 46.0 / 255.0, blue: 46.0 / 255.0) : Color.white.opacity(0.12))
                 .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius))
-                .overlay(
-                    RoundedRectangle(cornerRadius: UITheme.controlCornerRadius)
-                        .stroke(canCancel ? Color.red.opacity(0.55) : Color.white.opacity(0.12), lineWidth: 1)
-                )
                 .disabled(viewModel.isSubmitting || !canCancel)
-
-                Button {
-                    dismiss()
-                } label: {
-                    HStack(spacing: UITheme.spacing8) {
-                        Image(systemName: "xmark")
-                        Text("Close")
-                            .font(.subheadline.weight(.semibold))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(minHeight: UITheme.ctaHeight - 2)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(Color.white.opacity(0.72))
-                .background(Color.clear)
-                .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius))
-                .overlay(
-                    RoundedRectangle(cornerRadius: UITheme.controlCornerRadius)
-                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
-                )
             }
+
+            Button {
+                dismiss()
+            } label: {
+                Text("Close")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: UITheme.ctaHeight)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.white)
+            .background(Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius))
+            .overlay(
+                RoundedRectangle(cornerRadius: UITheme.controlCornerRadius)
+                    .stroke(Color.white.opacity(0.18), lineWidth: 1)
+            )
         }
-        .padding(.horizontal, UITheme.pagePadding)
-        .padding(.top, UITheme.spacing10)
-        .padding(.bottom, UITheme.spacing12)
+        .padding(.horizontal, 12)
+        .padding(.top, 10)
+        .padding(.bottom, 10)
         .background(Color.black.opacity(0.96))
         .overlay(alignment: .top) {
             Rectangle()
@@ -1438,18 +1477,19 @@ private struct AppointmentDetailView: View {
         currentStatus != "cancelled" && currentStatus != "completed"
     }
 
-    private var canCancel: Bool {
-        canCancelByStatus && isWithinCutoff
-    }
+    private var canCancel: Bool { canCancelByStatus }
 
-    private var canReschedule: Bool {
-        canRescheduleByStatus && isWithinCutoff
+    private var canReschedule: Bool { canRescheduleByStatus }
+
+    private var resolvedStoreDisplayName: String {
+        let trimmed = viewModel.appointment.store_name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? "Store" : trimmed
     }
 
     private var resolvedServiceName: String {
         let raw = viewModel.appointment.service_name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if !raw.isEmpty { return raw }
-        return "Service #\(viewModel.appointment.service_id)"
+        return "Service"
     }
 
     private var resolvedServiceAmount: Double? {
@@ -1466,22 +1506,31 @@ private struct AppointmentDetailView: View {
     }
 
     private var disabledReasonText: String {
-        if !isWithinCutoff {
-            return "Cutoff passed. Changes are disabled."
-        }
         switch currentStatus {
         case "completed":
-            return "Completed appointments cannot be changed."
+            return "Completed appointments can't be changed."
         case "cancelled":
-            return "Cancelled appointments cannot be changed."
+            return "This appointment is already cancelled."
         default:
             return "This appointment cannot be changed."
         }
     }
 
+    private var actionMessageText: String {
+        canReschedule && canCancel
+            ? "You can still reschedule or cancel before the cutoff."
+            : disabledReasonText
+    }
+
+    private var actionMessageColor: Color {
+        canReschedule && canCancel
+            ? Color.white.opacity(0.65)
+            : Color(red: 1.0, green: 138.0 / 255.0, blue: 138.0 / 255.0)
+    }
+
     private func moneyText(_ value: Double?) -> String {
         guard let value else { return "-" }
-        return "$\(String(format: "%.2f", value))+"
+        return "$\(String(format: "%.2f", value))"
     }
 
     private func durationText(_ minutes: Int?) -> String {
@@ -1499,15 +1548,46 @@ private struct AppointmentDetailView: View {
 
     private func statusColor(_ raw: String) -> Color {
         switch raw.lowercased() {
-        case "completed":
-            return .green
-        case "cancelled":
-            return .red
+        case "pending":
+            return Color(red: 1.0, green: 193.0 / 255.0, blue: 7.0 / 255.0)
         case "confirmed":
-            return brandGold
+            return Color(red: 76.0 / 255.0, green: 175.0 / 255.0, blue: 80.0 / 255.0)
+        case "completed":
+            return Color(red: 66.0 / 255.0, green: 165.0 / 255.0, blue: 245.0 / 255.0)
+        case "cancelled":
+            return Color(red: 239.0 / 255.0, green: 83.0 / 255.0, blue: 80.0 / 255.0)
+        case "expired":
+            return Color(red: 158.0 / 255.0, green: 158.0 / 255.0, blue: 158.0 / 255.0)
         default:
-            return .orange
+            return Color(red: 1.0, green: 152.0 / 255.0, blue: 0.0)
         }
+    }
+
+    private func androidStyleDetailRow(systemImage: String, title: String, value: String) -> some View {
+        HStack(alignment: .center, spacing: UITheme.spacing8) {
+            Image(systemName: systemImage)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(brandGold)
+                .frame(width: 18)
+            Text("\(title):")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.white.opacity(0.65))
+            Text(value)
+                .font(.subheadline)
+                .foregroundStyle(.white)
+                .lineLimit(2)
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func detailChip(title: String, foreground: Color) -> some View {
+        Text(title)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(foreground)
+            .padding(.horizontal, UITheme.spacing10)
+            .padding(.vertical, UITheme.spacing6)
+            .background(Color.white.opacity(0.04))
+            .clipShape(Capsule())
     }
 
     private func formattedStatusText(_ raw: String) -> String {

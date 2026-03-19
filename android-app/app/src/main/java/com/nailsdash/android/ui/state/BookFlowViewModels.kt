@@ -173,23 +173,62 @@ class StoreDetailViewModel(application: Application) : AndroidViewModel(applicat
         return "$count reviews"
     }
 
-    fun toggleFavorite(storeId: Int, bearerToken: String) {
-        if (isFavoriteLoading) return
+    suspend fun toggleFavorite(storeId: Int, bearerToken: String): Result<Boolean> {
+        if (isFavoriteLoading) {
+            return Result.failure(IllegalStateException("Favorite update already in progress."))
+        }
         if (BenchmarkOverrides.isEnabled()) {
             isFavorited = !isFavorited
-            errorMessage = null
-            return
+            return Result.success(isFavorited)
         }
+
         isFavoriteLoading = true
-        viewModelScope.launch {
-            val next = !isFavorited
-            storesRepository.setFavorite(storeId, bearerToken, next)
-                .onSuccess {
-                    isFavorited = next
-                    errorMessage = null
-                }
-                .onFailure { errorMessage = it.message }
+        val targetState = !isFavorited
+
+        return try {
+            storesRepository.setFavorite(storeId, bearerToken, targetState)
+                .fold(
+                    onSuccess = {
+                        isFavorited = targetState
+                        Result.success(isFavorited)
+                    },
+                    onFailure = { err ->
+                        val detail = err.message.orEmpty()
+                        val recoveredState = recoverFavoriteState(detail, targetState)
+                        if (recoveredState != null) {
+                            Result.success(recoveredState)
+                        } else {
+                            Result.failure(
+                                IllegalStateException(
+                                    detail.ifBlank { "Failed to update favorite state." },
+                                ),
+                            )
+                        }
+                    },
+                )
+        } catch (_: Throwable) {
+            Result.failure(IllegalStateException("Failed to update favorite state."))
+        } finally {
             isFavoriteLoading = false
+        }
+    }
+
+    private fun recoverFavoriteState(message: String, targetState: Boolean): Boolean? {
+        val normalized = message.lowercase()
+        return when {
+            normalized.contains("already in favorites") -> {
+                isFavorited = true
+                true
+            }
+            normalized.contains("not in favorites") -> {
+                isFavorited = false
+                false
+            }
+            normalized.contains("favorite") && (normalized.contains("already") || normalized.contains("not")) -> {
+                isFavorited = targetState
+                targetState
+            }
+            else -> null
         }
     }
 
