@@ -330,12 +330,27 @@ private struct SettingsUpdateResponseDTO: Decodable {
 }
 
 private struct SettingsService {
+    private enum CacheTTL {
+        static let currentUser: TimeInterval = 60
+    }
+
+    private static let currentUserCache = TimedAsyncRequestCache<String, AuthUser>()
+
     func getCurrentUser(token: String) async throws -> AuthUser {
-        try await APIClient.shared.request(path: "/auth/me", token: token)
+        try await Self.currentUserCache.value(for: token, ttl: CacheTTL.currentUser) {
+            try await APIClient.shared.request(path: "/auth/me", token: token)
+        }
     }
 
     func updateProfile(token: String, payload: SettingsUpdateProfileRequestDTO) async throws -> SettingsUpdateProfileResponseDTO {
-        try await APIClient.shared.request(path: "/users/profile", method: "PUT", token: token, body: payload)
+        let response: SettingsUpdateProfileResponseDTO = try await APIClient.shared.request(
+            path: "/users/profile",
+            method: "PUT",
+            token: token,
+            body: payload
+        )
+        Self.currentUserCache.removeValue(for: token)
+        return response
     }
 
     func updatePassword(token: String, payload: SettingsUpdatePasswordRequestDTO) async throws -> SettingsUpdatePasswordResponseDTO {
@@ -348,7 +363,14 @@ private struct SettingsService {
     }
 
     func updatePhone(token: String, payload: SettingsUpdatePhoneRequestDTO) async throws -> SettingsUpdatePhoneResponseDTO {
-        try await APIClient.shared.request(path: "/users/phone", method: "PUT", token: token, body: payload)
+        let response: SettingsUpdatePhoneResponseDTO = try await APIClient.shared.request(
+            path: "/users/phone",
+            method: "PUT",
+            token: token,
+            body: payload
+        )
+        Self.currentUserCache.removeValue(for: token)
+        return response
     }
 
     func updateSettings(token: String, payload: SettingsUpdateRequestDTO) async throws -> SettingsUpdateResponseDTO {
@@ -397,7 +419,9 @@ private struct SettingsService {
         switch http.statusCode {
         case 200 ... 299:
             do {
-                return try JSONDecoder().decode(AvatarUploadResponseDTO.self, from: data)
+                let response = try JSONDecoder().decode(AvatarUploadResponseDTO.self, from: data)
+                Self.currentUserCache.removeValue(for: token)
+                return response
             } catch {
                 throw APIError.decoding
             }
@@ -470,6 +494,7 @@ private final class ProfileSettingsViewModel: ObservableObject {
     @Published var actionMessage: String?
 
     private let service = SettingsService()
+    private var didLoadOnce = false
     private let birthdayFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -477,7 +502,16 @@ private final class ProfileSettingsViewModel: ObservableObject {
         return formatter
     }()
 
-    func load(token: String) async {
+    func loadIfNeeded(token: String) async {
+        guard !didLoadOnce else { return }
+        didLoadOnce = true
+        await load(token: token, force: false)
+    }
+
+    func load(token: String, force: Bool) async {
+        if force {
+            didLoadOnce = true
+        }
         isLoading = true
         defer { isLoading = false }
         do {
@@ -661,12 +695,22 @@ private final class PhoneNumberSettingsViewModel: ObservableObject {
 
     private let service = SettingsService()
     private var countdownTask: Task<Void, Never>?
+    private var didLoadOnce = false
 
     deinit {
         countdownTask?.cancel()
     }
 
-    func load(token: String) async {
+    func loadIfNeeded(token: String) async {
+        guard !didLoadOnce else { return }
+        didLoadOnce = true
+        await load(token: token, force: false)
+    }
+
+    func load(token: String, force: Bool) async {
+        if force {
+            didLoadOnce = true
+        }
         do {
             let user = try await service.getCurrentUser(token: token)
             currentPhone = formatUSPhoneForDisplay(user.phone)
@@ -732,7 +776,7 @@ private final class PhoneNumberSettingsViewModel: ObservableObject {
             verificationCode = ""
             currentPassword = ""
             countdown = 0
-            await load(token: token)
+            await load(token: token, force: true)
             return true
         } catch let err as APIError {
             errorMessage = mapError(err)
@@ -905,7 +949,7 @@ private struct ProfileSettingsView: View {
         .tint(brandGold)
         .task {
             guard let token = appState.requireAccessToken() else { return }
-            await viewModel.load(token: token)
+            await viewModel.loadIfNeeded(token: token)
         }
         .onChange(of: pickedAvatarItem) { item in
             guard let item else { return }
@@ -1177,7 +1221,7 @@ private struct PhoneNumberSettingsView: View {
         .tint(brandGold)
         .task {
             guard let token = appState.requireAccessToken() else { return }
-            await viewModel.load(token: token)
+            await viewModel.loadIfNeeded(token: token)
         }
     }
 }

@@ -24,6 +24,7 @@ final class BookAppointmentViewModel: ObservableObject {
 
     private let service: AppointmentsServiceProtocol
     let storeID: Int
+    private var slotsRequestToken: Int = 0
     var activeTimeZone: TimeZone {
         TimeZoneResolver.resolve(storeIdentifier: storeDetail?.time_zone)
     }
@@ -186,6 +187,8 @@ final class BookAppointmentViewModel: ObservableObject {
     }
 
     func reloadAvailableSlots() async {
+        slotsRequestToken += 1
+        let currentRequestToken = slotsRequestToken
         guard let serviceID = selectedServiceID else {
             availableSlots = []
             selectedSlot = nil
@@ -240,6 +243,7 @@ final class BookAppointmentViewModel: ObservableObject {
                 }
                 slotRows = Array(mergedSet)
             }
+            guard currentRequestToken == slotsRequestToken else { return }
 
             let normalized = normalizeSlots(slotRows.map(\.start_time))
             availableSlots = filterPastSlots(normalized)
@@ -258,11 +262,13 @@ final class BookAppointmentViewModel: ObservableObject {
                 slotHintMessage = "No available times for this date."
             }
         } catch let err as APIError {
+            guard currentRequestToken == slotsRequestToken else { return }
             availableSlots = []
             selectedSlot = nil
             errorMessage = mapError(err)
             slotHintMessage = slotHint(from: errorMessage)
         } catch {
+            guard currentRequestToken == slotsRequestToken else { return }
             availableSlots = []
             selectedSlot = nil
             errorMessage = error.localizedDescription
@@ -432,10 +438,17 @@ final class MyAppointmentsViewModel: ObservableObject {
     @Published var items: [AppointmentDTO] = []
     @Published var storeAddressByStoreID: [Int: String] = [:]
     @Published var isLoading: Bool = false
+    @Published var isLoadingMore: Bool = false
+    @Published var hasMore: Bool = true
     @Published var errorMessage: String?
 
     private let service: AppointmentsServiceProtocol
     private let storesService: StoresServiceProtocol
+    private var didLoadOnce = false
+    private var requestToken = 0
+    private var offset = 0
+    private let initialPageSize = 20
+    private let loadMorePageSize = 20
 
     init(
         service: AppointmentsServiceProtocol = AppointmentsService(),
@@ -445,19 +458,19 @@ final class MyAppointmentsViewModel: ObservableObject {
         self.storesService = storesService
     }
 
-    func load(token: String) async {
-        isLoading = true
-        defer { isLoading = false }
-        do {
-            let loadedItems = try await service.getMyAppointments(token: token, limit: 100)
-            items = loadedItems
-            await loadStoreAddressFallbacks(for: loadedItems)
-            errorMessage = nil
-        } catch let err as APIError {
-            errorMessage = mapError(err)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+    func loadIfNeeded(token: String) async {
+        guard !didLoadOnce else { return }
+        didLoadOnce = true
+        await load(token: token, force: false)
+    }
+
+    func load(token: String, force: Bool) async {
+        await loadPage(token: token, reset: true, force: force)
+    }
+
+    func loadMore(token: String) async {
+        guard hasMore, !isLoading, !isLoadingMore else { return }
+        await loadPage(token: token, reset: false, force: false)
     }
 
     func replace(_ appointment: AppointmentDTO) {
@@ -500,31 +513,109 @@ final class MyAppointmentsViewModel: ObservableObject {
         }
     }
 
+    private func loadPage(token: String, reset: Bool, force: Bool) async {
+        let currentRequestToken: Int
+        if reset {
+            requestToken += 1
+            currentRequestToken = requestToken
+        } else {
+            currentRequestToken = requestToken
+        }
+
+        if force {
+            didLoadOnce = true
+        }
+
+        let requestedOffset = reset ? 0 : offset
+        let pageSize = reset ? initialPageSize : loadMorePageSize
+
+        if reset {
+            isLoading = true
+        } else {
+            isLoadingMore = true
+        }
+        defer {
+            if reset {
+                isLoading = false
+            } else {
+                isLoadingMore = false
+            }
+        }
+
+        do {
+            let loadedItems = try await service.getMyAppointments(
+                token: token,
+                skip: requestedOffset,
+                limit: pageSize
+            )
+            guard currentRequestToken == requestToken else { return }
+
+            if reset {
+                items = loadedItems
+            } else {
+                items = mergeAppointments(existing: items, newRows: loadedItems)
+            }
+
+            offset = requestedOffset + loadedItems.count
+            hasMore = loadedItems.count == pageSize && !loadedItems.isEmpty
+            await loadStoreAddressFallbacks(for: items)
+            errorMessage = nil
+        } catch let err as APIError {
+            guard currentRequestToken == requestToken else { return }
+            errorMessage = mapError(err)
+        } catch {
+            guard currentRequestToken == requestToken else { return }
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func mergeAppointments(existing: [AppointmentDTO], newRows: [AppointmentDTO]) -> [AppointmentDTO] {
+        guard !newRows.isEmpty else { return existing }
+        var merged = existing
+        var existingIDs = Set(existing.map(\.id))
+        for row in newRows where existingIDs.insert(row.id).inserted {
+            merged.append(row)
+        }
+        return merged
+    }
+
     private func loadStoreAddressFallbacks(for appointments: [AppointmentDTO]) async {
+        var addressMap = storeAddressByStoreID
         let storeIDs = Set(appointments.map(\.store_id))
         guard !storeIDs.isEmpty else {
             storeAddressByStoreID = [:]
             return
         }
 
-        do {
-            let stores = try await storesService.fetchStores(
-                limit: 100,
-                sortBy: nil,
-                userLat: nil,
-                userLng: nil
-            )
-            var addressMap: [Int: String] = [:]
-            for store in stores where storeIDs.contains(store.id) {
-                let fullAddress = store.formattedAddress.trimmingCharacters(in: .whitespacesAndNewlines)
-                if !fullAddress.isEmpty {
-                    addressMap[store.id] = fullAddress
+        addressMap = addressMap.filter { storeIDs.contains($0.key) }
+
+        let existingResolved = Set(addressMap.keys)
+        let missingStoreIDs = storeIDs.subtracting(existingResolved)
+        guard !missingStoreIDs.isEmpty else {
+            storeAddressByStoreID = addressMap
+            return
+        }
+
+        await withTaskGroup(of: (Int, String?).self) { group in
+            for storeID in missingStoreIDs {
+                group.addTask { [storesService] in
+                    do {
+                        let detail = try await storesService.fetchStoreDetail(storeID: storeID)
+                        let address = detail.formattedAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+                        return (storeID, address.isEmpty ? nil : address)
+                    } catch {
+                        return (storeID, nil)
+                    }
                 }
             }
-            storeAddressByStoreID = addressMap
-        } catch {
-            // Keep existing mapping if store fallback lookup fails.
+
+            for await (storeID, address) in group {
+                if let address {
+                    addressMap[storeID] = address
+                }
+            }
         }
+        storeAddressByStoreID = addressMap
     }
 }
 

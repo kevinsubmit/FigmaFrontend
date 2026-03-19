@@ -466,6 +466,21 @@ actor CachedImagePipeline {
         return image
     }
 
+    func prefetch(urls: [URL], scale: CGFloat, limit: Int = 12) async {
+        guard limit > 0 else { return }
+
+        var seen: Set<URL> = []
+        var warmedCount = 0
+        for url in urls {
+            guard seen.insert(url).inserted else { continue }
+            _ = await image(for: url, scale: scale)
+            warmedCount += 1
+            if warmedCount >= limit {
+                break
+            }
+        }
+    }
+
     private static func fetchImage(url: URL, session: URLSession, maxPixelSize: CGFloat) async -> UIImage? {
         var request = URLRequest(url: url)
         request.cachePolicy = .returnCacheDataElseLoad
@@ -540,6 +555,41 @@ struct CachedAsyncImage<Content: View>: View {
             if Task.isCancelled { return }
             phase = .failure(URLError(.badServerResponse))
         }
+    }
+}
+
+struct ImagePrefetcher: View {
+    let urls: [URL?]
+    let limit: Int
+
+    @Environment(\.displayScale) private var displayScale
+
+    init(urls: [URL?], limit: Int = 12) {
+        self.urls = urls
+        self.limit = limit
+    }
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .task(id: cacheKey) {
+                await CachedImagePipeline.shared.prefetch(
+                    urls: normalizedURLs,
+                    scale: displayScale,
+                    limit: limit
+                )
+            }
+    }
+
+    private var normalizedURLs: [URL] {
+        urls.compactMap { $0 }
+    }
+
+    private var cacheKey: String {
+        normalizedURLs
+            .prefix(limit)
+            .map(\.absoluteString)
+            .joined(separator: "|")
     }
 }
 

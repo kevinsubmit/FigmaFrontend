@@ -2,6 +2,7 @@ import SwiftUI
 
 struct StoresListView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.displayScale) private var displayScale
     @EnvironmentObject private var appState: AppState
 
     private enum StoreSortOption: String, CaseIterable, Identifiable {
@@ -47,7 +48,7 @@ struct StoresListView: View {
                                     .stroke(brandGold.opacity(UITheme.cardStrokeOpacity), lineWidth: 1)
                             )
                     } else {
-                        ForEach(displayStores) { store in
+                        ForEach(Array(displayStores.enumerated()), id: \.element.id) { index, store in
                             NavigationLink {
                                 StoreDetailView(storeID: store.id)
                                     .toolbar(.hidden, for: .tabBar)
@@ -56,12 +57,22 @@ struct StoresListView: View {
                             }
                             .buttonStyle(.plain)
                             .onAppear {
+                                let visibleStores = displayStores
                                 Task {
                                     async let imageTask: Void = viewModel.loadStoreImagesIfNeeded(storeID: store.id)
                                     async let ratingTask: Void = viewModel.loadStoreRatingIfNeeded(storeID: store.id)
-                                    _ = await (imageTask, ratingTask)
+                                    async let prefetchTask: Void = prefetchStoreImages(around: index, within: visibleStores)
+                                    async let loadMoreTask: Void = loadMoreStoresIfNeeded(currentIndex: index, within: visibleStores)
+                                    _ = await (imageTask, ratingTask, prefetchTask, loadMoreTask)
                                 }
                             }
+                        }
+
+                        if viewModel.isLoadingMore {
+                            ProgressView()
+                                .tint(brandGold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, UITheme.spacing12)
                         }
                     }
                 }
@@ -71,6 +82,12 @@ struct StoresListView: View {
             }
         }
         .background(Color.black)
+        .background(
+            ImagePrefetcher(
+                urls: prefetchStoreImagesForInitialViewport(),
+                limit: 12
+            )
+        )
         .toolbar(.hidden, for: .navigationBar)
         .toolbar(effectiveHideTabBar ? .hidden : .automatic, for: .tabBar)
         .tint(brandGold)
@@ -94,13 +111,13 @@ struct StoresListView: View {
             }
         }
         .task(id: storesRequestKey) {
-            await loadStoresForCurrentContext()
+            await loadStoresForCurrentContext(force: false)
         }
         .refreshable {
             if selectedSort == .distance {
                 await ensureLocationForDistanceSort()
             }
-            await loadStoresForCurrentContext()
+            await loadStoresForCurrentContext(force: true)
         }
         .onChange(of: selectedSort) { newValue in
             guard newValue == .distance else { return }
@@ -206,8 +223,27 @@ struct StoresListView: View {
         }
     }
 
-    private func loadStoresForCurrentContext() async {
-        await viewModel.loadStores(
+    private func loadStoresForCurrentContext(force: Bool) async {
+        if force {
+            await viewModel.loadStores(
+                sortBy: apiSortValue(),
+                userLat: userLocation?.latitude,
+                userLng: userLocation?.longitude,
+                force: true
+            )
+        } else {
+            await viewModel.loadStoresIfNeeded(
+                sortBy: apiSortValue(),
+                userLat: userLocation?.latitude,
+                userLng: userLocation?.longitude
+            )
+        }
+    }
+
+    private func loadMoreStoresIfNeeded(currentIndex: Int, within stores: [StoreDTO]) async {
+        let thresholdIndex = max(stores.count - 4, 0)
+        guard currentIndex >= thresholdIndex else { return }
+        await viewModel.loadMore(
             sortBy: apiSortValue(),
             userLat: userLocation?.latitude,
             userLng: userLocation?.longitude
@@ -504,6 +540,25 @@ struct StoresListView: View {
 
     private func styleReferenceImageURL(_ styleReference: BookingStyleReference) -> URL? {
         AssetURLResolver.resolveURL(from: styleReference.imageURL)
+    }
+
+    private func prefetchStoreImagesForInitialViewport() -> [URL?] {
+        Array(displayStores.prefix(4)).flatMap { store in
+            Array(storeCardImageURLs(for: store).prefix(3)).map(Optional.some)
+        }
+    }
+
+    private func prefetchStoreImages(around currentIndex: Int, within stores: [StoreDTO]) async {
+        guard !stores.isEmpty else { return }
+        let upperBound = min(currentIndex + 4, stores.count)
+        let urls = stores[currentIndex..<upperBound].flatMap { store in
+            Array(storeCardImageURLs(for: store).prefix(3))
+        }
+        await CachedImagePipeline.shared.prefetch(
+            urls: urls,
+            scale: displayScale,
+            limit: 12
+        )
     }
 }
 

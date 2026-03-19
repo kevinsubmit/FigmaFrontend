@@ -28,8 +28,18 @@ struct MyReviewsView: View {
                         )
                         .padding(.top, UITheme.spacing20)
                     } else {
-                        ForEach(viewModel.items) { item in
+                        ForEach(Array(viewModel.items.enumerated()), id: \.element.id) { index, item in
                             reviewItem(item)
+                                .onAppear {
+                                    Task { await loadMoreReviewsIfNeeded(currentIndex: index) }
+                                }
+                        }
+
+                        if viewModel.isLoadingMore {
+                            ProgressView()
+                                .tint(brandGold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, UITheme.spacing12)
                         }
                     }
                 }
@@ -42,7 +52,7 @@ struct MyReviewsView: View {
         .toolbar(.hidden, for: .tabBar)
         .tint(brandGold)
         .background(Color.black)
-        .task { await reload() }
+        .task { await loadIfNeeded() }
         .refreshable { await reload() }
         .onChange(of: viewModel.errorMessage) { value in
             guard let value, !value.isEmpty else { return }
@@ -67,7 +77,19 @@ struct MyReviewsView: View {
 
     private func reload() async {
         guard let token = appState.requireAccessToken() else { return }
-        await viewModel.load(token: token)
+        await viewModel.load(token: token, force: true)
+    }
+
+    private func loadIfNeeded() async {
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadIfNeeded(token: token)
+    }
+
+    private func loadMoreReviewsIfNeeded(currentIndex: Int) async {
+        let thresholdIndex = max(viewModel.items.count - 3, 0)
+        guard currentIndex >= thresholdIndex else { return }
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadMore(token: token)
     }
 
     private func reviewItem(_ item: UserReviewDTO) -> some View {

@@ -7,32 +7,78 @@ private final class ReferAFriendViewModel: ObservableObject {
     @Published var stats: ReferralStatsDTO?
     @Published var referralList: [ReferralListItemDTO] = []
     @Published var isLoading = false
+    @Published var isLoadingMore = false
+    @Published var hasMore = true
     @Published var copied = false
     @Published var copyNotice: String?
     @Published var errorMessage: String?
 
     private let service = ProfileRewardsService()
+    private var didLoadOnce = false
+    private var listRequestToken = 0
+    private var referralOffset = 0
+    private let initialPageSize = 12
+    private let loadMorePageSize = 12
 
-    func load(token: String) async {
+    func loadIfNeeded(token: String) async {
+        guard !didLoadOnce else { return }
+        didLoadOnce = true
+        await load(token: token, force: false)
+    }
+
+    func load(token: String, force: Bool) async {
+        if force {
+            didLoadOnce = true
+        }
+        listRequestToken += 1
+        let currentRequestToken = listRequestToken
         isLoading = true
         defer { isLoading = false }
 
         do {
             async let codeTask = service.getReferralCode(token: token)
             async let statsTask = service.getReferralStats(token: token)
-            async let listTask = service.getReferralList(token: token, limit: 100)
+            async let listTask = service.getReferralList(token: token, skip: 0, limit: initialPageSize)
 
             let code = try await codeTask
             let stats = try await statsTask
             let list = try await listTask
+            guard currentRequestToken == listRequestToken else { return }
 
             referralCode = code.referral_code
             self.stats = stats
             referralList = list
+            referralOffset = list.count
+            hasMore = list.count == initialPageSize && !list.isEmpty
             errorMessage = nil
         } catch let err as APIError {
             errorMessage = mapError(err)
         } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func loadMore(token: String) async {
+        guard hasMore, !isLoading, !isLoadingMore else { return }
+        let currentRequestToken = listRequestToken
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+        do {
+            let rows = try await service.getReferralList(
+                token: token,
+                skip: referralOffset,
+                limit: loadMorePageSize
+            )
+            guard currentRequestToken == listRequestToken else { return }
+            referralList = mergeUniqueRows(existing: referralList, newRows: rows)
+            referralOffset += rows.count
+            hasMore = rows.count == loadMorePageSize && !rows.isEmpty
+            errorMessage = nil
+        } catch let err as APIError {
+            guard currentRequestToken == listRequestToken else { return }
+            errorMessage = mapError(err)
+        } catch {
+            guard currentRequestToken == listRequestToken else { return }
             errorMessage = error.localizedDescription
         }
     }
@@ -117,7 +163,7 @@ struct ReferAFriendView: View {
         .toolbar(.hidden, for: .tabBar)
         .background(Color.black)
         .tint(brandGold)
-        .task { await reload() }
+        .task { await loadIfNeeded() }
         .refreshable { await reload() }
         .onChange(of: viewModel.errorMessage) { value in
             guard let value, !value.isEmpty else { return }
@@ -135,7 +181,12 @@ struct ReferAFriendView: View {
 
     private func reload() async {
         guard let token = appState.requireAccessToken() else { return }
-        await viewModel.load(token: token)
+        await viewModel.load(token: token, force: true)
+    }
+
+    private func loadIfNeeded() async {
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadIfNeeded(token: token)
     }
 
     private var heroSection: some View {
@@ -301,8 +352,21 @@ struct ReferAFriendView: View {
                     .foregroundStyle(Color.white.opacity(0.52))
 
                 LazyVStack(spacing: UITheme.spacing8) {
-                    ForEach(viewModel.referralList) { item in
+                    ForEach(Array(viewModel.referralList.enumerated()), id: \.element.id) { index, item in
                         historyRow(item)
+                            .onAppear {
+                                Task {
+                                    await loadMoreReferralItemsIfNeeded(currentIndex: index)
+                                }
+                            }
+                    }
+
+                    if viewModel.isLoadingMore {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(brandGold)
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, UITheme.spacing8)
                     }
                 }
             }
@@ -359,5 +423,12 @@ struct ReferAFriendView: View {
             return formatted
         }
         return raw
+    }
+
+    private func loadMoreReferralItemsIfNeeded(currentIndex: Int) async {
+        let thresholdIndex = max(viewModel.referralList.count - 3, 0)
+        guard currentIndex >= thresholdIndex else { return }
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadMore(token: token)
     }
 }

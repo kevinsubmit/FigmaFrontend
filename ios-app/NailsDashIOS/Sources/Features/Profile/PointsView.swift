@@ -51,6 +51,16 @@ struct PointsView: View {
                             LazyVStack(spacing: 0) {
                                 ForEach(Array(viewModel.transactions.enumerated()), id: \.element.id) { index, item in
                                     historyRow(item: item, isLast: index == viewModel.transactions.count - 1)
+                                        .onAppear {
+                                            Task { await loadMoreTransactionsIfNeeded(currentIndex: index) }
+                                        }
+                                }
+
+                                if viewModel.isLoadingMoreTransactions {
+                                    ProgressView()
+                                        .tint(brandGold)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, UITheme.spacing12)
                                 }
                             }
                         }
@@ -80,7 +90,7 @@ struct PointsView: View {
         .toolbar(.hidden, for: .tabBar)
         .tint(brandGold)
         .background(Color.black)
-        .task { await reload() }
+        .task { await loadIfNeeded() }
         .refreshable { await reload() }
         .onChange(of: viewModel.errorMessage) { value in
             guard let value, !value.isEmpty else { return }
@@ -100,7 +110,12 @@ struct PointsView: View {
 
     private func reload() async {
         guard let token = appState.requireAccessToken() else { return }
-        await viewModel.load(token: token)
+        await viewModel.load(token: token, force: true)
+    }
+
+    private func loadIfNeeded() async {
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadIfNeeded(token: token)
     }
 
     private func canExchange(_ coupon: CouponTemplateDTO) -> Bool {
@@ -111,6 +126,13 @@ struct PointsView: View {
     private func doExchange(_ couponID: Int) async {
         guard let token = appState.requireAccessToken() else { return }
         await viewModel.exchange(token: token, couponID: couponID)
+    }
+
+    private func loadMoreTransactionsIfNeeded(currentIndex: Int) async {
+        let thresholdIndex = max(viewModel.transactions.count - 4, 0)
+        guard currentIndex >= thresholdIndex else { return }
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadMoreTransactions(token: token)
     }
 
     @ViewBuilder
@@ -365,4 +387,3 @@ struct PointsView: View {
         return normalized.localizedCapitalized
     }
 }
-

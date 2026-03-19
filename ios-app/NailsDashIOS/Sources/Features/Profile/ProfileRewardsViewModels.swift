@@ -1,4 +1,15 @@
 import SwiftUI
+
+func mergeUniqueRows<Row: Identifiable>(existing: [Row], newRows: [Row]) -> [Row] where Row.ID: Hashable {
+    guard !newRows.isEmpty else { return existing }
+    var merged = existing
+    var existingIDs = Set(existing.map(\.id))
+    for row in newRows where existingIDs.insert(row.id).inserted {
+        merged.append(row)
+    }
+    return merged
+}
+
 @MainActor
 final class PointsViewModel: ObservableObject {
     @Published var balance: PointsBalanceDTO?
@@ -7,24 +18,75 @@ final class PointsViewModel: ObservableObject {
     @Published var isRedeemingCouponID: Int?
     @Published var actionMessage: String?
     @Published var isLoading = false
+    @Published var isLoadingMoreTransactions = false
+    @Published var transactionsHasMore = true
     @Published var errorMessage: String?
 
     private let service = ProfileRewardsService()
+    private var didLoadOnce = false
+    private var transactionsRequestToken = 0
+    private var transactionsOffset = 0
+    private let initialTransactionPageSize = 20
+    private let loadMoreTransactionPageSize = 20
 
-    func load(token: String) async {
+    func loadIfNeeded(token: String) async {
+        guard !didLoadOnce else { return }
+        didLoadOnce = true
+        await load(token: token, force: false)
+    }
+
+    func load(token: String, force: Bool) async {
+        if force {
+            didLoadOnce = true
+        }
+        transactionsRequestToken += 1
+        let currentRequestToken = transactionsRequestToken
         isLoading = true
         defer { isLoading = false }
         do {
             async let b = service.getPointsBalance(token: token)
-            async let t = service.getPointTransactions(token: token, limit: 50)
             async let e = service.getExchangeableCoupons(token: token)
+            async let t = service.getPointTransactions(
+                token: token,
+                skip: 0,
+                limit: initialTransactionPageSize
+            )
             balance = try await b
-            transactions = try await t
             exchangeables = try await e
+            let loadedTransactions = try await t
+            guard currentRequestToken == transactionsRequestToken else { return }
+            transactions = loadedTransactions
+            transactionsOffset = loadedTransactions.count
+            transactionsHasMore = loadedTransactions.count == initialTransactionPageSize && !loadedTransactions.isEmpty
             errorMessage = nil
         } catch let err as APIError {
             errorMessage = mapError(err)
         } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func loadMoreTransactions(token: String) async {
+        guard transactionsHasMore, !isLoading, !isLoadingMoreTransactions else { return }
+        let currentRequestToken = transactionsRequestToken
+        isLoadingMoreTransactions = true
+        defer { isLoadingMoreTransactions = false }
+        do {
+            let rows = try await service.getPointTransactions(
+                token: token,
+                skip: transactionsOffset,
+                limit: loadMoreTransactionPageSize
+            )
+            guard currentRequestToken == transactionsRequestToken else { return }
+            transactions = mergeUniqueRows(existing: transactions, newRows: rows)
+            transactionsOffset += rows.count
+            transactionsHasMore = rows.count == loadMoreTransactionPageSize && !rows.isEmpty
+            errorMessage = nil
+        } catch let err as APIError {
+            guard currentRequestToken == transactionsRequestToken else { return }
+            errorMessage = mapError(err)
+        } catch {
+            guard currentRequestToken == transactionsRequestToken else { return }
             errorMessage = error.localizedDescription
         }
     }
@@ -35,7 +97,7 @@ final class PointsViewModel: ObservableObject {
         do {
             let redeemed = try await service.exchangeCoupon(token: token, couponID: couponID)
             actionMessage = "Exchanged: \(redeemed.coupon.name)"
-            await load(token: token)
+            await load(token: token, force: true)
         } catch let err as APIError {
             errorMessage = mapError(err)
         } catch {
@@ -49,19 +111,77 @@ final class CouponsViewModel: ObservableObject {
     @Published var selectedStatus: String = "available"
     @Published var coupons: [UserCouponDTO] = []
     @Published var isLoading = false
+    @Published var isLoadingMore = false
+    @Published var hasMore = true
     @Published var errorMessage: String?
 
     private let service = ProfileRewardsService()
+    private var didLoadOnce = false
+    private var requestToken = 0
+    private var offset = 0
+    private let initialPageSize = 12
+    private let loadMorePageSize = 12
 
-    func load(token: String) async {
-        isLoading = true
-        defer { isLoading = false }
+    func loadIfNeeded(token: String) async {
+        guard !didLoadOnce else { return }
+        didLoadOnce = true
+        await load(token: token, force: false)
+    }
+
+    func load(token: String, force: Bool) async {
+        await loadPage(token: token, reset: true, force: force)
+    }
+
+    func loadMore(token: String) async {
+        guard hasMore, !isLoading, !isLoadingMore else { return }
+        await loadPage(token: token, reset: false, force: false)
+    }
+
+    private func loadPage(token: String, reset: Bool, force: Bool) async {
+        let currentRequestToken: Int
+        if reset {
+            requestToken += 1
+            currentRequestToken = requestToken
+        } else {
+            currentRequestToken = requestToken
+        }
+
+        if force {
+            didLoadOnce = true
+        }
+
+        let requestedOffset = reset ? 0 : offset
+        let pageSize = reset ? initialPageSize : loadMorePageSize
+
+        if reset {
+            isLoading = true
+        } else {
+            isLoadingMore = true
+        }
+        defer {
+            if reset {
+                isLoading = false
+            } else {
+                isLoadingMore = false
+            }
+        }
         do {
-            coupons = try await service.getMyCoupons(token: token, status: selectedStatus, limit: 100)
+            let rows = try await service.getMyCoupons(
+                token: token,
+                status: selectedStatus,
+                skip: requestedOffset,
+                limit: pageSize
+            )
+            guard currentRequestToken == requestToken else { return }
+            coupons = reset ? rows : mergeUniqueRows(existing: coupons, newRows: rows)
+            offset = requestedOffset + rows.count
+            hasMore = rows.count == pageSize && !rows.isEmpty
             errorMessage = nil
         } catch let err as APIError {
+            guard currentRequestToken == requestToken else { return }
             errorMessage = mapError(err)
         } catch {
+            guard currentRequestToken == requestToken else { return }
             errorMessage = error.localizedDescription
         }
     }
@@ -71,6 +191,8 @@ final class CouponsViewModel: ObservableObject {
 final class GiftCardsViewModel: ObservableObject {
     @Published var cards: [GiftCardDTO] = []
     @Published var isLoading = false
+    @Published var isLoadingMore = false
+    @Published var hasMore = true
     @Published var isClaiming = false
     @Published var sendingCardID: Int?
     @Published var revokingCardID: Int?
@@ -78,16 +200,71 @@ final class GiftCardsViewModel: ObservableObject {
     @Published var actionMessage: String?
 
     private let service = ProfileRewardsService()
+    private var didLoadOnce = false
+    private var requestToken = 0
+    private var offset = 0
+    private let initialPageSize = 12
+    private let loadMorePageSize = 10
 
-    func load(token: String) async {
-        isLoading = true
-        defer { isLoading = false }
+    func loadIfNeeded(token: String) async {
+        guard !didLoadOnce else { return }
+        didLoadOnce = true
+        await load(token: token, force: false)
+    }
+
+    func load(token: String, force: Bool) async {
+        await loadPage(token: token, reset: true, force: force)
+    }
+
+    func loadMore(token: String) async {
+        guard hasMore, !isLoading, !isLoadingMore else { return }
+        await loadPage(token: token, reset: false, force: false)
+    }
+
+    private func loadPage(token: String, reset: Bool, force: Bool) async {
+        let currentRequestToken: Int
+        if reset {
+            requestToken += 1
+            currentRequestToken = requestToken
+        } else {
+            currentRequestToken = requestToken
+        }
+
+        if force {
+            didLoadOnce = true
+        }
+
+        let requestedOffset = reset ? 0 : offset
+        let pageSize = reset ? initialPageSize : loadMorePageSize
+
+        if reset {
+            isLoading = true
+        } else {
+            isLoadingMore = true
+        }
+        defer {
+            if reset {
+                isLoading = false
+            } else {
+                isLoadingMore = false
+            }
+        }
         do {
-            cards = try await service.getMyGiftCards(token: token, limit: 100)
+            let rows = try await service.getMyGiftCards(
+                token: token,
+                skip: requestedOffset,
+                limit: pageSize
+            )
+            guard currentRequestToken == requestToken else { return }
+            cards = reset ? rows : mergeUniqueRows(existing: cards, newRows: rows)
+            offset = requestedOffset + rows.count
+            hasMore = rows.count == pageSize && !rows.isEmpty
             errorMessage = nil
         } catch let err as APIError {
+            guard currentRequestToken == requestToken else { return }
             errorMessage = mapError(err)
         } catch {
+            guard currentRequestToken == requestToken else { return }
             errorMessage = error.localizedDescription
         }
     }
@@ -183,10 +360,17 @@ final class GiftCardsViewModel: ObservableObject {
 final class OrderHistoryViewModel: ObservableObject {
     @Published var items: [AppointmentDTO] = []
     @Published var isLoading = false
+    @Published var isLoadingMore = false
+    @Published var hasMore = true
     @Published var errorMessage: String?
 
     private let appointmentsService: AppointmentsServiceProtocol
     private let rewardsService: ProfileRewardsService
+    private var didLoadOnce = false
+    private var requestToken = 0
+    private var offset = 0
+    private let initialPageSize = 20
+    private let loadMorePageSize = 20
 
     init(
         appointmentsService: AppointmentsServiceProtocol = AppointmentsService(),
@@ -196,20 +380,69 @@ final class OrderHistoryViewModel: ObservableObject {
         self.rewardsService = rewardsService
     }
 
-    func load(token: String) async {
-        isLoading = true
-        defer { isLoading = false }
+    func loadIfNeeded(token: String) async {
+        guard !didLoadOnce else { return }
+        didLoadOnce = true
+        await load(token: token, force: false)
+    }
+
+    func load(token: String, force: Bool) async {
+        await loadPage(token: token, reset: true, force: force)
+    }
+
+    func loadMore(token: String) async {
+        guard hasMore, !isLoading, !isLoadingMore else { return }
+        await loadPage(token: token, reset: false, force: false)
+    }
+
+    private func loadPage(token: String, reset: Bool, force: Bool) async {
+        let currentRequestToken: Int
+        if reset {
+            requestToken += 1
+            currentRequestToken = requestToken
+        } else {
+            currentRequestToken = requestToken
+        }
+
+        if force {
+            didLoadOnce = true
+        }
+
+        let requestedOffset = reset ? 0 : offset
+        let pageSize = reset ? initialPageSize : loadMorePageSize
+
+        if reset {
+            isLoading = true
+        } else {
+            isLoadingMore = true
+        }
+        defer {
+            if reset {
+                isLoading = false
+            } else {
+                isLoadingMore = false
+            }
+        }
         do {
-            let rows = try await appointmentsService.getMyAppointments(token: token, limit: 100)
-            items = rows
-                .filter { $0.status.lowercased() == "completed" }
-                .sorted { lhs, rhs in
-                    appointmentDateTime(lhs) > appointmentDateTime(rhs)
-                }
+            let rows = try await appointmentsService.getMyAppointments(
+                token: token,
+                skip: requestedOffset,
+                limit: pageSize
+            )
+            guard currentRequestToken == requestToken else { return }
+            let completedRows = rows.filter { $0.status.lowercased() == "completed" }
+            let mergedRows = reset ? completedRows : mergeUniqueRows(existing: items, newRows: completedRows)
+            items = mergedRows.sorted { lhs, rhs in
+                appointmentDateTime(lhs) > appointmentDateTime(rhs)
+            }
+            offset = requestedOffset + rows.count
+            hasMore = rows.count == pageSize && !rows.isEmpty
             errorMessage = nil
         } catch let err as APIError {
+            guard currentRequestToken == requestToken else { return }
             errorMessage = mapError(err)
         } catch {
+            guard currentRequestToken == requestToken else { return }
             errorMessage = error.localizedDescription
         }
     }
@@ -249,26 +482,83 @@ final class MyReviewsViewModel: ObservableObject {
     @Published var deletingReviewID: Int?
     @Published var updatingReviewID: Int?
     @Published var isLoading = false
+    @Published var isLoadingMore = false
+    @Published var hasMore = true
     @Published var errorMessage: String?
     @Published var actionMessage: String?
 
     private let service = ProfileRewardsService()
     private let storesService: StoresServiceProtocol
+    private var didLoadOnce = false
+    private var requestToken = 0
+    private var offset = 0
+    private let initialPageSize = 12
+    private let loadMorePageSize = 12
 
     init(storesService: StoresServiceProtocol = StoresService()) {
         self.storesService = storesService
     }
 
-    func load(token: String) async {
-        isLoading = true
-        defer { isLoading = false }
+    func loadIfNeeded(token: String) async {
+        guard !didLoadOnce else { return }
+        didLoadOnce = true
+        await load(token: token, force: false)
+    }
+
+    func load(token: String, force: Bool) async {
+        await loadPage(token: token, reset: true, force: force)
+    }
+
+    func loadMore(token: String) async {
+        guard hasMore, !isLoading, !isLoadingMore else { return }
+        await loadPage(token: token, reset: false, force: false)
+    }
+
+    private func loadPage(token: String, reset: Bool, force: Bool) async {
+        let currentRequestToken: Int
+        if reset {
+            requestToken += 1
+            currentRequestToken = requestToken
+        } else {
+            currentRequestToken = requestToken
+        }
+
+        if force {
+            didLoadOnce = true
+        }
+
+        let requestedOffset = reset ? 0 : offset
+        let pageSize = reset ? initialPageSize : loadMorePageSize
+
+        if reset {
+            isLoading = true
+        } else {
+            isLoadingMore = true
+        }
+        defer {
+            if reset {
+                isLoading = false
+            } else {
+                isLoadingMore = false
+            }
+        }
         do {
-            items = try await service.getMyReviews(token: token, limit: 100)
+            let rows = try await service.getMyReviews(
+                token: token,
+                skip: requestedOffset,
+                limit: pageSize
+            )
+            guard currentRequestToken == requestToken else { return }
+            items = reset ? rows : mergeUniqueRows(existing: items, newRows: rows)
+            offset = requestedOffset + rows.count
+            hasMore = rows.count == pageSize && !rows.isEmpty
             await refreshStoreNameMap()
             errorMessage = nil
         } catch let err as APIError {
+            guard currentRequestToken == requestToken else { return }
             errorMessage = mapError(err)
         } catch {
+            guard currentRequestToken == requestToken else { return }
             errorMessage = error.localizedDescription
         }
     }
@@ -372,25 +662,126 @@ final class MyFavoritesViewModel: ObservableObject {
     @Published var deletingPinID: Int?
     @Published var deletingStoreID: Int?
     @Published var isLoading = false
+    @Published var isLoadingMorePins = false
+    @Published var isLoadingMoreStores = false
+    @Published var favoritePinsHasMore = true
+    @Published var favoriteStoresHasMore = true
     @Published var errorMessage: String?
     @Published var actionMessage: String?
 
     private let service = ProfileRewardsService()
+    private var didLoadOnce = false
+    private var pinsRequestToken = 0
+    private var storesRequestToken = 0
+    private var favoritePinsOffset = 0
+    private var favoriteStoresOffset = 0
+    private let initialPinsPageSize = 12
+    private let loadMorePinsPageSize = 10
+    private let initialStoresPageSize = 8
+    private let loadMoreStoresPageSize = 8
 
-    func load(token: String) async {
+    func loadIfNeeded(token: String) async {
+        guard !didLoadOnce else { return }
+        didLoadOnce = true
+        await load(token: token, force: false)
+    }
+
+    func load(token: String, force: Bool) async {
+        if force {
+            didLoadOnce = true
+        }
+        pinsRequestToken += 1
+        storesRequestToken += 1
+        let currentPinsRequestToken = pinsRequestToken
+        let currentStoresRequestToken = storesRequestToken
         isLoading = true
         defer { isLoading = false }
         do {
-            async let pinsTask = service.getMyFavoritePins(token: token, limit: 100)
-            async let storesTask = service.getMyFavoriteStores(token: token, limit: 100)
-            favoritePins = try await pinsTask
+            async let pinsTask = service.getMyFavoritePins(
+                token: token,
+                skip: 0,
+                limit: initialPinsPageSize
+            )
+            async let storesTask = service.getMyFavoriteStores(
+                token: token,
+                skip: 0,
+                limit: initialStoresPageSize
+            )
+            let pins = try await pinsTask
             let stores = try await storesTask
+            guard currentPinsRequestToken == pinsRequestToken else { return }
+            guard currentStoresRequestToken == storesRequestToken else { return }
+
+            favoritePins = pins
+            favoritePinsOffset = pins.count
+            favoritePinsHasMore = pins.count == initialPinsPageSize && !pins.isEmpty
             favoriteStores = stores
+            favoriteStoresOffset = stores.count
+            favoriteStoresHasMore = stores.count == initialStoresPageSize && !stores.isEmpty
             favoriteStoreImageURLByID = await resolveFavoriteStoreImageURLs(stores: stores)
             errorMessage = nil
         } catch let err as APIError {
             errorMessage = mapError(err)
         } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func loadMorePins(token: String) async {
+        guard favoritePinsHasMore, !isLoading, !isLoadingMorePins else { return }
+        let currentRequestToken = pinsRequestToken
+        isLoadingMorePins = true
+        defer { isLoadingMorePins = false }
+        do {
+            let rows = try await service.getMyFavoritePins(
+                token: token,
+                skip: favoritePinsOffset,
+                limit: loadMorePinsPageSize
+            )
+            guard currentRequestToken == pinsRequestToken else { return }
+            favoritePins = mergeUniqueRows(existing: favoritePins, newRows: rows)
+            favoritePinsOffset += rows.count
+            favoritePinsHasMore = rows.count == loadMorePinsPageSize && !rows.isEmpty
+            errorMessage = nil
+        } catch let err as APIError {
+            guard currentRequestToken == pinsRequestToken else { return }
+            errorMessage = mapError(err)
+        } catch {
+            guard currentRequestToken == pinsRequestToken else { return }
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func loadMoreStores(token: String) async {
+        guard favoriteStoresHasMore, !isLoading, !isLoadingMoreStores else { return }
+        let currentRequestToken = storesRequestToken
+        isLoadingMoreStores = true
+        defer { isLoadingMoreStores = false }
+        do {
+            let rows = try await service.getMyFavoriteStores(
+                token: token,
+                skip: favoriteStoresOffset,
+                limit: loadMoreStoresPageSize
+            )
+            guard currentRequestToken == storesRequestToken else { return }
+            let existingStoreIDs = Set(favoriteStores.map(\.id))
+            favoriteStores = mergeUniqueRows(existing: favoriteStores, newRows: rows)
+            favoriteStoresOffset += rows.count
+            favoriteStoresHasMore = rows.count == loadMoreStoresPageSize && !rows.isEmpty
+
+            let newStores = rows.filter { !existingStoreIDs.contains($0.id) }
+            if !newStores.isEmpty {
+                let resolvedImages = await resolveFavoriteStoreImageURLs(stores: newStores)
+                for (storeID, imageURL) in resolvedImages {
+                    favoriteStoreImageURLByID[storeID] = imageURL
+                }
+            }
+            errorMessage = nil
+        } catch let err as APIError {
+            guard currentRequestToken == storesRequestToken else { return }
+            errorMessage = mapError(err)
+        } catch {
+            guard currentRequestToken == storesRequestToken else { return }
             errorMessage = error.localizedDescription
         }
     }

@@ -74,8 +74,18 @@ struct GiftCardsView: View {
                         .padding(.bottom, UITheme.spacing8)
                     } else {
                         LazyVStack(spacing: UITheme.spacing10) {
-                            ForEach(sortedCards) { card in
+                            ForEach(Array(sortedCards.enumerated()), id: \.element.id) { index, card in
                                 giftCardItem(card)
+                                    .onAppear {
+                                        Task { await loadMoreGiftCardsIfNeeded(currentIndex: index) }
+                                    }
+                            }
+
+                            if viewModel.isLoadingMore {
+                                ProgressView()
+                                    .tint(brandGold)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, UITheme.spacing12)
                             }
                         }
                         .padding(.horizontal, UITheme.spacing1)
@@ -94,7 +104,7 @@ struct GiftCardsView: View {
         .toolbar(.hidden, for: .tabBar)
         .tint(brandGold)
         .background(Color.black)
-        .task { await reload() }
+        .task { await loadIfNeeded() }
         .refreshable { await reload() }
         .onChange(of: viewModel.errorMessage) { value in
             guard let value, !value.isEmpty else { return }
@@ -126,7 +136,19 @@ struct GiftCardsView: View {
 
     private func reload() async {
         guard let token = appState.requireAccessToken() else { return }
-        await viewModel.load(token: token)
+        await viewModel.load(token: token, force: true)
+    }
+
+    private func loadIfNeeded() async {
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadIfNeeded(token: token)
+    }
+
+    private func loadMoreGiftCardsIfNeeded(currentIndex: Int) async {
+        let thresholdIndex = max(sortedCards.count - 3, 0)
+        guard currentIndex >= thresholdIndex else { return }
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadMore(token: token)
     }
 
     private var sortedCards: [GiftCardDTO] {
@@ -722,4 +744,3 @@ struct GiftCardsView: View {
         )
     }
 }
-

@@ -32,8 +32,18 @@ struct CouponsView: View {
                         .padding(.bottom, UITheme.spacing10)
                     } else {
                         LazyVStack(spacing: UITheme.spacing14) {
-                            ForEach(viewModel.coupons) { item in
+                            ForEach(Array(viewModel.coupons.enumerated()), id: \.element.id) { index, item in
                                 couponTicketCard(item)
+                                    .onAppear {
+                                        Task { await loadMoreCouponsIfNeeded(currentIndex: index) }
+                                    }
+                            }
+
+                            if viewModel.isLoadingMore {
+                                ProgressView()
+                                    .tint(brandGold)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, UITheme.spacing12)
                             }
                         }
                         .padding(.horizontal, UITheme.spacing1)
@@ -48,7 +58,7 @@ struct CouponsView: View {
         .toolbar(.hidden, for: .tabBar)
         .tint(brandGold)
         .background(Color.black)
-        .task { await reload() }
+        .task { await loadIfNeeded() }
         .refreshable { await reload() }
         .onChange(of: viewModel.selectedStatus) { _ in
             Task { await reload() }
@@ -106,7 +116,19 @@ struct CouponsView: View {
 
     private func reload() async {
         guard let token = appState.requireAccessToken() else { return }
-        await viewModel.load(token: token)
+        await viewModel.load(token: token, force: true)
+    }
+
+    private func loadIfNeeded() async {
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadIfNeeded(token: token)
+    }
+
+    private func loadMoreCouponsIfNeeded(currentIndex: Int) async {
+        let thresholdIndex = max(viewModel.coupons.count - 3, 0)
+        guard currentIndex >= thresholdIndex else { return }
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadMore(token: token)
     }
 
     private func couponDiscount(_ coupon: CouponTemplateDTO) -> String {

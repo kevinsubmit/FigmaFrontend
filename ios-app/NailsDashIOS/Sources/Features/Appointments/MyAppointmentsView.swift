@@ -31,8 +31,21 @@ struct MyAppointmentsView: View {
                     if !viewModel.isLoading && filteredItems.isEmpty {
                         emptyState
                     } else {
-                        ForEach(filteredItems) { item in
+                        ForEach(Array(filteredItems.enumerated()), id: \.element.id) { index, item in
                             appointmentCard(item)
+                                .onAppear {
+                                    let visibleItems = filteredItems
+                                    Task {
+                                        await loadMoreAppointmentsIfNeeded(currentIndex: index, within: visibleItems)
+                                    }
+                                }
+                        }
+
+                        if viewModel.isLoadingMore {
+                            ProgressView()
+                                .tint(brandGold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, UITheme.spacing12)
                         }
                     }
                 }
@@ -46,10 +59,13 @@ struct MyAppointmentsView: View {
         .tint(brandGold)
         .background(Color.black)
         .task {
-            await reload()
+            await loadIfNeeded()
         }
         .refreshable {
             await reload()
+        }
+        .onChange(of: selectedSegment) { _ in
+            Task { await ensureContentForSelectedSegment() }
         }
         .onChange(of: viewModel.errorMessage) { value in
             guard let value, !value.isEmpty else { return }
@@ -89,7 +105,14 @@ struct MyAppointmentsView: View {
 
     private func reload() async {
         guard let token = appState.requireAccessToken() else { return }
-        await viewModel.load(token: token)
+        await viewModel.load(token: token, force: true)
+        await ensureContentForSelectedSegment()
+    }
+
+    private func loadIfNeeded() async {
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadIfNeeded(token: token)
+        await ensureContentForSelectedSegment()
     }
 
     private func formattedDate(_ date: String) -> String {
@@ -441,6 +464,25 @@ struct MyAppointmentsView: View {
             return rawAddress
         }
         return nil
+    }
+
+    private func loadMoreAppointmentsIfNeeded(currentIndex: Int, within visibleItems: [AppointmentDTO]) async {
+        let thresholdIndex = max(visibleItems.count - 3, 0)
+        guard currentIndex >= thresholdIndex else { return }
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadMore(token: token)
+        await ensureContentForSelectedSegment()
+    }
+
+    private func ensureContentForSelectedSegment() async {
+        guard let token = appState.requireAccessToken() else { return }
+        while filteredItems.isEmpty && viewModel.hasMore && !viewModel.isLoading && !viewModel.isLoadingMore {
+            let beforeCount = viewModel.items.count
+            await viewModel.loadMore(token: token)
+            if viewModel.items.count == beforeCount {
+                break
+            }
+        }
     }
 
     private func appointmentCard(_ item: AppointmentDTO) -> some View {

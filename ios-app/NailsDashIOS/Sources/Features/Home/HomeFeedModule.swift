@@ -14,8 +14,22 @@ struct HomeFeedPinDTO: Decodable, Identifiable {
 }
 
 struct HomeFeedService {
+    private enum CacheTTL {
+        static let tags: TimeInterval = 300
+        static let pins: TimeInterval = 30
+        static let pinDetail: TimeInterval = 60
+        static let favoriteState: TimeInterval = 20
+    }
+
+    private static let tagsCache = TimedAsyncRequestCache<String, [String]>()
+    private static let pinsCache = TimedAsyncRequestCache<String, [HomeFeedPinDTO]>()
+    private static let pinDetailCache = TimedAsyncRequestCache<Int, HomeFeedPinDTO>()
+    private static let favoriteStateCache = TimedAsyncRequestCache<String, Bool>()
+
     func getTags() async throws -> [String] {
-        try await APIClient.shared.request(path: "/pins/tags")
+        try await Self.tagsCache.value(for: "pins/tags", ttl: CacheTTL.tags) {
+            try await APIClient.shared.request(path: "/pins/tags")
+        }
     }
 
     func getPins(skip: Int, limit: Int, tag: String?, search: String?) async throws -> [HomeFeedPinDTO] {
@@ -28,11 +42,16 @@ struct HomeFeedService {
             let encoded = search.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? search
             params.append("search=\(encoded)")
         }
-        return try await APIClient.shared.request(path: "/pins?\(params.joined(separator: "&"))")
+        let path = "/pins?\(params.joined(separator: "&"))"
+        return try await Self.pinsCache.value(for: path, ttl: CacheTTL.pins) {
+            try await APIClient.shared.request(path: path)
+        }
     }
 
     func getPinByID(_ pinID: Int) async throws -> HomeFeedPinDTO {
-        try await APIClient.shared.request(path: "/pins/\(pinID)")
+        try await Self.pinDetailCache.value(for: pinID, ttl: CacheTTL.pinDetail) {
+            try await APIClient.shared.request(path: "/pins/\(pinID)")
+        }
     }
 
     func checkFavorite(pinID: Int, token: String) async throws -> Bool {
@@ -40,11 +59,14 @@ struct HomeFeedService {
             let pin_id: Int
             let is_favorited: Bool
         }
-        let row: FavoriteStatusDTO = try await APIClient.shared.request(
-            path: "/pins/\(pinID)/is-favorited",
-            token: token
-        )
-        return row.is_favorited
+        let cacheKey = "\(token)|\(pinID)"
+        return try await Self.favoriteStateCache.value(for: cacheKey, ttl: CacheTTL.favoriteState) {
+            let row: FavoriteStatusDTO = try await APIClient.shared.request(
+                path: "/pins/\(pinID)/is-favorited",
+                token: token
+            )
+            return row.is_favorited
+        }
     }
 
     func setFavorite(pinID: Int, token: String, favorited: Bool) async throws {
@@ -61,6 +83,7 @@ struct HomeFeedService {
                 token: token
             )
         }
+        Self.favoriteStateCache.removeValue(for: "\(token)|\(pinID)")
     }
 }
 
@@ -81,6 +104,7 @@ private final class HomeFeedViewModel: ObservableObject {
     private let loadMorePageSize = 8
     private var offset = 0
     private var didLoadOnce = false
+    private var pinsRequestToken: Int = 0
 
     func loadIfNeeded() async {
         guard !didLoadOnce else { return }
@@ -136,6 +160,8 @@ private final class HomeFeedViewModel: ObservableObject {
     }
 
     private func loadPins(reset: Bool) async {
+        pinsRequestToken += 1
+        let requestToken = pinsRequestToken
         if reset {
             isLoading = true
             offset = 0
@@ -160,6 +186,7 @@ private final class HomeFeedViewModel: ObservableObject {
                 tag: tag,
                 search: searchQuery.isEmpty ? nil : searchQuery
             )
+            guard requestToken == pinsRequestToken else { return }
             if reset {
                 pins = rows
             } else {
@@ -169,9 +196,11 @@ private final class HomeFeedViewModel: ObservableObject {
             hasMore = rows.count == pageSize
             errorMessage = nil
         } catch let err as APIError {
+            guard requestToken == pinsRequestToken else { return }
             errorMessage = mapError(err)
             hasMore = false
         } catch {
+            guard requestToken == pinsRequestToken else { return }
             errorMessage = error.localizedDescription
             hasMore = false
         }
@@ -192,6 +221,7 @@ private final class HomeFeedViewModel: ObservableObject {
 }
 
 struct HomeFeedView: View {
+    @Environment(\.displayScale) private var displayScale
     @StateObject private var viewModel = HomeFeedViewModel()
     @State private var alertMessage: String = ""
     @State private var showAlert: Bool = false
@@ -225,7 +255,7 @@ struct HomeFeedView: View {
                     }
 
                     LazyVGrid(columns: gridColumns(itemWidth: itemWidth), alignment: .center, spacing: cardSpacing) {
-                        ForEach(viewModel.pins) { pin in
+                        ForEach(Array(viewModel.pins.enumerated()), id: \.element.id) { index, pin in
                             NavigationLink {
                                 HomeFeedPinDetailView(pin: pin)
                             } label: {
@@ -233,7 +263,12 @@ struct HomeFeedView: View {
                             }
                             .buttonStyle(.plain)
                             .onAppear {
-                                Task { await viewModel.loadMoreIfNeeded(current: pin) }
+                                let visiblePins = viewModel.pins
+                                Task {
+                                    async let prefetchTask: Void = prefetchPinImages(around: index, within: visiblePins)
+                                    async let loadMoreTask: Void = loadMorePinsIfNeeded(currentIndex: index, within: visiblePins)
+                                    _ = await (prefetchTask, loadMoreTask)
+                                }
                             }
                         }
                     }
@@ -264,6 +299,12 @@ struct HomeFeedView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .background(Color.black)
+        .background(
+            ImagePrefetcher(
+                urls: Array(viewModel.pins.prefix(12)).map(\.imageURL),
+                limit: 12
+            )
+        )
         .overlay {
             UnifiedLoadingOverlay(isLoading: viewModel.isLoading)
         }
@@ -400,6 +441,24 @@ struct HomeFeedView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
+    }
+
+    private func loadMorePinsIfNeeded(currentIndex: Int, within pins: [HomeFeedPinDTO]) async {
+        let thresholdIndex = max(pins.count - 4, 0)
+        guard currentIndex >= thresholdIndex else { return }
+        guard let triggerPin = pins.last else { return }
+        await viewModel.loadMoreIfNeeded(current: triggerPin)
+    }
+
+    private func prefetchPinImages(around currentIndex: Int, within pins: [HomeFeedPinDTO]) async {
+        guard !pins.isEmpty else { return }
+        let upperBound = min(currentIndex + 6, pins.count)
+        let urls = pins[currentIndex..<upperBound].compactMap(\.imageURL)
+        await CachedImagePipeline.shared.prefetch(
+            urls: urls,
+            scale: displayScale,
+            limit: 10
         )
     }
 }

@@ -31,39 +31,60 @@ private struct AppNotificationDTO: Decodable, Identifiable {
 }
 
 private struct NotificationsService {
-    func getNotifications(token: String, unreadOnly: Bool) async throws -> [AppNotificationDTO] {
-        var params = ["skip=0", "limit=100"]
+    private enum CacheTTL {
+        static let notifications: TimeInterval = 20
+        static let unreadCount: TimeInterval = 20
+        static let preferences: TimeInterval = 60
+    }
+
+    private static let notificationsCache = TimedAsyncRequestCache<String, [AppNotificationDTO]>()
+    private static let unreadCountCache = TimedAsyncRequestCache<String, Int>()
+    private static let preferencesCache = TimedAsyncRequestCache<String, NotificationPreferencesDTO>()
+
+    func getNotifications(token: String, unreadOnly: Bool, skip: Int = 0, limit: Int = 100) async throws -> [AppNotificationDTO] {
+        var params = ["skip=\(skip)", "limit=\(limit)"]
         if unreadOnly {
             params.append("unread_only=true")
         }
         let path = "/notifications/?\(params.joined(separator: "&"))"
-        return try await APIClient.shared.request(path: path, token: token)
+        let cacheKey = "\(token)|\(unreadOnly)|\(skip)|\(limit)"
+        return try await Self.notificationsCache.value(for: cacheKey, ttl: CacheTTL.notifications) {
+            try await APIClient.shared.request(path: path, token: token)
+        }
     }
 
     func getUnreadCount(token: String) async throws -> Int {
-        let payload: UnreadCountDTO = try await APIClient.shared.request(path: "/notifications/stats/unread-count", token: token)
-        return payload.unread_count
+        try await Self.unreadCountCache.value(for: token, ttl: CacheTTL.unreadCount) {
+            let payload: UnreadCountDTO = try await APIClient.shared.request(path: "/notifications/stats/unread-count", token: token)
+            return payload.unread_count
+        }
     }
 
     func getNotificationPreferences(token: String) async throws -> NotificationPreferencesDTO {
-        try await APIClient.shared.request(path: "/notifications/settings/preferences", token: token)
+        try await Self.preferencesCache.value(for: token, ttl: CacheTTL.preferences) {
+            try await APIClient.shared.request(path: "/notifications/settings/preferences", token: token)
+        }
     }
 
     func updateNotificationPreferences(pushEnabled: Bool, token: String) async throws -> NotificationPreferencesDTO {
-        try await APIClient.shared.request(
+        let updated: NotificationPreferencesDTO = try await APIClient.shared.request(
             path: "/notifications/settings/preferences",
             method: "PUT",
             token: token,
             body: NotificationPreferencesUpdateRequest(push_enabled: pushEnabled)
         )
+        Self.preferencesCache.removeValue(for: token)
+        return updated
     }
 
     func markAsRead(notificationID: Int, token: String) async throws -> AppNotificationDTO {
-        try await APIClient.shared.request(
+        let updated: AppNotificationDTO = try await APIClient.shared.request(
             path: "/notifications/\(notificationID)/read",
             method: "PATCH",
             token: token
         )
+        Self.invalidateNotificationCaches(for: token)
+        return updated
     }
 
     func deleteNotification(notificationID: Int, token: String) async throws {
@@ -72,6 +93,14 @@ private struct NotificationsService {
             method: "DELETE",
             token: token
         )
+        Self.invalidateNotificationCaches(for: token)
+    }
+
+    private static func invalidateNotificationCaches(for token: String) {
+        notificationsCache.removeValues { key in
+            key.hasPrefix("\(token)|")
+        }
+        unreadCountCache.removeValue(for: token)
     }
 }
 
@@ -83,39 +112,36 @@ private final class NotificationsViewModel: ObservableObject {
     @Published var pushEnabled: Bool = true
     @Published var isUpdatingPushPreference = false
     @Published var isLoading = false
+    @Published var isLoadingMore = false
+    @Published var hasMore = true
     @Published var errorMessage: String?
 
     private let service = NotificationsService()
+    private var didLoadOnce = false
+    private var requestToken: Int = 0
+    private var offset = 0
+    private let initialPageSize = 20
+    private let loadMorePageSize = 20
 
-    func load(token: String) async {
-        isLoading = true
-        defer { isLoading = false }
+    func loadIfNeeded(token: String) async {
+        guard !didLoadOnce else { return }
+        didLoadOnce = true
+        await load(token: token, force: false)
+    }
 
-        do {
-            async let notificationsTask = service.getNotifications(token: token, unreadOnly: selectedFilter.unreadOnly)
-            async let unreadTask = service.getUnreadCount(token: token)
-            async let preferenceTask = service.getNotificationPreferences(token: token)
-            let notifications = try await notificationsTask
-            let unread = try await unreadTask
-            let preference = try await preferenceTask
+    func load(token: String, force: Bool) async {
+        await loadPage(token: token, reset: true, force: force)
+    }
 
-            items = notifications
-            unreadCount = unread
-            pushEnabled = preference.push_enabled
-            PushNotificationManager.shared.setPushPreferenceEnabled(pushEnabled)
-            syncAppBadgeCount()
-            errorMessage = nil
-        } catch let err as APIError {
-            setAPIErrorIfNeeded(err)
-        } catch {
-            setUnexpectedErrorIfNeeded(error)
-        }
+    func loadMore(token: String) async {
+        guard hasMore, !isLoading, !isLoadingMore else { return }
+        await loadPage(token: token, reset: false, force: false)
     }
 
     func selectFilter(_ filter: NotificationsFilter, token: String) async {
         guard filter != selectedFilter else { return }
         selectedFilter = filter
-        await load(token: token)
+        await load(token: token, force: false)
     }
 
     func markAsRead(notificationID: Int, token: String) async {
@@ -132,6 +158,7 @@ private final class NotificationsViewModel: ObservableObject {
             unreadCount = max(unreadCount - 1, 0)
             syncAppBadgeCount()
             errorMessage = nil
+            await backfillIfNeeded(token: token)
         } catch let err as APIError {
             setAPIErrorIfNeeded(err)
         } catch {
@@ -150,6 +177,7 @@ private final class NotificationsViewModel: ObservableObject {
             }
             syncAppBadgeCount()
             errorMessage = nil
+            await backfillIfNeeded(token: token)
         } catch let err as APIError {
             setAPIErrorIfNeeded(err)
         } catch {
@@ -212,6 +240,83 @@ private final class NotificationsViewModel: ObservableObject {
     private func syncAppBadgeCount() {
         PushNotificationManager.shared.setAppBadge(pushEnabled ? unreadCount : 0)
     }
+
+    private func loadPage(token: String, reset: Bool, force: Bool) async {
+        let currentRequestToken: Int
+        if reset {
+            requestToken += 1
+            currentRequestToken = requestToken
+        } else {
+            currentRequestToken = requestToken
+        }
+
+        if force {
+            didLoadOnce = true
+        }
+
+        let requestedOffset = reset ? 0 : offset
+        let pageSize = reset ? initialPageSize : loadMorePageSize
+
+        if reset {
+            isLoading = true
+        } else {
+            isLoadingMore = true
+        }
+        defer {
+            if reset {
+                isLoading = false
+            } else {
+                isLoadingMore = false
+            }
+        }
+
+        do {
+            async let notificationsTask = service.getNotifications(
+                token: token,
+                unreadOnly: selectedFilter.unreadOnly,
+                skip: requestedOffset,
+                limit: pageSize
+            )
+
+            let unreadTask: Int?
+            let preferenceTask: NotificationPreferencesDTO?
+            if reset {
+                unreadTask = try await service.getUnreadCount(token: token)
+                preferenceTask = try await service.getNotificationPreferences(token: token)
+            } else {
+                unreadTask = nil
+                preferenceTask = nil
+            }
+
+            let notifications = try await notificationsTask
+            guard currentRequestToken == requestToken else { return }
+
+            items = reset ? notifications : mergeUniqueRows(existing: items, newRows: notifications)
+            offset = requestedOffset + notifications.count
+            hasMore = notifications.count == pageSize && !notifications.isEmpty
+
+            if let unreadTask {
+                unreadCount = unreadTask
+            }
+            if let preferenceTask {
+                pushEnabled = preferenceTask.push_enabled
+                PushNotificationManager.shared.setPushPreferenceEnabled(pushEnabled)
+            }
+            syncAppBadgeCount()
+            errorMessage = nil
+        } catch let err as APIError {
+            guard currentRequestToken == requestToken else { return }
+            setAPIErrorIfNeeded(err)
+        } catch {
+            guard currentRequestToken == requestToken else { return }
+            setUnexpectedErrorIfNeeded(error)
+        }
+    }
+
+    private func backfillIfNeeded(token: String) async {
+        guard items.isEmpty, hasMore else { return }
+        await loadMore(token: token)
+    }
 }
 
 struct NotificationsView: View {
@@ -233,7 +338,7 @@ struct NotificationsView: View {
         .toolbar(.hidden, for: .tabBar)
         .background(Color.black)
         .tint(brandGold)
-        .task { await reload() }
+        .task { await loadIfNeeded() }
         .onChange(of: viewModel.errorMessage) { value in
             guard let value, !value.isEmpty else { return }
             alertMessage = value
@@ -247,7 +352,12 @@ struct NotificationsView: View {
 
     private func reload() async {
         guard let token = appState.requireAccessToken() else { return }
-        await viewModel.load(token: token)
+        await viewModel.load(token: token, force: true)
+    }
+
+    private func loadIfNeeded() async {
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadIfNeeded(token: token)
     }
 
     private var topBar: some View {
@@ -390,8 +500,21 @@ struct NotificationsView: View {
                     .padding(.top, UITheme.spacing20)
                 } else {
                     LazyVStack(alignment: .leading, spacing: UITheme.spacing10) {
-                        ForEach(viewModel.items) { item in
+                        ForEach(Array(viewModel.items.enumerated()), id: \.element.id) { index, item in
                             notificationCard(item)
+                                .onAppear {
+                                    Task {
+                                        await loadMoreNotificationsIfNeeded(currentIndex: index)
+                                    }
+                                }
+                        }
+
+                        if viewModel.isLoadingMore {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                                .tint(brandGold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.top, UITheme.spacing8)
                         }
                     }
                 }
@@ -521,6 +644,13 @@ struct NotificationsView: View {
         if hours < 24 { return "\(hours)h ago" }
         if days < 7 { return "\(days)d ago" }
         return HomeDateFormatterCache.monthDayFormatter.string(from: date)
+    }
+
+    private func loadMoreNotificationsIfNeeded(currentIndex: Int) async {
+        let thresholdIndex = max(viewModel.items.count - 3, 0)
+        guard currentIndex >= thresholdIndex else { return }
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadMore(token: token)
     }
 
 }

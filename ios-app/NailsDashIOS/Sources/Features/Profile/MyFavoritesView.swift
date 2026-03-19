@@ -1,6 +1,7 @@
 import SwiftUI
 struct MyFavoritesView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.displayScale) private var displayScale
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = MyFavoritesViewModel()
     @State private var alertMessage: String = ""
@@ -57,9 +58,23 @@ struct MyFavoritesView: View {
                             VStack(alignment: .leading, spacing: UITheme.spacing10) {
                                 UnifiedSectionHeader(title: "FAVORITE DESIGNS")
                                 LazyVGrid(columns: favoritePinColumns, alignment: .center, spacing: cardSpacing) {
-                                    ForEach(viewModel.favoritePins) { pin in
+                                    ForEach(Array(viewModel.favoritePins.enumerated()), id: \.element.id) { index, pin in
                                         favoritePinCard(pin, itemWidth: favoritePinItemWidth)
+                                            .onAppear {
+                                                let visiblePins = viewModel.favoritePins
+                                                Task {
+                                                    async let prefetchTask: Void = prefetchFavoritePinImages(around: index, within: visiblePins)
+                                                    async let loadMoreTask: Void = loadMoreFavoritePinsIfNeeded(currentIndex: index)
+                                                    _ = await (prefetchTask, loadMoreTask)
+                                                }
+                                            }
                                     }
+                                }
+                                if viewModel.isLoadingMorePins {
+                                    ProgressView()
+                                        .tint(brandGold)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, UITheme.spacing12)
                                 }
                             }
                         }
@@ -68,9 +83,23 @@ struct MyFavoritesView: View {
                             VStack(alignment: .leading, spacing: UITheme.spacing10) {
                                 UnifiedSectionHeader(title: "FAVORITE SALONS")
                                 LazyVStack(spacing: UITheme.spacing10) {
-                                    ForEach(viewModel.favoriteStores) { store in
+                                    ForEach(Array(viewModel.favoriteStores.enumerated()), id: \.element.id) { index, store in
                                         favoriteStoreCard(store)
+                                            .onAppear {
+                                                let visibleStores = viewModel.favoriteStores
+                                                Task {
+                                                    async let prefetchTask: Void = prefetchFavoriteStoreImages(around: index, within: visibleStores)
+                                                    async let loadMoreTask: Void = loadMoreFavoriteStoresIfNeeded(currentIndex: index)
+                                                    _ = await (prefetchTask, loadMoreTask)
+                                                }
+                                            }
                                     }
+                                }
+                                if viewModel.isLoadingMoreStores {
+                                    ProgressView()
+                                        .tint(brandGold)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, UITheme.spacing12)
                                 }
                             }
                         }
@@ -85,7 +114,7 @@ struct MyFavoritesView: View {
         .toolbar(.hidden, for: .tabBar)
         .tint(brandGold)
         .background(Color.black)
-        .task { await reload() }
+        .task { await loadIfNeeded() }
         .refreshable { await reload() }
         .onChange(of: viewModel.errorMessage) { value in
             guard let value, !value.isEmpty else { return }
@@ -105,7 +134,48 @@ struct MyFavoritesView: View {
 
     private func reload() async {
         guard let token = appState.requireAccessToken() else { return }
-        await viewModel.load(token: token)
+        await viewModel.load(token: token, force: true)
+    }
+
+    private func loadIfNeeded() async {
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadIfNeeded(token: token)
+    }
+
+    private func loadMoreFavoritePinsIfNeeded(currentIndex: Int) async {
+        let thresholdIndex = max(viewModel.favoritePins.count - 4, 0)
+        guard currentIndex >= thresholdIndex else { return }
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadMorePins(token: token)
+    }
+
+    private func loadMoreFavoriteStoresIfNeeded(currentIndex: Int) async {
+        let thresholdIndex = max(viewModel.favoriteStores.count - 3, 0)
+        guard currentIndex >= thresholdIndex else { return }
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadMoreStores(token: token)
+    }
+
+    private func prefetchFavoritePinImages(around currentIndex: Int, within pins: [HomeFeedPinDTO]) async {
+        guard !pins.isEmpty else { return }
+        let upperBound = min(currentIndex + 6, pins.count)
+        let urls = pins[currentIndex..<upperBound].compactMap(\.imageURL)
+        await CachedImagePipeline.shared.prefetch(
+            urls: urls,
+            scale: displayScale,
+            limit: 10
+        )
+    }
+
+    private func prefetchFavoriteStoreImages(around currentIndex: Int, within stores: [StoreDTO]) async {
+        guard !stores.isEmpty else { return }
+        let upperBound = min(currentIndex + 4, stores.count)
+        let urls = stores[currentIndex..<upperBound].compactMap(storeImageURL)
+        await CachedImagePipeline.shared.prefetch(
+            urls: urls,
+            scale: displayScale,
+            limit: 8
+        )
     }
 
     private func favoritePinCard(_ pin: HomeFeedPinDTO, itemWidth: CGFloat) -> some View {

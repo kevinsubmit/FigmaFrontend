@@ -93,12 +93,26 @@ private struct PromotionDTO: Decodable, Identifiable {
 }
 
 private struct DealsService {
-    func getPromotions() async throws -> [PromotionDTO] {
-        try await APIClient.shared.request(path: "/promotions?skip=0&limit=100&active_only=true&include_platform=true")
+    private enum CacheTTL {
+        static let promotions: TimeInterval = 45
+        static let storesList: TimeInterval = 45
+    }
+
+    private static let promotionsCache = TimedAsyncRequestCache<String, [PromotionDTO]>()
+    private static let storesCache = TimedAsyncRequestCache<String, [StoreDTO]>()
+
+    func getPromotions(skip: Int = 0, limit: Int = 100) async throws -> [PromotionDTO] {
+        let path = "/promotions?skip=\(skip)&limit=\(limit)&active_only=true&include_platform=true"
+        return try await Self.promotionsCache.value(for: path, ttl: CacheTTL.promotions) {
+            try await APIClient.shared.request(path: path)
+        }
     }
 
     func getStores() async throws -> [StoreDTO] {
-        try await APIClient.shared.request(path: "/stores?skip=0&limit=100")
+        let path = "/stores?skip=0&limit=100"
+        return try await Self.storesCache.value(for: path, ttl: CacheTTL.storesList) {
+            try await APIClient.shared.request(path: path)
+        }
     }
 }
 
@@ -115,9 +129,21 @@ private final class DealsViewModel: ObservableObject {
     @Published var promotions: [PromotionDTO] = []
     @Published var storesByID: [Int: StoreDTO] = [:]
     @Published var isLoading: Bool = false
+    @Published var isLoadingMore: Bool = false
+    @Published var hasMore: Bool = true
     @Published var errorMessage: String?
 
     private let service = DealsService()
+    private let storesService: StoresServiceProtocol
+    private var didLoadOnce = false
+    private var requestToken: Int = 0
+    private var offset: Int = 0
+    private let initialPageSize = 8
+    private let loadMorePageSize = 6
+
+    init(storesService: StoresServiceProtocol = StoresService()) {
+        self.storesService = storesService
+    }
 
     var filtered: [PromotionDTO] {
         switch selectedSegment {
@@ -128,22 +154,143 @@ private final class DealsViewModel: ObservableObject {
         }
     }
 
-    func load() async {
-        isLoading = true
-        defer { isLoading = false }
+    func loadIfNeeded() async {
+        guard !didLoadOnce else { return }
+        didLoadOnce = true
+        await load(force: false)
+    }
+
+    func load(force: Bool) async {
+        await loadPromotions(reset: true, force: force)
+        await ensureSelectedSegmentLoaded()
+    }
+
+    func loadMore() async {
+        guard hasMore, !isLoading, !isLoadingMore else { return }
+        await loadPromotions(reset: false, force: false)
+    }
+
+    func ensureSelectedSegmentLoaded() async {
+        while filtered.isEmpty && hasMore && !isLoading && !isLoadingMore {
+            let beforeCount = promotions.count
+            await loadMore()
+            if promotions.count == beforeCount {
+                break
+            }
+        }
+    }
+
+    private func loadPromotions(reset: Bool, force: Bool) async {
+        let currentRequestToken: Int
+        if reset {
+            requestToken += 1
+            currentRequestToken = requestToken
+        } else {
+            currentRequestToken = requestToken
+        }
+
+        let requestedOffset = reset ? 0 : offset
+        let pageSize = reset ? initialPageSize : loadMorePageSize
+        if force {
+            didLoadOnce = true
+        }
+        if reset {
+            isLoading = true
+        } else {
+            isLoadingMore = true
+        }
+        defer {
+            if reset {
+                isLoading = false
+            } else {
+                isLoadingMore = false
+            }
+        }
         do {
-            async let promoTask = service.getPromotions()
-            async let storeTask = service.getStores()
-            let promoRows = try await promoTask
-            let storeRows = try await storeTask
-            promotions = promoRows
-            storesByID = Dictionary(uniqueKeysWithValues: storeRows.map { ($0.id, $0) })
+            let promoRows = try await service.getPromotions(skip: requestedOffset, limit: pageSize)
+            guard currentRequestToken == requestToken else { return }
+            let mergedPromotions = reset ? promoRows : mergePromotions(existing: promotions, newRows: promoRows)
+            let mergedStoreIDs = Set(mergedPromotions.compactMap(\.store_id))
+            let missingStoreIDs = mergedStoreIDs.subtracting(Set(storesByID.keys))
+            let storeRows = await resolveStores(for: Array(missingStoreIDs).sorted())
+            guard currentRequestToken == requestToken else { return }
+
+            promotions = mergedPromotions
+            offset = requestedOffset + promoRows.count
+            hasMore = promoRows.count == pageSize && !promoRows.isEmpty
+
+            if reset {
+                storesByID = [:]
+            }
+            for row in storeRows {
+                storesByID[row.id] = row
+            }
+            storesByID = storesByID.filter { mergedStoreIDs.contains($0.key) }
             errorMessage = nil
         } catch let err as APIError {
+            guard currentRequestToken == requestToken else { return }
             errorMessage = mapError(err)
         } catch {
+            guard currentRequestToken == requestToken else { return }
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func mergePromotions(existing: [PromotionDTO], newRows: [PromotionDTO]) -> [PromotionDTO] {
+        guard !newRows.isEmpty else { return existing }
+        var merged = existing
+        var existingIDs = Set(existing.map(\.id))
+        for row in newRows where existingIDs.insert(row.id).inserted {
+            merged.append(row)
+        }
+        return merged
+    }
+
+    private func resolveStores(for ids: [Int]) async -> [StoreDTO] {
+        guard !ids.isEmpty else { return [] }
+
+        return await withTaskGroup(of: StoreDTO?.self, returning: [StoreDTO].self) { group in
+            for id in ids {
+                group.addTask { [storesService] in
+                    do {
+                        let detail = try await storesService.fetchStoreDetail(storeID: id)
+                        return Self.listStore(from: detail)
+                    } catch {
+                        return nil
+                    }
+                }
+            }
+
+            var resolved: [StoreDTO] = []
+            for await row in group {
+                if let row {
+                    resolved.append(row)
+                }
+            }
+            return resolved
+        }
+    }
+
+    nonisolated private static func listStore(from detail: StoreDetailDTO) -> StoreDTO {
+        StoreDTO(
+            id: detail.id,
+            name: detail.name,
+            image_url: detail.images.first?.image_url,
+            address: detail.address,
+            city: detail.city,
+            state: detail.state,
+            zip_code: detail.zip_code,
+            latitude: detail.latitude,
+            longitude: detail.longitude,
+            time_zone: detail.time_zone,
+            phone: detail.phone,
+            email: detail.email,
+            description: detail.description,
+            opening_hours: detail.opening_hours,
+            rating: detail.rating,
+            review_count: detail.review_count,
+            distance: nil
+        )
     }
 
     private func mapError(_ error: APIError) -> String {
@@ -161,6 +308,7 @@ private final class DealsViewModel: ObservableObject {
 }
 
 private struct DealsView: View {
+    @Environment(\.displayScale) private var displayScale
     @StateObject private var viewModel = DealsViewModel()
     @State private var alertMessage: String = ""
     @State private var showAlert: Bool = false
@@ -175,7 +323,7 @@ private struct DealsView: View {
             dealsHeader
 
             ScrollView {
-                VStack(alignment: .leading, spacing: UITheme.spacing12) {
+                LazyVStack(alignment: .leading, spacing: UITheme.spacing12) {
                     if !viewModel.isLoading && viewModel.filtered.isEmpty {
                         UnifiedEmptyStateCard(
                             icon: "tag.fill",
@@ -185,8 +333,23 @@ private struct DealsView: View {
                         )
                     } else {
                         let totalCount = viewModel.filtered.count
-                        ForEach(Array(viewModel.filtered.enumerated()), id: \.offset) { idx, promotion in
+                        ForEach(Array(viewModel.filtered.enumerated()), id: \.element.id) { idx, promotion in
                             dealRow(promotion, index: idx, totalCount: totalCount)
+                                .onAppear {
+                                    let visiblePromotions = viewModel.filtered
+                                    Task {
+                                        async let prefetchTask: Void = prefetchDealImages(around: idx, within: visiblePromotions)
+                                        async let loadMoreTask: Void = loadMoreDealsIfNeeded(currentIndex: idx, within: visiblePromotions)
+                                        _ = await (prefetchTask, loadMoreTask)
+                                    }
+                                }
+                        }
+
+                        if viewModel.isLoadingMore {
+                            ProgressView()
+                                .tint(brandGold)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, UITheme.spacing12)
                         }
                     }
                 }
@@ -198,8 +361,20 @@ private struct DealsView: View {
         .toolbar(.hidden, for: .navigationBar)
         .tint(brandGold)
         .background(Color.black)
-        .task { await viewModel.load() }
-        .refreshable { await viewModel.load() }
+        .background(
+            ImagePrefetcher(
+                urls: Array(viewModel.filtered.prefix(8)).map { promotion in
+                    let store = promotion.store_id.flatMap { viewModel.storesByID[$0] }
+                    return promotionCoverURL(promotion: promotion, store: store)
+                },
+                limit: 8
+            )
+        )
+        .task { await viewModel.loadIfNeeded() }
+        .refreshable { await viewModel.load(force: true) }
+        .onChange(of: viewModel.selectedSegment) { _ in
+            Task { await viewModel.ensureSelectedSegmentLoaded() }
+        }
         .onChange(of: viewModel.errorMessage) { value in
             guard let value, !value.isEmpty else { return }
             alertMessage = value
@@ -486,6 +661,27 @@ private struct DealsView: View {
         return storeURL
     }
 
+    private func loadMoreDealsIfNeeded(currentIndex: Int, within promotions: [PromotionDTO]) async {
+        let thresholdIndex = max(promotions.count - 3, 0)
+        guard currentIndex >= thresholdIndex else { return }
+        await viewModel.loadMore()
+        await viewModel.ensureSelectedSegmentLoaded()
+    }
+
+    private func prefetchDealImages(around currentIndex: Int, within promotions: [PromotionDTO]) async {
+        guard !promotions.isEmpty else { return }
+        let upperBound = min(currentIndex + 4, promotions.count)
+        let urls = promotions[currentIndex..<upperBound].compactMap { promotion in
+            let store = promotion.store_id.flatMap { viewModel.storesByID[$0] }
+            return promotionCoverURL(promotion: promotion, store: store)
+        }
+        await CachedImagePipeline.shared.prefetch(
+            urls: urls,
+            scale: displayScale,
+            limit: 8
+        )
+    }
+
     private func resolveMediaURL(_ rawValue: String) -> URL? {
         AssetURLResolver.resolveURL(from: rawValue)
     }
@@ -516,4 +712,3 @@ private struct DealsView: View {
         return "Ends on \(HomeDateFormatterCache.monthDayFormatter.string(from: endDate))"
     }
 }
-

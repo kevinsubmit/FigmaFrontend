@@ -43,8 +43,18 @@ struct OrderHistoryView: View {
                         )
                     } else {
                         LazyVStack(spacing: UITheme.spacing10) {
-                            ForEach(viewModel.items) { item in
+                            ForEach(Array(viewModel.items.enumerated()), id: \.element.id) { index, item in
                                 historyItem(item)
+                                    .onAppear {
+                                        Task { await loadMoreOrderHistoryIfNeeded(currentIndex: index) }
+                                    }
+                            }
+
+                            if viewModel.isLoadingMore {
+                                ProgressView()
+                                    .tint(brandGold)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, UITheme.spacing12)
                             }
                         }
                     }
@@ -58,7 +68,7 @@ struct OrderHistoryView: View {
         .toolbar(.hidden, for: .tabBar)
         .tint(brandGold)
         .background(Color.black)
-        .task { await reload() }
+        .task { await loadIfNeeded() }
         .refreshable { await reload() }
         .onChange(of: viewModel.errorMessage) { value in
             guard let value, !value.isEmpty else { return }
@@ -82,7 +92,33 @@ struct OrderHistoryView: View {
 
     private func reload() async {
         guard let token = appState.requireAccessToken() else { return }
-        await viewModel.load(token: token)
+        await viewModel.load(token: token, force: true)
+        await ensureCompletedOrdersLoaded()
+    }
+
+    private func loadIfNeeded() async {
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadIfNeeded(token: token)
+        await ensureCompletedOrdersLoaded()
+    }
+
+    private func loadMoreOrderHistoryIfNeeded(currentIndex: Int) async {
+        let thresholdIndex = max(viewModel.items.count - 3, 0)
+        guard currentIndex >= thresholdIndex else { return }
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadMore(token: token)
+        await ensureCompletedOrdersLoaded()
+    }
+
+    private func ensureCompletedOrdersLoaded() async {
+        guard let token = appState.requireAccessToken() else { return }
+        while viewModel.items.isEmpty && viewModel.hasMore && !viewModel.isLoading && !viewModel.isLoadingMore {
+            let beforeCount = viewModel.items.count
+            await viewModel.loadMore(token: token)
+            if viewModel.items.count == beforeCount {
+                break
+            }
+        }
     }
 
     private var totalSpend: Double {
@@ -292,7 +328,7 @@ struct OrderHistoryView: View {
                     comment: reviewComment,
                     images: allImages.isEmpty ? nil : allImages
                 )
-                await viewModel.load(token: token)
+                await viewModel.load(token: token, force: true)
                 showReviewSheet = false
                 reviewingItem = nil
                 reviewComment = ""
