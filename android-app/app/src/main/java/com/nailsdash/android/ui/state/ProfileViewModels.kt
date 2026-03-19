@@ -18,6 +18,8 @@ import com.nailsdash.android.data.model.UserCoupon
 import com.nailsdash.android.data.model.UserReview
 import com.nailsdash.android.data.model.VipStatus
 import com.nailsdash.android.data.repository.AppointmentsRepository
+import com.nailsdash.android.data.repository.ProfileCenterPrimarySummary
+import com.nailsdash.android.data.repository.ProfileCenterSecondarySummary
 import com.nailsdash.android.data.repository.ProfileRepository
 import com.nailsdash.android.data.repository.StoresRepository
 import com.nailsdash.android.utils.PhoneFormatter
@@ -29,9 +31,9 @@ import kotlinx.coroutines.launch
 
 class ProfileCenterViewModel(application: Application) : AndroidViewModel(application) {
     private val profileRepository = ProfileRepository()
-    private val appointmentsRepository = AppointmentsRepository()
     private var loadedBearerToken: String? = null
     private var hasLoadedOnce = false
+    private var loadRequestVersion = 0
 
     var unreadCount by mutableStateOf(0)
         private set
@@ -73,56 +75,44 @@ class ProfileCenterViewModel(application: Application) : AndroidViewModel(applic
         if (!force && loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null) return
         loadedBearerToken = bearerToken
         hasLoadedOnce = true
+        val requestVersion = ++loadRequestVersion
         isLoading = true
         viewModelScope.launch {
-            coroutineScope {
-                val unreadTask = async { profileRepository.getUnreadCount(bearerToken) }
-                val pointsTask = async { profileRepository.getPointsBalance(bearerToken) }
-                val couponsTask = async { profileRepository.getMyCoupons(bearerToken, status = "available", limit = 100) }
-                val giftCardsTask = async { profileRepository.getMyGiftCards(bearerToken, limit = 100) }
-                val appointmentsTask = async { appointmentsRepository.getMyAppointments(bearerToken, limit = 100) }
-                val reviewsTask = async { profileRepository.getMyReviews(bearerToken, limit = 100) }
-                val favoritesTask = async { profileRepository.getFavoritePinsCount(bearerToken) }
-                val vipTask = async { profileRepository.getVipStatus(bearerToken) }
+            val primarySummary = profileRepository.getProfileCenterPrimarySummary(bearerToken)
+            if (requestVersion != loadRequestVersion) return@launch
 
-                val unread = unreadTask.await()
-                val pointsResult = pointsTask.await()
-                val coupons = couponsTask.await()
-                val giftCards = giftCardsTask.await()
-                val appointments = appointmentsTask.await()
-                val reviews = reviewsTask.await()
-                val favorites = favoritesTask.await()
-                val vip = vipTask.await()
-
-                unread.onSuccess { unreadCount = it.unread_count }
-                pointsResult.onSuccess { points = it.available_points }
-                coupons.onSuccess { couponCount = it.size }
-                giftCards.onSuccess { cards ->
-                    giftBalance = cards.filter { it.status.lowercase() != "expired" }
-                        .sumOf { maxOf(it.balance, 0.0) }
+            primarySummary
+                .onSuccess { summary -> applyPrimarySummary(summary) }
+                .onFailure {
+                    errorMessage = it.message
+                    isLoading = false
+                    return@launch
                 }
-                appointments.onSuccess { items ->
-                    completedOrders = items.count { it.status.lowercase() == "completed" }
-                }
-                reviews.onSuccess { reviewCount = it.size }
-                favorites.onSuccess { favoriteCount = maxOf(it.count, 0) }
-                vip.onSuccess { vipStatus = it }
 
-                val firstError = listOf(
-                    unread,
-                    pointsResult,
-                    coupons,
-                    giftCards,
-                    appointments,
-                    reviews,
-                    favorites,
-                    vip,
-                ).firstOrNull { it.isFailure }?.exceptionOrNull()?.message
-
-                errorMessage = firstError
-            }
+            errorMessage = null
             isLoading = false
+
+            val secondarySummary = profileRepository.getProfileCenterSecondarySummary(bearerToken)
+            if (requestVersion != loadRequestVersion) return@launch
+
+            secondarySummary.onSuccess { summary ->
+                applySecondarySummary(summary)
+            }
         }
+    }
+
+    private fun applyPrimarySummary(summary: ProfileCenterPrimarySummary) {
+        unreadCount = summary.unreadCount
+        points = summary.points
+        summary.favoriteCount?.let { favoriteCount = maxOf(it, 0) }
+        summary.completedOrders?.let { completedOrders = maxOf(it, 0) }
+        summary.vipStatus?.let { vipStatus = it }
+    }
+
+    private fun applySecondarySummary(summary: ProfileCenterSecondarySummary) {
+        summary.couponCount?.let { couponCount = it }
+        summary.giftBalance?.let { giftBalance = it }
+        summary.reviewCount?.let { reviewCount = it }
     }
 }
 

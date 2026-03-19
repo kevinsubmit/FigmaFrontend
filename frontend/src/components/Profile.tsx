@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import apiClient from '../lib/api';
 import { notificationsService } from '../services/notifications.service';
+import profileService from '../services/profile.service';
 import pointsService from '../services/points.service';
 import couponsService from '../services/coupons.service';
 import giftCardsService from '../services/gift-cards.service';
@@ -89,20 +90,6 @@ export function Profile({ onNavigate }: ProfileProps) {
     };
   };
   
-  // Fetch unread notification count
-  useEffect(() => {
-    const fetchUnreadCount = async () => {
-      try {
-        const count = await notificationsService.getUnreadCount();
-        setUnreadCount(count);
-      } catch (error) {
-        console.error('Failed to fetch unread count:', error);
-      }
-    };
-    
-    fetchUnreadCount();
-  }, []);
-
   useEffect(() => {
     if (!user || isEditingName) {
       return;
@@ -125,44 +112,63 @@ export function Profile({ onNavigate }: ProfileProps) {
       }
 
       try {
-        const results = await Promise.allSettled([
-          pointsService.getBalance(token),
-          couponsService.getMyCoupons(token, 'available'),
-          getMyAppointments(),
-          getMyReviews(token),
-          getMyFavoritePinsCount(token),
-          giftCardsService.getSummary(token),
-          vipService.getStatus(),
-        ]);
-
-        const pointsResult = results[0].status === 'fulfilled' ? results[0].value : null;
-        const couponsResult = results[1].status === 'fulfilled' ? results[1].value : [];
-        const appointmentsResult = results[2].status === 'fulfilled' ? results[2].value : [];
-        const completedAppointments = appointmentsResult.filter((apt) => apt.status === 'completed');
-        const reviewsResult = results[3].status === 'fulfilled' ? results[3].value : [];
-        const favoritesResult = results[4].status === 'fulfilled' ? results[4].value : null;
-        const giftSummaryResult = results[5].status === 'fulfilled' ? results[5].value : null;
-        const vipStatusResult = results[6].status === 'fulfilled' ? results[6].value : null;
-
+        const summary = await profileService.getSummary(token);
+        setUnreadCount(summary.unread_count ?? 0);
         setStats({
-          points: pointsResult?.available_points ?? 0,
-          coupons: couponsResult.length,
-          giftCardBalance: giftSummaryResult?.total_balance ?? 0,
-          orders: completedAppointments.length,
-          reviews: reviewsResult.length,
-          favorites: favoritesResult?.count ?? 0,
+          points: summary.points ?? 0,
+          coupons: summary.coupon_count ?? 0,
+          giftCardBalance: summary.gift_balance ?? 0,
+          orders: summary.completed_orders ?? 0,
+          reviews: summary.review_count ?? 0,
+          favorites: summary.favorite_count ?? 0,
         });
-        setVipStatus(vipStatusResult ?? buildFallbackVipStatus(appointmentsResult));
+        setVipStatus(summary.vip_status ?? null);
         setVipLoaded(true);
-      } catch (error) {
-        console.error('Failed to load profile stats:', error);
+      } catch (summaryError) {
+        console.warn('Failed to load profile summary, falling back to legacy profile requests:', summaryError);
         try {
-          const appointments = await getMyAppointments();
-          setVipStatus(buildFallbackVipStatus(appointments));
+          const results = await Promise.allSettled([
+            notificationsService.getUnreadCount(),
+            pointsService.getBalance(token),
+            couponsService.getMyCoupons(token, 'available'),
+            getMyAppointments(),
+            getMyReviews(token),
+            getMyFavoritePinsCount(token),
+            giftCardsService.getSummary(token),
+            vipService.getStatus(),
+          ]);
+
+          const unreadResult = results[0].status === 'fulfilled' ? results[0].value : 0;
+          const pointsResult = results[1].status === 'fulfilled' ? results[1].value : null;
+          const couponsResult = results[2].status === 'fulfilled' ? results[2].value : [];
+          const appointmentsResult = results[3].status === 'fulfilled' ? results[3].value : [];
+          const completedAppointments = appointmentsResult.filter((apt) => apt.status === 'completed');
+          const reviewsResult = results[4].status === 'fulfilled' ? results[4].value : [];
+          const favoritesResult = results[5].status === 'fulfilled' ? results[5].value : null;
+          const giftSummaryResult = results[6].status === 'fulfilled' ? results[6].value : null;
+          const vipStatusResult = results[7].status === 'fulfilled' ? results[7].value : null;
+
+          setUnreadCount(unreadResult ?? 0);
+          setStats({
+            points: pointsResult?.available_points ?? 0,
+            coupons: couponsResult.length,
+            giftCardBalance: giftSummaryResult?.total_balance ?? 0,
+            orders: completedAppointments.length,
+            reviews: reviewsResult.length,
+            favorites: favoritesResult?.count ?? 0,
+          });
+          setVipStatus(vipStatusResult ?? buildFallbackVipStatus(appointmentsResult));
+          setVipLoaded(true);
         } catch (fallbackError) {
-          console.error('Failed to build fallback VIP status:', fallbackError);
+          console.error('Failed to load profile stats:', fallbackError);
+          try {
+            const appointments = await getMyAppointments();
+            setVipStatus(buildFallbackVipStatus(appointments));
+          } catch (vipFallbackError) {
+            console.error('Failed to build fallback VIP status:', vipFallbackError);
+          }
+          setVipLoaded(true);
         }
-        setVipLoaded(true);
       }
     };
 

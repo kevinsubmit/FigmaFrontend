@@ -10,6 +10,7 @@ import com.nailsdash.android.data.model.GiftCardRevokeResponse
 import com.nailsdash.android.data.model.GiftCardTransferRequest
 import com.nailsdash.android.data.model.PointTransaction
 import com.nailsdash.android.data.model.PointsBalance
+import com.nailsdash.android.data.model.ProfileSummary
 import com.nailsdash.android.data.model.ReferralCode
 import com.nailsdash.android.data.model.ReferralListItem
 import com.nailsdash.android.data.model.ReferralStats
@@ -23,6 +24,20 @@ import com.nailsdash.android.data.network.ServiceLocator
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+
+data class ProfileCenterPrimarySummary(
+    val unreadCount: Int,
+    val points: Int,
+    val favoriteCount: Int?,
+    val completedOrders: Int?,
+    val vipStatus: VipStatus?,
+)
+
+data class ProfileCenterSecondarySummary(
+    val couponCount: Int?,
+    val giftBalance: Double?,
+    val reviewCount: Int?,
+)
 
 class ProfileRepository {
     private val api get() = ServiceLocator.api
@@ -41,6 +56,38 @@ class ProfileRepository {
         val status: String?,
         val limit: Int,
     )
+
+    suspend fun getProfileCenterPrimarySummary(bearerToken: String): Result<ProfileCenterPrimarySummary> {
+        val summary = getProfileSummary(bearerToken).getOrElse { return Result.failure(it) }
+        return Result.success(
+            ProfileCenterPrimarySummary(
+                unreadCount = summary.unread_count,
+                points = summary.points,
+                favoriteCount = summary.favorite_count.coerceAtLeast(0),
+                completedOrders = summary.completed_orders.coerceAtLeast(0),
+                vipStatus = summary.vip_status,
+            ),
+        )
+    }
+
+    suspend fun getProfileCenterSecondarySummary(bearerToken: String): Result<ProfileCenterSecondarySummary> {
+        val summary = getProfileSummary(bearerToken).getOrElse { return Result.failure(it) }
+        return Result.success(
+            ProfileCenterSecondarySummary(
+                couponCount = summary.coupon_count.coerceAtLeast(0),
+                giftBalance = summary.gift_balance.coerceAtLeast(0.0),
+                reviewCount = summary.review_count.coerceAtLeast(0),
+            ),
+        )
+    }
+
+    private suspend fun getProfileSummary(bearerToken: String): Result<ProfileSummary> {
+        val cacheKey = TokenKey(bearerToken)
+        profileSummaryCache.get(cacheKey)?.let { return Result.success(it) }
+        return runCatching { api.getProfileSummary(bearerToken) }
+            .mapFailure()
+            .onSuccess { profileSummaryCache.put(cacheKey, it) }
+    }
 
     suspend fun getUnreadCount(bearerToken: String): Result<UnreadCount> {
         val cacheKey = TokenKey(bearerToken)
@@ -78,6 +125,7 @@ class ProfileRepository {
         runCatching { api.exchangeCoupon(bearerToken, couponId) }
             .mapFailure()
             .onSuccess {
+                profileSummaryCache.clear()
                 pointsBalanceCache.clear()
                 exchangeableCouponsCache.clear()
                 myCouponsCache.clear()
@@ -121,6 +169,7 @@ class ProfileRepository {
             request = request,
         ).gift_card
     }.mapFailure().onSuccess {
+        profileSummaryCache.clear()
         myGiftCardsCache.clear()
     }
 
@@ -130,6 +179,7 @@ class ProfileRepository {
             request = GiftCardClaimRequest(claim_code = claimCode),
         ).gift_card
     }.mapFailure().onSuccess {
+        profileSummaryCache.clear()
         myGiftCardsCache.clear()
     }
 
@@ -140,6 +190,7 @@ class ProfileRepository {
         )
         response.gift_card
     }.mapFailure().onSuccess {
+        profileSummaryCache.clear()
         myGiftCardsCache.clear()
     }
 
@@ -168,6 +219,7 @@ class ProfileRepository {
             ),
         )
     }.mapFailure().onSuccess {
+        profileSummaryCache.clear()
         myReviewsCache.clear()
     }
 
@@ -212,12 +264,14 @@ class ProfileRepository {
             ),
         )
     }.mapFailure().onSuccess {
+        profileSummaryCache.clear()
         myReviewsCache.clear()
     }
 
     suspend fun deleteReview(bearerToken: String, reviewId: Int): Result<Unit> = runCatching {
         api.deleteReview(bearerToken = bearerToken, reviewId = reviewId)
     }.mapFailure().onSuccess {
+        profileSummaryCache.clear()
         myReviewsCache.clear()
     }
 
@@ -248,6 +302,7 @@ class ProfileRepository {
     suspend fun removeFavoritePin(bearerToken: String, pinId: Int): Result<Unit> = runCatching {
         api.removeFavoritePin(bearerToken = bearerToken, pinId = pinId)
     }.mapFailure().onSuccess {
+        profileSummaryCache.clear()
         favoritePinsCountCache.clear()
         favoritePinsCache.clear()
     }
@@ -285,6 +340,7 @@ class ProfileRepository {
         private const val LONG_TTL_MS = 60 * 1000L
         private val unreadCountCache = TimedMemoryCache<TokenKey, UnreadCount>(SHORT_TTL_MS, maxEntries = 4)
         private val pointsBalanceCache = TimedMemoryCache<TokenKey, PointsBalance>(SHORT_TTL_MS, maxEntries = 4)
+        private val profileSummaryCache = TimedMemoryCache<TokenKey, ProfileSummary>(SHORT_TTL_MS, maxEntries = 4)
         private val pointTransactionsCache = TimedMemoryCache<TokenLimitKey, List<PointTransaction>>(SHORT_TTL_MS, maxEntries = 8)
         private val exchangeableCouponsCache = TimedMemoryCache<TokenKey, List<CouponTemplate>>(LONG_TTL_MS, maxEntries = 4)
         private val myCouponsCache = TimedMemoryCache<TokenStatusKey, List<UserCoupon>>(SHORT_TTL_MS, maxEntries = 12)

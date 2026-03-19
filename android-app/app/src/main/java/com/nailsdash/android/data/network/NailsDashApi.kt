@@ -24,6 +24,7 @@ import com.nailsdash.android.data.model.NotificationPreferences
 import com.nailsdash.android.data.model.NotificationPreferencesUpdateRequest
 import com.nailsdash.android.data.model.PointTransaction
 import com.nailsdash.android.data.model.PointsBalance
+import com.nailsdash.android.data.model.ProfileSummary
 import com.nailsdash.android.data.model.Promotion
 import com.nailsdash.android.data.model.RegisterRequest
 import com.nailsdash.android.data.model.ReferralCode
@@ -83,6 +84,9 @@ interface NailsDashApi {
 
     @GET("auth/me")
     suspend fun getMe(@Header("Authorization") bearerToken: String): AuthUser
+
+    @GET("profile/summary")
+    suspend fun getProfileSummary(@Header("Authorization") bearerToken: String): ProfileSummary
 
     @POST("auth/send-verification-code")
     suspend fun sendVerificationCode(@Body request: SendVerificationCodeRequest): SendVerificationCodeResponse

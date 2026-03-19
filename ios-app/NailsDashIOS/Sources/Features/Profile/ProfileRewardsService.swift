@@ -7,21 +7,72 @@ struct ReviewUploadImagePayload {
 }
 
 struct ProfileRewardsService {
+    private enum CacheTTL {
+        static let pointsBalance: TimeInterval = 30
+        static let pointTransactions: TimeInterval = 30
+        static let coupons: TimeInterval = 30
+        static let giftCards: TimeInterval = 30
+        static let reviews: TimeInterval = 30
+        static let favoriteCounts: TimeInterval = 30
+        static let favorites: TimeInterval = 30
+        static let storeImages: TimeInterval = 180
+        static let vipStatus: TimeInterval = 60
+        static let profileSummary: TimeInterval = 30
+        static let exchangeableCoupons: TimeInterval = 60
+        static let referral: TimeInterval = 60
+    }
+
+    private static let pointsBalanceCache = TimedAsyncRequestCache<String, PointsBalanceDTO>()
+    private static let pointTransactionsCache = TimedAsyncRequestCache<String, [PointTransactionDTO]>()
+    private static let couponsCache = TimedAsyncRequestCache<String, [UserCouponDTO]>()
+    private static let giftCardsCache = TimedAsyncRequestCache<String, [GiftCardDTO]>()
+    private static let reviewsCache = TimedAsyncRequestCache<String, [UserReviewDTO]>()
+    private static let favoritePinsCountCache = TimedAsyncRequestCache<String, Int>()
+    private static let favoritePinsCache = TimedAsyncRequestCache<String, [HomeFeedPinDTO]>()
+    private static let favoriteStoresCache = TimedAsyncRequestCache<String, [StoreDTO]>()
+    private static let storeImagesCache = TimedAsyncRequestCache<Int, [StoreImageDTO]>()
+    private static let vipStatusCache = TimedAsyncRequestCache<String, VipStatusDTO>()
+    private static let profileSummaryCache = TimedAsyncRequestCache<String, ProfileSummaryDTO>()
+    private static let exchangeableCouponsCache = TimedAsyncRequestCache<String, [CouponTemplateDTO]>()
+    private static let referralCodeCache = TimedAsyncRequestCache<String, ReferralCodeDTO>()
+    private static let referralStatsCache = TimedAsyncRequestCache<String, ReferralStatsDTO>()
+    private static let referralListCache = TimedAsyncRequestCache<String, [ReferralListItemDTO]>()
+
     func getPointsBalance(token: String) async throws -> PointsBalanceDTO {
-        try await APIClient.shared.request(path: "/points/balance", token: token)
+        try await Self.pointsBalanceCache.value(for: token, ttl: CacheTTL.pointsBalance) {
+            try await APIClient.shared.request(path: "/points/balance", token: token)
+        }
     }
 
-    func getPointTransactions(token: String, limit: Int = 50) async throws -> [PointTransactionDTO] {
-        try await APIClient.shared.request(path: "/points/transactions?skip=0&limit=\(limit)", token: token)
+    func getProfileSummary(token: String) async throws -> ProfileSummaryDTO {
+        try await Self.profileSummaryCache.value(for: token, ttl: CacheTTL.profileSummary) {
+            try await APIClient.shared.request(path: "/profile/summary", token: token)
+        }
     }
 
-    func getMyCoupons(token: String, status: String? = nil, limit: Int = 50) async throws -> [UserCouponDTO] {
+    func getPointTransactions(token: String, skip: Int = 0, limit: Int = 50) async throws -> [PointTransactionDTO] {
+        let cacheKey = "\(token)|\(skip)|\(limit)"
+        let path = "/points/transactions?skip=\(skip)&limit=\(limit)"
+        return try await Self.pointTransactionsCache.value(for: cacheKey, ttl: CacheTTL.pointTransactions) {
+            try await APIClient.shared.request(path: path, token: token)
+        }
+    }
+
+    func getMyCoupons(token: String, status: String? = nil, skip: Int = 0, limit: Int = 50) async throws -> [UserCouponDTO] {
         let suffix = status.map { "&status=\($0)" } ?? ""
-        return try await APIClient.shared.request(path: "/coupons/my-coupons?skip=0&limit=\(limit)\(suffix)", token: token)
+        let cacheKey = "\(token)|\(status ?? "all")|\(skip)|\(limit)"
+        let path = "/coupons/my-coupons?skip=\(skip)&limit=\(limit)\(suffix)"
+        return try await Self.couponsCache.value(for: cacheKey, ttl: CacheTTL.coupons) {
+            try await APIClient.shared.request(path: path, token: token)
+        }
     }
 
-    func getMyGiftCards(token: String, limit: Int = 50) async throws -> [GiftCardDTO] {
-        try await APIClient.shared.request(path: "/gift-cards/my-cards?skip=0&limit=\(limit)", token: token)
+    func getMyGiftCards(token: String, skip: Int = 0, limit: Int = 50) async throws -> [GiftCardDTO] {
+        let cacheKey = "\(token)|\(skip)|\(limit)"
+        let path = "/gift-cards/my-cards?skip=\(skip)&limit=\(limit)"
+        return try await Self.giftCardsCache.value(for: cacheKey, ttl: CacheTTL.giftCards) {
+            try await APIClient.shared.request(path: path, token: token)
+        }
     }
 
     func transferGiftCard(
@@ -41,6 +92,7 @@ struct ProfileRewardsService {
             token: token,
             body: payload
         )
+        Self.invalidateGiftCards(for: token)
         return response.gift_card
     }
 
@@ -52,6 +104,7 @@ struct ProfileRewardsService {
             token: token,
             body: payload
         )
+        Self.invalidateGiftCards(for: token)
         return response.gift_card
     }
 
@@ -61,11 +114,16 @@ struct ProfileRewardsService {
             method: "POST",
             token: token
         )
+        Self.invalidateGiftCards(for: token)
         return response.gift_card
     }
 
-    func getMyReviews(token: String, limit: Int = 100) async throws -> [UserReviewDTO] {
-        try await APIClient.shared.request(path: "/reviews/my-reviews?skip=0&limit=\(limit)", token: token)
+    func getMyReviews(token: String, skip: Int = 0, limit: Int = 100) async throws -> [UserReviewDTO] {
+        let cacheKey = "\(token)|\(skip)|\(limit)"
+        let path = "/reviews/my-reviews?skip=\(skip)&limit=\(limit)"
+        return try await Self.reviewsCache.value(for: cacheKey, ttl: CacheTTL.reviews) {
+            try await APIClient.shared.request(path: path, token: token)
+        }
     }
 
     func createReview(
@@ -82,12 +140,14 @@ struct ProfileRewardsService {
             comment: (trimmed?.isEmpty ?? true) ? nil : trimmed,
             images: images
         )
-        return try await APIClient.shared.request(
+        let created: UserReviewDTO = try await APIClient.shared.request(
             path: "/reviews/",
             method: "POST",
             token: token,
             body: payload
         )
+        Self.invalidateReviews(for: token)
+        return created
     }
 
     func uploadReviewImages(
@@ -155,12 +215,14 @@ struct ProfileRewardsService {
             comment: (trimmed?.isEmpty ?? true) ? nil : trimmed,
             images: images
         )
-        return try await APIClient.shared.request(
+        let updated: UserReviewDTO = try await APIClient.shared.request(
             path: "/reviews/\(reviewID)",
             method: "PUT",
             token: token,
             body: payload
         )
+        Self.invalidateReviews(for: token)
+        return updated
     }
 
     private func buildReviewImagesMultipartBody(
@@ -207,54 +269,127 @@ struct ProfileRewardsService {
 
     func deleteReview(token: String, reviewID: Int) async throws {
         let _: EmptyResponse = try await APIClient.shared.request(path: "/reviews/\(reviewID)", method: "DELETE", token: token)
+        Self.invalidateReviews(for: token)
     }
 
     func getMyFavoritePinsCount(token: String) async throws -> Int {
-        let row: CountDTO = try await APIClient.shared.request(path: "/pins/favorites/count", token: token)
-        return row.count
+        return try await Self.favoritePinsCountCache.value(for: token, ttl: CacheTTL.favoriteCounts) {
+            let row: CountDTO = try await APIClient.shared.request(path: "/pins/favorites/count", token: token)
+            return row.count
+        }
     }
 
-    func getMyFavoritePins(token: String, limit: Int = 100) async throws -> [HomeFeedPinDTO] {
-        try await APIClient.shared.request(path: "/pins/favorites/my-favorites?skip=0&limit=\(limit)", token: token)
+    func getMyFavoritePins(token: String, skip: Int = 0, limit: Int = 100) async throws -> [HomeFeedPinDTO] {
+        let cacheKey = "\(token)|\(skip)|\(limit)"
+        let path = "/pins/favorites/my-favorites?skip=\(skip)&limit=\(limit)"
+        return try await Self.favoritePinsCache.value(for: cacheKey, ttl: CacheTTL.favorites) {
+            try await APIClient.shared.request(path: path, token: token)
+        }
     }
 
-    func getMyFavoriteStores(token: String, limit: Int = 100) async throws -> [StoreDTO] {
-        try await APIClient.shared.request(path: "/stores/favorites/my-favorites?skip=0&limit=\(limit)", token: token)
+    func getMyFavoriteStores(token: String, skip: Int = 0, limit: Int = 100) async throws -> [StoreDTO] {
+        let cacheKey = "\(token)|\(skip)|\(limit)"
+        let path = "/stores/favorites/my-favorites?skip=\(skip)&limit=\(limit)"
+        return try await Self.favoriteStoresCache.value(for: cacheKey, ttl: CacheTTL.favorites) {
+            try await APIClient.shared.request(path: path, token: token)
+        }
     }
 
     func getStoreImages(storeID: Int) async throws -> [StoreImageDTO] {
-        try await APIClient.shared.request(path: "/stores/\(storeID)/images")
+        try await Self.storeImagesCache.value(for: storeID, ttl: CacheTTL.storeImages) {
+            try await APIClient.shared.request(path: "/stores/\(storeID)/images")
+        }
     }
 
     func removeFavoritePin(token: String, pinID: Int) async throws {
         let _: EmptyResponse = try await APIClient.shared.request(path: "/pins/\(pinID)/favorite", method: "DELETE", token: token)
+        Self.invalidateFavoritePins(for: token)
     }
 
     func removeFavoriteStore(token: String, storeID: Int) async throws {
         let _: EmptyResponse = try await APIClient.shared.request(path: "/stores/\(storeID)/favorite", method: "DELETE", token: token)
+        Self.invalidateFavoriteStores(for: token)
     }
 
     func getVipStatus(token: String) async throws -> VipStatusDTO {
-        try await APIClient.shared.request(path: "/vip/status", token: token)
+        try await Self.vipStatusCache.value(for: token, ttl: CacheTTL.vipStatus) {
+            try await APIClient.shared.request(path: "/vip/status", token: token)
+        }
     }
 
     func getExchangeableCoupons(token: String) async throws -> [CouponTemplateDTO] {
-        try await APIClient.shared.request(path: "/coupons/exchangeable", token: token)
+        try await Self.exchangeableCouponsCache.value(for: token, ttl: CacheTTL.exchangeableCoupons) {
+            try await APIClient.shared.request(path: "/coupons/exchangeable", token: token)
+        }
     }
 
     func exchangeCoupon(token: String, couponID: Int) async throws -> UserCouponDTO {
-        try await APIClient.shared.request(path: "/coupons/exchange/\(couponID)", method: "POST", token: token)
+        let redeemed: UserCouponDTO = try await APIClient.shared.request(
+            path: "/coupons/exchange/\(couponID)",
+            method: "POST",
+            token: token
+        )
+        Self.invalidatePointsAndCoupons(for: token)
+        return redeemed
     }
 
     func getReferralCode(token: String) async throws -> ReferralCodeDTO {
-        try await APIClient.shared.request(path: "/referrals/my-code", token: token)
+        try await Self.referralCodeCache.value(for: token, ttl: CacheTTL.referral) {
+            try await APIClient.shared.request(path: "/referrals/my-code", token: token)
+        }
     }
 
     func getReferralStats(token: String) async throws -> ReferralStatsDTO {
-        try await APIClient.shared.request(path: "/referrals/stats", token: token)
+        try await Self.referralStatsCache.value(for: token, ttl: CacheTTL.referral) {
+            try await APIClient.shared.request(path: "/referrals/stats", token: token)
+        }
     }
 
-    func getReferralList(token: String, limit: Int = 100) async throws -> [ReferralListItemDTO] {
-        try await APIClient.shared.request(path: "/referrals/list?skip=0&limit=\(limit)", token: token)
+    func getReferralList(token: String, skip: Int = 0, limit: Int = 100) async throws -> [ReferralListItemDTO] {
+        let cacheKey = "\(token)|\(skip)|\(limit)"
+        let path = "/referrals/list?skip=\(skip)&limit=\(limit)"
+        return try await Self.referralListCache.value(for: cacheKey, ttl: CacheTTL.referral) {
+            try await APIClient.shared.request(path: path, token: token)
+        }
+    }
+
+    private static func invalidateGiftCards(for token: String) {
+        profileSummaryCache.removeValue(for: token)
+        giftCardsCache.removeValues { key in
+            key.hasPrefix("\(token)|")
+        }
+    }
+
+    private static func invalidateReviews(for token: String) {
+        profileSummaryCache.removeValue(for: token)
+        reviewsCache.removeValues { key in
+            key.hasPrefix("\(token)|")
+        }
+    }
+
+    private static func invalidateFavoritePins(for token: String) {
+        profileSummaryCache.removeValue(for: token)
+        favoritePinsCountCache.removeValue(for: token)
+        favoritePinsCache.removeValues { key in
+            key.hasPrefix("\(token)|")
+        }
+    }
+
+    private static func invalidateFavoriteStores(for token: String) {
+        favoriteStoresCache.removeValues { key in
+            key.hasPrefix("\(token)|")
+        }
+    }
+
+    private static func invalidatePointsAndCoupons(for token: String) {
+        profileSummaryCache.removeValue(for: token)
+        pointsBalanceCache.removeValue(for: token)
+        pointTransactionsCache.removeValues { key in
+            key.hasPrefix("\(token)|")
+        }
+        couponsCache.removeValues { key in
+            key.hasPrefix("\(token)|")
+        }
+        exchangeableCouponsCache.removeValue(for: token)
     }
 }

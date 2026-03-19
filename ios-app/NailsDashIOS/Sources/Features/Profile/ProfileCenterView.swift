@@ -1,8 +1,51 @@
 import SwiftUI
 import UIKit
 
-private struct UnreadCountDTO: Decodable {
-    let unread_count: Int
+private struct ProfileCenterPrimarySummary {
+    let unreadCount: Int
+    let points: Int
+    let favoriteCount: Int?
+    let completedOrders: Int?
+    let vipStatus: VipStatusDTO?
+}
+
+private struct ProfileCenterSecondarySummary {
+    let couponCount: Int?
+    let giftBalance: Double?
+    let reviewCount: Int?
+}
+
+private struct ProfileCenterSummaryService {
+    private let rewardsService = ProfileRewardsService()
+
+    func loadPrimarySummary(token: String) async throws -> ProfileCenterPrimarySummary {
+        let summary = try await rewardsService.getProfileSummary(token: token)
+
+        return ProfileCenterPrimarySummary(
+            unreadCount: summary.unread_count,
+            points: summary.points,
+            favoriteCount: max(summary.favorite_count, 0),
+            completedOrders: max(summary.completed_orders, 0),
+            vipStatus: summary.vip_status
+        )
+    }
+
+    func loadSecondarySummary(token: String) async -> ProfileCenterSecondarySummary {
+        do {
+            let summary = try await rewardsService.getProfileSummary(token: token)
+            return ProfileCenterSecondarySummary(
+                couponCount: max(summary.coupon_count, 0),
+                giftBalance: max(summary.gift_balance, 0),
+                reviewCount: max(summary.review_count, 0)
+            )
+        } catch {
+            return ProfileCenterSecondarySummary(
+                couponCount: nil,
+                giftBalance: nil,
+                reviewCount: nil
+            )
+        }
+    }
 }
 
 @MainActor
@@ -18,55 +61,68 @@ private final class ProfileCenterViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
 
-    private let rewardsService = ProfileRewardsService()
-    private let appointmentsService: AppointmentsServiceProtocol
+    private let summaryService = ProfileCenterSummaryService()
+    private var didLoadOnce = false
+    private var loadedToken: String?
+    private var requestToken = 0
 
-    init(appointmentsService: AppointmentsServiceProtocol = AppointmentsService()) {
-        self.appointmentsService = appointmentsService
+    func loadIfNeeded(token: String) async {
+        guard loadedToken != token || !didLoadOnce || errorMessage != nil else { return }
+        didLoadOnce = true
+        await load(token: token, force: false)
     }
 
-    func load(token: String) async {
+    func load(token: String, force: Bool) async {
+        if force {
+            didLoadOnce = true
+        }
+        loadedToken = token
+        requestToken += 1
+        let currentRequestToken = requestToken
         isLoading = true
-        defer { isLoading = false }
 
         do {
-            async let unreadTask: UnreadCountDTO = APIClient.shared.request(path: "/notifications/stats/unread-count", token: token)
-            async let pointsTask = rewardsService.getPointsBalance(token: token)
-            async let couponsTask = rewardsService.getMyCoupons(token: token, status: "available", limit: 100)
-            async let giftCardsTask = rewardsService.getMyGiftCards(token: token, limit: 100)
-            async let appointmentsTask = appointmentsService.getMyAppointments(token: token, limit: 100)
-            async let reviewsTask: [UserReviewDTO]? = try? rewardsService.getMyReviews(token: token, limit: 100)
-            async let favoritesTask: Int? = try? rewardsService.getMyFavoritePinsCount(token: token)
-            async let vipStatusTask: VipStatusDTO? = try? rewardsService.getVipStatus(token: token)
+            let primarySummary = try await summaryService.loadPrimarySummary(token: token)
+            guard currentRequestToken == requestToken else { return }
 
-            let unread = try await unreadTask
-            let pointsBalance = try await pointsTask
-            let coupons = try await couponsTask
-            let giftCards = try await giftCardsTask
-            let appointments = try await appointmentsTask
-            let reviews = await reviewsTask ?? []
-            let favoritePinsCount = await favoritesTask ?? 0
-            let vipStatus = await vipStatusTask
-
-            unreadCount = unread.unread_count
+            unreadCount = primarySummary.unreadCount
             PushNotificationManager.shared.setAppBadge(
                 PushNotificationManager.shared.isPushPreferenceEnabled()
-                ? unread.unread_count
+                ? primarySummary.unreadCount
                 : 0
             )
-            points = pointsBalance.available_points
-            couponCount = coupons.count
-            giftBalance = giftCards
-                .filter { $0.status.lowercased() != "expired" }
-                .reduce(0) { $0 + max($1.balance, 0) }
-            completedOrders = appointments.filter { $0.status.lowercased() == "completed" }.count
-            reviewCount = reviews.count
-            favoriteCount = max(favoritePinsCount, 0)
-            self.vipStatus = vipStatus
+            points = primarySummary.points
+            if let favoriteCount = primarySummary.favoriteCount {
+                self.favoriteCount = favoriteCount
+            }
+            if let completedOrders = primarySummary.completedOrders {
+                self.completedOrders = completedOrders
+            }
+            if let resolvedVipStatus = primarySummary.vipStatus {
+                vipStatus = resolvedVipStatus
+            }
             errorMessage = nil
+            isLoading = false
+
+            let secondarySummary = await summaryService.loadSecondarySummary(token: token)
+            guard currentRequestToken == requestToken else { return }
+
+            if let resolvedCouponCount = secondarySummary.couponCount {
+                couponCount = resolvedCouponCount
+            }
+            if let resolvedGiftBalance = secondarySummary.giftBalance {
+                giftBalance = resolvedGiftBalance
+            }
+            if let resolvedReviewCount = secondarySummary.reviewCount {
+                reviewCount = resolvedReviewCount
+            }
         } catch let err as APIError {
+            guard currentRequestToken == requestToken else { return }
+            isLoading = false
             errorMessage = mapError(err)
         } catch {
+            guard currentRequestToken == requestToken else { return }
+            isLoading = false
             errorMessage = error.localizedDescription
         }
     }
@@ -109,7 +165,7 @@ struct ProfileCenterView: View {
         .background(Color.black)
         .toolbar(.hidden, for: .navigationBar)
         .tint(brandGold)
-        .task { await reload() }
+        .task { await loadIfNeeded() }
         .refreshable { await reload() }
         .onChange(of: viewModel.errorMessage) { value in
             guard let value, !value.isEmpty else { return }
@@ -124,7 +180,12 @@ struct ProfileCenterView: View {
 
     private func reload() async {
         guard let token = appState.requireAccessToken() else { return }
-        await viewModel.load(token: token)
+        await viewModel.load(token: token, force: true)
+    }
+
+    private func loadIfNeeded() async {
+        guard let token = appState.requireAccessToken() else { return }
+        await viewModel.loadIfNeeded(token: token)
     }
 
     private var topBar: some View {

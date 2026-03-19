@@ -139,6 +139,17 @@ data class VipStatus(
     val next_level: VipLevel? = null,
 )
 
+data class ProfileSummary(
+    val unread_count: Int,
+    val points: Int,
+    val favorite_count: Int,
+    val completed_orders: Int,
+    val vip_status: VipStatus,
+    val coupon_count: Int,
+    val gift_balance: Double,
+    val review_count: Int,
+)
+
 data class ReferralCode(
     val referral_code: String,
 )

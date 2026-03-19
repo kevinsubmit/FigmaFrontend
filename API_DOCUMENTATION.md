@@ -524,6 +524,60 @@ Authorization: Bearer {token}
 ]
 ```
 
+#### 6.3 获取 Profile 概览汇总
+
+```
+GET /api/v1/profile/summary
+Authorization: Bearer {token}
+```
+
+**说明**：
+- 供 iOS / Android `ProfileCenter` 首页概览使用。
+- 用单次轻量请求返回未读通知、积分、收藏数、VIP 状态、可用优惠券数、礼品卡余额、评价数。
+- `coupon_count` 只统计当前可用优惠券。
+- `gift_balance` 按当前移动端语义统计所有“非 expired”礼品卡余额总和。
+
+**响应**：
+```json
+{
+  "unread_count": 3,
+  "points": 300,
+  "favorite_count": 12,
+  "completed_orders": 8,
+  "vip_status": {
+    "current_level": {
+      "level": 2,
+      "min_spend": 2000,
+      "min_visits": 5,
+      "benefit": "Free Nail Care Kit",
+      "is_active": true
+    },
+    "total_spend": 2480,
+    "total_visits": 8,
+    "spend_progress": {
+      "current": 2480,
+      "required": 5000,
+      "percent": 49.6
+    },
+    "visits_progress": {
+      "current": 8,
+      "required": 15,
+      "percent": 53.3
+    },
+    "next_level": {
+      "level": 3,
+      "min_spend": 5000,
+      "min_visits": 15,
+      "benefit": "5% Discount on Services",
+      "is_active": true
+    }
+  },
+  "coupon_count": 4,
+  "gift_balance": 125.0,
+  "review_count": 6
+}
+```
+
 ### 7. 优惠券模块 (Coupons)
 
 #### 7.1 获取可领取优惠券列表

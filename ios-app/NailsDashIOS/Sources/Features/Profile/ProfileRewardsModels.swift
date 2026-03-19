@@ -132,6 +132,17 @@ struct VipStatusDTO: Decodable {
     let next_level: VipLevelDTO?
 }
 
+struct ProfileSummaryDTO: Decodable {
+    let unread_count: Int
+    let points: Int
+    let favorite_count: Int
+    let completed_orders: Int
+    let vip_status: VipStatusDTO
+    let coupon_count: Int
+    let gift_balance: Double
+    let review_count: Int
+}
+
 struct ReferralCodeDTO: Decodable {
     let referral_code: String
 }
@@ -152,4 +163,3 @@ struct ReferralListItemDTO: Decodable, Identifiable {
     let rewarded_at: String?
     let referrer_reward_given: Bool
 }
-

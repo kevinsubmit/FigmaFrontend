@@ -179,14 +179,7 @@ def update_admin_vip_levels(
     return _load_vip_levels(db)
 
 
-@router.get("/status", response_model=VipStatusResponse)
-def get_vip_status(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """
-    Get current user's VIP status based on completed appointments.
-    """
+def build_vip_status(db: Session, user_id: int) -> VipStatusResponse:
     levels = _load_vip_levels(db)
     completed_rows = (
         db.query(
@@ -194,7 +187,7 @@ def get_vip_status(
             Appointment.final_paid_amount,
         )
         .filter(
-            Appointment.user_id == current_user.id,
+            Appointment.user_id == user_id,
             Appointment.status == AppointmentStatus.COMPLETED,
         )
         .all()
@@ -227,3 +220,14 @@ def get_vip_status(
         visits_progress=_calc_progress(float(total_visits), visits_required),
         next_level=next_level,
     )
+
+
+@router.get("/status", response_model=VipStatusResponse)
+def get_vip_status(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get current user's VIP status based on completed appointments.
+    """
+    return build_vip_status(db=db, user_id=current_user.id)
