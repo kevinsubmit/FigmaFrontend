@@ -1,0 +1,310 @@
+# Backend Smoke 覆盖清单
+
+更新时间：2026-03-21
+
+## 当前入口
+
+- 统一执行入口：`backend/run_regression_smokes.py`
+- CI 工作流：`.github/workflows/backend-payment-regression.yml`
+- 当前 CI 实际覆盖：`7` 条真实链路 smoke
+
+执行命令：
+
+```bash
+cd backend
+python run_regression_smokes.py
+```
+
+## 已纳入统一 runner / CI 的 smoke
+
+### 1. payment
+
+脚本：`backend/test_payment_regression.py`
+
+覆盖：
+
+- 用户注册 / 登录
+- 优惠券创建 / 领取
+- 礼品卡自购
+- 预约创建 / 确认
+- 结算：`coupon + gift card + cash split`
+- 部分退款 / 全额退款
+- 积分、优惠券、礼品卡回滚校验
+
+对应主模块：
+
+- `auth`
+- `coupons`
+- `gift_cards`
+- `appointments`
+- `points`
+
+### 2. group-split
+
+脚本：`backend/test_group_split_regression.py`
+
+覆盖：
+
+- 团单创建
+- 未注册 guest / 已注册 guest 混合入组
+- admin 确认预约
+- 双技师 split
+- host 结算
+- 团单 payload / owner 归属 / split 平衡 / 积分副作用
+
+对应主模块：
+
+- `appointments/groups`
+- `appointments/splits`
+- `appointments/guest-owner`
+- `appointments/settle`
+
+### 3. upload-notification
+
+脚本：`backend/test_upload_notification_regression.py`
+
+覆盖：
+
+- 头像上传
+- 图片上传
+- `/uploads/...` 公开访问
+- 创建预约触发管理员通知
+- 管理员确认预约触发顾客通知
+- 通知列表 / 详情 / 未读数 / 全部已读 / 单条已读
+
+对应主模块：
+
+- `auth/me/avatar`
+- `upload/images`
+- `notifications`
+- `appointments/confirm`
+
+### 4. device-push-admin
+
+脚本：`backend/test_device_push_admin_regression.py`
+
+覆盖：
+
+- device token 注册 / 归一化 / upsert
+- 通知偏好关闭导致 token 失活
+- 重新开启后第二 token 注册 / 注销
+- super admin `test push / single push / batch push(store_id)`
+
+对应主模块：
+
+- `notifications/devices/register`
+- `notifications/devices/unregister`
+- `notifications/preferences`
+- `notifications/admin/*`
+
+### 5. coupon-referral
+
+脚本：`backend/test_coupon_referral_regression.py`
+
+覆盖：
+
+- admin 创建 referral reward coupon
+- admin 按手机号发 pending coupon grant
+- 未注册手机号出现在 pending grants
+- referee 带 referral code 注册
+- 注册后自动 claim pending grant
+- referrer / referee 双方收到 referral coupon
+- referral stats / list / reward 状态
+
+对应主模块：
+
+- `coupons/grant`
+- `coupons/pending-grants`
+- `auth/register`
+- `referrals/*`
+
+### 6. reschedule-cancel
+
+脚本：`backend/test_reschedule_cancel_regression.py`
+
+覆盖：
+
+- 用户改期
+- 用户取消
+- 管理员取消
+- 改期次数 / 原始时间保留
+- 管理员 / 顾客通知副作用
+
+对应主模块：
+
+- `appointments/reschedule`
+- `appointments/cancel`
+- `notifications`
+
+### 7. gift-card-transfer
+
+脚本：`backend/test_gift_card_transfer_regression.py`
+
+覆盖：
+
+- 礼品卡自购
+- 已持有礼品卡转赠
+- 错误手机号用户 claim 被拒绝
+- 正确 recipient claim
+- 转赠后 revoke
+- transfer status 查询
+- 礼品卡 summary 联动
+- `gift_card_transactions` 关键事件序列
+
+对应主模块：
+
+- `gift_cards/purchase`
+- `gift_cards/{id}/transfer`
+- `gift_cards/claim`
+- `gift_cards/{id}/revoke`
+- `gift_cards/{id}/transfer-status`
+- `gift_cards/summary`
+
+## 仓库里已有，但未纳入统一 runner / CI 的脚本
+
+### home-search
+
+脚本：`backend/test_home_search_regression.py`
+
+现状：
+
+- 这是一条独立回归脚本，不在 `run_regression_smokes.py` 里
+- 原因不是遗漏，而是它依赖固定业务数据标题：
+  - `Y2K Pop`
+  - `French`
+  - `Classic French Set`
+
+当前问题：
+
+- 现有 smoke suite 都会先清空动态业务数据
+- `home-search` 没有自己 seed `pins/tags`
+- 直接塞进 CI 会在干净数据库下变成脆弱测试
+
+结论：
+
+- 暂时不应直接接入 runner
+- 如果要纳入 CI，应该先把它改造成“自己 seed pins/theme/tag 的真实 smoke”
+
+## 当前未覆盖的高优先级链路
+
+### P1. appointment complete / no-show
+
+原因：
+
+- 目前覆盖了 confirm / settle / refund / reschedule / cancel
+- 还没覆盖 `complete` 和 `no-show`
+- 这两个状态和积分、评价资格、统计口径强相关
+
+对应接口：
+
+- `PATCH /appointments/{appointment_id}/complete`
+- `POST /appointments/{appointment_id}/no-show`
+
+### P1. store availability constraints
+
+原因：
+
+- 当前预约 smoke 默认假设时间可用
+- 还没覆盖“为什么不可预约”这类高风险条件
+
+建议覆盖：
+
+- blocked slots
+- store holidays
+- technician unavailable
+- available-slots 联动
+
+对应接口：
+
+- `stores/{store_id}/blocked-slots*`
+- `store_holidays/*`
+- `technician_unavailable/*`
+- `technicians/{technician_id}/available-slots`
+
+## 当前未覆盖的中优先级链路
+
+### P2. favorites
+
+原因：
+
+- 双端和 H5 很依赖收藏状态
+- 但后端 smoke 还没覆盖 pin/store 收藏增删和 count 联动
+
+对应接口：
+
+- `pins/{pin_id}/favorite`
+- `pins/favorites/my-favorites`
+- `pins/favorites/count`
+- `stores/{store_id}/favorite`
+- `stores/favorites/my-favorites`
+- `stores/favorites/count`
+
+### P2. appointment service items mutations
+
+原因：
+
+- 当前覆盖的是“单服务”和“group split”
+- 还没覆盖预约中的服务增删改汇总
+
+对应接口：
+
+- `GET /appointments/{appointment_id}/services`
+- `POST /appointments/{appointment_id}/services`
+- `DELETE /appointments/{appointment_id}/services/{item_id}`
+
+### P2. technician reassignment
+
+原因：
+
+- split 已覆盖“多技师分账”
+- 还没覆盖普通预约技师改派
+
+对应接口：
+
+- `PATCH /appointments/{appointment_id}/technician`
+
+## 当前未覆盖的低优先级链路
+
+### P3. admin CRUD / analytics
+
+包括：
+
+- `customers/admin*`
+- `dashboard/*`
+- `risk/*`
+- `security/*`
+- `logs/admin*`
+
+原因：
+
+- 对核心消费者业务主链路的阻塞性低于预约 / 支付 / 通知 / 上传
+- 更适合单独做 admin regression suite，而不是混进当前 consumer-first smoke
+
+## 推荐的下一批实施顺序
+
+1. `gift card transfer / claim / revoke`
+1. 已完成并纳入 runner / CI
+2. `appointment complete / no-show`
+3. `availability constraints`
+4. `favorites`
+5. 把 `home-search` 改成自 seed 后再纳入 runner
+
+## 当前结论
+
+当前后端 smoke / CI 已经覆盖了最核心的 6 条消费者主链路：
+
+- 预约创建与改期取消
+- 团单与技师分账
+- 支付结算与退款
+- 上传与通知
+- device token 与 admin push
+- 优惠券待领取与 referral 奖励
+
+这套覆盖已经足以拦住“主链路直接坏掉”的大部分回归。
+
+下一阶段的重点不再是继续横向加很多低价值脚本，而是按风险顺序，把：
+
+- 预约完成 / no-show
+- 可预约性约束
+
+这三类高风险状态链路补进去。

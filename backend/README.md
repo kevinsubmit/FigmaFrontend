@@ -347,6 +347,25 @@ python test_coupon_referral_regression.py
 CLEANUP_AFTER=0 python test_coupon_referral_regression.py
 ```
 
+礼品卡 transfer / claim / revoke 真实链路 smoke：
+
+```bash
+python test_gift_card_transfer_regression.py
+```
+
+默认行为：
+
+- 跑前自动清理动态业务数据
+- 自动注册 `sender / recipient A / recipient B`
+- 跑 `purchase -> transfer -> claim` 与 `purchase -> transfer -> revoke`
+- 跑后自动再次清理动态业务数据
+
+如需保留回归数据用于人工排查：
+
+```bash
+CLEANUP_AFTER=0 python test_gift_card_transfer_regression.py
+```
+
 改期 / 取消真实链路 smoke：
 
 ```bash
@@ -383,7 +402,7 @@ python run_regression_smokes.py
 python run_regression_smokes.py --list
 
 # 只跑部分 smoke
-python run_regression_smokes.py --only payment --only coupon-referral --only reschedule-cancel
+python run_regression_smokes.py --only payment --only gift-card-transfer --only reschedule-cancel
 ```
 
 如果你本地也想得到同样隔离的上传目录，可用：
