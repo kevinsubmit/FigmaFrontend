@@ -2,11 +2,10 @@
 Database session management
 """
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from typing import Generator
 from app.core.config import settings
-import re
 
 
 # Convert mysql:// to mysql+pymysql:// if needed
@@ -22,15 +21,26 @@ if "?ssl=" in database_url:
 connect_args = {}
 if "tidbcloud.com" in database_url:
     connect_args["ssl"] = {"ssl_mode": "VERIFY_IDENTITY"}
+if database_url.startswith("sqlite"):
+    connect_args["check_same_thread"] = False
 
-engine = create_engine(
-    database_url,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-    echo=settings.DEBUG,
-    connect_args=connect_args
-)
+engine_kwargs = {
+    "echo": settings.DEBUG,
+    "connect_args": connect_args,
+}
+
+if not database_url.startswith("sqlite"):
+    engine_kwargs.update(
+        {
+            "pool_pre_ping": bool(settings.DB_POOL_PRE_PING),
+            "pool_size": max(1, int(settings.DB_POOL_SIZE)),
+            "max_overflow": max(0, int(settings.DB_MAX_OVERFLOW)),
+            "pool_timeout": max(1, int(settings.DB_POOL_TIMEOUT_SECONDS)),
+            "pool_recycle": max(0, int(settings.DB_POOL_RECYCLE_SECONDS)),
+        }
+    )
+
+engine = create_engine(database_url, **engine_kwargs)
 
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

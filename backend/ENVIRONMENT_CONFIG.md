@@ -148,6 +148,8 @@ if not is_development:
 ### 步骤3：重启服务
 ```bash
 uvicorn app.main:app --reload
+# 或使用环境变量驱动的运行器
+python -m app.server
 ```
 
 ### 步骤4：验证

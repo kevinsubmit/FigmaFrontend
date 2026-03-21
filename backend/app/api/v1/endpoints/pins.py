@@ -83,8 +83,7 @@ def _to_pin_admin_response(pin) -> PinAdminResponse:
 
 @router.get("/tags", response_model=List[str])
 def list_tags_public(db: Session = Depends(get_db)):
-    tags = crud_pin.list_public_tags(db)
-    return [tag.name for tag in tags]
+    return crud_pin.list_public_tag_names_cached(db)
 
 
 @router.get("/", response_model=List[PinResponse])

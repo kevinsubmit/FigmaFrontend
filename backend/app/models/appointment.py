@@ -1,7 +1,7 @@
 """
 Appointment Model
 """
-from sqlalchemy import Column, Integer, String, Date, Time, Text, DateTime, Float, func, Enum, Boolean
+from sqlalchemy import Boolean, Column, Date, DateTime, Enum, Float, Index, Integer, String, Text, Time, func
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 import enum
@@ -18,6 +18,29 @@ class AppointmentStatus(str, enum.Enum):
 class Appointment(Base):
     """Appointment model"""
     __tablename__ = "appointments"
+    __table_args__ = (
+        Index(
+            "ix_appointments_user_status_schedule",
+            "user_id",
+            "status",
+            "appointment_date",
+            "appointment_time",
+        ),
+        Index(
+            "ix_appointments_store_status_schedule",
+            "store_id",
+            "status",
+            "appointment_date",
+            "appointment_time",
+        ),
+        Index(
+            "ix_appointments_technician_status_schedule",
+            "technician_id",
+            "status",
+            "appointment_date",
+            "appointment_time",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     order_number = Column(String(32), unique=True, nullable=True, index=True)

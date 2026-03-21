@@ -6,6 +6,18 @@ from typing import List, Optional
 from datetime import datetime
 
 from app.models.notification import Notification
+from app.services import cache_service
+
+
+UNREAD_COUNT_CACHE_TTL_SECONDS = 15
+
+
+def _unread_count_cache_key(user_id: int) -> str:
+    return f"notifications:unread-count:{int(user_id)}:v1"
+
+
+def invalidate_unread_count_cache(user_id: int) -> None:
+    cache_service.delete(_unread_count_cache_key(user_id))
 
 
 def get_user_notifications(
@@ -33,10 +45,12 @@ def mark_as_read(db: Session, notification_id: int) -> Optional[Notification]:
     """Mark a notification as read"""
     notification = get_notification(db, notification_id)
     if notification and not notification.is_read:
+        user_id = int(notification.user_id)
         notification.is_read = True
         notification.read_at = datetime.utcnow()
         db.commit()
         db.refresh(notification)
+        invalidate_unread_count_cache(user_id)
     return notification
 
 
@@ -50,6 +64,7 @@ def mark_all_as_read(db: Session, user_id: int) -> int:
         "read_at": datetime.utcnow()
     })
     db.commit()
+    invalidate_unread_count_cache(int(user_id))
     return count
 
 
@@ -57,18 +72,28 @@ def delete_notification(db: Session, notification_id: int) -> bool:
     """Delete a notification"""
     notification = get_notification(db, notification_id)
     if notification:
+        user_id = int(notification.user_id)
         db.delete(notification)
         db.commit()
+        invalidate_unread_count_cache(user_id)
         return True
     return False
 
 
 def get_unread_count(db: Session, user_id: int) -> int:
     """Get count of unread notifications"""
-    return db.query(Notification).filter(
-        Notification.user_id == user_id,
-        Notification.is_read == False
-    ).count()
+    return int(
+        cache_service.get_or_set_json(
+            _unread_count_cache_key(user_id),
+            ttl_seconds=UNREAD_COUNT_CACHE_TTL_SECONDS,
+            loader=lambda: int(
+                db.query(Notification).filter(
+                    Notification.user_id == user_id,
+                    Notification.is_read == False
+                ).count()
+            ),
+        )
+    )
 
 
 def create_notification(
@@ -91,4 +116,5 @@ def create_notification(
     db.add(notification)
     db.commit()
     db.refresh(notification)
+    invalidate_unread_count_cache(int(user_id))
     return notification

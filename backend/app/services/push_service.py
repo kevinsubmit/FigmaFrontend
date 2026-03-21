@@ -3,11 +3,14 @@ APNs push notification service.
 """
 from __future__ import annotations
 
+import atexit
 import logging
 import os
 import time
+from threading import Lock
 from typing import Dict, Optional
 
+import httpx
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -20,6 +23,9 @@ logger = logging.getLogger(__name__)
 _APNS_AUTH_TOKEN: Optional[str] = None
 _APNS_AUTH_TOKEN_ISSUED_AT: int = 0
 _APNS_AUTH_TOKEN_TTL_SECONDS = 50 * 60  # APNs allows max 60 minutes
+_APNS_AUTH_TOKEN_LOCK = Lock()
+_HTTP_CLIENT_LOCK = Lock()
+_HTTP_CLIENT: Optional[httpx.Client] = None
 
 _INVALID_TOKEN_REASONS = {
     "BadDeviceToken",
@@ -51,8 +57,9 @@ def _build_apns_auth_token() -> Optional[str]:
     global _APNS_AUTH_TOKEN, _APNS_AUTH_TOKEN_ISSUED_AT
 
     now = int(time.time())
-    if _APNS_AUTH_TOKEN and now - _APNS_AUTH_TOKEN_ISSUED_AT < _APNS_AUTH_TOKEN_TTL_SECONDS:
-        return _APNS_AUTH_TOKEN
+    with _APNS_AUTH_TOKEN_LOCK:
+        if _APNS_AUTH_TOKEN and now - _APNS_AUTH_TOKEN_ISSUED_AT < _APNS_AUTH_TOKEN_TTL_SECONDS:
+            return _APNS_AUTH_TOKEN
 
     private_key = _load_private_key()
     if not private_key:
@@ -71,12 +78,40 @@ def _build_apns_auth_token() -> Optional[str]:
             algorithm="ES256",
             headers={"alg": "ES256", "kid": settings.APNS_KEY_ID},
         )
-        _APNS_AUTH_TOKEN = token
-        _APNS_AUTH_TOKEN_ISSUED_AT = now
+        with _APNS_AUTH_TOKEN_LOCK:
+            _APNS_AUTH_TOKEN = token
+            _APNS_AUTH_TOKEN_ISSUED_AT = now
         return token
     except Exception as exc:
         logger.error("APNs auth token build failed: %s", exc)
         return None
+
+
+def _get_http_client() -> httpx.Client:
+    global _HTTP_CLIENT
+    with _HTTP_CLIENT_LOCK:
+        if _HTTP_CLIENT is None or _HTTP_CLIENT.is_closed:
+            _HTTP_CLIENT = httpx.Client(
+                http2=True,
+                timeout=settings.APNS_TIMEOUT_SECONDS,
+            )
+        return _HTTP_CLIENT
+
+
+def close_http_client() -> None:
+    global _HTTP_CLIENT
+    with _HTTP_CLIENT_LOCK:
+        client = _HTTP_CLIENT
+        _HTTP_CLIENT = None
+    if client is None:
+        return
+    try:
+        client.close()
+    except Exception as exc:
+        logger.warning("Failed to close APNs HTTP client cleanly: %s", exc)
+
+
+atexit.register(close_http_client)
 
 
 def _resolve_environment(token_environment: Optional[str]) -> str:
@@ -115,13 +150,8 @@ def send_push_to_user(
     if not tokens:
         return {"sent": 0, "failed": 0, "deactivated": 0}
 
-    try:
-        import httpx
-    except Exception as exc:  # pragma: no cover - optional dependency
-        logger.warning("APNs disabled: httpx import failed (%s)", exc)
-        return {"sent": 0, "failed": len(tokens), "deactivated": 0}
-
     result = {"sent": 0, "failed": 0, "deactivated": 0}
+    client = _get_http_client()
 
     for token_row in tokens:
         environment = _resolve_environment(token_row.apns_environment)
@@ -144,8 +174,7 @@ def send_push_to_user(
         }
 
         try:
-            with httpx.Client(http2=True, timeout=settings.APNS_TIMEOUT_SECONDS) as client:
-                response = client.post(endpoint, json=payload, headers=headers)
+            response = client.post(endpoint, json=payload, headers=headers)
         except Exception as exc:
             logger.warning("APNs request failed (token_id=%s): %s", token_row.id, exc)
             result["failed"] += 1

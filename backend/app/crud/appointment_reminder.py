@@ -3,7 +3,7 @@ Appointment Reminder CRUD operations
 """
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from typing import List, Optional
+from typing import Dict, List, Optional
 from app.models.appointment_reminder import AppointmentReminder, ReminderType, ReminderStatus
 
 
@@ -50,15 +50,32 @@ def create_reminders_for_appointment(
 
 def get_pending_reminders(
     db: Session,
-    current_time: datetime
+    current_time: datetime,
+    limit: Optional[int] = None,
 ) -> List[AppointmentReminder]:
     """
     Get all pending reminders that should be sent now
     """
-    return db.query(AppointmentReminder).filter(
+    query = db.query(AppointmentReminder).filter(
         AppointmentReminder.status == ReminderStatus.PENDING,
         AppointmentReminder.scheduled_time <= current_time
-    ).all()
+    ).order_by(
+        AppointmentReminder.scheduled_time.asc(),
+        AppointmentReminder.id.asc(),
+    )
+    if limit is not None:
+        query = query.limit(limit)
+    return query.all()
+
+
+def count_pending_reminders(
+    db: Session,
+    current_time: datetime,
+) -> int:
+    return db.query(AppointmentReminder).filter(
+        AppointmentReminder.status == ReminderStatus.PENDING,
+        AppointmentReminder.scheduled_time <= current_time,
+    ).count()
 
 
 def mark_reminder_as_sent(
@@ -81,6 +98,30 @@ def mark_reminder_as_sent(
     return reminder
 
 
+def mark_reminders_as_sent(
+    db: Session,
+    reminder_ids: List[int],
+    sent_at: Optional[datetime] = None,
+    auto_commit: bool = True,
+) -> int:
+    if not reminder_ids:
+        return 0
+
+    affected = db.query(AppointmentReminder).filter(
+        AppointmentReminder.id.in_(reminder_ids)
+    ).update(
+        {
+            "status": ReminderStatus.SENT,
+            "sent_at": sent_at or datetime.now(),
+            "error_message": None,
+        },
+        synchronize_session=False,
+    )
+    if auto_commit:
+        db.commit()
+    return int(affected or 0)
+
+
 def mark_reminder_as_failed(
     db: Session,
     reminder_id: int,
@@ -100,6 +141,27 @@ def mark_reminder_as_failed(
         db.refresh(reminder)
     
     return reminder
+
+
+def mark_reminders_as_failed(
+    db: Session,
+    reminder_errors: Dict[int, str],
+    auto_commit: bool = True,
+) -> int:
+    if not reminder_errors:
+        return 0
+
+    reminders = db.query(AppointmentReminder).filter(
+        AppointmentReminder.id.in_(list(reminder_errors.keys()))
+    ).all()
+
+    for reminder in reminders:
+        reminder.status = ReminderStatus.FAILED
+        reminder.error_message = reminder_errors.get(reminder.id, "Failed to send notification")
+
+    if auto_commit:
+        db.commit()
+    return len(reminders)
 
 
 def cancel_reminders_for_appointment(

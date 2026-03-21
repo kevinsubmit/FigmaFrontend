@@ -6,9 +6,10 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 from queue import Empty, Full, Queue
 from threading import Event, Lock, Thread
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 from fastapi import Request
 from sqlalchemy.orm import Session
@@ -17,7 +18,9 @@ from app.db.session import SessionLocal
 from app.models.system_log import SystemLog
 
 _ASYNC_LOG_QUEUE_SIZE = max(100, int(os.getenv("ASYNC_LOG_QUEUE_SIZE", "5000")))
+_ASYNC_LOG_BATCH_SIZE = max(1, int(os.getenv("ASYNC_LOG_BATCH_SIZE", "100")))
 _ASYNC_LOG_POLL_SECONDS = 0.2
+_ASYNC_LOG_FLUSH_SECONDS = max(0.05, float(os.getenv("ASYNC_LOG_FLUSH_SECONDS", "0.5")))
 logger = logging.getLogger(__name__)
 
 
@@ -59,16 +62,30 @@ class _AsyncSystemLogWriter:
     def _run(self) -> None:
         while not self._stop_event.is_set() or not self._queue.empty():
             try:
-                payload = self._queue.get(timeout=_ASYNC_LOG_POLL_SECONDS)
+                first_payload = self._queue.get(timeout=_ASYNC_LOG_POLL_SECONDS)
             except Empty:
                 continue
 
+            batch = [first_payload]
+            flush_deadline = time.monotonic() + _ASYNC_LOG_FLUSH_SECONDS
+            while len(batch) < _ASYNC_LOG_BATCH_SIZE:
+                remaining = flush_deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                try:
+                    batch.append(self._queue.get(timeout=remaining))
+                except Empty:
+                    break
+
             db = SessionLocal()
             try:
-                create_system_log(db, **payload)
+                if not create_system_logs_batch(db, batch):
+                    for payload in batch:
+                        create_system_log(db, **payload)
             finally:
                 db.close()
-                self._queue.task_done()
+                for _payload in batch:
+                    self._queue.task_done()
 
 
 _ASYNC_LOG_WRITER = _AsyncSystemLogWriter(maxsize=_ASYNC_LOG_QUEUE_SIZE)
@@ -107,7 +124,7 @@ def create_system_log(
     meta: Optional[Any] = None,
 ) -> Optional[SystemLog]:
     try:
-        item = SystemLog(
+        item = SystemLog(**_build_system_log_values(
             log_type=log_type,
             level=level,
             module=module,
@@ -124,10 +141,10 @@ def create_system_log(
             method=method,
             status_code=status_code,
             latency_ms=latency_ms,
-            before_json=_to_json_text(before),
-            after_json=_to_json_text(after),
-            meta_json=_to_json_text(meta),
-        )
+            before=before,
+            after=after,
+            meta=meta,
+        ))
         db.add(item)
         db.commit()
         db.refresh(item)
@@ -143,6 +160,25 @@ def create_system_log(
             exc_info=True,
         )
         return None
+
+
+def create_system_logs_batch(db: Session, payloads: Sequence[dict[str, Any]]) -> bool:
+    if not payloads:
+        return True
+
+    try:
+        rows = [_build_system_log_values(**payload) for payload in payloads]
+        db.execute(SystemLog.__table__.insert(), rows)
+        db.commit()
+        return True
+    except Exception:
+        db.rollback()
+        logger.warning(
+            "Failed to persist system log batch (count=%s)",
+            len(payloads),
+            exc_info=True,
+        )
+        return False
 
 
 def create_system_log_async(
@@ -190,6 +226,51 @@ def create_system_log_async(
             "meta": meta,
         }
     )
+
+
+def _build_system_log_values(
+    *,
+    log_type: str,
+    level: str,
+    module: Optional[str] = None,
+    action: Optional[str] = None,
+    message: Optional[str] = None,
+    operator_user_id: Optional[int] = None,
+    store_id: Optional[int] = None,
+    target_type: Optional[str] = None,
+    target_id: Optional[str] = None,
+    request_id: Optional[str] = None,
+    ip_address: Optional[str] = None,
+    user_agent: Optional[str] = None,
+    path: Optional[str] = None,
+    method: Optional[str] = None,
+    status_code: Optional[int] = None,
+    latency_ms: Optional[int] = None,
+    before: Optional[Any] = None,
+    after: Optional[Any] = None,
+    meta: Optional[Any] = None,
+) -> dict[str, Any]:
+    return {
+        "log_type": log_type,
+        "level": level,
+        "module": module,
+        "action": action,
+        "message": message,
+        "operator_user_id": operator_user_id,
+        "store_id": store_id,
+        "target_type": target_type,
+        "target_id": target_id,
+        "request_id": request_id,
+        "ip_address": ip_address,
+        "user_agent": user_agent,
+        "path": path,
+        "method": method,
+        "status_code": status_code,
+        "latency_ms": latency_ms,
+        "before_json": _to_json_text(before),
+        "after_json": _to_json_text(after),
+        "meta_json": _to_json_text(meta),
+    }
 
 
 def start_async_logger() -> None:

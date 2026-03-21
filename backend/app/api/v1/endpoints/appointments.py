@@ -51,7 +51,6 @@ from app.models.appointment_staff_split import AppointmentStaffSplit
 from app.models.appointment_service_item import AppointmentServiceItem
 from app.models.appointment_settlement_event import AppointmentSettlementEvent
 from app.models.user import User as UserModel
-from app.models.vip_level import VIPLevelConfig
 from app.models.review import Review
 from app.models.gift_card import GiftCard, GiftCardTransaction
 from app.models.user_coupon import UserCoupon, CouponStatus
@@ -62,6 +61,7 @@ from app.services import notification_service
 from app.services import reminder_service
 from app.services import risk_service
 from app.services import log_service
+from app.services.vip_config_service import load_vip_level_rows
 from app.crud import coupons as crud_coupons
 from app.utils.phone_privacy import mask_phone
 
@@ -87,10 +87,7 @@ DEFAULT_VIP_LEVELS = [
 
 
 def _load_vip_levels_for_appointments(db: Session):
-    try:
-        rows = db.query(VIPLevelConfig).order_by(VIPLevelConfig.level.asc()).all()
-    except Exception:
-        return DEFAULT_VIP_LEVELS
+    rows = load_vip_level_rows(db)
     if not rows:
         return DEFAULT_VIP_LEVELS
     return [

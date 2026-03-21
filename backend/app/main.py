@@ -3,7 +3,6 @@ FastAPI main application
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from app.core.config import settings
@@ -12,7 +11,6 @@ from app.services.scheduler import reminder_scheduler
 import hashlib
 import logging
 import os
-from pathlib import Path
 from datetime import datetime
 import ipaddress
 import json
@@ -26,7 +24,8 @@ from app.core.security import decode_token
 from app.db.session import SessionLocal
 from app.models.security import SecurityBlockLog, SecurityIPRule
 from app.models.user import User
-from app.services import log_service
+from app.services import log_service, notification_service
+from app.services.upload_file_service import build_upload_response
 
 logger = logging.getLogger(__name__)
 _SENSITIVE_QUERY_KEYS = {
@@ -67,15 +66,24 @@ async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     # Startup
     logger.info("Starting up application...")
-    reminder_scheduler.start()
     log_service.start_async_logger()
-    logger.info("Reminder scheduler started")
+    notification_service.start_async_push_dispatcher()
+    scheduler_started = False
+    if settings.embedded_scheduler_enabled:
+        reminder_scheduler.start()
+        scheduler_started = True
+        logger.info("Embedded reminder scheduler started")
+    else:
+        logger.info("Embedded reminder scheduler disabled for web process")
     yield
     # Shutdown
     logger.info("Shutting down application...")
-    await reminder_scheduler.stop()
+    if scheduler_started:
+        await reminder_scheduler.stop()
     log_service.shutdown_async_logger(timeout_seconds=2.0)
-    logger.info("Reminder scheduler stopped")
+    notification_service.shutdown_async_push_dispatcher(timeout_seconds=5.0)
+    if scheduler_started:
+        logger.info("Embedded reminder scheduler stopped")
 
 
 # Create FastAPI application
@@ -188,25 +196,41 @@ def _resolve_operator_user_id(db, request) -> int | None:
         token_phone = payload.get("phone")
         if token_user_id is not None:
             try:
-                user_obj = db.query(User).filter(User.id == int(token_user_id)).first()
-                if user_obj:
-                    return user_obj.id
+                return int(token_user_id)
             except (TypeError, ValueError):
-                # 兼容历史 token: sub 可能是手机号或用户名
-                user_obj = (
-                    db.query(User)
-                    .filter((User.phone == str(token_user_id)) | (User.username == str(token_user_id)))
-                    .first()
-                )
+                if db is not None:
+                    # 兼容历史 token: sub 可能是手机号或用户名
+                    user_obj = (
+                        db.query(User)
+                        .filter((User.phone == str(token_user_id)) | (User.username == str(token_user_id)))
+                        .first()
+                    )
+                    if user_obj:
+                        return user_obj.id
+        if token_phone:
+            if db is not None:
+                user_obj = db.query(User).filter(User.phone == str(token_phone)).first()
                 if user_obj:
                     return user_obj.id
-        if token_phone:
-            user_obj = db.query(User).filter(User.phone == str(token_phone)).first()
-            if user_obj:
-                return user_obj.id
         return None
     except Exception:
         return None
+
+
+def _resolve_operator_user_id_for_logging(request) -> int | None:
+    operator_user_id = _resolve_operator_user_id(None, request)
+    if operator_user_id is not None:
+        return operator_user_id
+
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.lower().startswith("bearer "):
+        return None
+
+    db = SessionLocal()
+    try:
+        return _resolve_operator_user_id(db, request)
+    finally:
+        db.close()
 
 
 def _determine_scope(path: str) -> str | None:
@@ -339,8 +363,7 @@ async def security_ip_guard(request, call_next):
         )
         db.commit()
         request_id = _extract_request_id(request)
-        log_service.create_system_log(
-            db,
+        log_service.create_system_log_async(
             log_type="security",
             level="warn",
             module="security",
@@ -389,28 +412,23 @@ async def access_log_middleware(request, call_next):
         message = "success" if status_code < 400 else "request_failed"
     except Exception as exc:
         latency_ms = int((time.perf_counter() - start_time) * 1000)
-        db = SessionLocal()
-        try:
-            operator_user_id = _resolve_operator_user_id(db, request)
-            log_service.create_system_log(
-                db,
-                log_type="error",
-                level="critical",
-                module=module,
-                action="http.request",
-                message=str(exc),
-                operator_user_id=operator_user_id,
-                request_id=request_id,
-                ip_address=client_ip,
-                user_agent=request.headers.get("user-agent"),
-                path=path,
-                method=method,
-                status_code=500,
-                latency_ms=latency_ms,
-                meta=access_meta,
-            )
-        finally:
-            db.close()
+        operator_user_id = _resolve_operator_user_id_for_logging(request)
+        log_service.create_system_log_async(
+            log_type="error",
+            level="critical",
+            module=module,
+            action="http.request",
+            message=str(exc),
+            operator_user_id=operator_user_id,
+            request_id=request_id,
+            ip_address=client_ip,
+            user_agent=request.headers.get("user-agent"),
+            path=path,
+            method=method,
+            status_code=500,
+            latency_ms=latency_ms,
+            meta=access_meta,
+        )
         return JSONResponse(
             status_code=500,
             content={"detail": "Internal server error", "request_id": request_id},
@@ -437,30 +455,25 @@ async def access_log_middleware(request, call_next):
                 meta=access_meta,
             )
     else:
-        db = SessionLocal()
-        try:
-            operator_user_id = _resolve_operator_user_id(db, request)
-            log_type = "error" if status_code >= 500 else "access"
-            level = "error" if status_code >= 500 else "warn"
-            log_service.create_system_log(
-                db,
-                log_type=log_type,
-                level=level,
-                module=module,
-                action="http.request",
-                message=message,
-                operator_user_id=operator_user_id,
-                request_id=request_id,
-                ip_address=client_ip,
-                user_agent=request.headers.get("user-agent"),
-                path=path,
-                method=method,
-                status_code=status_code,
-                latency_ms=latency_ms,
-                meta=access_meta,
-            )
-        finally:
-            db.close()
+        operator_user_id = _resolve_operator_user_id_for_logging(request)
+        log_type = "error" if status_code >= 500 else "access"
+        level = "error" if status_code >= 500 else "warn"
+        log_service.create_system_log_async(
+            log_type=log_type,
+            level=level,
+            module=module,
+            action="http.request",
+            message=message,
+            operator_user_id=operator_user_id,
+            request_id=request_id,
+            ip_address=client_ip,
+            user_agent=request.headers.get("user-agent"),
+            path=path,
+            method=method,
+            status_code=status_code,
+            latency_ms=latency_ms,
+            meta=access_meta,
+        )
 
     response.headers.setdefault("X-Request-Id", request_id)
     return response
@@ -470,6 +483,8 @@ async def access_log_middleware(request, call_next):
 async def upload_response_security_headers(request, call_next):
     response = await call_next(request)
     if request.url.path.startswith("/uploads/"):
+        if 300 <= response.status_code < 400:
+            return response
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "no-referrer")
@@ -483,10 +498,10 @@ async def upload_response_security_headers(request, call_next):
             response.headers.setdefault("Content-Disposition", "attachment")
     return response
 
-# Mount static files directory for uploads
-upload_dir = Path(settings.UPLOAD_DIR)
-upload_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=str(upload_dir)), name="uploads")
+
+@app.api_route("/uploads/{file_path:path}", methods=["GET", "HEAD"], include_in_schema=False)
+async def serve_upload(file_path: str):
+    return build_upload_response(file_path)
 
 
 @app.get("/")

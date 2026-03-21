@@ -1,7 +1,7 @@
 """
 Notification Model
 """
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, Enum, ForeignKey, func
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 import enum
@@ -28,6 +28,14 @@ class Notification(Base):
     Stores in-app notifications for users
     """
     __tablename__ = "notifications"
+    __table_args__ = (
+        Index(
+            "ix_notifications_user_read_created",
+            "user_id",
+            "is_read",
+            "created_at",
+        ),
+    )
     
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("backend_users.id", ondelete="CASCADE"), nullable=False, index=True)

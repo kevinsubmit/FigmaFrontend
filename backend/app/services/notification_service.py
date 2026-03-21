@@ -2,11 +2,16 @@
 Notification Service
 Handles notification creation and management
 """
+from queue import Empty, Full, Queue
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime
 import logging
+from threading import Event, Lock, Thread
 
+from app.core.config import settings
+from app.crud.notification import invalidate_unread_count_cache
+from app.db.session import SessionLocal
 from app.models.notification import Notification, NotificationType
 from app.models.appointment import Appointment
 from app.models.user import User
@@ -14,6 +19,101 @@ from app.models.store import Store
 from app.services import push_service
 
 logger = logging.getLogger(__name__)
+_ASYNC_PUSH_POLL_SECONDS = 0.2
+
+
+class _AsyncPushDispatcher:
+    def __init__(self, maxsize: int):
+        self._queue: Queue[int] = Queue(maxsize=maxsize)
+        self._stop_event = Event()
+        self._lock = Lock()
+        self._thread: Optional[Thread] = None
+
+    def start(self) -> None:
+        with self._lock:
+            if self._thread and self._thread.is_alive():
+                return
+            self._stop_event.clear()
+            self._thread = Thread(
+                target=self._run,
+                name="push-dispatcher",
+                daemon=True,
+            )
+            self._thread.start()
+
+    def stop(self, timeout_seconds: float = 5.0) -> None:
+        with self._lock:
+            thread = self._thread
+            self._stop_event.set()
+        if thread and thread.is_alive():
+            thread.join(timeout=timeout_seconds)
+
+    def enqueue(self, notification_id: int) -> bool:
+        self.start()
+        try:
+            self._queue.put_nowait(int(notification_id))
+            return True
+        except Full:
+            logger.warning(
+                "Async push queue is full; dropping push delivery for notification_id=%s",
+                notification_id,
+            )
+            return False
+
+    def _run(self) -> None:
+        while not self._stop_event.is_set() or not self._queue.empty():
+            try:
+                notification_id = self._queue.get(timeout=_ASYNC_PUSH_POLL_SECONDS)
+            except Empty:
+                continue
+
+            db = SessionLocal()
+            try:
+                notification = (
+                    db.query(Notification)
+                    .filter(Notification.id == int(notification_id))
+                    .first()
+                )
+                if not notification:
+                    logger.warning(
+                        "Async push skipped because notification_id=%s was not found",
+                        notification_id,
+                    )
+                else:
+                    push_service.send_push_for_notification(db, notification)
+            except Exception as exc:
+                logger.warning(
+                    "Async push delivery skipped for notification_id=%s (%s)",
+                    notification_id,
+                    exc,
+                    exc_info=True,
+                )
+            finally:
+                db.close()
+                self._queue.task_done()
+
+
+_ASYNC_PUSH_DISPATCHER = _AsyncPushDispatcher(
+    maxsize=max(100, int(settings.ASYNC_PUSH_QUEUE_SIZE)),
+)
+
+
+def start_async_push_dispatcher() -> None:
+    _ASYNC_PUSH_DISPATCHER.start()
+
+
+def shutdown_async_push_dispatcher(timeout_seconds: float = 5.0) -> None:
+    _ASYNC_PUSH_DISPATCHER.stop(timeout_seconds=timeout_seconds)
+    push_service.close_http_client()
+
+
+def enqueue_notification_push(notification_id: int) -> bool:
+    return _ASYNC_PUSH_DISPATCHER.enqueue(int(notification_id))
+
+
+def enqueue_notification_push_batch(notification_ids: list[int]) -> None:
+    for notification_id in notification_ids:
+        _ASYNC_PUSH_DISPATCHER.enqueue(int(notification_id))
 
 
 def create_notification(
@@ -35,11 +135,8 @@ def create_notification(
     db.add(notification)
     db.commit()
     db.refresh(notification)
-    try:
-        push_service.send_push_for_notification(db, notification)
-    except Exception as exc:
-        # Push delivery must not break primary business flow.
-        logger.warning("Push delivery skipped for notification_id=%s (%s)", notification.id, exc)
+    invalidate_unread_count_cache(user_id)
+    enqueue_notification_push(int(notification.id))
     return notification
 
 

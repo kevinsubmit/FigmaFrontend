@@ -9,6 +9,7 @@ from app.models.user import User
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.vip_level import VIPLevelConfig
 from app.schemas.vip import VipLevelItem, VipLevelsUpdateRequest, VipProgress, VipStatusResponse
+from app.services.vip_config_service import invalidate_vip_levels_cache, load_vip_level_rows
 
 
 router = APIRouter()
@@ -30,14 +31,7 @@ DEFAULT_VIP_LEVELS: List[VipLevelItem] = [
 
 
 def _load_vip_levels(db: Session) -> List[VipLevelItem]:
-    try:
-        rows = (
-            db.query(VIPLevelConfig)
-            .order_by(VIPLevelConfig.level.asc())
-            .all()
-        )
-    except SQLAlchemyError:
-        return DEFAULT_VIP_LEVELS
+    rows = load_vip_level_rows(db)
     if not rows:
         return DEFAULT_VIP_LEVELS
     return [
@@ -176,6 +170,7 @@ def update_admin_vip_levels(
             db.delete(row)
 
     db.commit()
+    invalidate_vip_levels_cache()
     return _load_vip_levels(db)
 
 

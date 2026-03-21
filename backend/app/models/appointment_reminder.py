@@ -1,7 +1,7 @@
 """
 Appointment Reminder Model
 """
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Enum, func
+from sqlalchemy import Column, DateTime, Enum, Index, Integer, String, func
 from app.db.session import Base
 import enum
 
@@ -23,6 +23,13 @@ class ReminderStatus(str, enum.Enum):
 class AppointmentReminder(Base):
     """Appointment reminder model"""
     __tablename__ = "appointment_reminders"
+    __table_args__ = (
+        Index(
+            "ix_appointment_reminders_status_scheduled",
+            "status",
+            "scheduled_time",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     appointment_id = Column(Integer, nullable=False, index=True)

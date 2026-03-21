@@ -97,12 +97,20 @@ alembic upgrade head
 ### 5. 运行开发服务器
 
 ```bash
-# 方式1: 使用uvicorn直接运行
+# 方式1: 本地开发直接运行（默认内嵌 scheduler）
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
-# 方式2: 使用Python运行
-python -m app.main
+# 方式2: 模拟生产拆分运行（推荐）
+EMBEDDED_SCHEDULER_ENABLED=false uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python -m app.scheduler_worker
+
+# 方式3: 使用环境变量驱动的运行器
+EMBEDDED_SCHEDULER_ENABLED=false python -m app.server
 ```
+
+补充：
+- 如果你本地起了 Redis，建议同时设置 `REDIS_URL=redis://localhost:6379/0`，让热点缓存落到独立缓存服务
+- 如果你使用仓库根目录的 `docker compose up --build`，Compose 会自动启动 Redis，并为后端容器注入 `REDIS_URL=redis://redis:6379/0`
 
 ### 6. 访问API文档
 
@@ -224,18 +232,34 @@ pytest --cov=app tests/
 # 构建镜像
 docker build -t nailsdash-backend .
 
-# 运行容器
-docker run -d -p 8000:8000 --env-file .env nailsdash-backend
+# 运行 API 容器（不内嵌 scheduler）
+docker run -d -p 8000:8000 --env-file .env -e EMBEDDED_SCHEDULER_ENABLED=false nailsdash-backend
+
+# 独立运行 scheduler worker
+docker run -d --env-file .env -e EMBEDDED_SCHEDULER_ENABLED=true nailsdash-backend python -m app.scheduler_worker
 ```
 
-### 使用Gunicorn部署
+如果你需要完整本地拓扑，直接在仓库根目录运行：
 
 ```bash
-# 安装Gunicorn
-pip install gunicorn
+docker compose up --build
+```
 
-# 运行
-gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+该 Compose 编排会同时启动：
+- `db`：MySQL
+- `redis`：缓存服务
+- `backend`：API Web 进程
+- `backend-scheduler`：独立 scheduler worker
+- `frontend`：H5 前端
+
+### 使用环境变量驱动的部署
+
+```bash
+# Web 进程运行 API（关闭内嵌 scheduler）
+EMBEDDED_SCHEDULER_ENABLED=false WEB_CONCURRENCY=4 python -m app.server
+
+# 单独起一个 scheduler worker
+EMBEDDED_SCHEDULER_ENABLED=true python -m app.scheduler_worker
 ```
 
 ## 开发指南
@@ -271,7 +295,28 @@ mypy app/
 
 | 变量名 | 说明 | 默认值 |
 |--------|------|--------|
+| HOST | Web 服务监听地址 | 0.0.0.0 |
+| PORT | Web 服务监听端口 | 8000 |
+| WEB_CONCURRENCY | Web worker 数量 | 1 |
+| WEB_TIMEOUT_KEEP_ALIVE_SECONDS | Web keep-alive 超时时间（秒） | 5 |
+| WEB_BACKLOG | Web 监听 backlog | 2048 |
+| WEB_LIMIT_CONCURRENCY | Web 最大并发请求数；`0` 表示不限制 | 0 |
+| WEB_PROXY_HEADERS | 是否信任代理转发头供 Uvicorn 解析 | True |
+| WEB_FORWARDED_ALLOW_IPS | 允许 Uvicorn 信任的代理 IP 列表 | 127.0.0.1 |
+| WEB_LOG_LEVEL | Uvicorn 日志级别 | info |
+| EMBEDDED_SCHEDULER_ENABLED | Web 进程是否内嵌 scheduler；留空时仅本地开发环境自动开启 | - |
+| ASYNC_PUSH_QUEUE_SIZE | 后台异步推送队列容量 | 2000 |
+| REMINDER_PROCESS_BATCH_SIZE | 单批次处理的待发送预约提醒数 | 200 |
+| ASYNC_LOG_QUEUE_SIZE | 后台异步系统日志队列容量 | 5000 |
+| ASYNC_LOG_BATCH_SIZE | 单次批量写入的系统日志条数上限 | 100 |
+| ASYNC_LOG_FLUSH_SECONDS | 异步系统日志批次最大等待时间（秒） | 0.5 |
 | DATABASE_URL | 数据库连接URL | - |
+| DB_POOL_SIZE | 数据库连接池基础连接数 | 10 |
+| DB_MAX_OVERFLOW | 数据库连接池溢出连接数 | 20 |
+| DB_POOL_TIMEOUT_SECONDS | 获取数据库连接的等待超时（秒） | 30 |
+| DB_POOL_RECYCLE_SECONDS | 数据库连接回收时间（秒） | 1800 |
+| DB_POOL_PRE_PING | 是否在借出连接前预检查 | True |
+| REDIS_URL | Redis 连接 URL；为空时只使用进程内 TTL 缓存 | redis://localhost:6379/0 |
 | SECRET_KEY | JWT密钥 | - |
 | ALGORITHM | JWT算法 | HS256 |
 | ACCESS_TOKEN_EXPIRE_MINUTES | Access Token过期时间（分钟） | 30 |
@@ -280,6 +325,21 @@ mypy app/
 | AWS_ACCESS_KEY_ID | AWS访问密钥 | - |
 | AWS_SECRET_ACCESS_KEY | AWS密钥 | - |
 | S3_BUCKET_NAME | S3存储桶名称 | - |
+| UPLOAD_SERVING_MODE | 上传文件访问模式：`app`、`redirect`、`x_accel_redirect` | app |
+| UPLOADS_REDIRECT_BASE_URL | `redirect` 模式下的外部静态资源基地址 | - |
+| UPLOADS_ACCEL_REDIRECT_PREFIX | `x_accel_redirect` 模式下的内部加速路径前缀 | - |
+| UPLOADS_CACHE_CONTROL_SECONDS | 上传资源 `Cache-Control max-age` 秒数 | 31536000 |
+
+### 上传文件加速建议
+
+- `UPLOAD_SERVING_MODE=app`
+  由 FastAPI 直接返回文件，适合本地开发和简单部署。
+
+- `UPLOAD_SERVING_MODE=redirect`
+  配合 `UPLOADS_REDIRECT_BASE_URL`，API 仍然返回 `/uploads/...` 路径，但实际下载会 307 跳转到 CDN 或静态资源域名。
+
+- `UPLOAD_SERVING_MODE=x_accel_redirect`
+  配合 `UPLOADS_ACCEL_REDIRECT_PREFIX`，适合 Nginx 反向代理场景。应用只返回 `X-Accel-Redirect` 头，真正文件读取由 Nginx 完成。
 
 ## 常见问题
 

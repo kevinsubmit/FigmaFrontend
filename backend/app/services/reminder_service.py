@@ -2,85 +2,204 @@
 Appointment Reminder Service
 Handles sending reminders to users about their upcoming appointments
 """
-from datetime import datetime, timedelta
+from datetime import datetime
 from sqlalchemy.orm import Session
-from typing import List
+from typing import Dict, List, Tuple
 import logging
 
 from app.crud import appointment_reminder as reminder_crud
-from app.crud import appointment as appointment_crud
-from app.crud import user as user_crud
-from app.crud import store as store_crud
-from app.crud import service as service_crud
+from app.core.config import settings
+from app.models.appointment import Appointment
 from app.models.appointment_reminder import AppointmentReminder
-from app.services.notification_service import create_notification
-from app.models.notification import NotificationType
+from app.models.notification import Notification, NotificationType
+from app.models.service import Service
+from app.models.store import Store
+from app.models.user import User
+from app.services.notification_service import enqueue_notification_push_batch
 
 logger = logging.getLogger(__name__)
 
 
-def send_reminder_notification(
+def _load_reminder_context(
     db: Session,
-    reminder: AppointmentReminder
-) -> bool:
-    """
-    Send a reminder notification to the user
-    Returns True if successful, False otherwise
-    """
-    try:
-        # Get appointment details
-        appointment = appointment_crud.get_appointment(db, reminder.appointment_id)
-        if not appointment:
-            logger.error(f"Appointment {reminder.appointment_id} not found")
-            return False
-        
-        # Get user
-        user = user_crud.get(db, reminder.user_id)
-        if not user:
-            logger.error(f"User {reminder.user_id} not found")
-            return False
-        
-        # Get store and service details
-        store = store_crud.get_store(db, appointment.store_id)
-        service = service_crud.get_service(db, appointment.service_id)
-        
-        # Format appointment time
-        apt_date = appointment.appointment_date.strftime("%B %d, %Y")
-        apt_time = appointment.appointment_time.strftime("%I:%M %p")
-        
-        # Determine reminder message based on type
-        if reminder.reminder_type == "24_hours":
-            title = "Appointment Reminder - Tomorrow"
-            message = f"Hi {user.username}! Your appointment at {store.name if store else 'the salon'} is tomorrow at {apt_time}."
-        else:  # 1_hour
-            title = "Appointment Reminder - In 1 Hour"
-            message = f"Hi {user.username}! Your appointment at {store.name if store else 'the salon'} is in 1 hour at {apt_time}."
-        
-        if service:
-            message += f" Service: {service.name}."
-        
-        message += " See you soon!"
-        
-        # Create notification
-        notification = create_notification(
-            db=db,
+    reminders: List[AppointmentReminder],
+) -> tuple[Dict[int, Appointment], Dict[int, User], Dict[int, Store], Dict[int, Service]]:
+    appointment_ids = {int(reminder.appointment_id) for reminder in reminders}
+    user_ids = {int(reminder.user_id) for reminder in reminders}
+
+    appointments = (
+        db.query(Appointment)
+        .filter(Appointment.id.in_(appointment_ids))
+        .all()
+        if appointment_ids
+        else []
+    )
+    appointments_by_id = {int(appointment.id): appointment for appointment in appointments}
+
+    store_ids = {
+        int(appointment.store_id)
+        for appointment in appointments
+        if appointment.store_id is not None
+    }
+    service_ids = {
+        int(appointment.service_id)
+        for appointment in appointments
+        if appointment.service_id is not None
+    }
+
+    users_by_id = {
+        int(user.id): user
+        for user in (
+            db.query(User).filter(User.id.in_(user_ids)).all()
+            if user_ids
+            else []
+        )
+    }
+    stores_by_id = {
+        int(store.id): store
+        for store in (
+            db.query(Store).filter(Store.id.in_(store_ids)).all()
+            if store_ids
+            else []
+        )
+    }
+    services_by_id = {
+        int(service.id): service
+        for service in (
+            db.query(Service).filter(Service.id.in_(service_ids)).all()
+            if service_ids
+            else []
+        )
+    }
+
+    return appointments_by_id, users_by_id, stores_by_id, services_by_id
+
+
+def _build_reminder_notification(
+    reminder: AppointmentReminder,
+    appointment: Appointment | None,
+    user: User | None,
+    store: Store | None,
+    service: Service | None,
+) -> Tuple[Notification | None, str | None]:
+    if not appointment:
+        return None, f"Appointment {reminder.appointment_id} not found"
+    if not user:
+        return None, f"User {reminder.user_id} not found"
+
+    apt_time = appointment.appointment_time.strftime("%I:%M %p")
+
+    if reminder.reminder_type == "24_hours":
+        title = "Appointment Reminder - Tomorrow"
+        message = f"Hi {user.username}! Your appointment at {store.name if store else 'the salon'} is tomorrow at {apt_time}."
+    else:
+        title = "Appointment Reminder - In 1 Hour"
+        message = f"Hi {user.username}! Your appointment at {store.name if store else 'the salon'} is in 1 hour at {apt_time}."
+
+    if service:
+        message += f" Service: {service.name}."
+
+    message += " See you soon!"
+    return (
+        Notification(
             user_id=reminder.user_id,
-            notification_type=NotificationType.APPOINTMENT_REMINDER,
+            type=NotificationType.APPOINTMENT_REMINDER,
             title=title,
             message=message,
-            appointment_id=reminder.appointment_id
+            appointment_id=reminder.appointment_id,
+        ),
+        None,
+    )
+
+
+def _process_reminder_batch(
+    db: Session,
+    reminders: List[AppointmentReminder],
+) -> dict:
+    batch_stats = {
+        "sent": 0,
+        "failed": 0,
+        "errors": [],
+    }
+    if not reminders:
+        return batch_stats
+
+    appointments_by_id, users_by_id, stores_by_id, services_by_id = _load_reminder_context(db, reminders)
+
+    notifications_to_create: List[Notification] = []
+    sent_reminder_ids: List[int] = []
+    failed_errors: Dict[int, str] = {}
+
+    for reminder in reminders:
+        try:
+            appointment = appointments_by_id.get(int(reminder.appointment_id))
+            user = users_by_id.get(int(reminder.user_id))
+            store = stores_by_id.get(int(appointment.store_id)) if appointment and appointment.store_id is not None else None
+            service = services_by_id.get(int(appointment.service_id)) if appointment and appointment.service_id is not None else None
+
+            notification, error_message = _build_reminder_notification(
+                reminder,
+                appointment,
+                user,
+                store,
+                service,
+            )
+            if notification is None:
+                failed_errors[int(reminder.id)] = error_message or "Failed to build reminder notification"
+                batch_stats["failed"] += 1
+                if error_message:
+                    batch_stats["errors"].append(error_message)
+                continue
+
+            notifications_to_create.append(notification)
+            sent_reminder_ids.append(int(reminder.id))
+        except Exception as exc:
+            error_message = f"Error processing reminder {reminder.id}: {exc}"
+            logger.error(error_message)
+            batch_stats["errors"].append(error_message)
+            failed_errors[int(reminder.id)] = str(exc)
+            batch_stats["failed"] += 1
+
+    notification_ids: List[int] = []
+    if notifications_to_create:
+        try:
+            db.add_all(notifications_to_create)
+            db.flush()
+            notification_ids = [int(notification.id) for notification in notifications_to_create if notification.id is not None]
+        except Exception as exc:
+            db.rollback()
+            error_message = f"Failed to persist reminder notifications batch: {exc}"
+            logger.error(error_message)
+            batch_stats["errors"].append(error_message)
+            failed_errors.update(
+                {reminder_id: "Failed to create notification" for reminder_id in sent_reminder_ids}
+            )
+            batch_stats["failed"] += len(sent_reminder_ids)
+            sent_reminder_ids = []
+
+    try:
+        reminder_crud.mark_reminders_as_sent(
+            db,
+            sent_reminder_ids,
+            sent_at=datetime.now(),
+            auto_commit=False,
         )
-        
-        if notification:
-            logger.info(f"Reminder notification sent for appointment {reminder.appointment_id}")
-            return True
-        else:
-            logger.error(f"Failed to create notification for reminder {reminder.id}")
-            return False
-            
-    except Exception as e:
-        logger.error(f"Error sending reminder notification: {e}")
-        return False
+        reminder_crud.mark_reminders_as_failed(
+            db,
+            failed_errors,
+            auto_commit=False,
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        error_message = f"Failed to finalize reminder batch status updates: {exc}"
+        logger.error(error_message)
+        raise RuntimeError(error_message) from exc
+    else:
+        batch_stats["sent"] += len(sent_reminder_ids)
+        enqueue_notification_push_batch(notification_ids)
+
+    return batch_stats
 
 
 def process_pending_reminders(db: Session) -> dict:
@@ -89,6 +208,7 @@ def process_pending_reminders(db: Session) -> dict:
     Returns a dict with statistics
     """
     current_time = datetime.now()
+    batch_size = max(1, int(settings.REMINDER_PROCESS_BATCH_SIZE))
     stats = {
         "total": 0,
         "sent": 0,
@@ -97,38 +217,23 @@ def process_pending_reminders(db: Session) -> dict:
     }
     
     try:
-        # Get all pending reminders that should be sent
-        pending_reminders = reminder_crud.get_pending_reminders(db, current_time)
-        stats["total"] = len(pending_reminders)
+        stats["total"] = reminder_crud.count_pending_reminders(db, current_time)
         
-        logger.info(f"Processing {stats['total']} pending reminders")
-        
-        for reminder in pending_reminders:
-            try:
-                # Send the reminder
-                success = send_reminder_notification(db, reminder)
-                
-                if success:
-                    # Mark as sent
-                    reminder_crud.mark_reminder_as_sent(db, reminder.id)
-                    stats["sent"] += 1
-                else:
-                    # Mark as failed
-                    reminder_crud.mark_reminder_as_failed(
-                        db,
-                        reminder.id,
-                        "Failed to send notification"
-                    )
-                    stats["failed"] += 1
-                    
-            except Exception as e:
-                error_msg = f"Error processing reminder {reminder.id}: {str(e)}"
-                logger.error(error_msg)
-                stats["errors"].append(error_msg)
-                stats["failed"] += 1
-                
-                # Mark as failed
-                reminder_crud.mark_reminder_as_failed(db, reminder.id, str(e))
+        logger.info(f"Processing {stats['total']} pending reminders in batches of {batch_size}")
+
+        while True:
+            pending_reminders = reminder_crud.get_pending_reminders(
+                db,
+                current_time,
+                limit=batch_size,
+            )
+            if not pending_reminders:
+                break
+
+            batch_stats = _process_reminder_batch(db, pending_reminders)
+            stats["sent"] += batch_stats["sent"]
+            stats["failed"] += batch_stats["failed"]
+            stats["errors"].extend(batch_stats["errors"])
         
         logger.info(f"Reminder processing complete: {stats['sent']} sent, {stats['failed']} failed")
         

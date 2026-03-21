@@ -1,7 +1,7 @@
 """
 Risk control models
 """
-from sqlalchemy import Column, Integer, String, DateTime, Text, func
+from sqlalchemy import Column, DateTime, Index, Integer, String, Text, func
 from app.db.session import Base
 
 
@@ -24,6 +24,20 @@ class UserRiskState(Base):
 class RiskEvent(Base):
     """Risk/audit events used for rate-limit and security analysis."""
     __tablename__ = "risk_events"
+    __table_args__ = (
+        Index(
+            "ix_risk_events_type_user_created",
+            "event_type",
+            "user_id",
+            "created_at",
+        ),
+        Index(
+            "ix_risk_events_type_ip_created",
+            "event_type",
+            "ip_address",
+            "created_at",
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, nullable=False, index=True)

@@ -1,7 +1,7 @@
 """
 Store Hours Model
 """
-from sqlalchemy import Column, Integer, String, Time, ForeignKey, Boolean
+from sqlalchemy import Boolean, Column, ForeignKey, Index, Integer, Time
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 
@@ -12,6 +12,9 @@ class StoreHours(Base):
     Stores the operating hours for each day of the week
     """
     __tablename__ = "store_hours"
+    __table_args__ = (
+        Index("ix_store_hours_store_day", "store_id", "day_of_week"),
+    )
     
     id = Column(Integer, primary_key=True, index=True)
     store_id = Column(Integer, ForeignKey("stores.id", ondelete="CASCADE"), nullable=False)

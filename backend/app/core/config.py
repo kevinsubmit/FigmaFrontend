@@ -18,9 +18,24 @@ class Settings(BaseSettings):
     # Server
     HOST: str = "0.0.0.0"
     PORT: int = 8000
+    WEB_CONCURRENCY: int = 1
+    WEB_TIMEOUT_KEEP_ALIVE_SECONDS: int = 5
+    WEB_BACKLOG: int = 2048
+    WEB_LIMIT_CONCURRENCY: int = 0
+    WEB_PROXY_HEADERS: bool = True
+    WEB_FORWARDED_ALLOW_IPS: str = "127.0.0.1"
+    WEB_LOG_LEVEL: str = "info"
+    EMBEDDED_SCHEDULER_ENABLED: str = ""
+    ASYNC_PUSH_QUEUE_SIZE: int = 2000
+    REMINDER_PROCESS_BATCH_SIZE: int = 200
     
     # Database
     DATABASE_URL: str
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 20
+    DB_POOL_TIMEOUT_SECONDS: int = 30
+    DB_POOL_RECYCLE_SECONDS: int = 1800
+    DB_POOL_PRE_PING: bool = True
     
     # JWT
     SECRET_KEY: str
@@ -51,6 +66,15 @@ class Settings(BaseSettings):
     @property
     def trusted_proxy_ips_list(self) -> List[str]:
         return [ip.strip() for ip in self.TRUSTED_PROXY_IPS.split(",") if ip.strip()]
+
+    @property
+    def embedded_scheduler_enabled(self) -> bool:
+        normalized = self.EMBEDDED_SCHEDULER_ENABLED.strip().lower()
+        if normalized in {"1", "true", "yes", "on"}:
+            return True
+        if normalized in {"0", "false", "no", "off"}:
+            return False
+        return self.ENVIRONMENT.lower() in {"development", "dev", "local"}
     
     # AWS S3
     AWS_ACCESS_KEY_ID: str = ""
@@ -78,11 +102,29 @@ class Settings(BaseSettings):
     CLAMAV_PORT: int = 3310
     CLAMAV_TIMEOUT_SECONDS: int = 5
     SECURITY_SCAN_FAIL_CLOSED: bool = True
+    UPLOAD_SERVING_MODE: str = "app"
+    UPLOADS_REDIRECT_BASE_URL: str = ""
+    UPLOADS_ACCEL_REDIRECT_PREFIX: str = ""
+    UPLOADS_CACHE_CONTROL_SECONDS: int = 31536000
     
     @property
     def allowed_extensions_list(self) -> List[str]:
         """Parse allowed extensions from comma-separated string"""
         return [ext.strip() for ext in self.ALLOWED_IMAGE_EXTENSIONS.split(",")]
+
+    @property
+    def upload_serving_mode(self) -> str:
+        normalized = (self.UPLOAD_SERVING_MODE or "app").strip().lower()
+        if normalized in {"app", "redirect", "x_accel_redirect"}:
+            return normalized
+        return "app"
+
+    @property
+    def web_log_level(self) -> str:
+        normalized = (self.WEB_LOG_LEVEL or "info").strip().lower()
+        if normalized in {"critical", "error", "warning", "info", "debug", "trace"}:
+            return normalized
+        return "info"
     
     # Pagination
     DEFAULT_PAGE_SIZE: int = 20

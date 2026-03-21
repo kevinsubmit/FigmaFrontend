@@ -2,6 +2,7 @@
 Authentication API endpoints
 """
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Body, Query
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
@@ -15,10 +16,10 @@ from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.risk import UserRiskState
 from app.models.appointment import Appointment as AppointmentModel
+from app.services.upload_file_service import ensure_upload_root, validate_and_scan_image_bytes, write_upload_bytes
 import os
 from datetime import datetime, timedelta
-from app.utils.clamav_scanner import scan_bytes_for_malware
-from app.utils.security_validation import validate_image_bytes, sanitize_image_url, sanitize_plain_text
+from app.utils.security_validation import sanitize_image_url, sanitize_plain_text
 
 
 router = APIRouter()
@@ -531,8 +532,11 @@ async def upload_avatar(
         )
     
     try:
-        validate_image_bytes(file_content, allowed_formats={"JPEG", "PNG", "GIF", "WEBP"})
-        scan_bytes_for_malware(file_content)
+        await run_in_threadpool(
+            validate_and_scan_image_bytes,
+            file_content,
+            allowed_formats={"JPEG", "PNG", "GIF", "WEBP"},
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -544,23 +548,26 @@ async def upload_avatar(
     filename = f"avatar_{current_user.id}_{uuid.uuid4().hex}.jpg"
     
     # Save file
-    from app.core.config import settings
-    upload_dir = Path(settings.UPLOAD_DIR) / "avatars"
+    upload_dir = ensure_upload_root() / "avatars"
     upload_dir.mkdir(parents=True, exist_ok=True)
     file_path = upload_dir / filename
     
     # Compress image if needed
     from app.utils.image_compression import compress_image
     try:
-        compressed_content, _ = compress_image(file_content, max_width=500, target_size_kb=200)
+        compressed_content, _ = await run_in_threadpool(
+            compress_image,
+            file_content,
+            max_width=500,
+            target_size_kb=200,
+        )
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid image file or compression failed"
         ) from exc
     
-    with open(file_path, "wb") as f:
-        f.write(compressed_content)
+    await run_in_threadpool(write_upload_bytes, file_path, compressed_content)
     
     # Update user avatar URL
     avatar_url = f"/uploads/avatars/{filename}"

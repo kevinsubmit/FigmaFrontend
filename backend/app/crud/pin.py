@@ -4,6 +4,20 @@ from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, or_
 from app.models.pin import Pin, Tag
 from app.models.home_feed_theme import HomeFeedThemeSetting
+from app.services import cache_service
+
+
+PUBLIC_TAG_NAMES_CACHE_KEY = "pins:public-tag-names:v1"
+PUBLIC_TAG_NAMES_CACHE_TTL_SECONDS = 60
+HOME_FEED_THEME_CACHE_KEY = "pins:home-feed-theme:v1"
+HOME_FEED_THEME_CACHE_TTL_SECONDS = 30
+
+
+def _invalidate_public_pin_caches() -> None:
+    cache_service.delete_many([
+        PUBLIC_TAG_NAMES_CACHE_KEY,
+        HOME_FEED_THEME_CACHE_KEY,
+    ])
 
 
 def get_pins(
@@ -48,6 +62,14 @@ def list_public_tags(db: Session) -> List[Tag]:
         .filter(Tag.is_active.is_(True), Tag.show_on_home.is_(True))
         .order_by(Tag.sort_order.asc(), Tag.name.asc())
         .all()
+    )
+
+
+def list_public_tag_names_cached(db: Session) -> List[str]:
+    return cache_service.get_or_set_json(
+        PUBLIC_TAG_NAMES_CACHE_KEY,
+        ttl_seconds=PUBLIC_TAG_NAMES_CACHE_TTL_SECONDS,
+        loader=lambda: [tag.name for tag in list_public_tags(db)],
     )
 
 
@@ -102,6 +124,7 @@ def create_tag(
     db.add(tag)
     db.commit()
     db.refresh(tag)
+    _invalidate_public_pin_caches()
     return tag
 
 
@@ -136,6 +159,7 @@ def update_tag(
     tag.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(tag)
+    _invalidate_public_pin_caches()
     return tag
 
 
@@ -145,6 +169,7 @@ def deactivate_tag(db: Session, *, tag_id: int) -> bool:
         return False
     tag.is_active = False
     db.commit()
+    _invalidate_public_pin_caches()
     return True
 
 
@@ -283,18 +308,25 @@ def get_or_create_home_feed_theme_setting(db: Session) -> HomeFeedThemeSetting:
 
 
 def get_home_feed_theme(db: Session) -> dict:
-    setting = get_or_create_home_feed_theme_setting(db)
-    tag = get_tag(db, setting.tag_id) if setting.tag_id else None
-    active = _is_theme_active(setting, tag)
-    return {
-        "enabled": bool(setting.enabled),
-        "active": active,
-        "tag_id": tag.id if tag else None,
-        "tag_name": tag.name if tag else None,
-        "start_at": setting.start_at,
-        "end_at": setting.end_at,
-        "updated_at": setting.updated_at,
-    }
+    def _loader() -> dict:
+        setting = get_or_create_home_feed_theme_setting(db)
+        tag = get_tag(db, setting.tag_id) if setting.tag_id else None
+        active = _is_theme_active(setting, tag)
+        return {
+            "enabled": bool(setting.enabled),
+            "active": active,
+            "tag_id": tag.id if tag else None,
+            "tag_name": tag.name if tag else None,
+            "start_at": setting.start_at.isoformat() if setting.start_at else None,
+            "end_at": setting.end_at.isoformat() if setting.end_at else None,
+            "updated_at": setting.updated_at.isoformat() if setting.updated_at else None,
+        }
+
+    return cache_service.get_or_set_json(
+        HOME_FEED_THEME_CACHE_KEY,
+        ttl_seconds=HOME_FEED_THEME_CACHE_TTL_SECONDS,
+        loader=_loader,
+    )
 
 
 def get_active_theme_tag_name(db: Session) -> Optional[str]:
@@ -321,4 +353,5 @@ def update_home_feed_theme(
     setting.updated_by = updated_by
     setting.updated_at = datetime.utcnow()
     db.commit()
+    _invalidate_public_pin_caches()
     return get_home_feed_theme(db)

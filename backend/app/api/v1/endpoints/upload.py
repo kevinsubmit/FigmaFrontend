@@ -2,6 +2,7 @@
 Upload endpoints
 """
 from fastapi import APIRouter, UploadFile, File, HTTPException, status, Depends
+from fastapi.concurrency import run_in_threadpool
 from typing import List
 import uuid
 from pathlib import Path
@@ -9,17 +10,14 @@ import logging
 from app.api.deps import get_current_user
 from app.models.user import User
 from app.utils.image_compression import compress_image
-from app.core.config import settings
-from app.utils.clamav_scanner import scan_bytes_for_malware
-from app.utils.security_validation import validate_image_bytes
+from app.services.upload_file_service import ensure_upload_root, validate_and_scan_image_bytes, write_upload_bytes
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 # 配置上传目录
-UPLOAD_DIR = Path(settings.UPLOAD_DIR)
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+UPLOAD_DIR = ensure_upload_root()
 
 # 允许的图片格式（仅 JPG/JPEG/PNG）
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png"}
@@ -72,19 +70,23 @@ async def upload_images(
         
         # Validate by actual image decode instead of trusting extension/MIME.
         try:
-            validate_image_bytes(content, allowed_formats={"JPEG", "PNG"})
-            scan_bytes_for_malware(content)
+            await run_in_threadpool(
+                validate_and_scan_image_bytes,
+                content,
+                allowed_formats={"JPEG", "PNG"},
+            )
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
         # 压缩图片
         try:
-            compressed_content, compression_info = compress_image(
+            compressed_content, compression_info = await run_in_threadpool(
+                compress_image,
                 content,
                 max_width=1920,
                 max_height=1920,
                 quality=85,
-                target_size_kb=500
+                target_size_kb=500,
             )
             
             # 记录压缩信息
@@ -102,8 +104,7 @@ async def upload_images(
         file_path = UPLOAD_DIR / unique_filename
         
         # 保存压缩后的文件
-        with open(file_path, "wb") as f:
-            f.write(compressed_content)
+        await run_in_threadpool(write_upload_bytes, file_path, compressed_content)
         
         # 返回文件URL（相对路径）
         file_url = f"/uploads/{unique_filename}"

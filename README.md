@@ -78,6 +78,11 @@ docker compose up --build
 - 前端：http://localhost:5173
 - 后端文档：http://localhost:8000/api/docs
 
+说明：
+- `backend` 只承载 API 请求
+- `backend-scheduler` 独立处理预约提醒和礼品卡过期扫描，避免 Web 多 worker/多实例时重复执行
+- `redis` 提供热点缓存存储，Compose 会自动注入后端 `REDIS_URL=redis://redis:6379/0`
+
 更多说明：`docs/quickstart.md`
 
 ### 前端开发
@@ -110,6 +115,22 @@ uvicorn app.main:app --reload
 ```
 
 访问API文档：http://localhost:8000/api/docs
+
+补充：
+- 本地开发默认会在 `uvicorn` 进程里自动启用 scheduler
+- 如果你要模拟生产拆分部署，请改成：
+```bash
+cd backend
+EMBEDDED_SCHEDULER_ENABLED=false uvicorn app.main:app --reload
+python -m app.scheduler_worker
+```
+
+- 如果你要按环境变量驱动 worker/端口/连接池参数，请改成：
+```bash
+cd backend
+EMBEDDED_SCHEDULER_ENABLED=false python -m app.server
+python -m app.scheduler_worker
+```
 
 ## 功能特性
 
@@ -264,8 +285,8 @@ npm run build
 
 ```bash
 cd backend
-# 使用Gunicorn
-gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker
+# 使用环境变量驱动的 Web 运行器
+WEB_CONCURRENCY=4 EMBEDDED_SCHEDULER_ENABLED=false python -m app.server
 
 # 或使用Docker
 docker build -t nailsdash-backend .
