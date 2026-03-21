@@ -39,6 +39,11 @@ SMOKE_CASES: tuple[SmokeCase, ...] = (
         label="Upload Notification Regression Smoke",
         script_path="test_upload_notification_regression.py",
     ),
+    SmokeCase(
+        key="reschedule-cancel",
+        label="Reschedule Cancel Regression Smoke",
+        script_path="test_reschedule_cancel_regression.py",
+    ),
 )
 
 

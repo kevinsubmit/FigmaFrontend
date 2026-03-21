@@ -309,6 +309,25 @@ python test_upload_notification_regression.py
 CLEANUP_AFTER=0 python test_upload_notification_regression.py
 ```
 
+改期 / 取消真实链路 smoke：
+
+```bash
+python test_reschedule_cancel_regression.py
+```
+
+默认行为：
+
+- 跑前自动清理动态业务数据
+- 自动种最小 `admin/store/service`
+- 跑 `customer reschedule + customer cancel + admin cancel`
+- 跑后自动再次清理动态业务数据
+
+如需保留回归数据用于人工排查：
+
+```bash
+CLEANUP_AFTER=0 python test_reschedule_cancel_regression.py
+```
+
 CI 已接入三条 smoke：
 
 - GitHub Actions workflow：`Backend Regression Smokes`
@@ -326,7 +345,7 @@ python run_regression_smokes.py
 python run_regression_smokes.py --list
 
 # 只跑部分 smoke
-python run_regression_smokes.py --only payment --only upload-notification
+python run_regression_smokes.py --only payment --only reschedule-cancel
 ```
 
 如果你本地也想得到同样隔离的上传目录，可用：
