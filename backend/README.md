@@ -333,8 +333,14 @@ python list_upload_inventory.py --path /app/uploads
 # 默认 dry-run
 python cleanup_upload_storage.py --path /app/uploads
 
+# 只删超过 30 天的文件（默认仍是 dry-run）
+python cleanup_upload_storage.py --path /app/uploads --older-than-days 30
+
 # 显式执行删除
 python cleanup_upload_storage.py --path /app/uploads --execute
+
+# 显式执行，仅删超过 30 天的文件
+python cleanup_upload_storage.py --path /app/uploads --older-than-days 30 --execute
 ```
 
 ## 部署

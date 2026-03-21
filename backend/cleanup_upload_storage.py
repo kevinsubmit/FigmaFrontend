@@ -4,19 +4,30 @@ Dry-run-first upload storage cleanup tool.
 Usage:
   python cleanup_upload_storage.py
   python cleanup_upload_storage.py --path /app/uploads
+  python cleanup_upload_storage.py --path /app/uploads --older-than-days 30
   python cleanup_upload_storage.py --path /app/uploads --execute
 """
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Cleanup upload storage")
     parser.add_argument("--path", default="./uploads", help="Upload root path to clean")
+    parser.add_argument(
+        "--older-than-days",
+        type=float,
+        default=None,
+        help="Only target files older than this many days",
+    )
     parser.add_argument("--execute", action="store_true", help="Actually delete files")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.older_than_days is not None and args.older_than_days < 0:
+        parser.error("--older-than-days must be >= 0")
+    return args
 
 
 def resolve_root(path_str: str) -> Path:
@@ -30,6 +41,18 @@ def collect_files(root: Path) -> list[Path]:
     if not root.exists():
         return []
     return [path for path in sorted(root.rglob("*")) if path.is_file()]
+
+
+def select_target_files(files: list[Path], older_than_days: float | None) -> tuple[list[Path], datetime | None]:
+    if older_than_days is None:
+        return files, None
+    cutoff = datetime.now(timezone.utc) - timedelta(days=float(older_than_days))
+    selected = [
+        path
+        for path in files
+        if datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc) <= cutoff
+    ]
+    return selected, cutoff
 
 
 def human_size(size_bytes: int) -> str:
@@ -59,18 +82,26 @@ def remove_empty_dirs(root: Path) -> int:
 def main() -> int:
     args = parse_args()
     root = resolve_root(args.path)
-    files = collect_files(root)
+    all_files = collect_files(root)
+    files, cutoff = select_target_files(all_files, args.older_than_days)
     total_size = sum(path.stat().st_size for path in files)
 
     print(f"UPLOAD_ROOT {root}")
-    print(f"FILE_COUNT {len(files)}")
-    print(f"TOTAL_SIZE_BYTES {total_size}")
-    print(f"TOTAL_SIZE_HUMAN {human_size(total_size)}")
+    print(f"ALL_FILE_COUNT {len(all_files)}")
+    print(f"TARGET_FILE_COUNT {len(files)}")
+    print(f"TARGET_SIZE_BYTES {total_size}")
+    print(f"TARGET_SIZE_HUMAN {human_size(total_size)}")
+    if cutoff is not None:
+        print(f"CUTOFF_UTC {cutoff.isoformat()}")
+        print(f"OLDER_THAN_DAYS {args.older_than_days}")
 
     if not args.execute:
         print("")
         print("DRY_RUN 1")
-        print("No files deleted. Re-run with --execute to remove all files under this root.")
+        if cutoff is None:
+            print("No files deleted. Re-run with --execute to remove all files under this root.")
+        else:
+            print("No files deleted. Re-run with --execute to remove matching files older than the cutoff.")
         return 0
 
     deleted_files = 0
