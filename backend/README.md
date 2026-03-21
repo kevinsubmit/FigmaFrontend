@@ -313,10 +313,21 @@ CI 已接入三条 smoke：
 
 - GitHub Actions workflow：`Backend Regression Smokes`
 - CI 运行时会把 `UPLOAD_DIR` 指到 `/tmp/nailsdash-regression-uploads`，避免与容器内历史 `/app/uploads` 文件互相污染
-- 会自动执行 `docker compose up -d --build` 后依次运行：
-  - `python test_payment_regression.py`
-  - `python test_group_split_regression.py`
-  - `python test_upload_notification_regression.py`
+- 会自动执行 `docker compose up -d --build` 后运行：
+  - `python run_regression_smokes.py`
+
+统一 smoke 入口：
+
+```bash
+# 运行整套 smoke
+python run_regression_smokes.py
+
+# 查看可选 key
+python run_regression_smokes.py --list
+
+# 只跑部分 smoke
+python run_regression_smokes.py --only payment --only upload-notification
+```
 
 如果你本地也想得到同样隔离的上传目录，可用：
 
