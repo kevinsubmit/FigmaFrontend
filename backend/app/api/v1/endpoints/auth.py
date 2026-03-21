@@ -200,7 +200,6 @@ async def register(
     # 如果有推荐码，创建推荐关系并发放奖励
     if referrer:
         from app.crud import referral as crud_referral
-        from app.crud import coupons as crud_coupons
         
         # 更新用户的referred_by_code
         user.referred_by_code = user_in.referral_code
