@@ -52,6 +52,10 @@ def get_stores(
     rating_expr = func.coalesce(Store.rating, 0.0)
     review_count_expr = func.coalesce(Store.review_count, 0.0)
     boost_score_expr = func.coalesce(Store.boost_score, 0.0)
+    manual_rank_nulls_last_expr = case(
+        (Store.manual_rank.is_(None), 1),
+        else_=0,
+    )
 
     # SQL Haversine distance in miles. Exact distance values are still attached
     # to result rows below so API payloads stay unchanged.
@@ -107,12 +111,14 @@ def get_stores(
         query = query.order_by(
             Store.rating.desc(),
             Store.review_count.desc(),
-            Store.manual_rank.asc().nullslast(),
+            manual_rank_nulls_last_expr.asc(),
+            Store.manual_rank.asc(),
         )
     elif sort_by == "distance" and has_location and distance_miles_expr is not None:
         query = query.order_by(
             distance_miles_expr.asc(),
-            Store.manual_rank.asc().nullslast(),
+            manual_rank_nulls_last_expr.asc(),
+            Store.manual_rank.asc(),
             rating_expr.desc(),
         )
     else:
@@ -147,7 +153,8 @@ def get_stores(
             )
         query = query.order_by(
             recommended_score_expr.desc(),
-            Store.manual_rank.asc().nullslast(),
+            manual_rank_nulls_last_expr.asc(),
+            Store.manual_rank.asc(),
             rating_expr.desc(),
         )
 

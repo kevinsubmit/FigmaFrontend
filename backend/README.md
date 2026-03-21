@@ -91,6 +91,21 @@ nano .env
 alembic upgrade head
 ```
 
+如果你的本地开发库是历史遗留库，出现下面两种情况之一，不要直接硬跑旧迁移链：
+
+- 已有业务表，但没有 `alembic_version`
+- 已有 `alembic_version`，但 schema 曾手工推进，导致 revision 落后于真实结构
+
+可先执行：
+
+```bash
+# 无 alembic_version 的 legacy 库
+python -m app.reconcile_legacy_db
+
+# 已受 Alembic 管理，但 revision 落后的 legacy 开发库
+python -m app.reconcile_legacy_db --adopt-managed
+```
+
 可选：快速体验可使用 `python init_db.py` 直接建表（不推荐替代迁移）。
 如已有数据库且需要礼品卡赠送字段，请执行 `python migrate_gift_cards_transfer.py`。
 
@@ -209,6 +224,19 @@ alembic history
 
 # 查看当前版本
 alembic current
+```
+
+Legacy 开发库接入 Alembic：
+
+```bash
+# 仅查看会补哪些缺表/缺列/缺索引
+python -m app.reconcile_legacy_db --dry-run
+
+# 接管没有 alembic_version 的 legacy 库
+python -m app.reconcile_legacy_db
+
+# 接管已受 Alembic 管理但 revision 落后的 legacy 开发库
+python -m app.reconcile_legacy_db --adopt-managed
 ```
 
 ## 测试
