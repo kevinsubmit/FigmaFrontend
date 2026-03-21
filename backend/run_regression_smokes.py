@@ -4,7 +4,7 @@ Run backend regression smoke scripts from a single entrypoint.
 Usage:
   python run_regression_smokes.py
   python run_regression_smokes.py --list
-  python run_regression_smokes.py --only payment --only upload-notification
+  python run_regression_smokes.py --only payment --only device-push-admin --only upload-notification
 """
 from __future__ import annotations
 
@@ -38,6 +38,11 @@ SMOKE_CASES: tuple[SmokeCase, ...] = (
         key="upload-notification",
         label="Upload Notification Regression Smoke",
         script_path="test_upload_notification_regression.py",
+    ),
+    SmokeCase(
+        key="device-push-admin",
+        label="Device Token Admin Push Regression Smoke",
+        script_path="test_device_push_admin_regression.py",
     ),
     SmokeCase(
         key="reschedule-cancel",

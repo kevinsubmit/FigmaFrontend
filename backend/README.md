@@ -309,6 +309,25 @@ python test_upload_notification_regression.py
 CLEANUP_AFTER=0 python test_upload_notification_regression.py
 ```
 
+设备 token / 超管推送 smoke：
+
+```bash
+python test_device_push_admin_regression.py
+```
+
+默认行为：
+
+- 跑前自动清理动态业务数据
+- 自动种最小 `super_admin/store/service`
+- 跑 `device register + upsert + preferences toggle + admin test/single/batch push`
+- 跑后自动再次清理动态业务数据
+
+如需保留回归数据用于人工排查：
+
+```bash
+CLEANUP_AFTER=0 python test_device_push_admin_regression.py
+```
+
 改期 / 取消真实链路 smoke：
 
 ```bash
@@ -328,7 +347,7 @@ python test_reschedule_cancel_regression.py
 CLEANUP_AFTER=0 python test_reschedule_cancel_regression.py
 ```
 
-CI 已接入三条 smoke：
+CI 已接入统一 smoke runner：
 
 - GitHub Actions workflow：`Backend Regression Smokes`
 - CI 运行时会把 `UPLOAD_DIR` 指到 `/tmp/nailsdash-regression-uploads`，避免与容器内历史 `/app/uploads` 文件互相污染
@@ -345,7 +364,7 @@ python run_regression_smokes.py
 python run_regression_smokes.py --list
 
 # 只跑部分 smoke
-python run_regression_smokes.py --only payment --only reschedule-cancel
+python run_regression_smokes.py --only payment --only device-push-admin --only reschedule-cancel
 ```
 
 如果你本地也想得到同样隔离的上传目录，可用：
