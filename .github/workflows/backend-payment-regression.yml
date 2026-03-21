@@ -49,6 +49,9 @@ jobs:
       - name: Run Group Split Regression Smoke
         run: docker compose exec -T backend python test_group_split_regression.py
 
+      - name: Run Upload Notification Regression Smoke
+        run: docker compose exec -T backend python test_upload_notification_regression.py
+
       - name: Show Container Logs on Failure
         if: failure()
         run: |

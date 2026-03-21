@@ -290,12 +290,32 @@ python test_group_split_regression.py
 CLEANUP_AFTER=0 python test_group_split_regression.py
 ```
 
-CI 已接入两条 smoke：
+上传 / 通知真实链路 smoke：
+
+```bash
+python test_upload_notification_regression.py
+```
+
+默认行为：
+
+- 跑前自动清理动态业务数据
+- 自动种最小 `admin/store/service`
+- 跑 `avatar upload + gallery upload + /uploads 访问 + appointment-triggered notifications`
+- 跑后自动清理动态业务数据和本轮上传文件
+
+如需保留回归数据用于人工排查：
+
+```bash
+CLEANUP_AFTER=0 python test_upload_notification_regression.py
+```
+
+CI 已接入三条 smoke：
 
 - GitHub Actions workflow：`Backend Regression Smokes`
 - 会自动执行 `docker compose up -d --build` 后依次运行：
   - `python test_payment_regression.py`
   - `python test_group_split_regression.py`
+  - `python test_upload_notification_regression.py`
 
 ## 部署
 
