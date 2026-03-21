@@ -1,0 +1,59 @@
+name: Backend Payment Regression
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "docker-compose.yml"
+      - ".github/workflows/backend-payment-regression.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "docker-compose.yml"
+      - ".github/workflows/backend-payment-regression.yml"
+
+jobs:
+  payment-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and Start Stack
+        run: docker compose up -d --build
+
+      - name: Wait for API Ready
+        shell: bash
+        run: |
+          set -euo pipefail
+          for i in {1..60}; do
+            if curl -fsS http://localhost:8000/api/openapi.json >/dev/null; then
+              echo "API is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API did not become ready in time"
+          docker compose logs backend
+          docker compose logs backend-scheduler
+          exit 1
+
+      - name: Run Payment Regression Smoke
+        run: docker compose exec -T backend python test_payment_regression.py
+
+      - name: Show Container Logs on Failure
+        if: failure()
+        run: |
+          docker compose logs backend
+          docker compose logs backend-scheduler
+          docker compose logs db
+          docker compose logs redis
+
+      - name: Tear Down Stack
+        if: always()
+        run: docker compose down -v

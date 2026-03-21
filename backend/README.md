@@ -252,6 +252,30 @@ pytest tests/test_auth.py
 pytest --cov=app tests/
 ```
 
+真实支付链路 smoke：
+
+```bash
+python test_payment_regression.py
+```
+
+默认行为：
+
+- 跑前自动清理动态业务数据
+- 自动种最小 `admin/store/service`
+- 跑完整支付链路
+- 跑后自动再次清理动态业务数据
+
+如需保留回归数据用于人工排查：
+
+```bash
+CLEANUP_AFTER=0 python test_payment_regression.py
+```
+
+CI 也已接入同一条 smoke：
+
+- GitHub Actions workflow：`Backend Payment Regression`
+- 会自动执行 `docker compose up -d --build` 后再运行 `python test_payment_regression.py`
+
 ## 部署
 
 ### 使用Docker部署
