@@ -1,7 +1,7 @@
 """add store hours table
 
 Revision ID: 004_store_hours
-Revises: 003_add_technician_id_to_appointments
+Revises: 003_add_technician_id_to_appts
 Create Date: 2026-01-04 04:30:00.000000
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '004_store_hours'
-down_revision = '003_add_technician_id_to_appointments'
+down_revision = '003_add_technician_id_to_appts'
 branch_labels = None
 depends_on = None
 
