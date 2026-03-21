@@ -324,6 +324,19 @@ CI 已接入三条 smoke：
 UPLOAD_DIR=/tmp/nailsdash-regression-uploads docker compose up -d --build backend backend-scheduler
 ```
 
+上传目录巡检与清理：
+
+```bash
+# 只读清点
+python list_upload_inventory.py --path /app/uploads
+
+# 默认 dry-run
+python cleanup_upload_storage.py --path /app/uploads
+
+# 显式执行删除
+python cleanup_upload_storage.py --path /app/uploads --execute
+```
+
 ## 部署
 
 ### 使用Docker部署
