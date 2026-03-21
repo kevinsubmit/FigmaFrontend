@@ -44,6 +44,7 @@ services:
     environment:
       EMBEDDED_SCHEDULER_ENABLED: "false"
       REDIS_URL: "redis://redis:6379/0"
+      UPLOAD_DIR: "${UPLOAD_DIR:-/app/uploads}"
     depends_on:
       db:
         condition: service_healthy
@@ -64,6 +65,7 @@ services:
     environment:
       EMBEDDED_SCHEDULER_ENABLED: "true"
       REDIS_URL: "redis://redis:6379/0"
+      UPLOAD_DIR: "${UPLOAD_DIR:-/app/uploads}"
     depends_on:
       db:
         condition: service_healthy

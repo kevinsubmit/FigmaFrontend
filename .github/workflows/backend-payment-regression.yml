@@ -15,6 +15,9 @@ on:
       - "docker-compose.yml"
       - ".github/workflows/backend-payment-regression.yml"
 
+env:
+  UPLOAD_DIR: /tmp/nailsdash-regression-uploads
+
 jobs:
   backend-regression-smokes:
     runs-on: ubuntu-latest
