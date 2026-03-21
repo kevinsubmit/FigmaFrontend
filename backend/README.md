@@ -271,10 +271,31 @@ python test_payment_regression.py
 CLEANUP_AFTER=0 python test_payment_regression.py
 ```
 
-CI 也已接入同一条 smoke：
+团单 / 技师拆分 / 结算 smoke：
 
-- GitHub Actions workflow：`Backend Payment Regression`
-- 会自动执行 `docker compose up -d --build` 后再运行 `python test_payment_regression.py`
+```bash
+python test_group_split_regression.py
+```
+
+默认行为：
+
+- 跑前自动清理动态业务数据
+- 自动种最小 `admin/store/service/two technicians`
+- 跑 `appointment group + append guest + split + settlement`
+- 跑后自动再次清理动态业务数据
+
+如需保留回归数据用于人工排查：
+
+```bash
+CLEANUP_AFTER=0 python test_group_split_regression.py
+```
+
+CI 已接入两条 smoke：
+
+- GitHub Actions workflow：`Backend Regression Smokes`
+- 会自动执行 `docker compose up -d --build` 后依次运行：
+  - `python test_payment_regression.py`
+  - `python test_group_split_regression.py`
 
 ## 部署
 
