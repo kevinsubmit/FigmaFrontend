@@ -55,6 +55,11 @@ SMOKE_CASES: tuple[SmokeCase, ...] = (
         script_path="test_gift_card_transfer_regression.py",
     ),
     SmokeCase(
+        key="complete-no-show",
+        label="Appointment Complete No-Show Regression Smoke",
+        script_path="test_complete_no_show_regression.py",
+    ),
+    SmokeCase(
         key="reschedule-cancel",
         label="Reschedule Cancel Regression Smoke",
         script_path="test_reschedule_cancel_regression.py",

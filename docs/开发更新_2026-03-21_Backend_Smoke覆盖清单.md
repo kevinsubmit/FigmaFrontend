@@ -6,7 +6,7 @@
 
 - 统一执行入口：`backend/run_regression_smokes.py`
 - CI 工作流：`.github/workflows/backend-payment-regression.yml`
-- 当前 CI 实际覆盖：`7` 条真实链路 smoke
+- 当前 CI 实际覆盖：`8` 条真实链路 smoke
 
 执行命令：
 
@@ -160,6 +160,29 @@ python run_regression_smokes.py
 - `gift_cards/{id}/transfer-status`
 - `gift_cards/summary`
 
+### 8. complete-no-show
+
+脚本：`backend/test_complete_no_show_regression.py`
+
+覆盖：
+
+- 预约确认后完成
+- 完成后积分发放
+- 完成后顾客通知
+- 已完成预约不能再标记 no-show
+- 已确认预约标记 no-show
+- no-show 风控事件和风控状态回写
+- no-show 后顾客通知
+- 已取消预约不能再完成
+
+对应主模块：
+
+- `appointments/{id}/complete`
+- `appointments/{id}/no-show`
+- `points`
+- `notifications`
+- `risk/users`
+
 ## 仓库里已有，但未纳入统一 runner / CI 的脚本
 
 ### home-search
@@ -186,19 +209,6 @@ python run_regression_smokes.py
 - 如果要纳入 CI，应该先把它改造成“自己 seed pins/theme/tag 的真实 smoke”
 
 ## 当前未覆盖的高优先级链路
-
-### P1. appointment complete / no-show
-
-原因：
-
-- 目前覆盖了 confirm / settle / refund / reschedule / cancel
-- 还没覆盖 `complete` 和 `no-show`
-- 这两个状态和积分、评价资格、统计口径强相关
-
-对应接口：
-
-- `PATCH /appointments/{appointment_id}/complete`
-- `POST /appointments/{appointment_id}/no-show`
 
 ### P1. store availability constraints
 

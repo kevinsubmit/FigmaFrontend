@@ -366,6 +366,26 @@ python test_gift_card_transfer_regression.py
 CLEANUP_AFTER=0 python test_gift_card_transfer_regression.py
 ```
 
+预约 complete / no-show 真实链路 smoke：
+
+```bash
+python test_complete_no_show_regression.py
+```
+
+默认行为：
+
+- 跑前自动清理动态业务数据
+- 自动种最小 `admin/store/service`
+- 跑 `confirm -> complete` 与 `confirm -> no-show`
+- 校验积分、通知、风险状态和状态保护
+- 跑后自动再次清理动态业务数据
+
+如需保留回归数据用于人工排查：
+
+```bash
+CLEANUP_AFTER=0 python test_complete_no_show_regression.py
+```
+
 改期 / 取消真实链路 smoke：
 
 ```bash
@@ -402,7 +422,7 @@ python run_regression_smokes.py
 python run_regression_smokes.py --list
 
 # 只跑部分 smoke
-python run_regression_smokes.py --only payment --only gift-card-transfer --only reschedule-cancel
+python run_regression_smokes.py --only payment --only gift-card-transfer --only complete-no-show
 ```
 
 如果你本地也想得到同样隔离的上传目录，可用：
