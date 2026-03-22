@@ -6,7 +6,7 @@
 
 - 独立执行入口：`backend/run_admin_regression_smokes.py`
 - 独立 CI 工作流：`.github/workflows/backend-admin-regression.yml`
-- 当前 admin suite 实际覆盖：`1` 条真实链路 smoke
+- 当前 admin suite 实际覆盖：`6` 条真实链路 smoke
 
 执行命令：
 
@@ -17,29 +17,65 @@ python run_admin_regression_smokes.py
 
 ## 已纳入 admin suite 的 smoke
 
-### 1. admin-ops
+### 1. dashboard-admin
 
-脚本：`backend/test_admin_ops_regression.py`
+脚本：`backend/test_dashboard_admin_regression.py`
 
 覆盖：
 
 - `dashboard/summary`
 - `dashboard/realtime-notifications`
+
+### 2. customers-admin
+
+脚本：`backend/test_customers_admin_regression.py`
+
+覆盖：
+
 - `customers/admin`
 - `customers/admin/{customer_id}`
 - `customers/admin/{customer_id}/tags`
 - `customers/admin/{customer_id}/appointments`
 - `customers/admin/{customer_id}/rewards`
 - `customers/admin/{customer_id}/referrals`
+
+### 3. risk-admin
+
+脚本：`backend/test_risk_admin_regression.py`
+
+覆盖：
+
 - `risk/users`
 - `risk/users/{user_id}` 的 `set_level / restrict_24h / unrestrict`
+
+### 4. security-admin
+
+脚本：`backend/test_security_admin_regression.py`
+
+覆盖：
+
 - `security/summary`
 - `security/block-logs`
 - `security/ip-rules` create / update / list
 - `security/quick-block`
+
+### 5. logs-admin
+
+脚本：`backend/test_logs_admin_regression.py`
+
+覆盖：
+
 - `logs/admin`
 - `logs/admin/stats`
 - `logs/admin/{log_id}`
+
+### 6. admin-ops
+
+脚本：`backend/test_admin_ops_regression.py`
+
+覆盖：
+
+- 上述 5 组后台运营能力的一键全链路整合回归
 
 数据策略：
 
@@ -58,7 +94,7 @@ python run_admin_regression_smokes.py
 
 ## 当前结论
 
-后台运营侧已经有了独立 smoke 入口，第一条链路覆盖了最核心的 admin 面：
+后台运营侧已经有了独立 smoke 入口，且默认 runner / CI 现在直接跑细粒度版本：
 
 - `customers/admin*`
 - `dashboard/*`
@@ -66,10 +102,4 @@ python run_admin_regression_smokes.py
 - `security/*`
 - `logs/admin*`
 
-下一阶段如果继续细化，应该把 `admin-ops` 进一步拆成更小的子 smoke，例如：
-
-1. `customers-admin`
-2. `security-admin`
-3. `risk-admin`
-4. `dashboard-admin`
-5. `logs-admin`
+`admin-ops` 保留为本地一键整合回归，不再是唯一入口。

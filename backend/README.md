@@ -543,10 +543,15 @@ python run_admin_regression_smokes.py --only admin-ops
 
 当前 admin suite 覆盖：
 
+- `dashboard-admin`
 - `dashboard/*`
+- `customers-admin`
 - `customers/admin*`
+- `risk-admin`
 - `risk/*`
+- `security-admin`
 - `security/*`
+- `logs-admin`
 - `logs/admin*`
 
 说明：
@@ -554,6 +559,16 @@ python run_admin_regression_smokes.py --only admin-ops
 - `run_regression_smokes.py` 继续负责消费者主链路
 - `run_admin_regression_smokes.py` 单独负责后台运营链路
 - 两套 suite 分开执行，避免 admin 日志/审计断言污染 consumer smoke
+
+当前 `run_admin_regression_smokes.py` 默认会跑细粒度版本：
+
+- `dashboard-admin`
+- `customers-admin`
+- `risk-admin`
+- `security-admin`
+- `logs-admin`
+
+`test_admin_ops_regression.py` 和 `--only admin-ops` 保留为本地一键全链路回归入口。
 
 后台运营侧 CI：
 

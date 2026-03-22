@@ -4,7 +4,7 @@ Run backend admin regression smoke scripts from a single entrypoint.
 Usage:
   python run_admin_regression_smokes.py
   python run_admin_regression_smokes.py --list
-  python run_admin_regression_smokes.py --only admin-ops
+  python run_admin_regression_smokes.py --only customers-admin --only security-admin
 """
 from __future__ import annotations
 
@@ -25,8 +25,33 @@ class SmokeCase:
 
 SMOKE_CASES: tuple[SmokeCase, ...] = (
     SmokeCase(
+        key="dashboard-admin",
+        label="Dashboard Admin Regression Smoke",
+        script_path="test_dashboard_admin_regression.py",
+    ),
+    SmokeCase(
+        key="customers-admin",
+        label="Customers Admin Regression Smoke",
+        script_path="test_customers_admin_regression.py",
+    ),
+    SmokeCase(
+        key="risk-admin",
+        label="Risk Admin Regression Smoke",
+        script_path="test_risk_admin_regression.py",
+    ),
+    SmokeCase(
+        key="security-admin",
+        label="Security Admin Regression Smoke",
+        script_path="test_security_admin_regression.py",
+    ),
+    SmokeCase(
+        key="logs-admin",
+        label="Logs Admin Regression Smoke",
+        script_path="test_logs_admin_regression.py",
+    ),
+    SmokeCase(
         key="admin-ops",
-        label="Admin Operations Regression Smoke",
+        label="Admin Operations Full Regression Smoke",
         script_path="test_admin_ops_regression.py",
     ),
 )
