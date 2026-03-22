@@ -1,6 +1,7 @@
 package com.nailsdash.android.ui.screen
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -22,14 +23,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -47,6 +46,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -55,6 +56,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
+import com.nailsdash.android.R
 import com.nailsdash.android.data.model.VerificationPurpose
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import kotlinx.coroutines.delay
@@ -406,6 +408,95 @@ private fun RegisterScreen(
         ?: sessionViewModel.authMessage?.takeIf { it.isNotBlank() }
     val isCompleteProfile = step == 1
 
+    fun clearMessages() {
+        localError = null
+        sessionViewModel.updateAuthMessage(null)
+    }
+
+    suspend fun sendRegisterCode() {
+        clearMessages()
+        if (!isValidUSPhone(phone)) {
+            localError = "Enter a valid US phone number."
+            return
+        }
+
+        isSendingCode = true
+        val result = sessionViewModel.sendVerificationCode(
+            phone = phone,
+            purpose = VerificationPurpose.register,
+        )
+        isSendingCode = false
+        result.onSuccess {
+            countdown = 60
+        }.onFailure { error ->
+            localError = error.message ?: "Failed to send verification code."
+        }
+    }
+
+    suspend fun verifyRegisterPhoneStep() {
+        clearMessages()
+        if (!isValidUSPhone(phone)) {
+            localError = "Enter a valid US phone number."
+            return
+        }
+        if (verificationCode.length != 6) {
+            localError = "Please enter a valid 6-digit verification code."
+            return
+        }
+
+        isVerifyingCode = true
+        val result = sessionViewModel.verifyCode(
+            phone = phone,
+            code = verificationCode,
+            purpose = VerificationPurpose.register,
+        )
+        isVerifyingCode = false
+        result.onSuccess { response ->
+            if (response.valid) {
+                step = 1
+            } else {
+                localError = "The verification code is invalid or expired. Please request a new code."
+            }
+        }.onFailure { error ->
+            localError = error.message ?: "Verification failed."
+        }
+    }
+
+    fun submitRegister() {
+        clearMessages()
+        if (!isValidUSPhone(phone)) {
+            localError = "Enter a valid US phone number."
+            return
+        }
+        if (verificationCode.length != 6) {
+            localError = "Please enter a valid 6-digit verification code."
+            return
+        }
+
+        val trimmedUsername = username.trim()
+        if (trimmedUsername.length < 3) {
+            localError = "Username must be at least 3 characters."
+            return
+        }
+        if (password.length < 8) {
+            localError = "Password must be at least 8 characters."
+            return
+        }
+        if (password != confirmPassword) {
+            localError = "Passwords do not match."
+            return
+        }
+
+        sessionViewModel.register(
+            phone = phone,
+            verificationCode = verificationCode,
+            username = trimmedUsername,
+            password = password,
+            fullName = fullName,
+            referralCode = referralCode,
+        )
+    }
+
     LaunchedEffect(activeMessage) {
         val message = activeMessage?.trim()
         if (!message.isNullOrEmpty()) {
@@ -427,73 +518,23 @@ private fun RegisterScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp),
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
-            Row(modifier = Modifier.fillMaxWidth()) {
-                TextButton(
-                    onClick = {
-                        localError = null
-                        sessionViewModel.updateAuthMessage(null)
-                        if (isCompleteProfile) {
-                            step = 0
-                        } else {
-                            onBack()
-                        }
-                    },
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.08f)),
-                    colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
-                    contentPadding = PaddingValues(0.dp),
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = "Sign Up",
-                    color = Color.White,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 10.dp),
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.size(40.dp))
-            }
-
+            RegisterHeader(
+                onBack = {
+                    clearMessages()
+                    if (isCompleteProfile) {
+                        step = 0
+                    } else {
+                        onBack()
+                    }
+                },
+            )
             Spacer(modifier = Modifier.height(10.dp))
             AuthLogoBlock(
                 title = "Create Your Account",
                 subtitle = if (isCompleteProfile) "Complete your profile" else "Verify your phone number",
             )
             Spacer(modifier = Modifier.height(14.dp))
-
-            Row(modifier = Modifier.fillMaxWidth()) {
-                ProgressBubble(number = "1", active = true)
-                Spacer(modifier = Modifier.size(10.dp))
-                Box(
-                    modifier = Modifier
-                        .width(56.dp)
-                        .height(3.dp)
-                        .padding(top = 13.dp),
-                ) {
-                    LinearProgressIndicator(
-                        progress = { 1f },
-                        color = Color.White.copy(alpha = 0.18f),
-                        trackColor = Color.White.copy(alpha = 0.18f),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    if (isCompleteProfile) {
-                        LinearProgressIndicator(
-                            progress = { 1f },
-                            color = AuthGold,
-                            trackColor = Color.Transparent,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.size(10.dp))
-                ProgressBubble(number = "2", active = isCompleteProfile)
-            }
+            RegisterProgressIndicator(isCompleteProfile = isCompleteProfile)
 
             if (activeMessage != null) {
                 Spacer(modifier = Modifier.height(14.dp))
@@ -505,328 +546,51 @@ private fun RegisterScreen(
                 targetState = isCompleteProfile,
                 label = "register_step",
             ) { completeProfile ->
-                if (!completeProfile) {
-                AuthFieldLabel("US Phone Number")
-                TextField(
-                    value = phone,
-                    onValueChange = { phone = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .authTextFieldFrame(),
-                    placeholder = { Text("e.g. 4151234567") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                    colors = authTextFieldColors(),
-                )
-                AuthHint("US numbers only (10 digits or 1+10)")
-
-                Spacer(modifier = Modifier.height(12.dp))
-                AuthFieldLabel("Verification Code")
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    TextField(
-                        value = verificationCode,
-                        onValueChange = { input ->
+                if (completeProfile) {
+                    RegisterCompleteProfileContent(
+                        username = username,
+                        onUsernameChange = { username = it },
+                        fullName = fullName,
+                        onFullNameChange = { fullName = it },
+                        password = password,
+                        onPasswordChange = { password = it },
+                        showPassword = showPassword,
+                        onTogglePassword = { showPassword = !showPassword },
+                        confirmPassword = confirmPassword,
+                        onConfirmPasswordChange = { confirmPassword = it },
+                        showConfirmPassword = showConfirmPassword,
+                        onToggleConfirmPassword = { showConfirmPassword = !showConfirmPassword },
+                        referralCode = referralCode,
+                        onReferralCodeChange = { referralCode = it },
+                        isLoading = sessionViewModel.isLoadingAuth,
+                        enabled = !sessionViewModel.isLoadingAuth &&
+                            username.trim().isNotEmpty() &&
+                            password.isNotBlank() &&
+                            confirmPassword.isNotBlank(),
+                        onSubmit = ::submitRegister,
+                    )
+                } else {
+                    RegisterVerifyPhoneContent(
+                        phone = phone,
+                        onPhoneChange = { phone = it },
+                        verificationCode = verificationCode,
+                        onVerificationCodeChange = { input ->
                             verificationCode = input.filter(Char::isDigit).take(6)
                         },
-                        modifier = Modifier
-                            .weight(1f)
-                            .authTextFieldFrame(),
-                        placeholder = { Text("6-digit code") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        colors = authTextFieldColors(),
-                    )
-                    Spacer(modifier = Modifier.size(8.dp))
-                            Button(
-                                onClick = {
-                            scope.launch {
-                                localError = null
-                                sessionViewModel.updateAuthMessage(null)
-                                if (!isValidUSPhone(phone)) {
-                                    localError = "Enter a valid US phone number."
-                                    return@launch
-                                }
-                                isSendingCode = true
-                                val result = sessionViewModel.sendVerificationCode(
-                                    phone = phone,
-                                    purpose = VerificationPurpose.register,
-                                )
-                                isSendingCode = false
-                                result.onSuccess {
-                                    countdown = 60
-                                }.onFailure { error ->
-                                    localError = error.message ?: "Failed to send verification code."
-                                }
-                            }
+                        countdown = countdown,
+                        isSendingCode = isSendingCode,
+                        isVerifyingCode = isVerifyingCode,
+                        enabled = !isVerifyingCode &&
+                            phone.trim().isNotEmpty() &&
+                            verificationCode.length == 6,
+                        onSendCode = {
+                            scope.launch { sendRegisterCode() }
                         },
-                        enabled = countdown == 0 && !isSendingCode,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (countdown > 0 || isSendingCode) {
-                                Color.White.copy(alpha = 0.2f)
-                            } else {
-                                AuthGold
-                            },
-                            contentColor = Color.Black,
-                                ),
-                                border = androidx.compose.foundation.BorderStroke(
-                                    width = 1.dp,
-                                    color = if (countdown > 0 || isSendingCode) {
-                                        Color.White.copy(alpha = 0.2f)
-                                    } else {
-                                        AuthGold.copy(alpha = 0.45f)
-                                    },
-                                ),
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                                modifier = Modifier.height(50.dp),
-                            ) {
-                        Text(
-                            text = if (countdown > 0) "${countdown}s" else "Send Code",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-                Button(
-                    onClick = {
-                        scope.launch {
-                            localError = null
-                            sessionViewModel.updateAuthMessage(null)
-                            if (!isValidUSPhone(phone)) {
-                                localError = "Enter a valid US phone number."
-                                return@launch
-                            }
-                            if (verificationCode.length != 6) {
-                                localError = "Please enter a valid 6-digit verification code."
-                                return@launch
-                            }
-
-                            isVerifyingCode = true
-                            val result = sessionViewModel.verifyCode(
-                                phone = phone,
-                                code = verificationCode,
-                                purpose = VerificationPurpose.register,
-                            )
-                            isVerifyingCode = false
-                            result.onSuccess { response ->
-                                if (response.valid) {
-                                    step = 1
-                                } else {
-                                    localError = "The verification code is invalid or expired. Please request a new code."
-                                }
-                            }.onFailure { error ->
-                                localError = error.message ?: "Verification failed."
-                            }
-                        }
-                    },
-                    enabled = !isVerifyingCode && phone.trim().isNotEmpty() && verificationCode.length == 6,
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AuthGold,
-                        contentColor = Color.Black,
-                        disabledContainerColor = Color.White.copy(alpha = 0.18f),
-                        disabledContentColor = Color.Black.copy(alpha = 0.65f),
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                ) {
-                    Row {
-                        if (isVerifyingCode) {
-                            CircularProgressIndicator(
-                                color = Color.Black,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(modifier = Modifier.size(8.dp))
-                        }
-                        Text(
-                            text = if (isVerifyingCode) "Verifying..." else "Next",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                }
-            } else {
-                AuthLabeledInput(title = "Username *", hint = "Shown on reviews and your profile") {
-                    TextField(
-                        value = username,
-                        onValueChange = { username = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .authTextFieldFrame(),
-                        placeholder = { Text("At least 3 characters") },
-                        singleLine = true,
-                        colors = authTextFieldColors(),
+                        onVerify = {
+                            scope.launch { verifyRegisterPhoneStep() }
+                        },
                     )
                 }
-                AuthLabeledInput(title = "Full Name", hint = null) {
-                    TextField(
-                        value = fullName,
-                        onValueChange = { fullName = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .authTextFieldFrame(),
-                        placeholder = { Text("Optional") },
-                        singleLine = true,
-                        colors = authTextFieldColors(),
-                    )
-                }
-                AuthLabeledInput(title = "Password *", hint = "At least 8 characters") {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        TextField(
-                            value = password,
-                            onValueChange = { password = it },
-                            modifier = Modifier
-                                .weight(1f)
-                                .authTextFieldFrame(),
-                            placeholder = { Text("At least 8 characters") },
-                            visualTransformation = if (showPassword) {
-                                VisualTransformation.None
-                            } else {
-                                PasswordVisualTransformation()
-                            },
-                            singleLine = true,
-                            colors = authTextFieldColors(),
-                        )
-                        Spacer(modifier = Modifier.size(8.dp))
-                                TextButton(
-                                    onClick = { showPassword = !showPassword },
-                                    modifier = Modifier
-                                        .height(50.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.White.copy(alpha = 0.06f))
-                                        .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp)),
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                                ) {
-                            Text(
-                                text = if (showPassword) "Hide" else "Show",
-                                color = AuthGold,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-                    }
-                }
-                AuthLabeledInput(title = "Confirm Password *", hint = null) {
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        TextField(
-                            value = confirmPassword,
-                            onValueChange = { confirmPassword = it },
-                            modifier = Modifier
-                                .weight(1f)
-                                .authTextFieldFrame(),
-                            placeholder = { Text("Re-enter your password") },
-                            visualTransformation = if (showConfirmPassword) {
-                                VisualTransformation.None
-                            } else {
-                                PasswordVisualTransformation()
-                            },
-                            singleLine = true,
-                            colors = authTextFieldColors(),
-                        )
-                        Spacer(modifier = Modifier.size(8.dp))
-                                TextButton(
-                                    onClick = { showConfirmPassword = !showConfirmPassword },
-                                    modifier = Modifier
-                                        .height(50.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.White.copy(alpha = 0.06f))
-                                        .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp)),
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                                ) {
-                            Text(
-                                text = if (showConfirmPassword) "Hide" else "Show",
-                                color = AuthGold,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-                    }
-                }
-                AuthLabeledInput(title = "Referral Code", hint = "Optional") {
-                    TextField(
-                        value = referralCode,
-                        onValueChange = { referralCode = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .authTextFieldFrame(),
-                        placeholder = { Text("Optional referral code") },
-                        singleLine = true,
-                        colors = authTextFieldColors(),
-                    )
-                }
-
-                Button(
-                    onClick = {
-                        localError = null
-                        sessionViewModel.updateAuthMessage(null)
-                        if (!isValidUSPhone(phone)) {
-                            localError = "Enter a valid US phone number."
-                            return@Button
-                        }
-                        if (verificationCode.length != 6) {
-                            localError = "Please enter a valid 6-digit verification code."
-                            return@Button
-                        }
-
-                        val trimmedUsername = username.trim()
-                        if (trimmedUsername.length < 3) {
-                            localError = "Username must be at least 3 characters."
-                            return@Button
-                        }
-                        if (password.length < 8) {
-                            localError = "Password must be at least 8 characters."
-                            return@Button
-                        }
-                        if (password != confirmPassword) {
-                            localError = "Passwords do not match."
-                            return@Button
-                        }
-
-                        sessionViewModel.register(
-                            phone = phone,
-                            verificationCode = verificationCode,
-                            username = trimmedUsername,
-                            password = password,
-                            fullName = fullName,
-                            referralCode = referralCode,
-                        )
-                    },
-                    enabled = !sessionViewModel.isLoadingAuth &&
-                        username.trim().isNotEmpty() &&
-                        password.isNotBlank() &&
-                        confirmPassword.isNotBlank(),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AuthGold,
-                        contentColor = Color.Black,
-                        disabledContainerColor = Color.White.copy(alpha = 0.18f),
-                        disabledContentColor = Color.Black.copy(alpha = 0.65f),
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                ) {
-                    Row {
-                        if (sessionViewModel.isLoadingAuth) {
-                            CircularProgressIndicator(
-                                color = Color.Black,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(18.dp),
-                            )
-                            Spacer(modifier = Modifier.size(8.dp))
-                        }
-                        Text(
-                            text = if (sessionViewModel.isLoadingAuth) "Creating..." else "Create Account",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                }
-            }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -838,6 +602,319 @@ private fun RegisterScreen(
             message = message,
             onDismiss = { noticeMessage = null },
         )
+    }
+}
+
+@Composable
+private fun RegisterHeader(onBack: () -> Unit) {
+    Spacer(modifier = Modifier.height(24.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextButton(
+            onClick = onBack,
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.08f)),
+            colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
+            contentPadding = PaddingValues(0.dp),
+        ) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+        }
+        Spacer(modifier = Modifier.weight(1f))
+        Text(
+            text = "Sign Up",
+            color = Color.White,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.size(40.dp))
+    }
+}
+
+@Composable
+private fun RegisterProgressIndicator(isCompleteProfile: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ProgressBubble(number = "1", active = true)
+        Spacer(modifier = Modifier.width(10.dp))
+        Box(
+            modifier = Modifier
+                .width(56.dp)
+                .height(3.dp)
+                .clip(CircleShape)
+                .background(if (isCompleteProfile) AuthGold else Color.White.copy(alpha = 0.18f)),
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+        ProgressBubble(number = "2", active = isCompleteProfile)
+    }
+}
+
+@Composable
+private fun RegisterVerifyPhoneContent(
+    phone: String,
+    onPhoneChange: (String) -> Unit,
+    verificationCode: String,
+    onVerificationCodeChange: (String) -> Unit,
+    countdown: Int,
+    isSendingCode: Boolean,
+    isVerifyingCode: Boolean,
+    enabled: Boolean,
+    onSendCode: () -> Unit,
+    onVerify: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            AuthFieldLabel("US Phone Number")
+            TextField(
+                value = phone,
+                onValueChange = onPhoneChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .authTextFieldFrame(),
+                placeholder = { Text("e.g. 4151234567") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                colors = authTextFieldColors(),
+            )
+            AuthHint("US numbers only (10 digits or 1+10)")
+        }
+
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            AuthFieldLabel("Verification Code")
+            Row(modifier = Modifier.fillMaxWidth()) {
+                TextField(
+                    value = verificationCode,
+                    onValueChange = onVerificationCodeChange,
+                    modifier = Modifier
+                        .weight(1f)
+                        .authTextFieldFrame(),
+                    placeholder = { Text("6-digit code") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = authTextFieldColors(),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = onSendCode,
+                    enabled = countdown == 0 && !isSendingCode,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (countdown > 0 || isSendingCode) {
+                            Color.White.copy(alpha = 0.2f)
+                        } else {
+                            AuthGold
+                        },
+                        contentColor = Color.Black,
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        width = 1.dp,
+                        color = if (countdown > 0 || isSendingCode) {
+                            Color.White.copy(alpha = 0.2f)
+                        } else {
+                            AuthGold.copy(alpha = 0.45f)
+                        },
+                    ),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                    modifier = Modifier.height(50.dp),
+                ) {
+                    Text(
+                        text = if (countdown > 0) "${countdown}s" else "Send Code",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+        }
+
+        Button(
+            onClick = onVerify,
+            enabled = enabled,
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = AuthGold,
+                contentColor = Color.Black,
+                disabledContainerColor = Color.White.copy(alpha = 0.18f),
+                disabledContentColor = Color.Black.copy(alpha = 0.65f),
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isVerifyingCode) {
+                    CircularProgressIndicator(
+                        color = Color.Black,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text(
+                    text = if (isVerifyingCode) "Verifying..." else "Next",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RegisterCompleteProfileContent(
+    username: String,
+    onUsernameChange: (String) -> Unit,
+    fullName: String,
+    onFullNameChange: (String) -> Unit,
+    password: String,
+    onPasswordChange: (String) -> Unit,
+    showPassword: Boolean,
+    onTogglePassword: () -> Unit,
+    confirmPassword: String,
+    onConfirmPasswordChange: (String) -> Unit,
+    showConfirmPassword: Boolean,
+    onToggleConfirmPassword: () -> Unit,
+    referralCode: String,
+    onReferralCodeChange: (String) -> Unit,
+    isLoading: Boolean,
+    enabled: Boolean,
+    onSubmit: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        AuthLabeledInput(title = "Username *", hint = "Shown on reviews and your profile") {
+            TextField(
+                value = username,
+                onValueChange = onUsernameChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .authTextFieldFrame(),
+                placeholder = { Text("At least 3 characters") },
+                singleLine = true,
+                colors = authTextFieldColors(),
+            )
+        }
+        AuthLabeledInput(title = "Full Name", hint = null) {
+            TextField(
+                value = fullName,
+                onValueChange = onFullNameChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .authTextFieldFrame(),
+                placeholder = { Text("Optional") },
+                singleLine = true,
+                colors = authTextFieldColors(),
+            )
+        }
+        AuthLabeledInput(title = "Password *", hint = "At least 8 characters") {
+            AuthPasswordFieldRow(
+                value = password,
+                onValueChange = onPasswordChange,
+                placeholder = "At least 8 characters",
+                visible = showPassword,
+                onToggleVisibility = onTogglePassword,
+            )
+        }
+        AuthLabeledInput(title = "Confirm Password *", hint = null) {
+            AuthPasswordFieldRow(
+                value = confirmPassword,
+                onValueChange = onConfirmPasswordChange,
+                placeholder = "Re-enter your password",
+                visible = showConfirmPassword,
+                onToggleVisibility = onToggleConfirmPassword,
+            )
+        }
+        AuthLabeledInput(title = "Referral Code", hint = "Optional") {
+            TextField(
+                value = referralCode,
+                onValueChange = onReferralCodeChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .authTextFieldFrame(),
+                placeholder = { Text("Optional referral code") },
+                singleLine = true,
+                colors = authTextFieldColors(),
+            )
+        }
+
+        Button(
+            onClick = onSubmit,
+            enabled = enabled,
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = AuthGold,
+                contentColor = Color.Black,
+                disabledContainerColor = Color.White.copy(alpha = 0.18f),
+                disabledContentColor = Color.Black.copy(alpha = 0.65f),
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        color = Color.Black,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Text(
+                    text = if (isLoading) "Creating..." else "Create Account",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AuthPasswordFieldRow(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    visible: Boolean,
+    onToggleVisibility: () -> Unit,
+) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        TextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier
+                .weight(1f)
+                .authTextFieldFrame(),
+            placeholder = { Text(placeholder) },
+            visualTransformation = if (visible) {
+                VisualTransformation.None
+            } else {
+                PasswordVisualTransformation()
+            },
+            singleLine = true,
+            colors = authTextFieldColors(),
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        TextButton(
+            onClick = onToggleVisibility,
+            modifier = Modifier
+                .height(50.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.White.copy(alpha = 0.06f))
+                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp)),
+            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+        ) {
+            Text(
+                text = if (visible) "Hide" else "Show",
+                color = AuthGold,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
     }
 }
 
@@ -863,35 +940,18 @@ private fun AuthBackground(content: @Composable () -> Unit) {
 @Composable
 private fun AuthLogoBlock(title: String, subtitle: String) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Spacer(modifier = Modifier.weight(1f))
-            Column {
-                Column(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(
-                            Brush.linearGradient(
-                                colors = listOf(AuthGold, Color(0xFFB08D2D)),
-                            ),
-                        ),
-                ) {
-                    Spacer(modifier = Modifier.weight(1f))
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Spa,
-                            contentDescription = "NailsDash",
-                            tint = Color.Black,
-                            modifier = Modifier.size(34.dp),
-                        )
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-            Spacer(modifier = Modifier.weight(1f))
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.auth_logo),
+                contentDescription = "NailsDash logo",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(18.dp)),
+            )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
