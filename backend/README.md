@@ -555,6 +555,13 @@ python run_admin_regression_smokes.py --only admin-ops
 - `run_admin_regression_smokes.py` 单独负责后台运营链路
 - 两套 suite 分开执行，避免 admin 日志/审计断言污染 consumer smoke
 
+后台运营侧 CI：
+
+- GitHub Actions workflow：`Backend Admin Regression Smokes`
+- 运行入口：
+  - `python run_admin_regression_smokes.py`
+- 与消费者侧 workflow 分开，后台改动会单独过一遍 admin suite
+
 上传目录巡检与清理：
 
 ```bash

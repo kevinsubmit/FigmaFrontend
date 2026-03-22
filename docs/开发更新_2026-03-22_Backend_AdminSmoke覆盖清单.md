@@ -5,6 +5,7 @@
 ## 当前入口
 
 - 独立执行入口：`backend/run_admin_regression_smokes.py`
+- 独立 CI 工作流：`.github/workflows/backend-admin-regression.yml`
 - 当前 admin suite 实际覆盖：`1` 条真实链路 smoke
 
 执行命令：
@@ -51,6 +52,8 @@ python run_admin_regression_smokes.py
 
 - `backend/run_regression_smokes.py` 继续负责消费者主链路
 - `backend/run_admin_regression_smokes.py` 单独负责后台运营链路
+- `.github/workflows/backend-payment-regression.yml` 负责消费者 smoke
+- `.github/workflows/backend-admin-regression.yml` 负责后台运营 smoke
 - 两套 suite 分开，避免 admin 断言和 consumer smoke 互相放大噪音
 
 ## 当前结论
