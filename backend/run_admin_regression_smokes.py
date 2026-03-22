@@ -56,6 +56,14 @@ SMOKE_CASES: tuple[SmokeCase, ...] = (
     ),
 )
 
+DEFAULT_SMOKE_KEYS: tuple[str, ...] = (
+    "dashboard-admin",
+    "customers-admin",
+    "risk-admin",
+    "security-admin",
+    "logs-admin",
+)
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run backend admin regression smoke suite")
@@ -71,7 +79,8 @@ def parse_args() -> argparse.Namespace:
 
 def resolve_selected_cases(only: list[str]) -> list[SmokeCase]:
     if not only:
-        return list(SMOKE_CASES)
+        wanted = set(DEFAULT_SMOKE_KEYS)
+        return [case for case in SMOKE_CASES if case.key in wanted]
 
     wanted = {item.strip() for item in only if item.strip()}
     by_key = {case.key: case for case in SMOKE_CASES}

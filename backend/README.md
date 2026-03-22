@@ -531,13 +531,13 @@ UPLOAD_DIR=/tmp/nailsdash-regression-uploads docker compose up -d --build backen
 独立后台运营侧 smoke suite：
 
 ```bash
-# 运行后台运营侧整套 smoke
+# 默认运行后台运营侧 5 条细分 smoke
 python run_admin_regression_smokes.py
 
 # 查看可选 key
 python run_admin_regression_smokes.py --list
 
-# 只跑后台运营主链路
+# 只跑后台运营一键整合 smoke
 python run_admin_regression_smokes.py --only admin-ops
 ```
 
@@ -573,8 +573,12 @@ python run_admin_regression_smokes.py --only admin-ops
 后台运营侧 CI：
 
 - GitHub Actions workflow：`Backend Admin Regression Smokes`
-- 运行入口：
-  - `python run_admin_regression_smokes.py`
+- CI 显式执行这 5 条细分 smoke：
+  - `dashboard-admin`
+  - `customers-admin`
+  - `risk-admin`
+  - `security-admin`
+  - `logs-admin`
 - 与消费者侧 workflow 分开，后台改动会单独过一遍 admin suite
 
 上传目录巡检与清理：

@@ -46,8 +46,15 @@ jobs:
           docker compose logs backend-scheduler
           exit 1
 
-      - name: Run Backend Admin Regression Smoke Suite
-        run: docker compose exec -T backend python run_admin_regression_smokes.py
+      - name: Run Fine-Grained Backend Admin Regression Smokes
+        run: >
+          docker compose exec -T backend
+          python run_admin_regression_smokes.py
+          --only dashboard-admin
+          --only customers-admin
+          --only risk-admin
+          --only security-admin
+          --only logs-admin
 
       - name: Show Container Logs on Failure
         if: failure()

@@ -6,7 +6,8 @@
 
 - 独立执行入口：`backend/run_admin_regression_smokes.py`
 - 独立 CI 工作流：`.github/workflows/backend-admin-regression.yml`
-- 当前 admin suite 实际覆盖：`6` 条真实链路 smoke
+- 当前 admin smoke 脚本总数：`6`
+- CI 默认执行：`5` 条细分 smoke
 
 执行命令：
 
@@ -102,4 +103,4 @@ python run_admin_regression_smokes.py
 - `security/*`
 - `logs/admin*`
 
-`admin-ops` 保留为本地一键整合回归，不再是唯一入口。
+`admin-ops` 保留为本地一键整合回归，不纳入默认 CI 细分执行列表。
