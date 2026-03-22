@@ -6,7 +6,7 @@
 
 - 统一执行入口：`backend/run_regression_smokes.py`
 - CI 工作流：`.github/workflows/backend-payment-regression.yml`
-- 当前 CI 实际覆盖：`12` 条真实链路 smoke
+- 当前 CI 实际覆盖：`13` 条真实链路 smoke
 
 执行命令：
 
@@ -275,30 +275,28 @@ python run_regression_smokes.py
 - `appointments/{appointment_id}/settle`
 - `appointments/{appointment_id}/cancel`
 
-## 仓库里已有，但未纳入统一 runner / CI 的脚本
-
-### home-search
+### 13. home-search
 
 脚本：`backend/test_home_search_regression.py`
 
-现状：
+覆盖：
 
-- 这是一条独立回归脚本，不在 `run_regression_smokes.py` 里
-- 原因不是遗漏，而是它依赖固定业务数据标题：
-  - `Y2K Pop`
-  - `French`
-  - `Classic French Set`
+- `pins/tags` 公共标签返回
+- `pins/theme/public` 公共主题返回
+- 未显式传 `tag` 时默认 feed 使用 active theme tag
+- 显式传 `tag` 时返回对应分类 feed
+- title search 大小写不敏感
+- draft / deleted pins 不会泄漏到公共搜索结果
 
-当前问题：
+对应主模块：
 
-- 现有 smoke suite 都会先清空动态业务数据
-- `home-search` 没有自己 seed `pins/tags`
-- 直接塞进 CI 会在干净数据库下变成脆弱测试
+- `GET /pins/tags`
+- `GET /pins/theme/public`
+- `GET /pins`
 
-结论：
+## 仓库里已有，但未纳入统一 runner / CI 的脚本
 
-- 暂时不应直接接入 runner
-- 如果要纳入 CI，应该先把它改造成“自己 seed pins/theme/tag 的真实 smoke”
+当前无。
 
 ## 当前未覆盖的高优先级链路
 
@@ -327,11 +325,11 @@ python run_regression_smokes.py
 
 ## 推荐的下一批实施顺序
 
-1. 把 `home-search` 改成自 seed 后再纳入 runner
+1. 如需继续扩展，单独开 `admin regression suite`
 
 ## 当前结论
 
-当前后端 smoke / CI 已经覆盖了最核心的 12 条消费者主链路：
+当前后端 smoke / CI 已经覆盖了最核心的 13 条消费者主链路：
 
 - 预约创建与改期取消
 - 团单与技师分账
@@ -345,9 +343,14 @@ python run_regression_smokes.py
 - 收藏链路
 - 技师改派
 - 预约服务明细增删汇总
+- 首页 tags/theme/search
 
 这套覆盖已经足以拦住“主链路直接坏掉”的大部分回归。
 
-下一阶段的重点已经从 `P1/P2` 状态链路，转到剩余的自 seed 搜索链路：
+下一阶段如果继续扩展，重点应该转向后台运营链路，而不是消费者主链路：
 
-- 把 `home-search` 改造成自 seed 后再纳入 runner
+- `customers/admin*`
+- `dashboard/*`
+- `risk/*`
+- `security/*`
+- `logs/admin*`

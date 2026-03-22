@@ -464,6 +464,25 @@ python test_appointment_service_items_regression.py
 CLEANUP_AFTER=0 python test_appointment_service_items_regression.py
 ```
 
+首页 tags/theme/search 真实链路 smoke：
+
+```bash
+python test_home_search_regression.py
+```
+
+默认行为：
+
+- 跑前自动清理动态业务数据
+- 自动种最小 `tags/pins/active home theme`
+- 跑 `public tags + public theme + default themed feed + explicit tag search + case-insensitive search`
+- 跑后自动再次清理动态业务数据
+
+如需保留回归数据用于人工排查：
+
+```bash
+CLEANUP_AFTER=0 python test_home_search_regression.py
+```
+
 改期 / 取消真实链路 smoke：
 
 ```bash
@@ -500,7 +519,7 @@ python run_regression_smokes.py
 python run_regression_smokes.py --list
 
 # 只跑部分 smoke
-python run_regression_smokes.py --only payment --only complete-no-show --only availability-constraints --only favorites --only technician-reassignment --only appointment-service-items
+python run_regression_smokes.py --only payment --only complete-no-show --only availability-constraints --only favorites --only technician-reassignment --only appointment-service-items --only home-search
 ```
 
 如果你本地也想得到同样隔离的上传目录，可用：
