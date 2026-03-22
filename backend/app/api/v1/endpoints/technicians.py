@@ -18,6 +18,7 @@ from app.models.service import Service
 from app.models.technician import Technician as TechnicianModel
 from app.models.store_blocked_slot import StoreBlockedSlot
 from app.crud import technician as crud_technician
+from app.crud import store_holiday as crud_store_holiday
 from app.schemas.technician import Technician as TechnicianSchema, TechnicianCreate, TechnicianUpdate
 
 router = APIRouter()
@@ -835,6 +836,9 @@ def get_technician_available_slots(
         check_date = datetime.strptime(date, "%Y-%m-%d").date()
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+
+    if crud_store_holiday.is_holiday(db, technician.store_id, check_date):
+        return []
     
     # Get store hours from database
     from app.crud import store_hours as crud_store_hours

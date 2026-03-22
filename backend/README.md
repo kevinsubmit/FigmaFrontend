@@ -386,6 +386,26 @@ python test_complete_no_show_regression.py
 CLEANUP_AFTER=0 python test_complete_no_show_regression.py
 ```
 
+门店可预约约束真实链路 smoke：
+
+```bash
+python test_store_availability_constraints_regression.py
+```
+
+默认行为：
+
+- 跑前自动清理动态业务数据
+- 自动种最小 `admin/store/service/technician`
+- 跑 `blocked slot + holiday + technician unavailable + available-slots` 联动
+- 校验对应时段下单被拒绝，且可用时段正确恢复
+- 跑后自动再次清理动态业务数据
+
+如需保留回归数据用于人工排查：
+
+```bash
+CLEANUP_AFTER=0 python test_store_availability_constraints_regression.py
+```
+
 改期 / 取消真实链路 smoke：
 
 ```bash
@@ -422,7 +442,7 @@ python run_regression_smokes.py
 python run_regression_smokes.py --list
 
 # 只跑部分 smoke
-python run_regression_smokes.py --only payment --only gift-card-transfer --only complete-no-show
+python run_regression_smokes.py --only payment --only complete-no-show --only availability-constraints
 ```
 
 如果你本地也想得到同样隔离的上传目录，可用：

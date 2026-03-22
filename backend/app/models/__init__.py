@@ -9,6 +9,7 @@ from app.models.service_catalog import ServiceCatalog
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.technician import Technician
 from app.models.store_hours import StoreHours
+from app.models.store_holiday import StoreHoliday
 from app.models.technician_unavailable import TechnicianUnavailable
 from app.models.notification import Notification, NotificationType
 from app.models.review import Review
@@ -40,4 +41,4 @@ from app.models.store_blocked_slot import StoreBlockedSlot
 from app.models.push_device_token import PushDeviceToken
 from app.models.app_version_policy import AppVersionPolicy
 
-__all__ = ["User", "VerificationCode", "Store", "StoreImage", "Service", "ServiceCatalog", "Appointment", "AppointmentStatus", "Technician", "StoreHours", "TechnicianUnavailable", "Notification", "NotificationType", "Review", "ReviewReply", "AppointmentReminder", "ReminderType", "ReminderStatus", "StoreFavorite", "StorePortfolio", "Referral", "Pin", "Tag", "pin_tags", "PinFavorite", "GiftCard", "GiftCardTransaction", "UserPoints", "PointTransaction", "TransactionType", "Coupon", "CouponType", "CouponCategory", "UserCoupon", "CouponStatus", "CouponPhoneGrant", "Promotion", "PromotionService", "PromotionScope", "PromotionDiscountType", "StoreAdminApplication", "UserRiskState", "RiskEvent", "HomeFeedThemeSetting", "SecurityIPRule", "SecurityBlockLog", "SystemLog", "AppointmentStaffSplit", "AppointmentServiceItem", "AppointmentGroup", "AppointmentSettlementEvent", "VIPLevelConfig", "StoreBlockedSlot", "PushDeviceToken", "AppVersionPolicy"]
+__all__ = ["User", "VerificationCode", "Store", "StoreImage", "Service", "ServiceCatalog", "Appointment", "AppointmentStatus", "Technician", "StoreHours", "StoreHoliday", "TechnicianUnavailable", "Notification", "NotificationType", "Review", "ReviewReply", "AppointmentReminder", "ReminderType", "ReminderStatus", "StoreFavorite", "StorePortfolio", "Referral", "Pin", "Tag", "pin_tags", "PinFavorite", "GiftCard", "GiftCardTransaction", "UserPoints", "PointTransaction", "TransactionType", "Coupon", "CouponType", "CouponCategory", "UserCoupon", "CouponStatus", "CouponPhoneGrant", "Promotion", "PromotionService", "PromotionScope", "PromotionDiscountType", "StoreAdminApplication", "UserRiskState", "RiskEvent", "HomeFeedThemeSetting", "SecurityIPRule", "SecurityBlockLog", "SystemLog", "AppointmentStaffSplit", "AppointmentServiceItem", "AppointmentGroup", "AppointmentSettlementEvent", "VIPLevelConfig", "StoreBlockedSlot", "PushDeviceToken", "AppVersionPolicy"]

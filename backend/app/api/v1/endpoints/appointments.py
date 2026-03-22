@@ -13,7 +13,9 @@ import logging
 from app.api.deps import get_db, get_current_user
 from app.crud import appointment as crud_appointment
 from app.crud import points as crud_points
+from app.crud import store_holiday as crud_store_holiday
 from app.crud import store_hours as crud_store_hours
+from app.crud import technician_unavailable as crud_technician_unavailable
 from app.schemas.appointment import (
     Appointment,
     AppointmentAmountUpdate,
@@ -215,6 +217,30 @@ def _ensure_within_store_business_hours(
         )
 
 
+def _ensure_not_store_holiday(
+    db: Session,
+    store_id: int,
+    appointment_date,
+):
+    holiday = (
+        crud_store_holiday.get_store_holidays(
+            db,
+            store_id=store_id,
+            start_date=appointment_date,
+            end_date=appointment_date,
+        )
+        or []
+    )
+    if holiday:
+        holiday_name = (holiday[0].name or "").strip()
+        if holiday_name:
+            raise HTTPException(
+                status_code=400,
+                detail=f"The salon is closed on this date for {holiday_name}.",
+            )
+        raise HTTPException(status_code=400, detail="The salon is closed on this date.")
+
+
 def _ensure_not_blocked_by_store_slot(
     db: Session,
     store_id: int,
@@ -242,6 +268,35 @@ def _ensure_not_blocked_by_store_slot(
                 status_code=400,
                 detail=f"This time slot is blocked by store{reason_text}. Please choose another time.",
             )
+
+
+def _ensure_technician_is_available(
+    db: Session,
+    technician_id: Optional[int],
+    appointment_date,
+    appointment_time,
+    duration_minutes: int,
+):
+    if technician_id is None:
+        return
+    technician = db.query(Technician).filter(Technician.id == technician_id).first()
+    if not technician:
+        raise HTTPException(status_code=404, detail="Technician not found")
+
+    start_dt = datetime.combine(appointment_date, appointment_time)
+    end_dt = start_dt + timedelta(minutes=max(int(duration_minutes or 0), 1))
+    is_unavailable = crud_technician_unavailable.check_technician_unavailable(
+        db,
+        technician_id=technician_id,
+        check_date=appointment_date,
+        start_time=start_dt.time(),
+        end_time=end_dt.time(),
+    )
+    if is_unavailable:
+        raise HTTPException(
+            status_code=400,
+            detail="Selected technician is unavailable for this time.",
+        )
 
 
 def _lock_booking_subjects(
@@ -562,6 +617,11 @@ def create_appointment(
         raise HTTPException(status_code=400, detail="Service does not belong to this store")
     if service.is_active != 1:
         raise HTTPException(status_code=400, detail="Service is not available")
+    _ensure_not_store_holiday(
+        db=db,
+        store_id=appointment.store_id,
+        appointment_date=appointment.appointment_date,
+    )
     _ensure_within_store_business_hours(
         db=db,
         store_id=appointment.store_id,
@@ -572,6 +632,13 @@ def create_appointment(
     _ensure_not_blocked_by_store_slot(
         db=db,
         store_id=appointment.store_id,
+        appointment_date=appointment.appointment_date,
+        appointment_time=appointment.appointment_time,
+        duration_minutes=service.duration_minutes,
+    )
+    _ensure_technician_is_available(
+        db=db,
+        technician_id=appointment.technician_id,
         appointment_date=appointment.appointment_date,
         appointment_time=appointment.appointment_time,
         duration_minutes=service.duration_minutes,
@@ -664,6 +731,11 @@ def _create_group_child_appointment(
         store_timezone=store_timezone,
     )
     service = _validate_store_service_for_group(db, store_id, item.service_id)
+    _ensure_not_store_holiday(
+        db=db,
+        store_id=store_id,
+        appointment_date=appointment_date,
+    )
     _ensure_within_store_business_hours(
         db=db,
         store_id=store_id,
@@ -674,6 +746,13 @@ def _create_group_child_appointment(
     _ensure_not_blocked_by_store_slot(
         db=db,
         store_id=store_id,
+        appointment_date=appointment_date,
+        appointment_time=appointment_time,
+        duration_minutes=service.duration_minutes,
+    )
+    _ensure_technician_is_available(
+        db=db,
+        technician_id=item.technician_id,
         appointment_date=appointment_date,
         appointment_time=appointment_time,
         duration_minutes=service.duration_minutes,
@@ -747,6 +826,11 @@ def create_appointment_group(
     )
 
     host_service = _validate_store_service_for_group(db, payload.store_id, payload.host_service_id)
+    _ensure_not_store_holiday(
+        db=db,
+        store_id=payload.store_id,
+        appointment_date=payload.appointment_date,
+    )
     _ensure_within_store_business_hours(
         db=db,
         store_id=payload.store_id,
@@ -757,6 +841,13 @@ def create_appointment_group(
     _ensure_not_blocked_by_store_slot(
         db=db,
         store_id=payload.store_id,
+        appointment_date=payload.appointment_date,
+        appointment_time=payload.appointment_time,
+        duration_minutes=host_service.duration_minutes,
+    )
+    _ensure_technician_is_available(
+        db=db,
+        technician_id=payload.host_technician_id,
         appointment_date=payload.appointment_date,
         appointment_time=payload.appointment_time,
         duration_minutes=host_service.duration_minutes,

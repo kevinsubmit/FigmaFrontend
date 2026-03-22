@@ -6,7 +6,7 @@
 
 - 统一执行入口：`backend/run_regression_smokes.py`
 - CI 工作流：`.github/workflows/backend-payment-regression.yml`
-- 当前 CI 实际覆盖：`8` 条真实链路 smoke
+- 当前 CI 实际覆盖：`9` 条真实链路 smoke
 
 执行命令：
 
@@ -183,6 +183,28 @@ python run_regression_smokes.py
 - `notifications`
 - `risk/users`
 
+### 9. availability-constraints
+
+脚本：`backend/test_store_availability_constraints_regression.py`
+
+覆盖：
+
+- 店铺 blocked slot 创建
+- blocked slot public 查询
+- technician available-slots 与 blocked slot 联动
+- store holiday 创建 / 查询 / available-slots 联动
+- technician unavailable 创建 / 查询 / available-slots 联动
+- 对应受限时段下单被拒绝
+- 约束外时段仍可正常创建预约
+
+对应主模块：
+
+- `stores/{store_id}/blocked-slots*`
+- `stores/holidays/*`
+- `technicians/{technician_id}/unavailable*`
+- `technicians/{technician_id}/available-slots`
+- `appointments/create`
+
 ## 仓库里已有，但未纳入统一 runner / CI 的脚本
 
 ### home-search
@@ -210,26 +232,7 @@ python run_regression_smokes.py
 
 ## 当前未覆盖的高优先级链路
 
-### P1. store availability constraints
-
-原因：
-
-- 当前预约 smoke 默认假设时间可用
-- 还没覆盖“为什么不可预约”这类高风险条件
-
-建议覆盖：
-
-- blocked slots
-- store holidays
-- technician unavailable
-- available-slots 联动
-
-对应接口：
-
-- `stores/{store_id}/blocked-slots*`
-- `store_holidays/*`
-- `technician_unavailable/*`
-- `technicians/{technician_id}/available-slots`
+当前 `P1` 已清空。
 
 ## 当前未覆盖的中优先级链路
 
