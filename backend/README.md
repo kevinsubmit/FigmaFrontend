@@ -426,6 +426,25 @@ python test_favorites_regression.py
 CLEANUP_AFTER=0 python test_favorites_regression.py
 ```
 
+技师改派真实链路 smoke：
+
+```bash
+python test_technician_reassignment_regression.py
+```
+
+默认行为：
+
+- 跑前自动清理动态业务数据
+- 自动种最小 `store/service/4 technicians/admin`
+- 跑 `customer forbidden + pending/confirmed/completed rebind + inactive reject + foreign-store reject + cancelled guard`
+- 跑后自动再次清理动态业务数据
+
+如需保留回归数据用于人工排查：
+
+```bash
+CLEANUP_AFTER=0 python test_technician_reassignment_regression.py
+```
+
 改期 / 取消真实链路 smoke：
 
 ```bash
@@ -462,7 +481,7 @@ python run_regression_smokes.py
 python run_regression_smokes.py --list
 
 # 只跑部分 smoke
-python run_regression_smokes.py --only payment --only complete-no-show --only availability-constraints --only favorites
+python run_regression_smokes.py --only payment --only complete-no-show --only availability-constraints --only favorites --only technician-reassignment
 ```
 
 如果你本地也想得到同样隔离的上传目录，可用：

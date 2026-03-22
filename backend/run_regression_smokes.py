@@ -70,6 +70,11 @@ SMOKE_CASES: tuple[SmokeCase, ...] = (
         script_path="test_favorites_regression.py",
     ),
     SmokeCase(
+        key="technician-reassignment",
+        label="Technician Reassignment Regression Smoke",
+        script_path="test_technician_reassignment_regression.py",
+    ),
+    SmokeCase(
         key="reschedule-cancel",
         label="Reschedule Cancel Regression Smoke",
         script_path="test_reschedule_cancel_regression.py",

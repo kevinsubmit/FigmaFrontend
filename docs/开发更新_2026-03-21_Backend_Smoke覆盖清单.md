@@ -6,7 +6,7 @@
 
 - 统一执行入口：`backend/run_regression_smokes.py`
 - CI 工作流：`.github/workflows/backend-payment-regression.yml`
-- 当前 CI 实际覆盖：`10` 条真实链路 smoke
+- 当前 CI 实际覆盖：`11` 条真实链路 smoke
 
 执行命令：
 
@@ -230,6 +230,27 @@ python run_regression_smokes.py
 - `stores/favorites/my-favorites`
 - `stores/favorites/count`
 
+### 11. technician-reassignment
+
+脚本：`backend/test_technician_reassignment_regression.py`
+
+覆盖：
+
+- 非管理员改派被拒绝
+- pending 预约绑定技师
+- confirmed 预约改派技师
+- completed 预约改派与解绑技师
+- inactive 技师被拒绝
+- 跨店技师被拒绝
+- cancelled 预约禁止改派
+
+对应主模块：
+
+- `appointments/{appointment_id}/technician`
+- `appointments/{appointment_id}/confirm`
+- `appointments/{appointment_id}/complete`
+- `appointments/{appointment_id}/cancel`
+
 ## 仓库里已有，但未纳入统一 runner / CI 的脚本
 
 ### home-search
@@ -274,17 +295,6 @@ python run_regression_smokes.py
 - `POST /appointments/{appointment_id}/services`
 - `DELETE /appointments/{appointment_id}/services/{item_id}`
 
-### P2. technician reassignment
-
-原因：
-
-- split 已覆盖“多技师分账”
-- 还没覆盖普通预约技师改派
-
-对应接口：
-
-- `PATCH /appointments/{appointment_id}/technician`
-
 ## 当前未覆盖的低优先级链路
 
 ### P3. admin CRUD / analytics
@@ -305,12 +315,11 @@ python run_regression_smokes.py
 ## 推荐的下一批实施顺序
 
 1. `appointment service items mutations`
-2. `technician reassignment`
-3. 把 `home-search` 改成自 seed 后再纳入 runner
+2. 把 `home-search` 改成自 seed 后再纳入 runner
 
 ## 当前结论
 
-当前后端 smoke / CI 已经覆盖了最核心的 10 条消费者主链路：
+当前后端 smoke / CI 已经覆盖了最核心的 11 条消费者主链路：
 
 - 预约创建与改期取消
 - 团单与技师分账
@@ -322,11 +331,11 @@ python run_regression_smokes.py
 - 预约完成 / no-show
 - 可预约性约束
 - 收藏链路
+- 技师改派
 
 这套覆盖已经足以拦住“主链路直接坏掉”的大部分回归。
 
 下一阶段的重点已经从 `P1` 状态链路，转到剩余 `P2` 细分链路：
 
 - appointment service items mutations
-- technician reassignment
 - 把 `home-search` 改造成自 seed 后再纳入 runner
