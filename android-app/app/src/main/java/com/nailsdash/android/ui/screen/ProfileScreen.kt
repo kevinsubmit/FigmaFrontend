@@ -257,7 +257,15 @@ fun ProfileScreen(
                 title = { Text("Notice") },
                 text = { Text(noticeMessage.orEmpty()) },
                 confirmButton = {
-                    TextButton(onClick = { noticeMessage = null }) {
+                    TextButton(
+                        onClick = {
+                            val message = noticeMessage.orEmpty()
+                            noticeMessage = null
+                            if (AppSessionViewModel.shouldForceLogoutAfterSensitiveAuthAlert(message)) {
+                                sessionViewModel.forceLogout(message)
+                            }
+                        },
+                    ) {
                         Text("OK", color = ProfileGold)
                     }
                 },
