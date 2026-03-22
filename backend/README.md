@@ -510,6 +510,7 @@ CI 已接入统一 smoke runner：
   - `python run_regression_smokes.py`
 - 会上传机器可读结果制品：
   - `consumer-smoke-results.json`
+- 会在 GitHub Actions run 页面追加 markdown summary
 
 统一 smoke 入口：
 
@@ -526,6 +527,10 @@ python run_regression_smokes.py --only payment --only complete-no-show --only av
 # 输出机器可读 JSON 结果
 python run_regression_smokes.py --results-file artifacts/consumer-smoke-results.json
 ```
+
+结果文件当前固定使用：
+
+- `schema_version = 1`
 
 如果你本地也想得到同样隔离的上传目录，可用：
 
@@ -589,6 +594,7 @@ python run_admin_regression_smokes.py --results-file artifacts/admin-smoke-resul
   - `logs-admin`
 - 会上传机器可读结果制品：
   - `admin-smoke-results.json`
+- 会在 GitHub Actions run 页面追加 markdown summary
 - 与消费者侧 workflow 分开，后台改动会单独过一遍 admin suite
 
 上传目录巡检与清理：

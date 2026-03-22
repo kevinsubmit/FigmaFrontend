@@ -17,6 +17,8 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+RESULT_SCHEMA_VERSION = 1
+
 
 @dataclass(frozen=True)
 class SmokeCase:
@@ -125,6 +127,7 @@ def write_results_file(
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     payload = {
+        "schema_version": RESULT_SCHEMA_VERSION,
         "suite": "backend-admin-regression-smokes",
         "status": suite_status,
         "started_at_utc": suite_started_at,

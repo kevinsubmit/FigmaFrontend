@@ -65,6 +65,41 @@ jobs:
           path: backend/artifacts/consumer-smoke-results.json
           if-no-files-found: warn
 
+      - name: Append Consumer Smoke Summary
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          summary_path = Path(os.environ["GITHUB_STEP_SUMMARY"])
+          results_path = Path("backend/artifacts/consumer-smoke-results.json")
+
+          with summary_path.open("a", encoding="utf-8") as summary:
+              summary.write("## Consumer Smoke Summary\n\n")
+              if not results_path.is_file():
+                  summary.write("Result file not found.\n")
+                  raise SystemExit(0)
+
+              data = json.loads(results_path.read_text(encoding="utf-8"))
+              summary.write(
+                  f"- schema_version: `{data.get('schema_version', 'unknown')}`\n"
+                  f"- status: `{data['status']}`\n"
+                  f"- duration_seconds: `{data['duration_seconds']}`\n"
+                  f"- total: `{data['summary']['total']}`\n"
+                  f"- passed: `{data['summary']['passed']}`\n"
+                  f"- failed: `{data['summary']['failed']}`\n\n"
+              )
+              summary.write("| key | status | duration_seconds | returncode |\n")
+              summary.write("| --- | --- | ---: | ---: |\n")
+              for result in data["results"]:
+                  summary.write(
+                      f"| `{result['key']}` | `{result['status']}` | `{result['duration_seconds']}` | `{result['returncode']}` |\n"
+                  )
+          PY
+
       - name: Show Container Logs on Failure
         if: failure()
         run: |
