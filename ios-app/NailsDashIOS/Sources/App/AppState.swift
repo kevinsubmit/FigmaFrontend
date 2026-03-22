@@ -68,8 +68,11 @@ final class AppState: ObservableObject {
         // Keep existing auth-expired style behavior unified.
         if normalized.contains("session expired")
             || normalized.contains("sign in again")
+            || normalized.contains("could not validate credentials")
+            || normalized.contains("token has expired")
             || normalized.contains("unauthorized")
             || normalized.contains("not authenticated")
+            || normalized.contains("authentication required")
         {
             return true
         }

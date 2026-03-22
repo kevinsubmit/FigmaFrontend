@@ -37,6 +37,16 @@ export const shouldForceRelogin = (status?: number, detail?: unknown): boolean =
   if (status === 401) return true;
   const normalized = normalizeDetail(detail);
   if (!normalized) return false;
+  if (
+    normalized.includes('could not validate credentials')
+    || normalized.includes('token has expired')
+    || normalized.includes('session expired')
+    || normalized.includes('not authenticated')
+    || normalized.includes('authentication required')
+    || normalized.includes('sign in again')
+  ) {
+    return true;
+  }
   if (status === 403 || status === 423 || status === 429) {
     return ACCOUNT_RESTRICT_KEYWORDS.some((keyword) => normalized.includes(keyword));
   }
