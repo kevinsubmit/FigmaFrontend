@@ -1,6 +1,7 @@
 package com.nailsdash.android.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -8,7 +9,25 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CardGiftcard
@@ -17,22 +36,23 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -77,6 +97,11 @@ import com.nailsdash.android.ui.state.AppSessionViewModel
 private val BottomNavBackgroundColor = Color.Black
 private val BottomNavSelectedColor = Color(0xFFD4AF37)
 private val BottomNavUnselectedColor = Color.White.copy(alpha = 0.62f)
+private val BottomNavShellHeight = 58.dp
+private val BottomNavOuterHorizontalPadding = 14.dp
+private val BottomNavOuterBottomPadding = 8.dp
+private val BottomNavIndicatorInset = 5.dp
+private val BottomNavCornerRadius = 22.dp
 private const val NavTransitionDurationMs = 260
 private const val BottomBarTransitionDurationMs = 220
 
@@ -84,6 +109,18 @@ private fun routeDepth(route: String?): Int {
     val base = route?.substringBefore("?").orEmpty()
     if (base.isBlank()) return 0
     return base.count { it == '/' }
+}
+
+private fun tabRouteIndex(route: String?): Int {
+    val base = route?.substringBefore("?").orEmpty()
+    return MainDestination.entries.indexOfFirst { it.route == base }
+}
+
+private fun tabTransitionDirection(from: String?, to: String?): Int {
+    val fromIndex = tabRouteIndex(from)
+    val toIndex = tabRouteIndex(to)
+    if (fromIndex < 0 || toIndex < 0 || fromIndex == toIndex) return 0
+    return if (toIndex > fromIndex) 1 else -1
 }
 
 private enum class MainDestination(
@@ -142,6 +179,8 @@ fun NailsDashApp() {
     }
 
     Scaffold(
+        containerColor = BottomNavBackgroundColor,
+        contentColor = Color.White,
         bottomBar = {
             AnimatedVisibility(
                 visible = showBottomBar,
@@ -156,64 +195,31 @@ fun NailsDashApp() {
                         targetOffsetY = { it / 2 },
                     ),
             ) {
-                NavigationBar(
-                    containerColor = BottomNavBackgroundColor,
-                    tonalElevation = 0.dp,
-                ) {
-                    MainDestination.entries.forEach { tab ->
-                        val selected = currentDestination
-                            ?.hierarchy
-                            ?.any { it.route == tab.route } == true
-
-                        NavigationBarItem(
-                            modifier = Modifier.semantics {
-                                contentDescription = "tab-${tab.route}"
-                            },
-                            selected = selected,
-                            onClick = {
-                                if (tab == MainDestination.Home) {
-                                    val poppedToHome = navController.popBackStack(
-                                        route = MainDestination.Home.route,
-                                        inclusive = false,
-                                    )
-                                    if (!poppedToHome || navController.currentDestination?.route != MainDestination.Home.route) {
-                                        navController.navigate(MainDestination.Home.route) {
-                                            launchSingleTop = true
-                                        }
-                                    }
-                                    return@NavigationBarItem
-                                }
-
-                                navController.navigate(tab.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
+                BottomTabBar(
+                    currentDestination = currentDestination,
+                    onSelectTab = { tab ->
+                        if (tab == MainDestination.Home) {
+                            val poppedToHome = navController.popBackStack(
+                                route = MainDestination.Home.route,
+                                inclusive = false,
+                            )
+                            if (!poppedToHome || navController.currentDestination?.route != MainDestination.Home.route) {
+                                navController.navigate(MainDestination.Home.route) {
                                     launchSingleTop = true
-                                    restoreState = true
                                 }
-                            },
-                            icon = tab.icon,
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = BottomNavSelectedColor,
-                                selectedTextColor = BottomNavSelectedColor,
-                                unselectedIconColor = BottomNavUnselectedColor,
-                                unselectedTextColor = BottomNavUnselectedColor,
-                                indicatorColor = Color.Transparent,
-                            ),
-                            label = {
-                                Text(
-                                    text = stringResource(id = tab.titleRes),
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                                    ),
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            },
-                        )
-                    }
-                }
+                            }
+                            return@BottomTabBar
+                        }
+
+                        navController.navigate(tab.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                )
             }
         },
     ) { innerPadding ->
@@ -226,7 +232,17 @@ fun NailsDashApp() {
                 val to = targetState.destination.route
                 val tabToTab = from in tabRoutes && to in tabRoutes
                 if (tabToTab) {
-                    fadeIn(animationSpec = tween(durationMillis = NavTransitionDurationMs - 60))
+                    val direction = tabTransitionDirection(from, to)
+                    slideInHorizontally(
+                        animationSpec = tween(durationMillis = NavTransitionDurationMs),
+                        initialOffsetX = { fullWidth ->
+                            when {
+                                direction > 0 -> (fullWidth * 0.18f).toInt()
+                                direction < 0 -> -(fullWidth * 0.18f).toInt()
+                                else -> 0
+                            }
+                        },
+                    ) + fadeIn(animationSpec = tween(durationMillis = NavTransitionDurationMs - 30))
                 } else {
                     slideInHorizontally(
                         animationSpec = tween(durationMillis = NavTransitionDurationMs),
@@ -241,7 +257,17 @@ fun NailsDashApp() {
                 val toDepth = routeDepth(to)
                 val tabToTab = from in tabRoutes && to in tabRoutes
                 if (tabToTab) {
-                    fadeOut(animationSpec = tween(durationMillis = NavTransitionDurationMs - 80))
+                    val direction = tabTransitionDirection(from, to)
+                    slideOutHorizontally(
+                        animationSpec = tween(durationMillis = NavTransitionDurationMs),
+                        targetOffsetX = { fullWidth ->
+                            when {
+                                direction > 0 -> -(fullWidth * 0.18f).toInt()
+                                direction < 0 -> (fullWidth * 0.18f).toInt()
+                                else -> 0
+                            }
+                        },
+                    ) + fadeOut(animationSpec = tween(durationMillis = NavTransitionDurationMs - 60))
                 } else if (toDepth >= fromDepth) {
                     slideOutHorizontally(
                         animationSpec = tween(durationMillis = NavTransitionDurationMs),
@@ -259,7 +285,17 @@ fun NailsDashApp() {
                 val to = targetState.destination.route
                 val tabToTab = from in tabRoutes && to in tabRoutes
                 if (tabToTab) {
-                    fadeIn(animationSpec = tween(durationMillis = NavTransitionDurationMs - 60))
+                    val direction = tabTransitionDirection(from, to)
+                    slideInHorizontally(
+                        animationSpec = tween(durationMillis = NavTransitionDurationMs),
+                        initialOffsetX = { fullWidth ->
+                            when {
+                                direction > 0 -> (fullWidth * 0.18f).toInt()
+                                direction < 0 -> -(fullWidth * 0.18f).toInt()
+                                else -> 0
+                            }
+                        },
+                    ) + fadeIn(animationSpec = tween(durationMillis = NavTransitionDurationMs - 30))
                 } else {
                     slideInHorizontally(
                         animationSpec = tween(durationMillis = NavTransitionDurationMs),
@@ -272,7 +308,17 @@ fun NailsDashApp() {
                 val to = targetState.destination.route
                 val tabToTab = from in tabRoutes && to in tabRoutes
                 if (tabToTab) {
-                    fadeOut(animationSpec = tween(durationMillis = NavTransitionDurationMs - 80))
+                    val direction = tabTransitionDirection(from, to)
+                    slideOutHorizontally(
+                        animationSpec = tween(durationMillis = NavTransitionDurationMs),
+                        targetOffsetX = { fullWidth ->
+                            when {
+                                direction > 0 -> -(fullWidth * 0.18f).toInt()
+                                direction < 0 -> (fullWidth * 0.18f).toInt()
+                                else -> 0
+                            }
+                        },
+                    ) + fadeOut(animationSpec = tween(durationMillis = NavTransitionDurationMs - 60))
                 } else {
                     slideOutHorizontally(
                         animationSpec = tween(durationMillis = NavTransitionDurationMs),
@@ -562,5 +608,127 @@ fun NailsDashApp() {
                 AboutUsScreen(onBack = { navController.navigateUp() })
             }
         }
+    }
+}
+
+@Composable
+private fun BottomTabBar(
+    currentDestination: androidx.navigation.NavDestination?,
+    onSelectTab: (MainDestination) -> Unit,
+) {
+    val selectedIndex = MainDestination.entries.indexOfFirst { tab ->
+        currentDestination?.hierarchy?.any { it.route == tab.route } == true
+    }.coerceAtLeast(0)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(
+                start = BottomNavOuterHorizontalPadding,
+                end = BottomNavOuterHorizontalPadding,
+                bottom = BottomNavOuterBottomPadding,
+            ),
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(BottomNavShellHeight)
+                .background(
+                    color = BottomNavBackgroundColor.copy(alpha = 0.84f),
+                    shape = RoundedCornerShape(BottomNavCornerRadius),
+                ),
+        ) {
+            val itemWidth = maxWidth / MainDestination.entries.size
+            val animatedIndex by animateFloatAsState(
+                targetValue = selectedIndex.toFloat(),
+                animationSpec = tween(durationMillis = NavTransitionDurationMs),
+                label = "bottom-tab-index",
+            )
+
+            Box(
+                modifier = Modifier
+                    .offset(x = itemWidth * animatedIndex + BottomNavIndicatorInset)
+                    .padding(top = BottomNavIndicatorInset)
+                    .height(BottomNavShellHeight - (BottomNavIndicatorInset * 2))
+                    .width(itemWidth - (BottomNavIndicatorInset * 2))
+                    .background(
+                        color = BottomNavSelectedColor.copy(alpha = 0.14f),
+                        shape = RoundedCornerShape(18.dp),
+                    )
+                    .border(
+                        width = 1.dp,
+                        color = BottomNavSelectedColor.copy(alpha = 0.18f),
+                        shape = RoundedCornerShape(18.dp),
+                    ),
+            )
+
+            Row(modifier = Modifier.fillMaxSize()) {
+                MainDestination.entries.forEachIndexed { index, tab ->
+                    BottomTabBarItem(
+                        title = stringResource(id = tab.titleRes),
+                        selected = index == selectedIndex,
+                        icon = tab.icon,
+                        route = tab.route,
+                        onClick = { onSelectTab(tab) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BottomTabBarItem(
+    title: String,
+    selected: Boolean,
+    icon: @Composable () -> Unit,
+    route: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val contentColor = if (selected) BottomNavSelectedColor else BottomNavUnselectedColor
+    val iconScale by animateFloatAsState(
+        targetValue = if (selected) 1f else 0.94f,
+        animationSpec = tween(durationMillis = 180),
+        label = "bottom-tab-scale",
+    )
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .semantics { contentDescription = "tab-$route" }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick,
+            )
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Box(
+            modifier = Modifier.size((18.dp * iconScale).coerceAtLeast(16.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            androidx.compose.runtime.CompositionLocalProvider(
+                androidx.compose.material3.LocalContentColor provides contentColor,
+            ) {
+                icon()
+            }
+        }
+        Text(
+            text = title,
+            color = contentColor,
+            fontSize = 11.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            lineHeight = 11.sp,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+        )
     }
 }
