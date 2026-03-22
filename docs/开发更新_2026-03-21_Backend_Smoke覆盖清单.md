@@ -6,7 +6,7 @@
 
 - 统一执行入口：`backend/run_regression_smokes.py`
 - CI 工作流：`.github/workflows/backend-payment-regression.yml`
-- 当前 CI 实际覆盖：`9` 条真实链路 smoke
+- 当前 CI 实际覆盖：`10` 条真实链路 smoke
 
 执行命令：
 
@@ -205,6 +205,31 @@ python run_regression_smokes.py
 - `technicians/{technician_id}/available-slots`
 - `appointments/create`
 
+### 10. favorites
+
+脚本：`backend/test_favorites_regression.py`
+
+覆盖：
+
+- pin 收藏添加 / 删除
+- store 收藏添加 / 删除
+- duplicate add 拒绝
+- remove missing 拒绝
+- `is-favorited` 联动
+- `my-favorites` 联动
+- `count` 联动
+
+对应主模块：
+
+- `pins/{pin_id}/favorite`
+- `pins/{pin_id}/is-favorited`
+- `pins/favorites/my-favorites`
+- `pins/favorites/count`
+- `stores/{store_id}/favorite`
+- `stores/{store_id}/is-favorited`
+- `stores/favorites/my-favorites`
+- `stores/favorites/count`
+
 ## 仓库里已有，但未纳入统一 runner / CI 的脚本
 
 ### home-search
@@ -235,22 +260,6 @@ python run_regression_smokes.py
 当前 `P1` 已清空。
 
 ## 当前未覆盖的中优先级链路
-
-### P2. favorites
-
-原因：
-
-- 双端和 H5 很依赖收藏状态
-- 但后端 smoke 还没覆盖 pin/store 收藏增删和 count 联动
-
-对应接口：
-
-- `pins/{pin_id}/favorite`
-- `pins/favorites/my-favorites`
-- `pins/favorites/count`
-- `stores/{store_id}/favorite`
-- `stores/favorites/my-favorites`
-- `stores/favorites/count`
 
 ### P2. appointment service items mutations
 
@@ -295,16 +304,13 @@ python run_regression_smokes.py
 
 ## 推荐的下一批实施顺序
 
-1. `gift card transfer / claim / revoke`
-1. 已完成并纳入 runner / CI
-2. `appointment complete / no-show`
-3. `availability constraints`
-4. `favorites`
-5. 把 `home-search` 改成自 seed 后再纳入 runner
+1. `appointment service items mutations`
+2. `technician reassignment`
+3. 把 `home-search` 改成自 seed 后再纳入 runner
 
 ## 当前结论
 
-当前后端 smoke / CI 已经覆盖了最核心的 6 条消费者主链路：
+当前后端 smoke / CI 已经覆盖了最核心的 10 条消费者主链路：
 
 - 预约创建与改期取消
 - 团单与技师分账
@@ -312,12 +318,15 @@ python run_regression_smokes.py
 - 上传与通知
 - device token 与 admin push
 - 优惠券待领取与 referral 奖励
+- 礼品卡转赠 / 领取 / 撤销
+- 预约完成 / no-show
+- 可预约性约束
+- 收藏链路
 
 这套覆盖已经足以拦住“主链路直接坏掉”的大部分回归。
 
-下一阶段的重点不再是继续横向加很多低价值脚本，而是按风险顺序，把：
+下一阶段的重点已经从 `P1` 状态链路，转到剩余 `P2` 细分链路：
 
-- 预约完成 / no-show
-- 可预约性约束
-
-这三类高风险状态链路补进去。
+- appointment service items mutations
+- technician reassignment
+- 把 `home-search` 改造成自 seed 后再纳入 runner

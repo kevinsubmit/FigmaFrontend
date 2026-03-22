@@ -4,7 +4,7 @@ Run backend regression smoke scripts from a single entrypoint.
 Usage:
   python run_regression_smokes.py
   python run_regression_smokes.py --list
-  python run_regression_smokes.py --only payment --only device-push-admin --only upload-notification
+  python run_regression_smokes.py --only payment --only favorites --only device-push-admin
 """
 from __future__ import annotations
 
@@ -63,6 +63,11 @@ SMOKE_CASES: tuple[SmokeCase, ...] = (
         key="availability-constraints",
         label="Store Availability Constraints Regression Smoke",
         script_path="test_store_availability_constraints_regression.py",
+    ),
+    SmokeCase(
+        key="favorites",
+        label="Favorites Regression Smoke",
+        script_path="test_favorites_regression.py",
     ),
     SmokeCase(
         key="reschedule-cancel",

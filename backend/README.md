@@ -406,6 +406,26 @@ python test_store_availability_constraints_regression.py
 CLEANUP_AFTER=0 python test_store_availability_constraints_regression.py
 ```
 
+收藏真实链路 smoke：
+
+```bash
+python test_favorites_regression.py
+```
+
+默认行为：
+
+- 跑前自动清理动态业务数据
+- 自动种最小 `stores/tags/pins`
+- 注册并登录一个真实顾客
+- 跑 `store favorite + pin favorite + count + list + duplicate reject + remove`
+- 跑后自动再次清理动态业务数据
+
+如需保留回归数据用于人工排查：
+
+```bash
+CLEANUP_AFTER=0 python test_favorites_regression.py
+```
+
 改期 / 取消真实链路 smoke：
 
 ```bash
@@ -442,7 +462,7 @@ python run_regression_smokes.py
 python run_regression_smokes.py --list
 
 # 只跑部分 smoke
-python run_regression_smokes.py --only payment --only complete-no-show --only availability-constraints
+python run_regression_smokes.py --only payment --only complete-no-show --only availability-constraints --only favorites
 ```
 
 如果你本地也想得到同样隔离的上传目录，可用：
