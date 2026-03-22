@@ -594,10 +594,9 @@ private fun StoreListCard(
                 Text(
                     text = store.formattedAddress,
                     color = Color.White.copy(alpha = 0.64f),
-                    fontSize = 18.sp,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    lineHeight = 18.sp,
                 )
             }
         }
