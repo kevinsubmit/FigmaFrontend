@@ -508,6 +508,8 @@ CI 已接入统一 smoke runner：
 - CI 运行时会把 `UPLOAD_DIR` 指到 `/tmp/nailsdash-regression-uploads`，避免与容器内历史 `/app/uploads` 文件互相污染
 - 会自动执行 `docker compose up -d --build` 后运行：
   - `python run_regression_smokes.py`
+- 会上传机器可读结果制品：
+  - `consumer-smoke-results.json`
 
 统一 smoke 入口：
 
@@ -520,6 +522,9 @@ python run_regression_smokes.py --list
 
 # 只跑部分 smoke
 python run_regression_smokes.py --only payment --only complete-no-show --only availability-constraints --only favorites --only technician-reassignment --only appointment-service-items --only home-search
+
+# 输出机器可读 JSON 结果
+python run_regression_smokes.py --results-file artifacts/consumer-smoke-results.json
 ```
 
 如果你本地也想得到同样隔离的上传目录，可用：
@@ -539,6 +544,9 @@ python run_admin_regression_smokes.py --list
 
 # 只跑后台运营一键整合 smoke
 python run_admin_regression_smokes.py --only admin-ops
+
+# 输出机器可读 JSON 结果
+python run_admin_regression_smokes.py --results-file artifacts/admin-smoke-results.json
 ```
 
 当前 admin suite 覆盖：
@@ -579,6 +587,8 @@ python run_admin_regression_smokes.py --only admin-ops
   - `risk-admin`
   - `security-admin`
   - `logs-admin`
+- 会上传机器可读结果制品：
+  - `admin-smoke-results.json`
 - 与消费者侧 workflow 分开，后台改动会单独过一遍 admin suite
 
 上传目录巡检与清理：

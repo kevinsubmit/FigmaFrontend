@@ -1,6 +1,7 @@
 # Backend local config/runtime
 backend/.env
 backend/uploads/
+backend/artifacts/
 backend/*.log
 backend/*.pid
 backend/venv311/

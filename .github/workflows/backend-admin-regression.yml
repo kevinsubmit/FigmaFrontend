@@ -27,6 +27,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare Admin Smoke Artifacts Directory
+        run: |
+          mkdir -p backend/artifacts
+          rm -f backend/artifacts/admin-smoke-results.json
+
       - name: Build and Start Stack
         run: docker compose up -d --build
 
@@ -55,6 +60,15 @@ jobs:
           --only risk-admin
           --only security-admin
           --only logs-admin
+          --results-file /app/artifacts/admin-smoke-results.json
+
+      - name: Upload Admin Smoke Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-smoke-results
+          path: backend/artifacts/admin-smoke-results.json
+          if-no-files-found: warn
 
       - name: Show Container Logs on Failure
         if: failure()

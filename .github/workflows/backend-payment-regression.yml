@@ -27,6 +27,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Prepare Smoke Artifacts Directory
+        run: |
+          mkdir -p backend/artifacts
+          rm -f backend/artifacts/consumer-smoke-results.json
+
       - name: Build and Start Stack
         run: docker compose up -d --build
 
@@ -47,7 +52,18 @@ jobs:
           exit 1
 
       - name: Run Backend Regression Smoke Suite
-        run: docker compose exec -T backend python run_regression_smokes.py
+        run: >
+          docker compose exec -T backend
+          python run_regression_smokes.py
+          --results-file /app/artifacts/consumer-smoke-results.json
+
+      - name: Upload Consumer Smoke Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: consumer-smoke-results
+          path: backend/artifacts/consumer-smoke-results.json
+          if-no-files-found: warn
 
       - name: Show Container Logs on Failure
         if: failure()
