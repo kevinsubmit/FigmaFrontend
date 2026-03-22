@@ -6,7 +6,7 @@
 
 - 统一执行入口：`backend/run_regression_smokes.py`
 - CI 工作流：`.github/workflows/backend-payment-regression.yml`
-- 当前 CI 实际覆盖：`11` 条真实链路 smoke
+- 当前 CI 实际覆盖：`12` 条真实链路 smoke
 
 执行命令：
 
@@ -251,6 +251,30 @@ python run_regression_smokes.py
 - `appointments/{appointment_id}/complete`
 - `appointments/{appointment_id}/cancel`
 
+### 12. appointment-service-items
+
+脚本：`backend/test_appointment_service_items_regression.py`
+
+覆盖：
+
+- 顾客读取/修改服务明细被拒绝
+- `GET /services` 懒初始化 primary service item
+- pending 预约新增服务明细
+- confirmed 预约新增服务明细
+- completed 预约删除非主服务明细
+- primary service 删除被拒绝
+- inactive service / 跨店 service 被拒绝
+- settled / cancelled 后禁止继续增删
+- `order_amount` 随服务明细汇总同步
+
+对应主模块：
+
+- `appointments/{appointment_id}/services`
+- `appointments/{appointment_id}/confirm`
+- `appointments/{appointment_id}/complete`
+- `appointments/{appointment_id}/settle`
+- `appointments/{appointment_id}/cancel`
+
 ## 仓库里已有，但未纳入统一 runner / CI 的脚本
 
 ### home-search
@@ -282,18 +306,7 @@ python run_regression_smokes.py
 
 ## 当前未覆盖的中优先级链路
 
-### P2. appointment service items mutations
-
-原因：
-
-- 当前覆盖的是“单服务”和“group split”
-- 还没覆盖预约中的服务增删改汇总
-
-对应接口：
-
-- `GET /appointments/{appointment_id}/services`
-- `POST /appointments/{appointment_id}/services`
-- `DELETE /appointments/{appointment_id}/services/{item_id}`
+当前 `P2` 已清空。
 
 ## 当前未覆盖的低优先级链路
 
@@ -314,12 +327,11 @@ python run_regression_smokes.py
 
 ## 推荐的下一批实施顺序
 
-1. `appointment service items mutations`
-2. 把 `home-search` 改成自 seed 后再纳入 runner
+1. 把 `home-search` 改成自 seed 后再纳入 runner
 
 ## 当前结论
 
-当前后端 smoke / CI 已经覆盖了最核心的 11 条消费者主链路：
+当前后端 smoke / CI 已经覆盖了最核心的 12 条消费者主链路：
 
 - 预约创建与改期取消
 - 团单与技师分账
@@ -332,10 +344,10 @@ python run_regression_smokes.py
 - 可预约性约束
 - 收藏链路
 - 技师改派
+- 预约服务明细增删汇总
 
 这套覆盖已经足以拦住“主链路直接坏掉”的大部分回归。
 
-下一阶段的重点已经从 `P1` 状态链路，转到剩余 `P2` 细分链路：
+下一阶段的重点已经从 `P1/P2` 状态链路，转到剩余的自 seed 搜索链路：
 
-- appointment service items mutations
 - 把 `home-search` 改造成自 seed 后再纳入 runner

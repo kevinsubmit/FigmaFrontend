@@ -445,6 +445,25 @@ python test_technician_reassignment_regression.py
 CLEANUP_AFTER=0 python test_technician_reassignment_regression.py
 ```
 
+预约服务明细真实链路 smoke：
+
+```bash
+python test_appointment_service_items_regression.py
+```
+
+默认行为：
+
+- 跑前自动清理动态业务数据
+- 自动种最小 `2 stores/5 services/admin`
+- 跑 `customer forbidden + GET lazy init + pending/confirmed/completed add/delete + primary guard + inactive/foreign reject + settled/cancelled guard`
+- 跑后自动再次清理动态业务数据
+
+如需保留回归数据用于人工排查：
+
+```bash
+CLEANUP_AFTER=0 python test_appointment_service_items_regression.py
+```
+
 改期 / 取消真实链路 smoke：
 
 ```bash
@@ -481,7 +500,7 @@ python run_regression_smokes.py
 python run_regression_smokes.py --list
 
 # 只跑部分 smoke
-python run_regression_smokes.py --only payment --only complete-no-show --only availability-constraints --only favorites --only technician-reassignment
+python run_regression_smokes.py --only payment --only complete-no-show --only availability-constraints --only favorites --only technician-reassignment --only appointment-service-items
 ```
 
 如果你本地也想得到同样隔离的上传目录，可用：
