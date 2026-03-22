@@ -308,24 +308,14 @@ python run_regression_smokes.py
 
 ## 当前未覆盖的低优先级链路
 
-### P3. admin CRUD / analytics
+消费者侧 `P3` 当前无新增项。后台运营侧已拆分到独立 admin suite，见：
 
-包括：
-
-- `customers/admin*`
-- `dashboard/*`
-- `risk/*`
-- `security/*`
-- `logs/admin*`
-
-原因：
-
-- 对核心消费者业务主链路的阻塞性低于预约 / 支付 / 通知 / 上传
-- 更适合单独做 admin regression suite，而不是混进当前 consumer-first smoke
+- `backend/run_admin_regression_smokes.py`
+- `docs/开发更新_2026-03-22_Backend_AdminSmoke覆盖清单.md`
 
 ## 推荐的下一批实施顺序
 
-1. 如需继续扩展，单独开 `admin regression suite`
+1. 如需继续扩展后台链路，优先把 `admin-ops` 拆成更细的 admin smoke
 
 ## 当前结论
 
@@ -347,10 +337,4 @@ python run_regression_smokes.py
 
 这套覆盖已经足以拦住“主链路直接坏掉”的大部分回归。
 
-下一阶段如果继续扩展，重点应该转向后台运营链路，而不是消费者主链路：
-
-- `customers/admin*`
-- `dashboard/*`
-- `risk/*`
-- `security/*`
-- `logs/admin*`
+下一阶段如果继续扩展，建议在独立 admin suite 上继续细化，而不是再把后台链路混回 consumer suite。

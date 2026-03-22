@@ -528,6 +528,33 @@ python run_regression_smokes.py --only payment --only complete-no-show --only av
 UPLOAD_DIR=/tmp/nailsdash-regression-uploads docker compose up -d --build backend backend-scheduler
 ```
 
+独立后台运营侧 smoke suite：
+
+```bash
+# 运行后台运营侧整套 smoke
+python run_admin_regression_smokes.py
+
+# 查看可选 key
+python run_admin_regression_smokes.py --list
+
+# 只跑后台运营主链路
+python run_admin_regression_smokes.py --only admin-ops
+```
+
+当前 admin suite 覆盖：
+
+- `dashboard/*`
+- `customers/admin*`
+- `risk/*`
+- `security/*`
+- `logs/admin*`
+
+说明：
+
+- `run_regression_smokes.py` 继续负责消费者主链路
+- `run_admin_regression_smokes.py` 单独负责后台运营链路
+- 两套 suite 分开执行，避免 admin 日志/审计断言污染 consumer smoke
+
 上传目录巡检与清理：
 
 ```bash
