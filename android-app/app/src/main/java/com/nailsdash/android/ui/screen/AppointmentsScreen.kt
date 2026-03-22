@@ -136,7 +136,7 @@ fun AppointmentsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 28.dp),
+                    .padding(start = 16.dp, top = 10.dp, end = 16.dp, bottom = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 appointmentsViewModel.errorMessage

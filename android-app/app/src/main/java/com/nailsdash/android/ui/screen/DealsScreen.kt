@@ -140,7 +140,7 @@ fun DealsScreen(
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 26.dp),
+                contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 14.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (!dealsViewModel.isLoading && !dealsViewModel.isLoadingMore && rows.isEmpty()) {
