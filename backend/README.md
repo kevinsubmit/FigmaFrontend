@@ -616,6 +616,25 @@ python cleanup_upload_storage.py --path /app/uploads --execute
 python cleanup_upload_storage.py --path /app/uploads --older-than-days 30 --execute
 ```
 
+媒体引用巡检与修复：
+
+```bash
+# 只读巡检 /uploads 引用与非法媒体 URL
+python repair_upload_references.py --json
+
+# 执行修复
+python repair_upload_references.py --execute --json
+```
+
+默认修复策略：
+
+- `backend_users / technicians / promotions` 的坏媒体 URL：置空
+- `store_images / store_portfolio` 的坏媒体 URL：删掉记录
+- `reviews.images` 中不存在或非法的媒体 URL：从数组中剔除
+- `pins.image_url`：
+  - 已删除 pin 且媒体已失效：自动删除 pin
+  - 未删除 pin 且媒体已失效：停止执行，要求人工处理
+
 ## 部署
 
 ### 使用Docker部署
