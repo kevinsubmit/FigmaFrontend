@@ -54,7 +54,7 @@ struct StoreDetailView: View {
                         }
                         .padding(.horizontal, UITheme.pagePadding)
                         .padding(.top, UITheme.spacing12)
-                        .padding(.bottom, UITheme.spacing24)
+                        .padding(.bottom, selectedServices.isEmpty ? UITheme.spacing24 : 108)
                     }
                 }
             }
@@ -1011,9 +1011,12 @@ struct StoreDetailView: View {
         HStack {
             VStack(alignment: .leading, spacing: UITheme.spacing6) {
                 Text("\(services.count) \(services.count == 1 ? "SERVICE" : "SERVICES") SELECTED")
-                    .font(.caption.weight(.bold))
+                    .font(.system(size: 11, weight: .bold))
                     .kerning(2.2)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+                    .allowsTightening(true)
 
                 HStack(alignment: .bottom, spacing: UITheme.spacing8) {
                     VStack(alignment: .leading, spacing: UITheme.spacing2) {
