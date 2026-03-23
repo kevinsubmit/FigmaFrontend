@@ -34,13 +34,19 @@ def _load_vip_levels(db: Session) -> List[VipLevelItem]:
     rows = load_vip_level_rows(db)
     if not rows:
         return DEFAULT_VIP_LEVELS
+
+    def _field(row, key, default=None):
+        if isinstance(row, dict):
+            return row.get(key, default)
+        return getattr(row, key, default)
+
     return [
         VipLevelItem(
-            level=int(row.level),
-            min_spend=float(row.min_spend or 0),
-            min_visits=int(row.min_visits or 0),
-            benefit=str(row.benefit or ""),
-            is_active=bool(row.is_active),
+            level=int(_field(row, "level", 0) or 0),
+            min_spend=float(_field(row, "min_spend", 0) or 0),
+            min_visits=int(_field(row, "min_visits", 0) or 0),
+            benefit=str(_field(row, "benefit", "") or ""),
+            is_active=bool(_field(row, "is_active", True)),
         )
         for row in rows
     ]
