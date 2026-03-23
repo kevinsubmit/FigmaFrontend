@@ -894,10 +894,9 @@ private fun StoreDetailSelectedServicesBar(
     services: List<ServiceItem>,
     onContinue: () -> Unit,
 ) {
-    val primaryService = services.firstOrNull()
     val serviceCountText = "${services.size} ${if (services.size == 1) "SERVICE" else "SERVICES"} SELECTED"
-    val priceText = primaryService?.let { "$${String.format(Locale.US, "%.2f", it.price)}+" } ?: "$0.00+"
-    val durationText = primaryService?.let { formatStoreDetailDuration(it.duration_minutes) } ?: "0m"
+    val priceText = selectedServicesPriceText(services)
+    val durationText = selectedServicesDurationText(services)
     val continueInteraction = remember { MutableInteractionSource() }
 
     Column(
@@ -1014,6 +1013,47 @@ private fun formatStoreDetailDuration(minutes: Int): String {
     } else {
         "${mins}m"
     }
+}
+
+private fun selectedServicesTotalPrice(services: List<ServiceItem>): Double = services.sumOf { it.price }
+
+private fun selectedServicesTotalDurationMinutes(services: List<ServiceItem>): Int =
+    services.sumOf { it.duration_minutes }
+
+private fun selectedServicesPriceText(
+    services: List<ServiceItem>,
+    fallback: String = "$0.00+",
+): String {
+    val total = selectedServicesTotalPrice(services)
+    return if (total > 0.0) "$${String.format(Locale.US, "%.2f", total)}+" else fallback
+}
+
+private fun selectedServicesDurationText(
+    services: List<ServiceItem>,
+    fallback: String = "0m",
+): String {
+    val totalMinutes = selectedServicesTotalDurationMinutes(services)
+    return if (totalMinutes > 0) formatStoreDetailDuration(totalMinutes) else fallback
+}
+
+private fun selectedServicesSummaryTitle(
+    services: List<ServiceItem>,
+    fallback: String = "Select service",
+): String {
+    if (services.isEmpty()) return fallback
+    return if (services.size == 1) {
+        services.first().name
+    } else {
+        "${services.first().name} +${services.size - 1}"
+    }
+}
+
+private fun selectedServicesSummarySubtext(
+    services: List<ServiceItem>,
+    fallback: String = "Choose from store service list",
+): String {
+    if (services.isEmpty()) return fallback
+    return "${selectedServicesPriceText(services, "$0.00+")} • ${selectedServicesDurationText(services, "0m")}"
 }
 
 @Composable
@@ -2330,12 +2370,17 @@ fun BookAppointmentScreen(
             .distinct()
             .mapNotNull { serviceId ->
                 bookAppointmentViewModel.services.firstOrNull { it.id == serviceId }
-            }
+        }
         if (preferredChips.isEmpty()) listOfNotNull(selectedService) else preferredChips
     }
-    val selectedServiceSubtext = selectedService?.let {
-        "$${String.format(Locale.US, "%.2f", it.price)} • ${it.duration_minutes} mins"
-    } ?: "Choose from store service list"
+    val summaryServices = remember(sheetHeaderServiceChips, selectedService?.id) {
+        if (sheetHeaderServiceChips.isNotEmpty()) {
+            sheetHeaderServiceChips
+        } else {
+            listOfNotNull(selectedService)
+        }
+    }
+    val selectedServiceSubtext = selectedServicesSummarySubtext(summaryServices)
     val successServicesText = remember(sheetHeaderServiceChips, selectedService?.name) {
         val names = sheetHeaderServiceChips.map { it.name }
         when {
@@ -2344,10 +2389,8 @@ fun BookAppointmentScreen(
             else -> names.joinToString(separator = ", ")
         }
     }
-    val successTotalText = remember(sheetHeaderServiceChips, selectedService?.price) {
-        val sum = sheetHeaderServiceChips.sumOf { it.price }
-        val total = if (sum > 0.0) sum else (selectedService?.price ?: 0.0)
-        "$${String.format(Locale.US, "%.2f", total)}+"
+    val successTotalText = remember(summaryServices) {
+        selectedServicesPriceText(summaryServices)
     }
     val selectedTime = bookAppointmentViewModel.selectedSlot?.let { bookAppointmentViewModel.displayTime(it) } ?: "Select a time"
     val successTimeText = remember(
@@ -2359,9 +2402,7 @@ fun BookAppointmentScreen(
         val timeText = selectedTime
         "$dateText at $timeText"
     }
-    val summaryPriceText = selectedService?.let {
-        "$${String.format(Locale.US, "%.2f", it.price)}+"
-    } ?: "-"
+    val summaryPriceText = selectedServicesPriceText(summaryServices, "-")
     val isBottomSheetPresentation = presentationStyle == BookAppointmentPresentationStyle.BottomSheet
     val guestServicesComplete = guestRows.isNotEmpty() && guestRows.all { it.serviceId != null }
     val canSubmit = selectedService != null &&
@@ -2372,6 +2413,7 @@ fun BookAppointmentScreen(
         selectedService == null -> "Select a service"
         bookingType == BookingTypeSelection.Group && guestRows.isNotEmpty() ->
             "${selectedService.name} + ${guestRows.size} guest${if (guestRows.size > 1) "s" else ""}"
+        summaryServices.size > 1 -> selectedServicesSummaryTitle(summaryServices)
         else -> selectedService.name
     }
     val slotHintText = when {
@@ -2649,7 +2691,7 @@ fun BookAppointmentScreen(
                     item {
                         BookingBottomSheetSummaryAndActions(
                             storeDetail = detail,
-                            selectedService = selectedService,
+                            selectedServices = summaryServices,
                             selectedTime = selectedTime,
                             priceText = summaryPriceText,
                             isSubmitting = bookAppointmentViewModel.isSubmitting || isTransitioningAfterSuccess,
@@ -3571,16 +3613,9 @@ private fun BookingSheetServicesHeaderCard(
     selectedService: ServiceItem?,
     selectedServiceChips: List<ServiceItem>,
 ) {
-    val totalPrice = selectedServiceChips.sumOf { it.price }
-    val displayPrice = when {
-        totalPrice > 0.0 -> totalPrice
-        selectedService != null -> selectedService.price
-        else -> null
-    }
-    val priceText = displayPrice?.let { "$${String.format(Locale.US, "%.2f", it)}+" } ?: "-"
-    val durationText = selectedService?.let {
-        formatStoreDetailDuration(it.duration_minutes)
-    } ?: "-"
+    val summaryServices = if (selectedServiceChips.isNotEmpty()) selectedServiceChips else listOfNotNull(selectedService)
+    val priceText = selectedServicesPriceText(summaryServices, "-")
+    val durationText = selectedServicesDurationText(summaryServices, "-")
     val shimmer = rememberInfiniteTransition(label = "depositBadgeShimmer")
     val shimmerOffset by shimmer.animateFloat(
         initialValue = -180f,
@@ -3726,7 +3761,7 @@ private fun BookingSheetServicesHeaderCard(
 @Composable
 private fun BookingBottomSheetSummaryAndActions(
     storeDetail: StoreDetail?,
-    selectedService: ServiceItem?,
+    selectedServices: List<ServiceItem>,
     selectedTime: String,
     priceText: String,
     isSubmitting: Boolean,
@@ -3750,7 +3785,7 @@ private fun BookingBottomSheetSummaryAndActions(
         if (storeDetail != null) {
             BookingAppointmentSummaryCard(
                 storeDetail = storeDetail,
-                selectedService = selectedService,
+                selectedServices = selectedServices,
                 selectedTime = selectedTime,
                 priceText = priceText,
             )
@@ -3817,7 +3852,7 @@ private fun BookingBottomSheetSummaryAndActions(
 @Composable
 private fun BookingAppointmentSummaryCard(
     storeDetail: StoreDetail,
-    selectedService: ServiceItem?,
+    selectedServices: List<ServiceItem>,
     selectedTime: String,
     priceText: String,
 ) {
@@ -3858,11 +3893,11 @@ private fun BookingAppointmentSummaryCard(
             }
             BookingAppointmentSummaryRow(
                 label = "Service",
-                value = selectedService?.name ?: "Select service",
+                value = selectedServicesSummaryTitle(selectedServices),
             )
             BookingAppointmentSummaryRow(
                 label = "Duration",
-                value = selectedService?.let { formatStoreDetailDuration(it.duration_minutes) } ?: "-",
+                value = selectedServicesDurationText(selectedServices, "-"),
             )
             BookingAppointmentSummaryRow(
                 label = "Time",

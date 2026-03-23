@@ -1176,21 +1176,48 @@ struct BookAppointmentView: View {
         return chips
     }
 
+    private var selectedServiceSummaryTitle: String {
+        let names = selectedServiceChips.map(\.name)
+        if names.isEmpty {
+            return selectedService?.name ?? "Select service"
+        }
+        if names.count == 1 {
+            return names[0]
+        }
+        return "\(names[0]) +\(names.count - 1)"
+    }
+
+    private var selectedServicesTotalPrice: Double {
+        let sum = selectedServiceChips.reduce(0.0) { $0 + $1.price }
+        if sum > 0 {
+            return sum
+        }
+        return selectedService?.price ?? 0
+    }
+
+    private var selectedServicesTotalDurationMinutes: Int {
+        let sum = selectedServiceChips.reduce(0) { $0 + $1.duration_minutes }
+        if sum > 0 {
+            return sum
+        }
+        return selectedService?.duration_minutes ?? 0
+    }
+
     private var selectedServiceSubtext: String {
-        guard let service = selectedService else {
+        guard selectedService != nil || !selectedServiceChips.isEmpty else {
             return "Choose from store service list"
         }
-        return "$\(String(format: "%.2f", service.price)) • \(service.duration_minutes) mins"
+        return "$\(String(format: "%.2f", selectedServicesTotalPrice)) • \(selectedServiceDurationText)"
     }
 
     private var selectedServicePriceText: String {
-        guard let service = selectedService else { return "-" }
-        return "$\(String(format: "%.2f", service.price))+"
+        guard selectedServicesTotalPrice > 0 else { return "-" }
+        return "$\(String(format: "%.2f", selectedServicesTotalPrice))+"
     }
 
     private var selectedServiceDurationText: String {
-        guard let service = selectedService else { return "-" }
-        return formatDuration(service.duration_minutes)
+        guard selectedServicesTotalDurationMinutes > 0 else { return "-" }
+        return formatDuration(selectedServicesTotalDurationMinutes)
     }
 
     private var selectedSlotDisplay: String? {
@@ -1210,10 +1237,7 @@ struct BookAppointmentView: View {
     }
 
     private var successTotalText: String {
-        let sum = selectedServiceChips.reduce(0.0) { $0 + $1.price }
-        let fallback = selectedService?.price ?? 0
-        let total = sum > 0 ? sum : fallback
-        return "$\(String(format: "%.2f", total))+"
+        "$\(String(format: "%.2f", selectedServicesTotalPrice))+"
     }
 
     private var successTimeText: String {
@@ -1368,7 +1392,7 @@ struct BookAppointmentView: View {
                     .foregroundStyle(brandGold)
             }
 
-            summaryRow(label: "Service", value: selectedService?.name ?? "Select service")
+            summaryRow(label: "Service", value: selectedServiceSummaryTitle)
             summaryRow(label: "Duration", value: selectedServiceDurationText)
             summaryRow(label: "Time", value: selectedSlotDisplay ?? "Select date & time")
             summaryRow(label: "Location", value: store.formattedAddress)

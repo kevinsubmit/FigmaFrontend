@@ -74,6 +74,21 @@ const formatLocalDateYYYYMMDD = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+const parseDurationMinutes = (duration: string) => {
+  const normalized = String(duration || '').trim().toLowerCase();
+  if (!normalized) return 30;
+
+  const hourMatch = normalized.match(/(\d+)\s*h/);
+  const minuteMatch = normalized.match(/(\d+)\s*m/);
+  if (hourMatch || minuteMatch) {
+    const total = Number(hourMatch?.[1] || 0) * 60 + Number(minuteMatch?.[1] || 0);
+    return total > 0 ? total : 30;
+  }
+
+  const numeric = parseInt(normalized, 10);
+  return Number.isNaN(numeric) ? 30 : numeric;
+};
+
 const formatUSAddress = (
   address?: string | null,
   city?: string | null,
@@ -622,25 +637,26 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
     });
   };
 
+  const buildServiceTotals = (activeServices: Service[]) => {
+    const totalPrice = activeServices.reduce((sum, s) => sum + s.price, 0);
+    const totalMinutes = activeServices.reduce((sum, s) => sum + parseDurationMinutes(s.duration), 0);
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    const durationStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+    return { totalPrice, durationStr, totalMinutes };
+  };
+
   const calculateTotals = () => {
     const hostService = selectedServices[0];
     const guestServices = guestRows
       .map((row) => services.find((service) => service.id === Number(row.service_id)))
       .filter((service): service is Service => Boolean(service));
     const activeServices = hostService ? [hostService, ...guestServices] : guestServices;
-
-    const totalPrice = activeServices.reduce((sum, s) => sum + s.price, 0);
-    const totalMinutes = activeServices.reduce((sum, s) => {
-      const mins = parseInt(s.duration.replace('m', '')) || 0;
-      return sum + mins;
-    }, 0);
-
-    const hours = Math.floor(totalMinutes / 60);
-    const mins = totalMinutes % 60;
-    const durationStr = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
-
-    return { totalPrice, durationStr, totalMinutes };
+    return buildServiceTotals(activeServices);
   };
+
+  const bookingTotals = useMemo(() => calculateTotals(), [guestRows, selectedServices, services]);
+  const selectedServicesTotals = useMemo(() => buildServiceTotals(selectedServices), [selectedServices]);
 
   const mapQuery = useMemo(() => {
     const parts = [store.name, storeAddressDisplay || store.address].filter(Boolean);
@@ -685,7 +701,9 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
 
   const bookingServiceLines = useMemo(() => {
     const lines: Array<{ role: string; serviceName: string }> = [];
-    const hostServiceName = selectedServices[0]?.name;
+    const hostServiceName = selectedServices.length > 1
+      ? selectedServices.map((service) => service.name).join(', ')
+      : selectedServices[0]?.name;
     if (hostServiceName) {
       lines.push({ role: 'Host', serviceName: hostServiceName });
     }
@@ -755,7 +773,9 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
       }
 
       const existingAppointments = await getMyAppointments();
-      const selectedDurationMinutes = parseDurationMinutes(selectedServices[0]?.duration || '');
+      const selectedDurationMinutes = bookingMode === 'group'
+        ? parseDurationMinutes(selectedServices[0]?.duration || '')
+        : (selectedServicesTotals.totalMinutes || 30);
       const selectedStartMinutes = parseTimeToMinutes(appointmentTime);
       const selectedEndMinutes = selectedStartMinutes + selectedDurationMinutes;
 
@@ -834,12 +854,11 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
       setIsBooked(true);
       
       // Prepare booking data for callback
-      const { totalPrice, durationStr } = calculateTotals();
       const bookingData = {
         id: appointment.id.toString(),
         services: selectedServices,
-        totalPrice,
-        totalDuration: durationStr,
+        totalPrice: bookingTotals.totalPrice,
+        totalDuration: bookingTotals.durationStr,
         staff: selectedStaff || { name: 'Any Technician' },
         store: store,
         date: selectedDate,
@@ -876,18 +895,12 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
   const minSelectableDate = today;
 
   const selectedServiceId = selectedServices[0]?.id;
-  const selectedServiceDuration = selectedServices[0]?.duration || '';
   const formattedSelectedDate = selectedDate
     ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
     : null;
   const selectedDateKey = formattedSelectedDate;
   const canSubmitBooking = !!selectedDate && !!selectedTime && selectedServices.length > 0
     && (bookingMode === 'single' || (guestRows.length > 0 && guestRows.every((row) => Number(row.service_id))));
-
-  const parseDurationMinutes = (duration: string) => {
-    const minutes = parseInt(duration.replace('m', ''), 10);
-    return Number.isNaN(minutes) ? 30 : minutes;
-  };
 
   const parseTimeToMinutes = (time: string) => {
     const [hoursStr, minutesStr] = time.split(':');
@@ -1054,7 +1067,9 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
       setSlotsError(null);
 
       try {
-        const durationMinutes = parseDurationMinutes(selectedServiceDuration);
+        const durationMinutes = bookingMode === 'group'
+          ? parseDurationMinutes(selectedServices[0]?.duration || '')
+          : (selectedServicesTotals.totalMinutes || 30);
         const blockedSlots = await getStoreBlockedSlotsPublic(store.id, formattedSelectedDate).catch(() => []);
         const technicianList = selectedStaff
           ? [selectedStaff]
@@ -1105,7 +1120,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
     };
 
     loadAvailableSlots();
-  }, [formattedSelectedDate, selectedServiceId, selectedStaff, technicians, selectedDate, effectiveStoreHours, isStoreHoursLoading, selectedServiceDuration]);
+  }, [bookingMode, formattedSelectedDate, selectedServiceId, selectedStaff, technicians, selectedDate, effectiveStoreHours, isStoreHoursLoading, selectedServices, selectedServicesTotals.totalMinutes]);
 
   useEffect(() => {
     if (selectedTime && !availableSlots.includes(selectedTime)) {
@@ -1534,13 +1549,13 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
               </p>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5 text-white font-bold">
-                  <span className="text-xl">${calculateTotals().totalPrice.toFixed(2)}</span>
+                  <span className="text-xl">${bookingTotals.totalPrice.toFixed(2)}</span>
                   <span className="text-xs text-gray-500 font-normal">Est. Total</span>
                 </div>
                 <div className="w-px h-4 bg-[#333]" />
                 <div className="flex items-center gap-1.5 text-gray-300">
                   <Clock className="w-3.5 h-3.5 text-[#D4AF37]" />
-                  <span className="text-sm">{calculateTotals().durationStr}</span>
+                  <span className="text-sm">{bookingTotals.durationStr}</span>
                 </div>
               </div>
             </div>
@@ -1659,7 +1674,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                             </div>
                             <div className="flex justify-between items-center mb-2">
                                 <span className="text-gray-500 text-sm">Total</span>
-                                <span className="text-[#D4AF37] font-bold">${calculateTotals().totalPrice.toFixed(2)}</span>
+                                <span className="text-[#D4AF37] font-bold">${bookingTotals.totalPrice.toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-gray-500 text-sm">Time</span>
@@ -1696,12 +1711,12 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                                         </div>
                                       </div>
                                       <span className="text-[12px] font-semibold text-gray-400 whitespace-nowrap">
-                                        {calculateTotals().durationStr}
+                                        {bookingTotals.durationStr}
                                       </span>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-xl font-bold text-white">${calculateTotals().totalPrice.toFixed(2)}</div>
+                                    <div className="text-xl font-bold text-white">${bookingTotals.totalPrice.toFixed(2)}</div>
                                 </div>
                             </div>
                         </DrawerHeader>
@@ -1935,7 +1950,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                             <div className="rounded-2xl border border-[#333] bg-[#111] p-4">
                               <div className="flex items-center justify-between mb-3">
                                 <p className="text-xs uppercase tracking-widest text-gray-400">Appointment Summary</p>
-                                <span className="text-[#D4AF37] text-xs font-semibold">${calculateTotals().totalPrice.toFixed(2)}</span>
+                                <span className="text-[#D4AF37] text-xs font-semibold">${bookingTotals.totalPrice.toFixed(2)}</span>
                               </div>
                               <div className="space-y-2 text-sm text-gray-300">
                                 <div className="flex items-center justify-between">
@@ -1950,7 +1965,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                                 </div>
                                 <div className="flex items-center justify-between">
                                   <span className="text-gray-500">Duration</span>
-                                  <span className="text-white font-medium">{calculateTotals().durationStr}</span>
+                                  <span className="text-white font-medium">{bookingTotals.durationStr}</span>
                                 </div>
                                 <div className="flex items-center justify-between">
                                   <span className="text-gray-500">Time</span>

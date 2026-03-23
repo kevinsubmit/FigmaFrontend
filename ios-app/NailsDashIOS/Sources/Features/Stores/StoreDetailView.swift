@@ -993,18 +993,22 @@ struct StoreDetailView: View {
         }
     }
 
-    private var primarySelectedService: ServiceDTO? {
-        selectedServices.first
+    private var selectedServicesTotalPrice: Double {
+        selectedServices.reduce(0) { $0 + $1.price }
+    }
+
+    private var selectedServicesTotalDurationMinutes: Int {
+        selectedServices.reduce(0) { $0 + $1.duration_minutes }
     }
 
     private var selectedServicesDurationText: String {
-        guard let primary = primarySelectedService else { return "0m" }
-        return formatDuration(primary.duration_minutes)
+        guard selectedServicesTotalDurationMinutes > 0 else { return "0m" }
+        return formatDuration(selectedServicesTotalDurationMinutes)
     }
 
     private var selectedServicesTotalPriceText: String {
-        guard let primary = primarySelectedService else { return "$0.00+" }
-        return "$\(String(format: "%.2f", primary.price))+"
+        guard selectedServicesTotalPrice > 0 else { return "$0.00+" }
+        return "$\(String(format: "%.2f", selectedServicesTotalPrice))+"
     }
 
     private func selectedServicesBar(store: StoreDetailDTO, services: [ServiceDTO]) -> some View {
@@ -1044,7 +1048,7 @@ struct StoreDetailView: View {
 
             Spacer()
 
-            if primarySelectedService != nil {
+            if !services.isEmpty {
                 Button {
                     showBookServicesSheet = true
                 } label: {
