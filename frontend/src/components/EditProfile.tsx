@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { validateRequestPayload } from '../lib/requestValidation';
 import apiClient from '../lib/api';
 import { resolveAssetUrl } from '../utils/assetUrl';
+import { AuthLogoBadge } from './AuthLogoBadge';
 
 interface UserProfile {
   id: number;
@@ -172,7 +173,7 @@ const EditProfile: React.FC = () => {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <User className="w-16 h-16 text-gray-600" />
+                  <AuthLogoBadge size={88} symbolSizeClass="text-4xl" className="shadow-none" />
                 )}
               </div>
               <label

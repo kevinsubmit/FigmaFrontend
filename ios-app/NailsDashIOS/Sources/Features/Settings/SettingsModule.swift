@@ -987,9 +987,7 @@ private struct ProfileSettingsView: View {
     private var avatarPlaceholder: some View {
         ZStack {
             Color.white.opacity(0.06)
-            Image(systemName: "person.fill")
-                .font(.system(size: 52, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.35))
+            AuthLogoBadgeView(size: 78, cornerRadius: 20, symbolSize: 34)
         }
     }
 

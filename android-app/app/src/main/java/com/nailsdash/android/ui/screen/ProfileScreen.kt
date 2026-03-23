@@ -74,6 +74,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
+import com.nailsdash.android.ui.component.AuthLogoAvatar
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.ProfileCenterViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
@@ -414,12 +415,9 @@ private fun ProfileHeaderCard(
 }
 
 @Composable
+@Suppress("UNUSED_PARAMETER")
 private fun ProfileAvatarFallback(userName: String) {
-    Text(
-        text = initials(userName),
-        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-        color = ProfileGold,
-    )
+    AuthLogoAvatar(modifier = Modifier.fillMaxSize())
 }
 
 @Composable

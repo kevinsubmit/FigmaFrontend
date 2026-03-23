@@ -16,6 +16,7 @@ import { Loader } from './ui/Loader';
 import { Progress } from "./ui/progress";
 import { useAuth } from '../contexts/AuthContext';
 import { resolveAssetUrl } from '../utils/assetUrl';
+import { AuthLogoBadge } from './AuthLogoBadge';
 
 interface ProfileProps {
   onNavigate?: (page: 'edit-profile' | 'order-history' | 'my-points' | 'my-coupons' | 'my-gift-cards' | 'settings' | 'vip-description' | 'notifications' | 'my-reviews' | 'my-favorites', subPage?: 'referral') => void;
@@ -23,7 +24,6 @@ interface ProfileProps {
 
 const USER_INFO = {
   name: "Jessica Glam",
-  avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
   vipLevel: 0,
 };
 
@@ -44,7 +44,7 @@ const VIP_LEVELS = [
 export function Profile({ onNavigate }: ProfileProps) {
   const { user, refreshUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [avatar, setAvatar] = useState(USER_INFO.avatar);
+  const [avatar, setAvatar] = useState<string | null>(null);
   const [name, setName] = useState(USER_INFO.name);
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(USER_INFO.name);
@@ -95,7 +95,7 @@ export function Profile({ onNavigate }: ProfileProps) {
     }
 
     const nextName = user.full_name || user.username || USER_INFO.name;
-    const nextAvatar = resolveAssetUrl(user.avatar_url) || USER_INFO.avatar;
+    const nextAvatar = resolveAssetUrl(user.avatar_url) || null;
 
     setAvatar(nextAvatar);
     setName(nextName);
@@ -287,11 +287,17 @@ export function Profile({ onNavigate }: ProfileProps) {
         <div className="flex flex-col items-center px-6 mt-2">
         <div className="relative mb-4">
             <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[#D4AF37]">
-              <img 
-                src={avatar} 
-                alt={name} 
-                className="w-full h-full object-cover"
-              />
+              {avatar ? (
+                <img 
+                  src={avatar} 
+                  alt={name} 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-[#141414] flex items-center justify-center">
+                  <AuthLogoBadge size={72} symbolSizeClass="text-[30px]" className="shadow-none" />
+                </div>
+              )}
             </div>
         </div>
 

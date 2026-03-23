@@ -362,25 +362,38 @@ private struct AuthBackgroundView<Content: View>: View {
     }
 }
 
+struct AuthLogoBadgeView: View {
+    var size: CGFloat = 80
+    var cornerRadius: CGFloat = 18
+    var symbolSize: CGFloat = 34
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        UITheme.brandGold,
+                        Color(red: 176.0 / 255.0, green: 141.0 / 255.0, blue: 45.0 / 255.0),
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+            .frame(width: size, height: size)
+            .overlay(
+                Text("💅")
+                    .font(.system(size: symbolSize))
+            )
+    }
+}
+
 private struct AuthLogoBlock: View {
     var title: String
     var subtitle: String
 
     var body: some View {
         VStack(spacing: UITheme.spacing12) {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(
-                    LinearGradient(
-                        colors: [UITheme.brandGold, Color(red: 176.0 / 255.0, green: 141.0 / 255.0, blue: 45.0 / 255.0)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .frame(width: 80, height: 80)
-                .overlay(
-                    Text("💅")
-                        .font(.system(size: 34))
-                )
+            AuthLogoBadgeView()
 
             VStack(spacing: UITheme.spacing6) {
                 Text(title)

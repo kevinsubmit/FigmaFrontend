@@ -3,6 +3,7 @@ import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import authService from '../services/auth.service';
 import { getAuthErrorMessage } from '../utils/authMessages';
+import { AuthLogoBadge } from './AuthLogoBadge';
 
 interface LoginProps {
   onNavigate: (page: string) => void;
@@ -157,9 +158,7 @@ export function Login({ onNavigate, onBack }: LoginProps) {
       <div className="px-6 pt-8 max-w-md mx-auto">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-br from-[#D4AF37] to-[#B08D2D] rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg shadow-black/30">
-            <span className="text-3xl">💅</span>
-          </div>
+          <AuthLogoBadge className="mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-white">Welcome Back</h2>
           <p className="text-gray-400 mt-2">Log in to book and manage appointments</p>
         </div>

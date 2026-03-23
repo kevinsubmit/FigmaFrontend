@@ -339,9 +339,7 @@ struct ProfileCenterView: View {
     private var fallbackAvatar: some View {
         ZStack {
             Color.white.opacity(0.08)
-            Text(initials(from: appState.currentUser?.full_name ?? appState.currentUser?.username))
-                .font(.title2.weight(.bold))
-                .foregroundStyle(brandGold)
+            AuthLogoBadgeView(size: 72, cornerRadius: 18, symbolSize: 30)
         }
     }
 

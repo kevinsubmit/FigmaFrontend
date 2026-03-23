@@ -92,6 +92,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.nailsdash.android.BuildConfig
 import com.nailsdash.android.data.repository.ProfileRepository
+import com.nailsdash.android.ui.component.AuthLogoAvatar
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.ChangePasswordViewModel
 import com.nailsdash.android.ui.state.LanguageSettingsViewModel
@@ -525,12 +526,7 @@ fun ProfileSettingsScreen(
                                         .border(1.dp, Color.White.copy(alpha = 0.08f), CircleShape),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Person,
-                                        contentDescription = null,
-                                        tint = Color.White.copy(alpha = 0.35f),
-                                        modifier = Modifier.size(52.dp),
-                                    )
+                                    AuthLogoAvatar(modifier = Modifier.matchParentSize())
                                 }
                             }
 
