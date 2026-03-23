@@ -31,6 +31,25 @@ class AppSessionViewModel(application: Application) : AndroidViewModel(applicati
     companion object {
         const val sessionExpiredMessage = "Session expired, please sign in again."
 
+        fun normalizeSensitiveAuthMessage(message: String?): String? {
+            val normalized = message?.trim().orEmpty()
+            if (normalized.isEmpty()) return null
+            val lower = normalized.lowercase()
+            return if (
+                lower.contains("could not validate credentials") ||
+                lower.contains("token has expired") ||
+                lower.contains("session expired") ||
+                lower.contains("not authenticated") ||
+                lower.contains("authentication required") ||
+                lower.contains("please sign in to continue") ||
+                lower.contains("sign in again")
+            ) {
+                sessionExpiredMessage
+            } else {
+                normalized
+            }
+        }
+
         fun shouldForceLogoutAfterSensitiveAuthAlert(message: String): Boolean {
             val normalized = message.trim().lowercase()
             if (normalized.isEmpty()) return false
@@ -46,8 +65,12 @@ class AppSessionViewModel(application: Application) : AndroidViewModel(applicati
             }
 
             if (
+                normalized.contains("could not validate credentials") ||
+                normalized.contains("token has expired") ||
                 normalized.contains("session expired") ||
+                normalized.contains("authentication required") ||
                 normalized.contains("sign in again") ||
+                normalized.contains("please sign in to continue") ||
                 normalized.contains("unauthorized") ||
                 normalized.contains("not authenticated")
             ) {
@@ -122,12 +145,7 @@ class AppSessionViewModel(application: Application) : AndroidViewModel(applicati
                 isLoggedIn = true
                 authMessage = null
             }.onFailure { err ->
-                authRepository.logout()
-                isLoggedIn = false
-                currentUser = null
-                authMessage = err.message
-                bookingStyleReference = null
-                bookOpenedFromStyleReference = false
+                forceLogout(err.message)
             }
         }
     }
@@ -241,15 +259,16 @@ class AppSessionViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun forceLogout(message: String? = null) {
+        val normalizedMessage = normalizeSensitiveAuthMessage(message)
         if (BenchmarkOverrides.isEnabled()) {
             applyBenchmarkSession()
-            authMessage = message
+            authMessage = normalizedMessage
             return
         }
         authRepository.logout()
         isLoggedIn = false
         currentUser = null
-        authMessage = message
+        authMessage = normalizedMessage
         bookingStyleReference = null
         bookOpenedFromStyleReference = false
     }

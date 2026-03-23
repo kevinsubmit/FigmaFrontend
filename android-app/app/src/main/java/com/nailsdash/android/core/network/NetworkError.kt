@@ -29,10 +29,9 @@ private fun mapKnownServerMessage(raw: String?, statusCode: Int): String? {
     if (text.isEmpty()) return null
     val lower = text.lowercase()
 
-    if (lower.contains("not authenticated") || lower.contains("authentication required")) {
-        return "Please sign in to continue."
-    }
     if (
+        lower.contains("not authenticated") ||
+        lower.contains("authentication required") ||
         lower.contains("could not validate credentials") ||
         lower.contains("token has expired") ||
         lower.contains("session expired")

@@ -179,6 +179,17 @@ private val RewardsMutedText = Color.White.copy(alpha = 0.52f)
 private val RewardsSystemGreen = Color(0xFF34C759)
 private val RewardsSystemRed = Color(0xFFFF3B30)
 private val RewardsPagePadding = 16.dp
+
+private fun dismissRewardsNotice(
+    message: String,
+    sessionViewModel: AppSessionViewModel,
+    clearNotice: () -> Unit,
+) {
+    clearNotice()
+    if (AppSessionViewModel.shouldForceLogoutAfterSensitiveAuthAlert(message)) {
+        sessionViewModel.forceLogout(message)
+    }
+}
 private val OrderHistoryCardCorner = 18.dp
 private val RewardsShortDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M/d/yy", Locale.US)
 private val RewardsJoinedDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
@@ -739,7 +750,11 @@ fun PointsScreen(
         noticeMessage?.let { message ->
             RewardsNoticeDialog(
                 message = message,
-                onDismiss = { noticeMessage = null },
+                onDismiss = {
+                    dismissRewardsNotice(message, sessionViewModel) {
+                        noticeMessage = null
+                    }
+                },
             )
         }
     }
@@ -1490,7 +1505,11 @@ fun CouponsScreen(
         noticeMessage?.let { message ->
             RewardsNoticeDialog(
                 message = message,
-                onDismiss = { noticeMessage = null },
+                onDismiss = {
+                    dismissRewardsNotice(message, sessionViewModel) {
+                        noticeMessage = null
+                    }
+                },
             )
         }
     }
@@ -2211,7 +2230,11 @@ fun GiftCardsScreen(
         noticeMessage?.let { message ->
             RewardsNoticeDialog(
                 message = message,
-                onDismiss = { noticeMessage = null },
+                onDismiss = {
+                    dismissRewardsNotice(message, sessionViewModel) {
+                        noticeMessage = null
+                    }
+                },
             )
         }
     }
@@ -3140,7 +3163,11 @@ fun OrderHistoryScreen(
         noticeMessage?.let { message ->
             RewardsNoticeDialog(
                 message = message,
-                onDismiss = { noticeMessage = null },
+                onDismiss = {
+                    dismissRewardsNotice(message, sessionViewModel) {
+                        noticeMessage = null
+                    }
+                },
             )
         }
     }
@@ -3990,7 +4017,11 @@ fun ReviewsScreen(
         noticeMessage?.let { message ->
             RewardsNoticeDialog(
                 message = message,
-                onDismiss = { noticeMessage = null },
+                onDismiss = {
+                    dismissRewardsNotice(message, sessionViewModel) {
+                        noticeMessage = null
+                    }
+                },
             )
         }
     }
@@ -4160,7 +4191,11 @@ fun FavoritesScreen(
         noticeMessage?.let { message ->
             RewardsNoticeDialog(
                 message = message,
-                onDismiss = { noticeMessage = null },
+                onDismiss = {
+                    dismissRewardsNotice(message, sessionViewModel) {
+                        noticeMessage = null
+                    }
+                },
             )
         }
     }
@@ -5012,7 +5047,11 @@ fun ReferralScreen(
         noticeMessage?.let { message ->
             RewardsNoticeDialog(
                 message = message,
-                onDismiss = { noticeMessage = null },
+                onDismiss = {
+                    dismissRewardsNotice(message, sessionViewModel) {
+                        noticeMessage = null
+                    }
+                },
             )
         }
     }

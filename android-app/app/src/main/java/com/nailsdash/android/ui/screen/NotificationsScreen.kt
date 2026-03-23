@@ -217,7 +217,12 @@ fun NotificationsScreen(
         noticeMessage?.let { message ->
             NotificationNoticeDialog(
                 message = message,
-                onDismiss = { noticeMessage = null },
+                onDismiss = {
+                    noticeMessage = null
+                    if (AppSessionViewModel.shouldForceLogoutAfterSensitiveAuthAlert(message)) {
+                        sessionViewModel.forceLogout(message)
+                    }
+                },
             )
         }
     }

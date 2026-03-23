@@ -51,6 +51,11 @@ struct AppVersionPrompt: Identifiable, Equatable {
 @MainActor
 final class AppState: ObservableObject {
     nonisolated static let sessionExpiredMessage = "Session expired, please sign in again."
+    nonisolated static func normalizedSensitiveAuthMessage(_ message: String?) -> String? {
+        let normalized = message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !normalized.isEmpty else { return nil }
+        return shouldForceLogoutAfterSensitiveAuthAlert(normalized) ? sessionExpiredMessage : normalized
+    }
     nonisolated static func shouldForceLogoutAfterSensitiveAuthAlert(_ message: String) -> Bool {
         let normalized = message.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if normalized.isEmpty { return false }
@@ -260,6 +265,7 @@ final class AppState: ObservableObject {
     }
 
     func forceLogout(message: String? = nil) {
+        let normalizedMessage = Self.normalizedSensitiveAuthMessage(message)
         let accessTokenBeforeLogout = TokenStore.shared.read(key: TokenStore.Keys.accessToken)
         PushNotificationManager.shared.unregisterCurrentTokenOnLogout(accessToken: accessTokenBeforeLogout)
         PushNotificationManager.shared.setAppBadge(0)
@@ -268,7 +274,7 @@ final class AppState: ObservableObject {
         TokenStore.shared.clear(key: TokenStore.Keys.refreshToken)
         isLoggedIn = false
         currentUser = nil
-        authMessage = message
+        authMessage = normalizedMessage
         selectedTab = .home
         bookingStyleReference = nil
         bookOpenedFromStyleReference = false
@@ -402,11 +408,23 @@ final class AppState: ObservableObject {
         case .forbidden(let detail):
             forceLogout(message: detail)
         case .validation(let detail):
-            authMessage = detail
+            if Self.shouldForceLogoutAfterSensitiveAuthAlert(detail) {
+                forceLogout(message: detail)
+            } else {
+                authMessage = detail
+            }
         case .server(let detail):
-            authMessage = detail
+            if Self.shouldForceLogoutAfterSensitiveAuthAlert(detail) {
+                forceLogout(message: detail)
+            } else {
+                authMessage = detail
+            }
         case .network(let detail):
-            authMessage = detail
+            if Self.shouldForceLogoutAfterSensitiveAuthAlert(detail) {
+                forceLogout(message: detail)
+            } else {
+                authMessage = detail
+            }
         case .invalidURL:
             authMessage = "Invalid API configuration."
         case .decoding:

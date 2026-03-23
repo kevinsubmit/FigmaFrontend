@@ -106,10 +106,13 @@ const mapKnownMessage = (raw: string, status?: number): string | null => {
   if (lower.includes('timed out') || lower.includes('timeout')) {
     return 'Request timed out. Please check your connection and try again.';
   }
-  if (lower.includes('not authenticated') || lower.includes('authentication required')) {
-    return 'Please sign in to continue.';
-  }
-  if (lower.includes('could not validate credentials') || lower.includes('token has expired') || lower.includes('session expired')) {
+  if (
+    lower.includes('not authenticated')
+    || lower.includes('authentication required')
+    || lower.includes('could not validate credentials')
+    || lower.includes('token has expired')
+    || lower.includes('session expired')
+  ) {
     return 'Session expired. Please sign in again.';
   }
   if (lower.includes('forbidden') || lower.includes('permission denied') || lower.includes('not enough permissions')) {

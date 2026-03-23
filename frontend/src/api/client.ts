@@ -153,8 +153,8 @@ class APIClient {
 
     // For explicitly protected routes, no token means request should fail as before.
     if (requiresAuth && !token) {
-      forceRelogin('Please sign in to continue.', true);
-      throw new Error('Please sign in to continue.');
+      forceRelogin('Session expired. Please sign in again.', true);
+      throw new Error('Session expired. Please sign in again.');
     }
 
     const requestCacheKey =
