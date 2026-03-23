@@ -452,6 +452,76 @@ def _build_appointment_service_summary(
     )
 
 
+def _load_appointment_service_rollups(
+    db: Session,
+    appointment_ids: List[int],
+) -> dict[int, dict]:
+    if not appointment_ids:
+        return {}
+
+    rows = (
+        db.query(
+            AppointmentServiceItem.id,
+            AppointmentServiceItem.appointment_id,
+            AppointmentServiceItem.service_id,
+            AppointmentServiceItem.amount,
+            AppointmentServiceItem.is_primary,
+            AppointmentServiceItem.created_at,
+            AppointmentServiceItem.updated_at,
+            Service.name.label("service_name"),
+            Service.duration_minutes.label("service_duration"),
+        )
+        .outerjoin(Service, Service.id == AppointmentServiceItem.service_id)
+        .filter(AppointmentServiceItem.appointment_id.in_(appointment_ids))
+        .order_by(
+            AppointmentServiceItem.appointment_id.asc(),
+            AppointmentServiceItem.is_primary.desc(),
+            AppointmentServiceItem.id.asc(),
+        )
+        .all()
+    )
+
+    rollups: dict[int, dict] = {}
+    for row in rows:
+        appointment_id = int(row.appointment_id)
+        service_id = int(row.service_id)
+        service_name = (row.service_name or "").strip() or f"Service #{service_id}"
+        item_payload = AppointmentServiceItemResponse(
+            id=int(row.id),
+            appointment_id=appointment_id,
+            service_id=service_id,
+            service_name=service_name,
+            amount=round(float(row.amount or 0), 2),
+            is_primary=bool(row.is_primary),
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+        current = rollups.setdefault(
+            appointment_id,
+            {
+                "items": [],
+                "order_amount": 0.0,
+                "service_duration": 0,
+                "service_names": [],
+                "service_name_set": set(),
+            },
+        )
+        current["items"].append(item_payload)
+        current["order_amount"] += float(row.amount or 0)
+        current["service_duration"] += int(row.service_duration or 0)
+        lowered_name = service_name.lower()
+        if lowered_name not in current["service_name_set"]:
+            current["service_name_set"].add(lowered_name)
+            current["service_names"].append(service_name)
+
+    for payload in rollups.values():
+        payload["service_name"] = ", ".join(payload["service_names"])
+        payload.pop("service_name_set", None)
+        payload.pop("service_names", None)
+
+    return rollups
+
+
 def _mark_paid_if_completed(appointment: AppointmentModel, service: Optional[Service]) -> None:
     if appointment.status != AppointmentStatus.COMPLETED:
         return
@@ -476,6 +546,26 @@ def _assert_admin_can_operate_appointment(
 
     if not current_user.is_admin and service.store_id != current_user.store_id:
         raise HTTPException(status_code=403, detail="You can only operate appointments from your own store")
+    return service
+
+
+def _assert_can_operate_appointment_service_items(
+    db: Session,
+    current_user: UserResponse,
+    appointment: AppointmentModel,
+) -> Service:
+    if current_user.is_admin or current_user.store_id:
+        return _assert_admin_can_operate_appointment(db, current_user, appointment)
+
+    service = db.query(Service).filter(Service.id == appointment.service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    if int(appointment.user_id or 0) != int(current_user.id):
+        raise HTTPException(
+            status_code=403,
+            detail="Only appointment owner or store administrators can operate appointment services",
+        )
     return service
 
 
@@ -1185,6 +1275,8 @@ def get_admin_appointments(
         store_id=resolved_store_id,
         status=status_enum
     )
+    appointment_ids = [int(appt.id) for appt, *_ in appointments_data if appt.id is not None]
+    service_rollup_map = _load_appointment_service_rollups(db, appointment_ids)
 
     user_ids = sorted({int(appt.user_id) for appt, *_ in appointments_data if appt.user_id is not None})
     completed_user_ids = set()
@@ -1237,7 +1329,22 @@ def get_admin_appointments(
     result = []
     for appt, store_name, store_address, service_name, service_price, service_duration, review_id, user_name, customer_name, customer_phone, technician_name in appointments_data:
         user_id_value = int(appt.user_id) if appt.user_id is not None else None
-        resolved_amount = appt.order_amount if appt.order_amount is not None else service_price
+        service_rollup = service_rollup_map.get(int(appt.id))
+        resolved_amount = (
+            round(float(service_rollup["order_amount"]), 2)
+            if service_rollup and service_rollup["order_amount"] > 0
+            else (appt.order_amount if appt.order_amount is not None else service_price)
+        )
+        resolved_service_name = (
+            service_rollup["service_name"]
+            if service_rollup and service_rollup.get("service_name")
+            else service_name
+        )
+        resolved_service_duration = (
+            int(service_rollup["service_duration"])
+            if service_rollup and int(service_rollup.get("service_duration") or 0) > 0
+            else service_duration
+        )
         resolved_customer_name = appt.guest_name or customer_name or user_name
         raw_customer_phone = appt.guest_phone or customer_phone
         resolved_customer_phone = raw_customer_phone if include_full_phone else mask_phone(raw_customer_phone)
@@ -1245,10 +1352,11 @@ def get_admin_appointments(
             **appt.__dict__,
             "store_name": store_name,
             "store_address": store_address,
-            "service_name": service_name,
+            "service_name": resolved_service_name,
             "service_price": service_price,
             "order_amount": resolved_amount,
-            "service_duration": service_duration,
+            "service_duration": resolved_service_duration,
+            "service_items": service_rollup["items"] if service_rollup else [],
             "review_id": review_id,
             "user_name": user_name,
             "customer_name": resolved_customer_name,
@@ -2259,7 +2367,7 @@ def get_appointment_service_items(
     appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
-    _assert_admin_can_operate_appointment(db, current_user, appointment)
+    _assert_can_operate_appointment_service_items(db, current_user, appointment)
     items = _ensure_appointment_service_items_initialized(db, appointment, current_user)
     db.commit()
     return _build_appointment_service_summary(db, appointment, items)
@@ -2276,7 +2384,7 @@ def add_appointment_service_item(
     appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
-    _assert_admin_can_operate_appointment(db, current_user, appointment)
+    _assert_can_operate_appointment_service_items(db, current_user, appointment)
     if appointment.status == AppointmentStatus.CANCELLED:
         raise HTTPException(status_code=400, detail="Cannot add service to cancelled appointment")
     if (appointment.settlement_status or "unsettled").strip().lower() not in {"", "unsettled"}:
@@ -2341,7 +2449,7 @@ def delete_appointment_service_item(
     appointment = crud_appointment.get_appointment(db, appointment_id=appointment_id)
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
-    _assert_admin_can_operate_appointment(db, current_user, appointment)
+    _assert_can_operate_appointment_service_items(db, current_user, appointment)
     if appointment.status == AppointmentStatus.CANCELLED:
         raise HTTPException(status_code=400, detail="Cannot modify services on cancelled appointment")
     if (appointment.settlement_status or "unsettled").strip().lower() not in {"", "unsettled"}:

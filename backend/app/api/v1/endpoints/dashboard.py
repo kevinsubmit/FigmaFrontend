@@ -6,6 +6,8 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from app.models.appointment_service_item import AppointmentServiceItem
+
 from app.api.deps import get_db, get_current_store_admin
 from app.models.user import User
 from app.models.appointment import Appointment as AppointmentModel, AppointmentStatus
@@ -15,6 +17,7 @@ from app.models.user import User as UserModel
 from app.schemas.dashboard import (
     DashboardRealtimeNotificationItem,
     DashboardRealtimeNotificationListResponse,
+    DashboardRealtimeNotificationServiceItem,
     DashboardSummaryResponse,
 )
 
@@ -28,6 +31,62 @@ def _resolve_amount(order_amount: float | None, final_paid_amount: float | None)
     if final_paid > 0:
         return final_paid
     return max(float(order_amount or 0), 0.0)
+
+
+def _load_dashboard_service_rollups(db: Session, appointment_ids: list[int]) -> dict[int, dict]:
+    if not appointment_ids:
+        return {}
+
+    rows = (
+        db.query(
+            AppointmentServiceItem.id.label("id"),
+            AppointmentServiceItem.appointment_id.label("appointment_id"),
+            AppointmentServiceItem.service_id.label("service_id"),
+            AppointmentServiceItem.amount.label("amount"),
+            AppointmentServiceItem.is_primary.label("is_primary"),
+            Service.name.label("service_name"),
+        )
+        .outerjoin(Service, Service.id == AppointmentServiceItem.service_id)
+        .filter(AppointmentServiceItem.appointment_id.in_(appointment_ids))
+        .order_by(
+            AppointmentServiceItem.appointment_id.asc(),
+            AppointmentServiceItem.is_primary.desc(),
+            AppointmentServiceItem.id.asc(),
+        )
+        .all()
+    )
+
+    rollups: dict[int, dict] = {}
+    for row in rows:
+        appointment_id = int(row.appointment_id)
+        service_name = (row.service_name or f"Service #{row.service_id}").strip()
+        bucket = rollups.setdefault(
+            appointment_id,
+            {
+                "service_names": [],
+                "seen_service_names": set(),
+                "service_items": [],
+            },
+        )
+        if service_name not in bucket["seen_service_names"]:
+            bucket["seen_service_names"].add(service_name)
+            bucket["service_names"].append(service_name)
+        bucket["service_items"].append(
+            DashboardRealtimeNotificationServiceItem(
+                id=int(row.id),
+                appointment_id=appointment_id,
+                service_id=int(row.service_id),
+                service_name=service_name,
+                amount=float(row.amount or 0),
+                is_primary=bool(row.is_primary),
+            )
+        )
+
+    for bucket in rollups.values():
+        bucket.pop("seen_service_names", None)
+        bucket["service_name"] = ", ".join(bucket["service_names"])
+
+    return rollups
 
 
 @router.get("/summary", response_model=DashboardSummaryResponse)
@@ -158,10 +217,18 @@ def get_dashboard_realtime_notifications(
         .all()
     )
 
+    appointment_ids = [int(row.appointment_id) for row in rows]
+    service_rollups = _load_dashboard_service_rollups(db, appointment_ids)
+
     items = []
     for row in rows:
         customer_name = (row.guest_name or row.customer_name or row.user_name or "Customer").strip()
-        service_name = (row.service_name or f"Service #{row.appointment_id}").strip()
+        service_rollup = service_rollups.get(int(row.appointment_id))
+        service_name = (
+            (service_rollup or {}).get("service_name")
+            or (row.service_name or f"Service #{row.appointment_id}").strip()
+        )
+        service_items = (service_rollup or {}).get("service_items") or []
         appt_date = str(row.appointment_date)
         appt_time = str(row.appointment_time)[:5]
         items.append(
@@ -172,6 +239,7 @@ def get_dashboard_realtime_notifications(
                 store_name=row.store_name,
                 customer_name=customer_name,
                 service_name=service_name,
+                service_items=service_items,
                 appointment_date=appt_date,
                 appointment_time=appt_time,
                 title="新预约提醒",

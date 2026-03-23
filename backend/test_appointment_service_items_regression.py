@@ -5,8 +5,8 @@ Flow covered:
 1. Cleanup previous dynamic regression data
 2. Seed minimal primary store / foreign store / services / admin
 3. Register + login one customer and admin
-4. Verify customer cannot read or mutate appointment service items
-5. Verify admin GET lazily initializes the primary service item
+4. Verify appointment owner can read and mutate appointment service items
+5. Verify GET lazily initializes the primary service item
 6. Verify pending / confirmed / completed appointments can mutate service items before settlement
 7. Verify primary removal, inactive service, foreign-store service are rejected
 8. Verify cancelled and settled appointments can no longer mutate service items
@@ -447,7 +447,7 @@ def run_api_flow(seed: SeedResult) -> Dict[str, Any]:
 
     appointment_date = (date.today() + timedelta(days=1)).isoformat()
 
-    log("[STEP] Create primary appointment and verify customer is forbidden")
+    log("[STEP] Create primary appointment and verify appointment owner can read service items")
     appointment_a = create_appointment(
         customer_token,
         seed,
@@ -457,49 +457,51 @@ def run_api_flow(seed: SeedResult) -> Dict[str, Any]:
     )
     appointment_a_id = int(appointment_a["id"])
 
-    customer_get_forbidden = request_json(
+    customer_initial = request_json(
         "GET",
         f"/appointments/{appointment_a_id}/services",
         token=customer_token,
-        expected_statuses=(403,),
+        expected_statuses=(200,),
     )
-    assert_equal(customer_get_forbidden["detail"], "Only store administrators can operate appointments", "customer get service items forbidden")
+    assert_close(customer_initial["order_amount"], PRIMARY_SERVICE_PRICE, "customer initial order amount")
+    assert_equal(len(customer_initial["items"]), 1, "customer initial service item count")
+    primary_item = customer_initial["items"][0]
+    assert_equal(int(primary_item["service_id"]), seed.primary_service_id, "customer initial primary service id")
+    assert_equal(bool(primary_item["is_primary"]), True, "customer initial item primary flag")
+    assert_close(primary_item["amount"], PRIMARY_SERVICE_PRICE, "customer initial primary amount")
 
-    log("[STEP] Admin GET initializes primary service item")
+    log("[STEP] Appointment owner adds first add-on before admin review")
+    pending_added = request_json(
+        "POST",
+        f"/appointments/{appointment_a_id}/services",
+        token=customer_token,
+        expected_statuses=(200,),
+        json={"service_id": seed.addon_one_service_id, "amount": ADDON_ONE_AMOUNT},
+    )
+    assert_equal(len(pending_added["items"]), 2, "pending item count after owner add")
+    assert_close(pending_added["order_amount"], PRIMARY_SERVICE_PRICE + ADDON_ONE_AMOUNT, "pending total after owner add")
+    addon_one_item = find_item(pending_added, service_id=seed.addon_one_service_id)
+    assert_equal(bool(addon_one_item["is_primary"]), False, "add-on one is non-primary")
+
+    log("[STEP] Admin GET sees the same initialized summary")
     initial_summary = request_json(
         "GET",
         f"/appointments/{appointment_a_id}/services",
         token=admin_token,
         expected_statuses=(200,),
     )
-    assert_close(initial_summary["order_amount"], PRIMARY_SERVICE_PRICE, "initial order amount")
-    assert_equal(len(initial_summary["items"]), 1, "initial service item count")
-    primary_item = initial_summary["items"][0]
-    assert_equal(int(primary_item["service_id"]), seed.primary_service_id, "initial primary service id")
-    assert_equal(bool(primary_item["is_primary"]), True, "initial item primary flag")
-    assert_close(primary_item["amount"], PRIMARY_SERVICE_PRICE, "initial primary amount")
+    assert_close(initial_summary["order_amount"], PRIMARY_SERVICE_PRICE + ADDON_ONE_AMOUNT, "initial order amount")
+    assert_equal(len(initial_summary["items"]), 2, "initial service item count")
 
     initial_db_items = fetch_service_items(appointment_a_id)
-    assert_equal(len(initial_db_items), 1, "initial db item count")
+    assert_equal(len(initial_db_items), 2, "initial db item count")
     assert_equal(bool(initial_db_items[0].is_primary), True, "initial db primary flag")
 
-    log("[STEP] Add and validate pending service item mutations")
-    pending_added = request_json(
-        "POST",
-        f"/appointments/{appointment_a_id}/services",
-        token=admin_token,
-        expected_statuses=(200,),
-        json={"service_id": seed.addon_one_service_id, "amount": ADDON_ONE_AMOUNT},
-    )
-    assert_equal(len(pending_added["items"]), 2, "pending item count after add")
-    assert_close(pending_added["order_amount"], PRIMARY_SERVICE_PRICE + ADDON_ONE_AMOUNT, "pending total after add-on one")
-    addon_one_item = find_item(pending_added, service_id=seed.addon_one_service_id)
-    assert_equal(bool(addon_one_item["is_primary"]), False, "add-on one is non-primary")
-
+    log("[STEP] Validate pending service item mutation guards")
     inactive_rejected = request_json(
         "POST",
         f"/appointments/{appointment_a_id}/services",
-        token=admin_token,
+        token=customer_token,
         expected_statuses=(400,),
         json={"service_id": seed.inactive_service_id, "amount": 18},
     )
@@ -508,7 +510,7 @@ def run_api_flow(seed: SeedResult) -> Dict[str, Any]:
     foreign_rejected = request_json(
         "POST",
         f"/appointments/{appointment_a_id}/services",
-        token=admin_token,
+        token=customer_token,
         expected_statuses=(400,),
         json={"service_id": seed.foreign_service_id, "amount": 19},
     )
@@ -517,7 +519,7 @@ def run_api_flow(seed: SeedResult) -> Dict[str, Any]:
     primary_delete_rejected = request_json(
         "DELETE",
         f"/appointments/{appointment_a_id}/services/{primary_item['id']}",
-        token=admin_token,
+        token=customer_token,
         expected_statuses=(400,),
     )
     assert_equal(primary_delete_rejected["detail"], "Primary service cannot be removed", "primary service removal rejected")
@@ -534,7 +536,7 @@ def run_api_flow(seed: SeedResult) -> Dict[str, Any]:
     confirmed_added = request_json(
         "POST",
         f"/appointments/{appointment_a_id}/services",
-        token=admin_token,
+        token=customer_token,
         expected_statuses=(200,),
         json={"service_id": seed.addon_two_service_id, "amount": ADDON_TWO_AMOUNT},
     )
@@ -558,7 +560,7 @@ def run_api_flow(seed: SeedResult) -> Dict[str, Any]:
     completed_deleted = request_json(
         "DELETE",
         f"/appointments/{appointment_a_id}/services/{addon_two_item['id']}",
-        token=admin_token,
+        token=customer_token,
         expected_statuses=(200,),
     )
     assert_equal(len(completed_deleted["items"]), 2, "completed item count after delete")

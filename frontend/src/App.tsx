@@ -179,7 +179,12 @@ function AppRouter() {
 
   const handleBookingSuccess = (bookingData: any) => {
     setMyBookings([...myBookings, bookingData]);
-    navigate('/appointments');
+    navigate('/appointments', {
+      state: {
+        refreshKey: Date.now(),
+        bookingId: bookingData?.id ?? null,
+      },
+    });
     setSelectedPin(null);
   };
 
@@ -269,11 +274,7 @@ function AppRouter() {
 
         <Route path="/appointments" element={
           <ProtectedRoute>
-            <Appointments 
-              newBooking={myBookings[myBookings.length - 1]} 
-              onClearNewBooking={() => setMyBookings(myBookings.slice(0, -1))} 
-              onNavigate={handleNavigate}
-            />
+            <Appointments />
           </ProtectedRoute>
         } />
 

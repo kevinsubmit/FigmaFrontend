@@ -48,7 +48,7 @@ import {
 import { Calendar } from "./ui/calendar";  // Calendar component
 import { getServicesByStoreId, Service as APIService } from '../services/services.service';
 import { Store as APIStore } from '../services/stores.service';
-import { createAppointment, createAppointmentGroup, getMyAppointments } from '../services/appointments.service';
+import { addAppointmentServiceItem, createAppointment, createAppointmentGroup, getMyAppointments } from '../services/appointments.service';
 import { getStorePortfolio, PortfolioItem } from '../services/store-portfolio.service';
 import StoreReviews from './StoreReviews';
 import { Pin } from '../api/pins';
@@ -731,6 +731,34 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
     setGuestRows((prev) => prev.map((row, idx) => (idx === index ? { ...row, [key]: value } : row)));
   };
 
+  const attachAdditionalAppointmentServices = async (appointmentId: number, primaryServiceId: number) => {
+    const extras = selectedServices.filter((service, index, list) =>
+      service.id !== primaryServiceId && list.findIndex(item => item.id === service.id) === index
+    );
+    if (extras.length === 0) {
+      return true;
+    }
+
+    let allAttached = true;
+    for (const extra of extras) {
+      try {
+        await addAppointmentServiceItem(appointmentId, {
+          service_id: extra.id,
+          amount: extra.price,
+        });
+      } catch (error) {
+        allAttached = false;
+        console.error('Failed to attach additional appointment service item', {
+          appointmentId,
+          serviceId: extra.id,
+          error,
+        });
+        break;
+      }
+    }
+    return allAttached;
+  };
+
   const handleConfirmBooking = async () => {
     if (!selectedDate || !selectedTime) return;
     
@@ -848,6 +876,13 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
           appointment_time: appointmentTime,
           notes,
         });
+        const extrasAttached = await attachAdditionalAppointmentServices(appointment.id, serviceId);
+        if (!extrasAttached) {
+          console.warn('Appointment created, but one or more additional services were not attached.', {
+            appointmentId: appointment.id,
+            primaryServiceId: serviceId,
+          });
+        }
       }
       
       // Show success state

@@ -1,8 +1,18 @@
 """
 Dashboard schemas
 """
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
+
+
+class DashboardRealtimeNotificationServiceItem(BaseModel):
+    id: int
+    appointment_id: int
+    service_id: int
+    service_name: str | None = None
+    amount: float
+    is_primary: bool = False
+
 
 
 class DashboardSummaryResponse(BaseModel):
@@ -22,6 +32,7 @@ class DashboardRealtimeNotificationItem(BaseModel):
     store_name: str | None = None
     customer_name: str
     service_name: str
+    service_items: list[DashboardRealtimeNotificationServiceItem] = Field(default_factory=list)
     appointment_date: str
     appointment_time: str
     title: str

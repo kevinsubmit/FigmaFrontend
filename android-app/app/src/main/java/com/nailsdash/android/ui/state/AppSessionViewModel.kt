@@ -108,6 +108,9 @@ class AppSessionViewModel(application: Application) : AndroidViewModel(applicati
     var currentUser by mutableStateOf<AuthUser?>(null)
         private set
 
+    var appointmentsRefreshVersion by mutableStateOf(0L)
+        private set
+
     var bookingStyleReference by mutableStateOf<BookingStyleReference?>(null)
         private set
 
@@ -121,6 +124,10 @@ class AppSessionViewModel(application: Application) : AndroidViewModel(applicati
 
     fun bootstrap() {
         refreshSession()
+    }
+
+    fun requestAppointmentsRefresh() {
+        appointmentsRefreshVersion = System.currentTimeMillis()
     }
 
     fun refreshSession() {

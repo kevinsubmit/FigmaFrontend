@@ -9,6 +9,27 @@ struct AppointmentCreateRequest: Encodable {
     let notes: String?
 }
 
+struct AppointmentServiceItemCreateRequest: Encodable {
+    let service_id: Int
+    let amount: Double
+}
+
+struct AppointmentServiceItemDTO: Decodable, Identifiable {
+    let id: Int
+    let appointment_id: Int
+    let service_id: Int
+    let service_name: String?
+    let amount: Double
+    let is_primary: Bool
+    let created_at: String
+    let updated_at: String?
+}
+
+struct AppointmentServiceSummaryDTO: Decodable {
+    let order_amount: Double
+    let items: [AppointmentServiceItemDTO]
+}
+
 struct AppointmentGroupGuestCreateRequest: Encodable {
     let service_id: Int
     let technician_id: Int?

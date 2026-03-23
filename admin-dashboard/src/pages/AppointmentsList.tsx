@@ -173,7 +173,22 @@ const getCustomerVipLevel = (apt: Appointment) => {
 const resolvePhone = (apt: Appointment) => {
   return `${apt.customer_phone || ''}`.trim() || '-';
 };
-const getServiceLabel = (apt: Appointment) => apt.service_name || `Service #${apt.service_id}`;
+const getServiceItems = (apt: Appointment) =>
+  Array.isArray(apt.service_items) ? apt.service_items.filter((item) => !!item) : [];
+const getServiceNames = (apt: Appointment) => {
+  const itemNames = getServiceItems(apt)
+    .map((item) => String(item.service_name || '').trim() || `Service #${item.service_id}`)
+    .filter(Boolean);
+  if (itemNames.length > 0) {
+    return Array.from(new Set(itemNames));
+  }
+  return [apt.service_name || `Service #${apt.service_id}`];
+};
+const getServiceLabel = (apt: Appointment) => getServiceNames(apt).join(', ');
+const matchesServiceFilter = (apt: Appointment, serviceFilter: string) => {
+  if (serviceFilter === 'all') return true;
+  return getServiceNames(apt).includes(serviceFilter);
+};
 const getStaffLabel = (apt: Appointment) => apt.staff_name || apt.stylist_name || apt.technician_name || '-';
 const hasBookedTechnician = (apt: Appointment) => typeof apt.technician_id === 'number' && apt.technician_id > 0;
 const getBookedTechnicianBadgeLabel = (apt: Appointment) => {
@@ -468,7 +483,7 @@ const AppointmentsList: React.FC = () => {
       .filter((apt) => {
         const aptStatus = normalizeStatus(apt.status);
         if (status !== 'all' && aptStatus !== status) return false;
-        if (serviceFilter !== 'all' && getServiceLabel(apt) !== serviceFilter) return false;
+        if (!matchesServiceFilter(apt, serviceFilter)) return false;
         if (staffFilter !== 'all' && getStaffLabel(apt) !== staffFilter) return false;
         if (lowerOrderKeyword) {
           const orderText = String(apt.order_number || apt.id).toLowerCase();
@@ -1509,7 +1524,13 @@ const AppointmentsList: React.FC = () => {
                                         {hasConflict && <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />}
                                       </div>
                                     </div>
-                                    <p className="text-[11px] opacity-90">{getServiceLabel(apt)}</p>
+                                    <div className="space-y-0.5">
+                                      {getServiceNames(apt).map((serviceName, index) => (
+                                        <p key={`${apt.id}-service-${index}`} className="text-[11px] opacity-90">
+                                          {serviceName}
+                                        </p>
+                                      ))}
+                                    </div>
                                     <p className="text-[10px] opacity-80">{formatTimeRange(apt)}</p>
                                   </button>
                                 );
@@ -1632,7 +1653,15 @@ const AppointmentsList: React.FC = () => {
                                       '-'
                                     )}
                                   </td>
-                                  <td className="px-3 py-2.5 align-top text-slate-900">{getServiceLabel(apt)}</td>
+                                  <td className="px-3 py-2.5 align-top text-slate-900">
+                                    <div className="space-y-1">
+                                      {getServiceNames(apt).map((serviceName, index) => (
+                                        <p key={`${apt.id}-table-service-${index}`} className="leading-5">
+                                          {serviceName}
+                                        </p>
+                                      ))}
+                                    </div>
+                                  </td>
                                   <td className="px-3 py-2.5 align-top text-slate-900">{getStaffLabel(apt)}</td>
                                   <td className="px-3 py-2.5 align-top whitespace-nowrap text-slate-900">
                                     {formatCurrency(getOrderAmount(apt))}

@@ -63,6 +63,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nailsdash.android.ui.state.AppSessionViewModel
+import com.nailsdash.android.ui.state.AppointmentServiceDisplayItem
 import com.nailsdash.android.ui.state.AppointmentDetailViewModel
 import java.time.LocalDate
 import java.time.LocalTime
@@ -269,6 +270,12 @@ fun AppointmentDetailScreen(
                         }
                     }
 
+                    if (appointmentDetailViewModel.serviceItems.isNotEmpty()) {
+                        AppointmentDetailServiceItemsCard(
+                            items = appointmentDetailViewModel.serviceItems,
+                        )
+                    }
+
                     val storeAddress = appointmentDetailViewModel.resolvedStoreAddress ?: item.store_address
                     storeAddress?.takeIf { it.isNotBlank() }?.let { address ->
                         AppointmentDetailCardContainer {
@@ -435,6 +442,66 @@ fun AppointmentDetailScreen(
         }
 
         null -> Unit
+    }
+}
+
+@Composable
+private fun AppointmentDetailServiceItemsCard(
+    items: List<AppointmentServiceDisplayItem>,
+) {
+    AppointmentDetailCardContainer {
+        Text(
+            text = if (items.size > 1) "SERVICES" else "SERVICE",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = DetailMutedText,
+        )
+        items.forEachIndexed { index, item ->
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = item.name,
+                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = DetailPrimaryText,
+                        )
+                        if (item.isPrimary && items.size > 1) {
+                            Text(
+                                text = "Primary",
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = DetailGold,
+                                modifier = Modifier
+                                    .background(DetailGold.copy(alpha = 0.12f), RoundedCornerShape(999.dp))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                            )
+                        }
+                    }
+                    Text(
+                        text = "$${String.format(Locale.US, "%.2f", item.amount)}",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = DetailGold,
+                    )
+                }
+                Text(
+                    text = item.durationMinutes?.let { "$it min" } ?: "Duration unavailable",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = DetailSecondaryText,
+                )
+            }
+            if (index < items.lastIndex) {
+                HorizontalDivider(color = DetailHairline)
+            }
+        }
     }
 }
 

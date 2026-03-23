@@ -701,7 +701,6 @@ export function Services({ onBookingSuccess, initialStep, initialSelectedStore, 
                 onBack={() => navigate(getListLink())} 
                 onBookingComplete={(booking) => {
                   onBookingSuccess?.(booking);
-                  navigate('/appointments');
                 }}
             />
           )}

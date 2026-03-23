@@ -13,6 +13,14 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 
+data class AppointmentServiceDisplayItem(
+    val id: Int,
+    val name: String,
+    val amount: Double,
+    val durationMinutes: Int?,
+    val isPrimary: Boolean,
+)
+
 class AppointmentDetailViewModel(application: Application) : AndroidViewModel(application) {
     private val appointmentsRepository = AppointmentsRepository()
     private val storesRepository = StoresRepository()
@@ -21,6 +29,9 @@ class AppointmentDetailViewModel(application: Application) : AndroidViewModel(ap
         private set
 
     var resolvedStoreAddress by mutableStateOf<String?>(null)
+        private set
+
+    var serviceItems by mutableStateOf<List<AppointmentServiceDisplayItem>>(emptyList())
         private set
 
     var isLoading by mutableStateOf(false)
@@ -55,9 +66,11 @@ class AppointmentDetailViewModel(application: Application) : AndroidViewModel(ap
                 if (rescheduleTime.isBlank()) rescheduleTime = normalizeTimeForInput(merged.appointment_time)
                 errorMessage = null
                 enrichServiceFieldsIfNeeded()
+                loadServiceItems(bearerToken)
                 enrichStoreAddress()
             }.onFailure { err ->
                 errorMessage = err.message
+                serviceItems = emptyList()
             }
             isLoading = false
         }
@@ -182,6 +195,40 @@ class AppointmentDetailViewModel(application: Application) : AndroidViewModel(ap
             .onFailure {
                 resolvedStoreAddress = normalizedAddress(current.store_address)
             }
+    }
+
+    private suspend fun loadServiceItems(bearerToken: String) {
+        val current = appointment ?: return
+        val summary = appointmentsRepository.getAppointmentServiceSummary(
+            bearerToken = bearerToken,
+            appointmentId = current.id,
+        ).getOrNull() ?: run {
+            serviceItems = emptyList()
+            return
+        }
+
+        val servicesById = storesRepository.getStoreServices(current.store_id)
+            .getOrDefault(emptyList())
+            .associateBy { it.id }
+        val usePrimaryDurationFallback = summary.items.size == 1
+
+        serviceItems = summary.items.map { item ->
+            val matchedService = servicesById[item.service_id]
+            val name = item.service_name
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?: matchedService?.name
+                ?: if (item.is_primary) current.service_name?.trim().orEmpty().ifEmpty { "Service" } else "Service"
+            val duration = matchedService?.duration_minutes
+                ?: if (item.is_primary && usePrimaryDurationFallback) current.service_duration else null
+            AppointmentServiceDisplayItem(
+                id = item.id,
+                name = name,
+                amount = item.amount,
+                durationMinutes = duration,
+                isPrimary = item.is_primary,
+            )
+        }
     }
 
     private fun mergeDetailFields(primary: Appointment, fallback: Appointment?): Appointment {

@@ -24,6 +24,21 @@ const AppointmentDetail: React.FC = () => {
     return sanitized ? `tel:${sanitized}` : '';
   };
 
+  const getServiceItems = (apt: Appointment) => (Array.isArray(apt.service_items) ? apt.service_items.filter((item) => !!item) : []);
+  const getServiceNames = (apt: Appointment) => {
+    const names = getServiceItems(apt)
+      .map((item) => String(item.service_name || '').trim() || `Service #${item.service_id}`)
+      .filter(Boolean);
+    return names.length ? names : [apt.service_name || `Service ${apt.service_id}`];
+  };
+  const getOrderAmount = (apt: Appointment) => {
+    const items = getServiceItems(apt);
+    if (items.length) {
+      return items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    }
+    return typeof apt.order_amount === 'number' ? apt.order_amount : apt.service_price;
+  };
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -32,7 +47,7 @@ const AppointmentDetail: React.FC = () => {
         const found = data.find((apt) => String(apt.id) === String(id));
         setAppointment(found || null);
         if (found) {
-          const amount = typeof found.order_amount === 'number' ? found.order_amount : found.service_price;
+          const amount = getOrderAmount(found);
           setEditAmount(typeof amount === 'number' ? String(Math.floor(amount)) : '');
         } else {
           setEditAmount('');
@@ -109,10 +124,14 @@ const AppointmentDetail: React.FC = () => {
         <div className="card-surface p-4 space-y-2 text-slate-900">
           <p className="text-xs uppercase tracking-[0.2em] text-slate-700">Store & Service</p>
           <p className="text-sm text-slate-900">{appointment.store_name || `Store ${appointment.store_id}`}</p>
-          <p className="text-sm text-slate-900">{appointment.service_name || `Service ${appointment.service_id}`}</p>
-          <p className="text-sm text-slate-700">
-            ${typeof appointment.order_amount === 'number' ? appointment.order_amount : appointment.service_price ?? '-'}
-          </p>
+          <div className="space-y-1">
+            {getServiceNames(appointment).map((serviceName, index) => (
+              <p key={`${appointment.id}-detail-service-${index}`} className="text-sm text-slate-900">
+                {serviceName}
+              </p>
+            ))}
+          </div>
+          <p className="text-sm text-slate-700">${getOrderAmount(appointment) ?? '-'}</p>
         </div>
         <div className="card-surface p-4 space-y-3 text-slate-900">
           <p className="text-xs uppercase tracking-[0.2em] text-slate-700">Order Amount</p>

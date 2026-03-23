@@ -22,6 +22,18 @@ const Dashboard: React.FC = () => {
     created_at: string;
     store_id: number;
     store_name?: string | null;
+    customer_name: string;
+    appointment_date: string;
+    appointment_time: string;
+    service_name: string;
+    service_items?: Array<{
+      id: number;
+      appointment_id: number;
+      service_id: number;
+      service_name?: string | null;
+      amount: number;
+      is_primary: boolean;
+    }> | null;
   }>>([]);
   const [summary, setSummary] = useState({
     today_appointments: 0,
@@ -107,6 +119,11 @@ const Dashboard: React.FC = () => {
             created_at: item.created_at,
             store_id: item.store_id,
             store_name: item.store_name,
+            customer_name: item.customer_name,
+            appointment_date: item.appointment_date,
+            appointment_time: item.appointment_time,
+            service_name: item.service_name,
+            service_items: item.service_items,
           })),
         );
       } catch {
@@ -184,25 +201,41 @@ const Dashboard: React.FC = () => {
               {notificationsLoading ? (
                 <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-sm text-slate-700">Loading...</div>
               ) : realtimeNotifications.length ? (
-                realtimeNotifications.map((item, idx) => (
-                  <div
-                    key={item.id}
-                    className={`rounded-xl border p-3 ${
-                      idx % 2 === 0
-                        ? 'border-emerald-100 bg-emerald-50/60'
-                        : 'border-cyan-100 bg-cyan-50/60'
-                    }`}
-                  >
-                    <p className="text-sm text-slate-800">
-                      {item.message}
-                      <span className="text-slate-600">
-                        {' · '}
-                        {item.store_name?.trim() || `Store #${item.store_id}`}
-                      </span>
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">{formatRelativeTime(item.created_at)}</p>
-                  </div>
-                ))
+                realtimeNotifications.map((item, idx) => {
+                  const serviceNames = (item.service_items || [])
+                    .map((serviceItem) => serviceItem.service_name?.trim())
+                    .filter((serviceName): serviceName is string => Boolean(serviceName));
+                  const displayServiceNames = serviceNames.length ? serviceNames : [item.service_name];
+                  return (
+                    <div
+                      key={item.id}
+                      className={`rounded-xl border p-3 ${
+                        idx % 2 === 0
+                          ? 'border-emerald-100 bg-emerald-50/60'
+                          : 'border-cyan-100 bg-cyan-50/60'
+                      }`}
+                    >
+                      <p className="text-sm font-medium text-slate-800">
+                        {item.customer_name} booked {item.appointment_date} {item.appointment_time}
+                        <span className="text-slate-600">
+                          {' · '}
+                          {item.store_name?.trim() || `Store #${item.store_id}`}
+                        </span>
+                      </p>
+                      <div className="mt-1 space-y-1">
+                        {displayServiceNames.map((serviceName, serviceIndex) => (
+                          <p
+                            key={`${item.id}-service-${serviceIndex}`}
+                            className="text-sm text-slate-700"
+                          >
+                            {serviceName}
+                          </p>
+                        ))}
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">{formatRelativeTime(item.created_at)}</p>
+                    </div>
+                  );
+                })
               ) : (
                 <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-sm text-slate-700">No realtime notifications</div>
               )}

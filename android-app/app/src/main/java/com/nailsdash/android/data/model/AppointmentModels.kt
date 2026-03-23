@@ -9,6 +9,27 @@ data class AppointmentCreateRequest(
     val notes: String? = null,
 )
 
+data class AppointmentServiceItemCreateRequest(
+    val service_id: Int,
+    val amount: Double,
+)
+
+data class AppointmentServiceItem(
+    val id: Int,
+    val appointment_id: Int,
+    val service_id: Int,
+    val service_name: String? = null,
+    val amount: Double,
+    val is_primary: Boolean = false,
+    val created_at: String,
+    val updated_at: String? = null,
+)
+
+data class AppointmentServiceSummary(
+    val order_amount: Double,
+    val items: List<AppointmentServiceItem>,
+)
+
 data class AppointmentGroupGuestCreateRequest(
     val service_id: Int,
     val technician_id: Int? = null,

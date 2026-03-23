@@ -99,6 +99,8 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
   const getAppointmentDateTime = (apt: Appointment) =>
     parseLocalDateTime(apt.appointment_date, apt.appointment_time);
 
+  const resolveServiceName = (apt: AppointmentWithDetails) => apt.service_name || apt.service?.name || 'Service';
+
   const isReviewWindowOpen = (apt: Appointment) => {
     const appointmentDateTime = getAppointmentDateTime(apt);
     const cutoff = new Date(appointmentDateTime);
@@ -203,7 +205,7 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
                   <div className="w-full h-px bg-[#333]" />
                   
                   <div className="flex justify-between items-center text-sm">
-                    <p className="text-gray-300">{apt.service?.name || apt.service_name || 'Service'}</p>
+                    <p className="text-gray-300">{resolveServiceName(apt)}</p>
                     <div className="flex items-center gap-1 text-xs text-gray-500">
                       <Calendar className="w-3 h-3" />
                       <span>{formatDate(apt.appointment_date)}</span>

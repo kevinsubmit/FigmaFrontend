@@ -2454,7 +2454,11 @@ fun BookAppointmentScreen(
                     onSuccess = onSubmitSuccess,
                 )
             } else {
-                bookAppointmentViewModel.submit(bearerToken, onSubmitSuccess)
+                bookAppointmentViewModel.submit(
+                    bearerToken = bearerToken,
+                    additionalServices = summaryServices,
+                    onSuccess = onSubmitSuccess,
+                )
             }
         } else {
             sessionViewModel.updateAuthMessage("Session expired, please sign in again.")

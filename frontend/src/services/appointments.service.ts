@@ -31,6 +31,27 @@ export interface AppointmentCreate {
   notes?: string;
 }
 
+export interface AppointmentServiceItemCreate {
+  service_id: number;
+  amount: number;
+}
+
+export interface AppointmentServiceItem {
+  id: number;
+  appointment_id: number;
+  service_id: number;
+  service_name?: string | null;
+  amount: number;
+  is_primary: boolean;
+  created_at: string;
+  updated_at?: string | null;
+}
+
+export interface AppointmentServiceSummary {
+  order_amount: number;
+  items: AppointmentServiceItem[];
+}
+
 export interface AppointmentGroupGuestCreate {
   service_id: number;
   technician_id?: number;
@@ -73,6 +94,14 @@ export interface AppointmentListParams {
  */
 export const createAppointment = async (data: AppointmentCreate): Promise<Appointment> => {
   const response = await apiClient.post('/appointments/', data);
+  return response.data;
+};
+
+export const addAppointmentServiceItem = async (
+  appointmentId: number,
+  data: AppointmentServiceItemCreate,
+): Promise<AppointmentServiceSummary> => {
+  const response = await apiClient.post(`/appointments/${appointmentId}/services`, data);
   return response.data;
 };
 

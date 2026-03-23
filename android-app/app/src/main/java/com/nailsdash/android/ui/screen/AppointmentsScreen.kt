@@ -94,9 +94,13 @@ fun AppointmentsScreen(
     var mapTarget by remember { mutableStateOf<AppointmentsMapTarget?>(null) }
     var noticeMessage by rememberSaveable { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(bearerToken) {
+    LaunchedEffect(bearerToken, sessionViewModel.appointmentsRefreshVersion) {
         if (bearerToken != null || BenchmarkOverrides.isEnabled()) {
-            appointmentsViewModel.loadIfNeeded(bearerToken.orEmpty())
+            if (sessionViewModel.appointmentsRefreshVersion > 0L) {
+                appointmentsViewModel.load(bearerToken.orEmpty(), force = true)
+            } else {
+                appointmentsViewModel.loadIfNeeded(bearerToken.orEmpty())
+            }
         }
     }
     LaunchedEffect(

@@ -186,6 +186,7 @@ class AppointmentWithDetails(Appointment):
     service_name: Optional[str] = None
     service_price: Optional[float] = None
     service_duration: Optional[int] = None
+    service_items: List[AppointmentServiceItemResponse] = Field(default_factory=list)
     technician_name: Optional[str] = None
     user_name: Optional[str] = None
     customer_name: Optional[str] = None

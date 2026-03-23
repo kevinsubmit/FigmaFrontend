@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Calendar, Clock, MapPin, User, DollarSign, ChevronRight, X, AlertCircle, Star } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { getMyAppointments, cancelAppointment, Appointment } from '../api/appointments';
@@ -23,6 +23,7 @@ interface AppointmentWithDetails extends Appointment {
 
 export function Appointments() {
   const navigate = useNavigate();
+  const location = useLocation();
   const REVIEW_WINDOW_DAYS = 30;
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
   const [appointments, setAppointments] = useState<AppointmentWithDetails[]>([]);
@@ -40,6 +41,12 @@ export function Appointments() {
   useEffect(() => {
     loadAppointments();
   }, []);
+
+  useEffect(() => {
+    const refreshKey = (location.state as { refreshKey?: number } | null)?.refreshKey;
+    if (!refreshKey) return;
+    loadAppointments();
+  }, [location.state]);
 
   const formatUSAddress = (
     address?: string | null,
@@ -74,6 +81,10 @@ export function Appointments() {
 
     return String(apt.store_address || apt.store?.address || '').trim();
   };
+
+  const resolveServiceName = (apt: AppointmentWithDetails) => apt.service_name || apt.service?.name || 'Service';
+  const resolveServicePrice = (apt: AppointmentWithDetails) => apt.service_price ?? apt.service?.price ?? 0;
+  const resolveServiceDuration = (apt: AppointmentWithDetails) => apt.service_duration ?? apt.service?.duration_minutes ?? 0;
 
   const loadAppointments = async () => {
     try {
@@ -382,14 +393,14 @@ export function Appointments() {
                 {/* Service Info */}
                 {apt.service || apt.service_name ? (
                   <div className="flex items-center gap-2 mb-2 text-sm">
-                    <span className="text-white">💅 {apt.service?.name || apt.service_name}</span>
+                    <span className="text-white">💅 {resolveServiceName(apt)}</span>
                     <span className="text-gray-400">•</span>
                     <span className="text-[#D4AF37] flex items-center gap-1">
                       <DollarSign className="w-3 h-3" />
-                      {(apt.service?.price ?? apt.service_price ?? 0).toFixed(2)}
+                      {resolveServicePrice(apt).toFixed(2)}
                     </span>
                     <span className="text-gray-400">•</span>
-                    <span className="text-gray-400">{apt.service?.duration_minutes ?? apt.service_duration ?? 0} min</span>
+                    <span className="text-gray-400">{resolveServiceDuration(apt)} min</span>
                   </div>
                 ) : null}
 
@@ -433,9 +444,9 @@ export function Appointments() {
               </div>
             </div>
 
-            <div className="mb-6 p-4 rounded-xl bg-white/5">
+              <div className="mb-6 p-4 rounded-xl bg-white/5">
               <p className="text-sm text-gray-400 mb-2">You are about to cancel:</p>
-              <p className="font-medium">{selectedAppointment.service?.name}</p>
+              <p className="font-medium">{resolveServiceName(selectedAppointment)}</p>
               <p className="text-sm text-gray-400">
                 {formatDate(selectedAppointment.appointment_date)} at {formatTime(selectedAppointment.appointment_time)}
               </p>

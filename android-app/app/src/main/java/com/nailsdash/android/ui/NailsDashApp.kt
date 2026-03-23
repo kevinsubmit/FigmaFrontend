@@ -384,6 +384,7 @@ fun NailsDashApp() {
                     onBack = { navController.navigateUp() },
                     onBookingCompleted = {
                         sessionViewModel.resetBookFlowSource()
+                        sessionViewModel.requestAppointmentsRefresh()
                         navController.navigate(MainDestination.Appointments.route) {
                             popUpTo(MainDestination.Book.route)
                             launchSingleTop = true
@@ -420,6 +421,7 @@ fun NailsDashApp() {
                     onClose = { navController.navigateUp() },
                     onBookSuccess = {
                         sessionViewModel.resetBookFlowSource()
+                        sessionViewModel.requestAppointmentsRefresh()
                         navController.navigate(MainDestination.Appointments.route) {
                             popUpTo(MainDestination.Book.route)
                             launchSingleTop = true

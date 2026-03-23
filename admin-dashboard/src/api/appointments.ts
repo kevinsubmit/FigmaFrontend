@@ -9,6 +9,7 @@ export interface Appointment {
   technician_id?: number | null;
   service_name?: string | null;
   service_price?: number | null;
+  service_items?: AppointmentServiceItem[] | null;
   order_amount?: number | null;
   original_amount?: number | null;
   coupon_discount_amount?: number | null;

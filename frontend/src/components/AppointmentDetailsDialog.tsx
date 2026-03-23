@@ -3,7 +3,7 @@ import { X, Calendar, Clock, MapPin, User, DollarSign, MessageSquare, Edit, Tras
 import { toast } from 'react-toastify';
 import { Appointment, AppointmentGroupResponse, getAppointmentGroup, getMyAppointments } from '../api/appointments';
 import { getStoreById, Store } from '../api/stores';
-import { Service } from '../api/services';
+import { getServicesByStore, Service } from '../api/services';
 import { Technician } from '../api/technicians';
 import { cancelAppointment, rescheduleAppointment, updateAppointmentNotes } from '../api/appointments';
 
@@ -57,6 +57,7 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
   const [processing, setProcessing] = useState(false);
   const [rescheduleError, setRescheduleError] = useState('');
   const [storeDetails, setStoreDetails] = useState<Store | null>(null);
+  const [storeServices, setStoreServices] = useState<Service[]>([]);
   const [showMapOptions, setShowMapOptions] = useState(false);
   const [groupDetails, setGroupDetails] = useState<AppointmentGroupResponse | null>(null);
   const [groupLoading, setGroupLoading] = useState(false);
@@ -119,6 +120,25 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
   }, [appointment.store_id, storeDetails]);
 
   useEffect(() => {
+    let cancelled = false;
+    getServicesByStore(appointment.store_id)
+      .then((services) => {
+        if (!cancelled) {
+          setStoreServices(services);
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to load store services:', error);
+        if (!cancelled) {
+          setStoreServices([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [appointment.store_id]);
+
+  useEffect(() => {
     const loadGroup = async () => {
       if (!appointment.group_id) {
         setGroupDetails(null);
@@ -162,6 +182,34 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
     const name = resolvedStoreName ? `${resolvedStoreName} ` : '';
     return `${name}${resolvedStoreAddress}`.trim();
   }, [resolvedStoreAddress, resolvedStoreName]);
+
+  const resolvedServiceName = appointment.service_name || appointment.service?.name || 'Service';
+  const resolvedServiceAmount = appointment.service_price ?? appointment.service?.price ?? 0;
+  const resolvedServiceDuration = appointment.service_duration ?? appointment.service?.duration_minutes ?? 0;
+  const serviceItems = useMemo(() => {
+    const summaryItems = appointment.service_summary?.items || appointment.service_items || [];
+    const servicesById = new Map<number, Service>(storeServices.map((service) => [service.id, service]));
+    const usePrimaryDurationFallback = summaryItems.length === 1;
+    return summaryItems.map((item) => {
+      const matched = servicesById.get(item.service_id);
+      const rawName = String(item.service_name || '').trim();
+      return {
+        id: item.id,
+        name: rawName || matched?.name || (item.is_primary ? resolvedServiceName : 'Service'),
+        amount: item.amount,
+        durationMinutes:
+          matched?.duration_minutes ??
+          (item.is_primary && usePrimaryDurationFallback ? resolvedServiceDuration : null),
+        isPrimary: item.is_primary,
+      };
+    });
+  }, [
+    appointment.service_items,
+    appointment.service_summary,
+    resolvedServiceDuration,
+    resolvedServiceName,
+    storeServices,
+  ]);
 
   const openMaps = (provider: 'apple' | 'google') => {
     if (!mapQuery) return;
@@ -207,7 +255,7 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
 
       const existingAppointments = await getMyAppointments();
       const selectedStartMinutes = parseTimeToMinutes(newTime);
-      const selectedDuration = appointment.service?.duration_minutes || appointment.service_duration || 0;
+      const selectedDuration = appointment.service_duration || appointment.service?.duration_minutes || 0;
       const selectedEndMinutes = selectedStartMinutes + selectedDuration;
 
       const conflict = existingAppointments.find((apt) => {
@@ -376,15 +424,43 @@ export function AppointmentDetailsDialog({ appointment, onClose, onUpdate }: App
             ) : null}
 
             {/* Service */}
-            {appointment.service || appointment.service_name ? (
+            {appointment.service || appointment.service_name || serviceItems.length > 0 ? (
               <div className="flex items-start gap-3 rounded-xl bg-white/5 border border-white/10 px-4 py-3">
                 <DollarSign className="w-5 h-5 text-[#D4AF37] mt-0.5" />
-                <div>
-                  <div className="text-sm text-gray-400 uppercase tracking-widest">Service</div>
-                  <div className="font-semibold text-white">{appointment.service?.name || appointment.service_name}</div>
-                  <div className="text-sm text-gray-400">
-                    ${(appointment.service?.price ?? appointment.service_price ?? 0).toFixed(2)} • {appointment.service?.duration_minutes ?? appointment.service_duration ?? 0} mins
+                <div className="flex-1">
+                  <div className="text-sm text-gray-400 uppercase tracking-widest">
+                    {serviceItems.length > 1 ? 'Services' : 'Service'}
                   </div>
+                  <div className="font-semibold text-white">{resolvedServiceName}</div>
+                  <div className="text-sm text-gray-400">
+                    ${resolvedServiceAmount.toFixed(2)} • {resolvedServiceDuration} mins
+                  </div>
+                  {serviceItems.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {serviceItems.map((item) => (
+                        <div key={item.id} className="rounded-lg border border-white/10 bg-black/20 px-3 py-2">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-white break-words">{item.name}</span>
+                                {item.isPrimary && serviceItems.length > 1 && (
+                                  <span className="rounded-full bg-[#D4AF37]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#D4AF37] border border-[#D4AF37]/30">
+                                    Primary
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {item.durationMinutes ? `${item.durationMinutes} mins` : 'Duration unavailable'}
+                              </div>
+                            </div>
+                            <div className="shrink-0 text-sm font-semibold text-[#D4AF37]">
+                              ${item.amount.toFixed(2)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : null}

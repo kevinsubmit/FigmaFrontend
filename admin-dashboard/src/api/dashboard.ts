@@ -15,6 +15,15 @@ export const getDashboardSummary = async () => {
   return response.data as DashboardSummary;
 };
 
+export interface DashboardRealtimeNotificationServiceItem {
+  id: number;
+  appointment_id: number;
+  service_id: number;
+  service_name?: string | null;
+  amount: number;
+  is_primary: boolean;
+}
+
 export interface DashboardRealtimeNotificationItem {
   id: number;
   appointment_id: number;
@@ -22,6 +31,7 @@ export interface DashboardRealtimeNotificationItem {
   store_name?: string | null;
   customer_name: string;
   service_name: string;
+  service_items?: DashboardRealtimeNotificationServiceItem[] | null;
   appointment_date: string;
   appointment_time: string;
   title: string;

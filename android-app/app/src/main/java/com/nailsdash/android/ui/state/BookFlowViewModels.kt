@@ -479,7 +479,11 @@ class BookAppointmentViewModel(application: Application) : AndroidViewModel(appl
         isLoadingSlots = false
     }
 
-    fun submit(bearerToken: String, onSuccess: () -> Unit) {
+    fun submit(
+        bearerToken: String,
+        additionalServices: List<ServiceItem> = emptyList(),
+        onSuccess: () -> Unit,
+    ) {
         val storeId = activeStoreId
         val serviceId = selectedServiceId
         val slot = selectedSlot ?: availableSlots.firstOrNull()
@@ -524,22 +528,66 @@ class BookAppointmentViewModel(application: Application) : AndroidViewModel(appl
                 notes = notes.trim().takeIf { it.isNotEmpty() },
             )
 
-            appointmentsRepository.createAppointment(
+            val createResult = appointmentsRepository.createAppointment(
                 bearerToken = bearerToken,
                 request = request,
-            ).onSuccess { created ->
-                successMessage = "Appointment created: #${created.order_number ?: created.id}"
+            )
+
+            createResult.fold(
+                onSuccess = { created ->
+                val extrasAttached = attachAdditionalServices(
+                    bearerToken = bearerToken,
+                    appointmentId = created.id,
+                    primaryServiceId = serviceId,
+                    additionalServices = additionalServices,
+                )
+                successMessage = if (extrasAttached.isSuccess) {
+                    "Appointment created: #${created.order_number ?: created.id}"
+                } else {
+                    "Appointment created: #${created.order_number ?: created.id}. Additional services need review."
+                }
                 errorMessage = null
                 slotHintMessage = null
                 onSuccess()
-            }.onFailure { err ->
-                errorMessage = err.message
-                slotHintMessage = slotHintFrom(err.message)
-                successMessage = null
-            }
+                },
+                onFailure = { err ->
+                    errorMessage = err.message
+                    slotHintMessage = slotHintFrom(err.message)
+                    successMessage = null
+                },
+            )
 
             isSubmitting = false
         }
+    }
+
+    private suspend fun attachAdditionalServices(
+        bearerToken: String,
+        appointmentId: Int,
+        primaryServiceId: Int,
+        additionalServices: List<ServiceItem>,
+    ): Result<Unit> {
+        val extras = additionalServices
+            .filter { it.id != primaryServiceId }
+            .distinctBy { it.id }
+        if (extras.isEmpty()) {
+            return Result.success(Unit)
+        }
+        extras.forEach { extraService ->
+            val result = appointmentsRepository.addAppointmentServiceItem(
+                bearerToken = bearerToken,
+                appointmentId = appointmentId,
+                serviceId = extraService.id,
+                amount = extraService.price,
+            )
+            if (result.isFailure) {
+                return Result.failure(
+                    result.exceptionOrNull()
+                        ?: IllegalStateException("Failed to attach additional services."),
+                )
+            }
+        }
+        return Result.success(Unit)
     }
 
     fun submitGroup(

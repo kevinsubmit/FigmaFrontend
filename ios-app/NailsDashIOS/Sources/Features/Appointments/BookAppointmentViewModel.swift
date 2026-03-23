@@ -60,7 +60,7 @@ final class BookAppointmentViewModel: ObservableObject {
         }
     }
 
-    func submit(token: String) async -> Bool {
+    func submit(token: String, additionalServices: [ServiceDTO] = []) async -> Bool {
         successMessage = nil
         errorMessage = nil
         guard let serviceID = selectedServiceID else {
@@ -98,7 +98,15 @@ final class BookAppointmentViewModel: ObservableObject {
 
         do {
             let created = try await service.createAppointment(token: token, request: request)
-            successMessage = "Appointment created: #\(created.order_number ?? String(created.id))"
+            let extrasAttached = try await attachAdditionalServices(
+                token: token,
+                appointmentID: created.id,
+                primaryServiceID: serviceID,
+                additionalServices: additionalServices
+            )
+            successMessage = extrasAttached
+                ? "Appointment created: #\(created.order_number ?? String(created.id))"
+                : "Appointment created: #\(created.order_number ?? String(created.id)). Additional services need review."
             errorMessage = nil
             slotHintMessage = nil
             return true
@@ -113,6 +121,36 @@ final class BookAppointmentViewModel: ObservableObject {
             slotHintMessage = slotHint(from: errorMessage)
             return false
         }
+    }
+
+    private func attachAdditionalServices(
+        token: String,
+        appointmentID: Int,
+        primaryServiceID: Int,
+        additionalServices: [ServiceDTO]
+    ) async throws -> Bool {
+        let extras = additionalServices
+            .filter { $0.id != primaryServiceID }
+            .reduce(into: [ServiceDTO]()) { partial, service in
+                if !partial.contains(where: { $0.id == service.id }) {
+                    partial.append(service)
+                }
+            }
+        guard !extras.isEmpty else { return true }
+
+        for extra in extras {
+            do {
+                _ = try await service.addAppointmentServiceItem(
+                    token: token,
+                    appointmentID: appointmentID,
+                    serviceID: extra.id,
+                    amount: extra.price
+                )
+            } catch {
+                return false
+            }
+        }
+        return true
     }
 
     func submitGroup(token: String, guestServiceIDs: [Int]) async -> Bool {
@@ -620,9 +658,19 @@ final class MyAppointmentsViewModel: ObservableObject {
 }
 
 @MainActor
+struct AppointmentServiceDisplayItem: Identifiable {
+    let id: Int
+    let name: String
+    let amount: Double
+    let durationMinutes: Int?
+    let isPrimary: Bool
+}
+
+@MainActor
 final class AppointmentDetailViewModel: ObservableObject {
     @Published var appointment: AppointmentDTO
     @Published var resolvedStoreAddress: String?
+    @Published var serviceDisplayItems: [AppointmentServiceDisplayItem] = []
     @Published var isLoading = false
     @Published var isSubmitting = false
     @Published var errorMessage: String?
@@ -656,13 +704,16 @@ final class AppointmentDetailViewModel: ObservableObject {
             let existing = appointment
             let fetched = try await service.getAppointment(token: token, appointmentID: appointment.id)
             appointment = mergeDetailFields(primary: fetched, fallback: existing)
+            await loadServiceItems(token: token)
             await enrichServiceFieldsIfNeeded()
             await enrichStoreAddress()
             errorMessage = nil
         } catch let err as APIError {
             errorMessage = mapError(err)
+            serviceDisplayItems = []
         } catch {
             errorMessage = error.localizedDescription
+            serviceDisplayItems = []
         }
     }
 
@@ -829,6 +880,42 @@ final class AppointmentDetailViewModel: ObservableObject {
             appointment = withStoreAddress(fullAddress)
         } catch {
             resolvedStoreAddress = Self.normalizedAddress(appointment.store_address)
+        }
+    }
+
+    private func loadServiceItems(token: String) async {
+        do {
+            let summary = try await service.getAppointmentServiceSummary(token: token, appointmentID: appointment.id)
+            let services = try? await service.getStoreServices(storeID: appointment.store_id)
+            let servicesByID = Dictionary(uniqueKeysWithValues: (services ?? []).map { ($0.id, $0) })
+            let usePrimaryDurationFallback = summary.items.count == 1
+
+            serviceDisplayItems = summary.items.map { item in
+                let matched = servicesByID[item.service_id]
+                let trimmedName = item.service_name?.trimmingCharacters(in: .whitespacesAndNewlines)
+                let resolvedName: String
+                if let trimmedName, !trimmedName.isEmpty {
+                    resolvedName = trimmedName
+                } else if let matched {
+                    resolvedName = matched.name
+                } else if item.is_primary {
+                    let appointmentName = appointment.service_name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    resolvedName = appointmentName.isEmpty ? "Service" : appointmentName
+                } else {
+                    resolvedName = "Service"
+                }
+
+                let duration = matched?.duration_minutes ?? ((item.is_primary && usePrimaryDurationFallback) ? appointment.service_duration : nil)
+                return AppointmentServiceDisplayItem(
+                    id: item.id,
+                    name: resolvedName,
+                    amount: item.amount,
+                    durationMinutes: duration,
+                    isPrimary: item.is_primary
+                )
+            }
+        } catch {
+            serviceDisplayItems = []
         }
     }
 

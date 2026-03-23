@@ -64,6 +64,13 @@ struct MyAppointmentsView: View {
         .refreshable {
             await reload()
         }
+        .onChange(of: appState.appointmentsTabRefreshID) { _ in
+            Task {
+                guard let token = appState.requireAccessToken() else { return }
+                await viewModel.load(token: token, force: true)
+                await ensureContentForSelectedSegment()
+            }
+        }
         .onChange(of: selectedSegment) { _ in
             Task { await ensureContentForSelectedSegment() }
         }
@@ -686,6 +693,7 @@ private struct AppointmentDetailView: View {
                 VStack(alignment: .leading, spacing: UITheme.spacing10) {
                     statusCard
                     appointmentInfoCard
+                    serviceCard
                     locationCard
                     notesCard
                     cancelReasonCard
@@ -886,28 +894,68 @@ private struct AppointmentDetailView: View {
         }
     }
 
+    @ViewBuilder
     private var serviceCard: some View {
-        VStack(alignment: .leading, spacing: UITheme.spacing10) {
-            sectionHeader("SERVICE", systemImage: "dollarsign")
-            Text(resolvedServiceName)
-                .font(.title2.weight(.bold))
-                .foregroundStyle(.white)
-                .lineLimit(2)
-            HStack(spacing: UITheme.spacing6) {
-                Text("Amount:")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(.secondary)
-                Text(moneyText(resolvedServiceAmount))
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(.white)
-                Text("•")
-                    .foregroundStyle(.secondary)
-                Text(durationText(viewModel.appointment.service_duration))
-                    .font(.subheadline)
-                    .foregroundStyle(Color.white.opacity(0.72))
+        if !viewModel.serviceDisplayItems.isEmpty {
+            VStack(alignment: .leading, spacing: UITheme.spacing10) {
+                sectionHeader(viewModel.serviceDisplayItems.count > 1 ? "SERVICES" : "SERVICE", systemImage: "dollarsign")
+                ForEach(Array(viewModel.serviceDisplayItems.enumerated()), id: \.element.id) { index, item in
+                    VStack(alignment: .leading, spacing: UITheme.spacing6) {
+                        HStack(alignment: .center, spacing: UITheme.spacing8) {
+                            Text(item.name)
+                                .font(.headline.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .lineLimit(2)
+                            if item.isPrimary && viewModel.serviceDisplayItems.count > 1 {
+                                Text("Primary")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(brandGold)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(brandGold.opacity(0.12))
+                                    .clipShape(Capsule())
+                            }
+                            Spacer(minLength: 8)
+                            Text(moneyText(item.amount))
+                                .font(.headline.weight(.bold))
+                                .foregroundStyle(brandGold)
+                        }
+                        Text(item.durationMinutes.map(durationText) ?? "Duration unavailable")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.white.opacity(0.72))
+                    }
+
+                    if index < viewModel.serviceDisplayItems.count - 1 {
+                        Rectangle()
+                            .fill(Color.white.opacity(0.08))
+                            .frame(height: 1)
+                    }
+                }
             }
+            .modifier(AppointmentDetailCard(cardBG: cardBG, brandGold: brandGold))
+        } else if !resolvedServiceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            VStack(alignment: .leading, spacing: UITheme.spacing10) {
+                sectionHeader("SERVICE", systemImage: "dollarsign")
+                Text(resolvedServiceName)
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                HStack(spacing: UITheme.spacing6) {
+                    Text("Amount:")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(.secondary)
+                    Text(moneyText(resolvedServiceAmount))
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.white)
+                    Text("•")
+                        .foregroundStyle(.secondary)
+                    Text(durationText(viewModel.appointment.service_duration))
+                        .font(.subheadline)
+                        .foregroundStyle(Color.white.opacity(0.72))
+                }
+            }
+            .modifier(AppointmentDetailCard(cardBG: cardBG, brandGold: brandGold))
         }
-        .modifier(AppointmentDetailCard(cardBG: cardBG, brandGold: brandGold))
     }
 
     private var dateTimeGrid: some View {

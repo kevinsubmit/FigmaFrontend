@@ -89,6 +89,7 @@ final class AppState: ObservableObject {
     @Published var isLoadingAuth: Bool = false
     @Published var currentUser: AuthUser? = nil
     @Published var selectedTab: AppTab = .home
+    @Published var appointmentsTabRefreshID = UUID()
     @Published var bookingStyleReference: BookingStyleReference? = nil
     @Published var bookOpenedFromStyleReference: Bool = false
     @Published var bookTabResetID = UUID()
@@ -254,6 +255,10 @@ final class AppState: ObservableObject {
         } catch {
             forceLogout(message: Self.sessionExpiredMessage)
         }
+    }
+
+    func requestAppointmentsRefresh() {
+        appointmentsTabRefreshID = UUID()
     }
 
     func requireAccessToken() -> String? {

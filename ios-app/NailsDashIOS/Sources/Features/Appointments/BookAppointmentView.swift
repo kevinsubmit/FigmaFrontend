@@ -1037,6 +1037,7 @@ struct BookAppointmentView: View {
                 appState.resetBookFlowSource()
                 appState.resetBookNavigationStack()
                 appState.resetDealsNavigationStack()
+                appState.requestAppointmentsRefresh()
                 appState.selectedTab = .appointments
                 isProcessingSubmissionTransition = false
             }
@@ -1362,7 +1363,7 @@ struct BookAppointmentView: View {
             let guestServiceIDs = guestRows.compactMap(\.serviceID)
             return await viewModel.submitGroup(token: token, guestServiceIDs: guestServiceIDs)
         }
-        return await viewModel.submit(token: token)
+        return await viewModel.submit(token: token, additionalServices: selectedServiceChips)
     }
 
     private func guestServiceTitle(for row: GroupGuestRow) -> String {

@@ -6,6 +6,8 @@ import com.nailsdash.android.data.model.AppointmentCreateRequest
 import com.nailsdash.android.data.model.AppointmentGroupCreateRequest
 import com.nailsdash.android.data.model.AppointmentGroupResponse
 import com.nailsdash.android.data.model.AppointmentRescheduleRequest
+import com.nailsdash.android.data.model.AppointmentServiceItemCreateRequest
+import com.nailsdash.android.data.model.AppointmentServiceSummary
 import com.nailsdash.android.data.model.AppNotification
 import com.nailsdash.android.data.model.AuthUser
 import com.nailsdash.android.data.model.CouponTemplate
@@ -226,6 +228,19 @@ interface NailsDashApi {
         @Header("Authorization") bearerToken: String,
         @Body request: AppointmentCreateRequest,
     ): Appointment
+
+    @POST("appointments/{appointmentId}/services")
+    suspend fun addAppointmentServiceItem(
+        @Header("Authorization") bearerToken: String,
+        @Path("appointmentId") appointmentId: Int,
+        @Body request: AppointmentServiceItemCreateRequest,
+    ): AppointmentServiceSummary
+
+    @GET("appointments/{appointmentId}/services")
+    suspend fun getAppointmentServiceSummary(
+        @Header("Authorization") bearerToken: String,
+        @Path("appointmentId") appointmentId: Int,
+    ): AppointmentServiceSummary
 
     @POST("appointments/groups")
     suspend fun createAppointmentGroup(
