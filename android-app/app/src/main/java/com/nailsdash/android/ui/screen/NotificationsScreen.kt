@@ -67,7 +67,8 @@ import com.nailsdash.android.data.model.AppNotification
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.NotificationsFilter
 import com.nailsdash.android.ui.state.NotificationsViewModel
-import java.time.OffsetDateTime
+import com.nailsdash.android.utils.AppDateTimeFormatterCache
+import java.time.Duration
 import java.time.format.DateTimeFormatter
 
 private val NotificationGold = Color(0xFFD4AF37)
@@ -642,9 +643,8 @@ private fun iconForType(type: String): ImageVector {
 }
 
 private fun relativeTimeText(raw: String): String {
-    val date = runCatching { OffsetDateTime.parse(raw) }.getOrNull() ?: return raw
-    val now = OffsetDateTime.now()
-    val minutes = java.time.Duration.between(date, now).toMinutes().coerceAtLeast(0)
+    val instant = AppDateTimeFormatterCache.parseServerInstant(raw) ?: return raw
+    val minutes = Duration.between(instant, java.time.Instant.now()).toMinutes().coerceAtLeast(0)
     val hours = minutes / 60
     val days = hours / 24
 
@@ -653,6 +653,6 @@ private fun relativeTimeText(raw: String): String {
         minutes < 60 -> "${minutes}m ago"
         hours < 24 -> "${hours}h ago"
         days < 7 -> "${days}d ago"
-        else -> date.format(DateTimeFormatter.ofPattern("MMM d"))
+        else -> AppDateTimeFormatterCache.formatMonthDay(raw) ?: raw
     }
 }

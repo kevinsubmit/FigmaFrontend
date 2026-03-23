@@ -132,6 +132,7 @@ import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.BookAppointmentViewModel
 import com.nailsdash.android.ui.state.BookingStyleReference
 import com.nailsdash.android.ui.state.StoreDetailViewModel
+import com.nailsdash.android.utils.AppDateTimeFormatterCache
 import com.nailsdash.android.utils.AssetUrlResolver
 import java.net.URI
 import java.time.LocalDate
@@ -2052,86 +2053,11 @@ private fun StoreHeroCarousel(
 
 private fun reviewDateLabel(raw: String?): String {
     val text = raw?.trim().orEmpty()
-    parseStoreReviewServerDate(text)?.let { parsed ->
-        return parsed.format(STORE_REVIEW_DISPLAY_DATE_FORMATTER)
+    AppDateTimeFormatterCache.formatLongDate(text)?.let { formatted ->
+        return formatted
     }
     if (text.length >= 10) return text.take(10)
     return if (text.isNotEmpty()) text else "-"
-}
-
-private val STORE_REVIEW_DISPLAY_DATE_FORMATTER: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
-
-private val STORE_REVIEW_NAIVE_UTC_PARSERS: List<DateTimeFormatter> = listOf(
-    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSS", Locale.US),
-    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS", Locale.US),
-    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.US),
-    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS", Locale.US),
-    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US),
-    DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss", Locale.US),
-)
-
-private fun parseStoreReviewServerDate(raw: String): LocalDate? {
-    val trimmed = raw.trim()
-    if (trimmed.isEmpty()) return null
-
-    runCatching {
-        OffsetDateTime.parse(trimmed)
-            .toInstant()
-            .atZone(ZoneId.systemDefault())
-            .toLocalDate()
-    }.getOrNull()?.let { return it }
-
-    runCatching {
-        Instant.parse(trimmed)
-            .atZone(ZoneId.systemDefault())
-            .toLocalDate()
-    }.getOrNull()?.let { return it }
-
-    if (!hasTimezoneInfo(trimmed)) {
-        val normalizedIso = if (trimmed.contains("T")) {
-            "${trimmed}Z"
-        } else {
-            trimmed.replace(" ", "T") + "Z"
-        }
-        runCatching {
-            OffsetDateTime.parse(normalizedIso)
-                .toInstant()
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate()
-        }.getOrNull()?.let { return it }
-
-        runCatching {
-            Instant.parse(normalizedIso)
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate()
-        }.getOrNull()?.let { return it }
-    }
-
-    runCatching {
-        LocalDateTime.parse(trimmed, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-            .atOffset(ZoneOffset.UTC)
-            .toInstant()
-            .atZone(ZoneId.systemDefault())
-            .toLocalDate()
-    }.getOrNull()?.let { return it }
-
-    STORE_REVIEW_NAIVE_UTC_PARSERS.forEach { parser ->
-        runCatching {
-            LocalDateTime.parse(trimmed, parser)
-                .atOffset(ZoneOffset.UTC)
-                .toInstant()
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate()
-        }.getOrNull()?.let { return it }
-    }
-
-    return null
-}
-
-private fun hasTimezoneInfo(value: String): Boolean {
-    return value.endsWith("Z", ignoreCase = true) ||
-        Regex("[+-]\\d{2}:\\d{2}$").containsMatchIn(value)
 }
 
 @Composable

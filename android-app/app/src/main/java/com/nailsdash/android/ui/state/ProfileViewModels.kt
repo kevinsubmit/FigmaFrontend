@@ -22,6 +22,7 @@ import com.nailsdash.android.data.repository.ProfileCenterPrimarySummary
 import com.nailsdash.android.data.repository.ProfileCenterSecondarySummary
 import com.nailsdash.android.data.repository.ProfileRepository
 import com.nailsdash.android.data.repository.StoresRepository
+import com.nailsdash.android.utils.AppDateTimeFormatterCache
 import com.nailsdash.android.utils.PhoneFormatter
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -432,6 +433,9 @@ class OrderHistoryViewModel(application: Application) : AndroidViewModel(applica
     }
 
     private fun appointmentDateTime(item: Appointment): LocalDateTime {
+        item.completed_at?.trim()?.takeIf { it.isNotEmpty() }?.let { raw ->
+            parseCompletedDateTime(raw)?.let { return it }
+        }
         val raw = "${item.appointment_date}T${item.appointment_time}".trim()
         return runCatching {
             LocalDateTime.parse(raw, appointmentDateTimeSecondFormatter)
@@ -440,6 +444,10 @@ class OrderHistoryViewModel(application: Application) : AndroidViewModel(applica
         }.getOrElse {
             LocalDateTime.MIN
         }
+    }
+
+    private fun parseCompletedDateTime(raw: String): LocalDateTime? {
+        return AppDateTimeFormatterCache.parseServerDateTime(raw)
     }
 
     fun createReview(

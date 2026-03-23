@@ -448,7 +448,47 @@ final class OrderHistoryViewModel: ObservableObject {
     }
 
     private func appointmentDateTime(_ item: AppointmentDTO) -> Date {
-        HomeDateFormatterCache.appointmentDateTime(item)
+        if let completedAt = parseCompletedDateTime(item.completed_at) {
+            return completedAt
+        }
+        return HomeDateFormatterCache.appointmentDateTime(item)
+    }
+
+    private func parseCompletedDateTime(_ raw: String?) -> Date? {
+        guard let raw else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let isoWithFraction = ISO8601DateFormatter()
+        isoWithFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = isoWithFraction.date(from: trimmed) {
+            return date
+        }
+
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime]
+        if let date = iso.date(from: trimmed) {
+            return date
+        }
+
+        let formats = [
+            "yyyy-MM-dd'T'HH:mm:ss.SSSSSS",
+            "yyyy-MM-dd'T'HH:mm:ss.SSS",
+            "yyyy-MM-dd'T'HH:mm:ss",
+            "yyyy-MM-dd HH:mm:ss.SSSSSS",
+            "yyyy-MM-dd HH:mm:ss.SSS",
+            "yyyy-MM-dd HH:mm:ss"
+        ]
+        for format in formats {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = TimeZone(secondsFromGMT: 0)
+            formatter.dateFormat = format
+            if let date = formatter.date(from: trimmed) {
+                return date
+            }
+        }
+        return nil
     }
 
     func createReview(

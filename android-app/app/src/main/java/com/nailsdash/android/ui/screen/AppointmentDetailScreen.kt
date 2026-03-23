@@ -65,6 +65,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.AppointmentServiceDisplayItem
 import com.nailsdash.android.ui.state.AppointmentDetailViewModel
+import com.nailsdash.android.utils.AppDateTimeFormatterCache
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -1019,22 +1020,11 @@ private fun statusColor(raw: String): Color {
 }
 
 private fun formatDate(raw: String): String {
-    return runCatching {
-        val date = LocalDate.parse(raw)
-        date.format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US))
-    }.getOrElse { raw }
+    return AppDateTimeFormatterCache.formatNaiveDate(raw) ?: raw
 }
 
 private fun formatTime(raw: String): String {
-    val normalized = when {
-        raw.length >= 8 -> raw.take(8)
-        raw.length == 5 -> "$raw:00"
-        else -> raw
-    }
-    return runCatching {
-        val time = LocalTime.parse(normalized)
-        time.format(DateTimeFormatter.ofPattern("h:mm a", Locale.US))
-    }.getOrElse { raw }
+    return AppDateTimeFormatterCache.formatNaiveTime(raw) ?: raw
 }
 
 private data class AppointmentDetailMapTarget(

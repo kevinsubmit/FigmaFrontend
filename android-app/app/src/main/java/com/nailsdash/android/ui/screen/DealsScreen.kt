@@ -70,13 +70,9 @@ import com.nailsdash.android.ui.component.ReportScreenDrawnWhen
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.DealsSegment
 import com.nailsdash.android.ui.state.DealsViewModel
+import com.nailsdash.android.utils.AppDateTimeFormatterCache
 import com.nailsdash.android.utils.AssetUrlResolver
 import java.time.Instant
-import java.time.LocalDateTime
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.ceil
 
@@ -721,54 +717,12 @@ private fun formatPriceRange(min: Double?, max: Double?): String {
 }
 
 private fun formatExpiry(endAt: String): String {
-    val endInstant = parsePromotionEndInstant(endAt) ?: return "Ends soon"
+    val endInstant = AppDateTimeFormatterCache.parseServerInstant(endAt) ?: return "Ends soon"
     val now = Instant.now()
     val diffSeconds = endInstant.epochSecond - now.epochSecond
     if (diffSeconds <= 0L) return "Expired"
     val days = ceil(diffSeconds.toDouble() / 86_400.0).toInt()
     if (days == 1) return "Ends today"
     if (days < 7) return "Ends in $days days"
-    val localDate = endInstant.atZone(ZoneId.systemDefault()).toLocalDate()
-    return "Ends on ${localDate.format(DEAL_MONTH_DAY_FORMATTER)}"
-}
-
-private fun parsePromotionEndInstant(raw: String): Instant? {
-    val value = raw.trim()
-    if (value.isEmpty()) return null
-
-    runCatching { OffsetDateTime.parse(value).toInstant() }
-        .getOrNull()
-        ?.let { return it }
-
-    if (!hasTimezoneInfo(value)) {
-        val normalized = if (value.contains("T")) value else value.replace(" ", "T")
-        parseNaiveUtcDateTime(normalized)?.let { return it }
-    }
-
-    return null
-}
-
-private val DEAL_MONTH_DAY_FORMATTER: DateTimeFormatter =
-    DateTimeFormatter.ofPattern("MMM d", Locale.US)
-
-private fun hasTimezoneInfo(value: String): Boolean {
-    return value.endsWith("Z", ignoreCase = true) ||
-        Regex("[+-]\\d{2}:\\d{2}$").containsMatchIn(value)
-}
-
-private fun parseNaiveUtcDateTime(value: String): Instant? {
-    val patterns = listOf(
-        "yyyy-MM-dd'T'HH:mm:ss.SSSSSS",
-        "yyyy-MM-dd'T'HH:mm:ss.SSS",
-        "yyyy-MM-dd'T'HH:mm:ss",
-        "yyyy-MM-dd'T'HH:mm",
-    )
-    for (pattern in patterns) {
-        val formatter = DateTimeFormatter.ofPattern(pattern, Locale.US)
-        val parsed = runCatching { LocalDateTime.parse(value, formatter) }.getOrNull()
-        if (parsed != null) {
-            return parsed.atOffset(ZoneOffset.UTC).toInstant()
-        }
-    }
-    return null
+    return "Ends on ${AppDateTimeFormatterCache.formatMonthDay(endAt) ?: endAt}"
 }

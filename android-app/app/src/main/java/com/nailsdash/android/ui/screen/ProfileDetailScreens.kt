@@ -152,6 +152,7 @@ import com.nailsdash.android.ui.state.MyReviewsViewModel
 import com.nailsdash.android.ui.state.OrderHistoryViewModel
 import com.nailsdash.android.ui.state.PointsViewModel
 import com.nailsdash.android.ui.state.ReferralViewModel
+import com.nailsdash.android.utils.AppDateTimeFormatterCache
 import com.nailsdash.android.utils.AssetUrlResolver
 import java.io.ByteArrayOutputStream
 import java.time.Instant
@@ -193,6 +194,8 @@ private fun dismissRewardsNotice(
 private val OrderHistoryCardCorner = 18.dp
 private val RewardsShortDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("M/d/yy", Locale.US)
 private val RewardsJoinedDateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US)
+private val RewardsDisplayDateTimeFormatter: DateTimeFormatter =
+    DateTimeFormatter.ofPattern("MMM d, yyyy · h:mm a", Locale.US)
 private val RewardsNaiveDateTimeParsers: List<DateTimeFormatter> = listOf(
     DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS"),
     DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS"),
@@ -1029,43 +1032,20 @@ private fun formattedPointsReason(raw: String): String {
 private fun displayDateOnly(raw: String): String {
     val value = raw.trim()
     if (value.isBlank()) return value
-    val localDate = parseRewardsLocalDate(value) ?: return value
-    return runCatching { localDate.format(RewardsShortDateFormatter) }.getOrElse { value }
+    return AppDateTimeFormatterCache.formatDisplayDateOnly(value) ?: value
 }
 
 private fun displayJoinedDate(raw: String): String {
     val value = raw.trim()
     if (value.isBlank()) return value
-    val localDate = parseRewardsLocalDate(value) ?: return value
-    return runCatching { localDate.format(RewardsJoinedDateFormatter) }.getOrElse { value }
+    return AppDateTimeFormatterCache.formatLongDate(value) ?: value
 }
 
-private fun parseRewardsLocalDate(raw: String): LocalDate? {
-    runCatching {
-        OffsetDateTime.parse(raw)
-            .toInstant()
-            .atZone(ZoneId.systemDefault())
-            .toLocalDate()
-    }.getOrNull()?.let { return it }
-    runCatching { Instant.parse(raw).atZone(ZoneId.systemDefault()).toLocalDate() }.getOrNull()?.let { return it }
-    runCatching { LocalDate.parse(raw) }.getOrNull()?.let { return it }
-
-    val candidates = listOf(raw, raw.replace(' ', 'T'))
-    candidates.forEach { candidate ->
-        RewardsNaiveDateTimeParsers.forEach { formatter ->
-            runCatching {
-                LocalDateTime.parse(candidate, formatter)
-                    .atOffset(ZoneOffset.UTC)
-                    .atZoneSameInstant(ZoneId.systemDefault())
-                    .toLocalDate()
-            }.getOrNull()?.let { return it }
-        }
+private fun formatCompletedOrderDateTime(item: Appointment): String {
+    item.completed_at?.trim()?.takeIf { it.isNotEmpty() }?.let { raw ->
+        AppDateTimeFormatterCache.formatDisplayDateTime(raw)?.let { return it }
     }
-
-    if (raw.length >= 10) {
-        runCatching { LocalDate.parse(raw.substring(0, 10)) }.getOrNull()?.let { return it }
-    }
-    return null
+    return "${formatAppointmentDate(item.appointment_date)} · ${formatAppointmentTime(item.appointment_time)}"
 }
 
 private fun couponStatusTitle(value: String): String {
@@ -3268,19 +3248,6 @@ private fun OrderHistoryActivityCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    item.order_number?.takeIf { it.isNotBlank() }?.let { order ->
-                        Text(
-                            text = "Order $order",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 11.sp,
-                                letterSpacing = 1.1.sp,
-                            ),
-                            color = Color.White.copy(alpha = 0.55f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
                     item.store_address?.trim()?.takeIf { it.isNotEmpty() }?.let { address ->
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -3337,7 +3304,7 @@ private fun OrderHistoryActivityCard(
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    text = "${formatAppointmentDate(item.appointment_date)} · ${formatAppointmentTime(item.appointment_time)}",
+                    text = formatCompletedOrderDateTime(item),
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Normal,
@@ -3558,16 +3525,12 @@ private fun normalizeAppointmentTime(raw: String): String? {
 
 private fun formatAppointmentDate(raw: String): String {
     val value = raw.trim()
-    return runCatching {
-        LocalDate.parse(value).format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US))
-    }.getOrElse { value }
+    return AppDateTimeFormatterCache.formatNaiveDate(value) ?: value
 }
 
 private fun formatAppointmentTime(raw: String): String {
     val normalized = normalizeAppointmentTime(raw) ?: return raw.trim()
-    return runCatching {
-        LocalTime.parse(normalized).format(DateTimeFormatter.ofPattern("h:mm a", Locale.US))
-    }.getOrElse { raw.trim() }
+    return AppDateTimeFormatterCache.formatNaiveTime(normalized) ?: raw.trim()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

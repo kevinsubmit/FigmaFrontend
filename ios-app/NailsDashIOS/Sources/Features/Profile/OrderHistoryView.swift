@@ -172,13 +172,6 @@ struct OrderHistoryView: View {
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                         .lineLimit(1)
-                    if let order = item.order_number, !order.isEmpty {
-                        Text("Order \(order)")
-                            .font(.caption2.weight(.semibold))
-                            .kerning(1.1)
-                            .foregroundStyle(Color.white.opacity(0.55))
-                            .lineLimit(1)
-                    }
                     if let address = item.store_address?.trimmingCharacters(in: .whitespacesAndNewlines), !address.isEmpty {
                         HStack(spacing: UITheme.spacing4) {
                             Image(systemName: "mappin.and.ellipse")
@@ -211,7 +204,7 @@ struct OrderHistoryView: View {
 
                 Spacer(minLength: UITheme.spacing8)
 
-                Text(formattedAppointmentDate(item))
+                Text(formattedCompletedDateTime(item))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -268,7 +261,12 @@ struct OrderHistoryView: View {
         )
     }
 
-    private func formattedAppointmentDate(_ item: AppointmentDTO) -> String {
+    private func formattedCompletedDateTime(_ item: AppointmentDTO) -> String {
+        if let raw = item.completed_at?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !raw.isEmpty,
+           let formatted = HomeDateFormatterCache.formatDisplayDateTime(raw) {
+            return formatted
+        }
         let dateText = formattedDate(item.appointment_date)
         let timeText = formattedTime(item.appointment_time)
         return "\(dateText) · \(timeText)"

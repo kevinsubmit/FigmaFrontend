@@ -50,6 +50,22 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
     return new Date(year, month - 1, day, hours, minutes, seconds);
   };
 
+  const parseCompletedDateTime = (raw?: string | null) => {
+    if (!raw?.trim()) return null;
+    const trimmed = raw.trim();
+    const direct = new Date(trimmed);
+    if (!Number.isNaN(direct.getTime())) return direct;
+    const normalized = trimmed.includes('T') ? trimmed : trimmed.replace(' ', 'T');
+    const utcCandidate = new Date(`${normalized}Z`);
+    if (!Number.isNaN(utcCandidate.getTime())) return utcCandidate;
+    const localCandidate = new Date(normalized);
+    if (!Number.isNaN(localCandidate.getTime())) return localCandidate;
+    return null;
+  };
+
+  const getCompletedOrderDateTime = (apt: Appointment) =>
+    parseCompletedDateTime(apt.completed_at) ?? parseLocalDateTime(apt.appointment_date, apt.appointment_time);
+
   useEffect(() => {
     const loadAppointments = async () => {
       try {
@@ -57,8 +73,8 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
         const data = await getMyAppointments();
         const completedOnly = data.filter((apt) => apt.status === 'completed');
         setAppointments([...completedOnly].sort((a, b) => {
-          const aDateTime = parseLocalDateTime(a.appointment_date, a.appointment_time);
-          const bDateTime = parseLocalDateTime(b.appointment_date, b.appointment_time);
+          const aDateTime = getCompletedOrderDateTime(a);
+          const bDateTime = getCompletedOrderDateTime(b);
           return bDateTime.getTime() - aDateTime.getTime();
         }));
       } catch (error) {
@@ -94,6 +110,22 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
     const ampm = hour >= 12 ? 'PM' : 'AM';
     const displayHour = hour % 12 || 12;
     return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  const formatCompletedDateTime = (apt: Appointment) => {
+    const date = getCompletedOrderDateTime(apt);
+    const dateText = date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      weekday: 'short'
+    });
+    const timeText = date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+    return `${dateText} · ${timeText}`;
   };
 
   const getAppointmentDateTime = (apt: Appointment) =>
@@ -177,11 +209,6 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
                       </div>
                       <div>
                         <h3 className="font-semibold text-white">{apt.store?.name || apt.store_name || 'Salon'}</h3>
-                        {apt.order_number && (
-                          <div className="text-[10px] uppercase tracking-[0.2em] text-gray-500 mt-1">
-                            Order {apt.order_number}
-                          </div>
-                        )}
                         {apt.store?.address && (
                           <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
                             <MapPin className="w-3 h-3" />
@@ -208,9 +235,7 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
                     <p className="text-gray-300">{resolveServiceName(apt)}</p>
                     <div className="flex items-center gap-1 text-xs text-gray-500">
                       <Calendar className="w-3 h-3" />
-                      <span>{formatDate(apt.appointment_date)}</span>
-                      <Clock className="w-3 h-3 ml-1" />
-                      <span>{formatTime(apt.appointment_time)}</span>
+                      <span>{formatCompletedDateTime(apt)}</span>
                     </div>
                   </div>
 
@@ -254,9 +279,10 @@ export function OrderHistory({ onBack }: OrderHistoryProps) {
             setIsLoading(true);
             getMyAppointments()
               .then((data) => {
-                const sorted = [...data].sort((a, b) => {
-                  const aDateTime = new Date(`${a.appointment_date}T${a.appointment_time}`);
-                  const bDateTime = new Date(`${b.appointment_date}T${b.appointment_time}`);
+                const completedOnly = data.filter((apt) => apt.status === 'completed');
+                const sorted = [...completedOnly].sort((a, b) => {
+                  const aDateTime = getCompletedOrderDateTime(a);
+                  const bDateTime = getCompletedOrderDateTime(b);
                   return bDateTime.getTime() - aDateTime.getTime();
                 });
                 setAppointments(sorted);

@@ -67,6 +67,7 @@ import com.nailsdash.android.ui.component.ReportScreenDrawnWhen
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.AppointmentSegment
 import com.nailsdash.android.ui.state.AppointmentsViewModel
+import com.nailsdash.android.utils.AppDateTimeFormatterCache
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -770,20 +771,11 @@ private fun statusColor(raw: String): Color {
 }
 
 private fun formatDate(raw: String): String {
-    return runCatching {
-        LocalDate.parse(raw).format(DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US))
-    }.getOrElse { raw }
+    return AppDateTimeFormatterCache.formatNaiveDate(raw) ?: raw
 }
 
 private fun formatTime(raw: String): String {
-    val normalized = when {
-        raw.length >= 8 -> raw.take(8)
-        raw.length == 5 -> "$raw:00"
-        else -> raw
-    }
-    return runCatching {
-        LocalTime.parse(normalized).format(DateTimeFormatter.ofPattern("h:mm a", Locale.US))
-    }.getOrElse { raw }
+    return AppDateTimeFormatterCache.formatNaiveTime(raw) ?: raw
 }
 
 private fun parseAppointmentDateTime(
