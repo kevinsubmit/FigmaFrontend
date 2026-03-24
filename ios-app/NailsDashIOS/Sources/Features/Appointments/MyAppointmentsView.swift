@@ -888,7 +888,7 @@ private struct AppointmentDetailView: View {
     private var serviceCard: some View {
         if !viewModel.serviceDisplayItems.isEmpty {
             VStack(alignment: .leading, spacing: UITheme.spacing10) {
-                sectionHeader(viewModel.serviceDisplayItems.count > 1 ? "SERVICES" : "SERVICE", systemImage: "dollarsign")
+                sectionHeader(viewModel.serviceDisplayItems.count > 1 ? "SERVICES" : "SERVICE")
                 ForEach(Array(viewModel.serviceDisplayItems.enumerated()), id: \.element.id) { index, item in
                     VStack(alignment: .leading, spacing: UITheme.spacing6) {
                         HStack(alignment: .center, spacing: UITheme.spacing8) {
@@ -925,7 +925,7 @@ private struct AppointmentDetailView: View {
             .modifier(AppointmentDetailCard(cardBG: cardBG, brandGold: brandGold))
         } else if !resolvedServiceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             VStack(alignment: .leading, spacing: UITheme.spacing10) {
-                sectionHeader("SERVICE", systemImage: "dollarsign")
+                sectionHeader("SERVICE")
                 Text(resolvedServiceName)
                     .font(.title2.weight(.bold))
                     .foregroundStyle(.white)
@@ -1392,11 +1392,13 @@ private struct AppointmentDetailView: View {
         }
     }
 
-    private func sectionHeader(_ text: String, systemImage: String) -> some View {
+    private func sectionHeader(_ text: String, systemImage: String? = nil) -> some View {
         HStack(spacing: UITheme.spacing8) {
-            Image(systemName: systemImage)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(brandGold)
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(brandGold)
+            }
             Text(text)
                 .font(.caption.weight(.semibold))
                 .kerning(UITheme.sectionHeaderKerning)
