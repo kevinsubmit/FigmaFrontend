@@ -27,8 +27,6 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -212,8 +210,6 @@ fun AppointmentDetailScreen(
                 if (item != null) {
                     val status = item.status.lowercase()
                     val statusColor = statusColor(status)
-                    val storeDisplayName = item.store_name?.trim().takeUnless { it.isNullOrEmpty() } ?: "Store"
-
                     AppointmentDetailCardContainer {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -234,16 +230,6 @@ fun AppointmentDetailScreen(
                                     .padding(horizontal = 10.dp, vertical = 4.dp),
                             )
                         }
-                        Text(
-                            storeDisplayName,
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                            color = DetailPrimaryText,
-                        )
-                        Text(
-                            item.service_name?.trim().takeUnless { it.isNullOrEmpty() } ?: "Service",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = DetailSecondaryText,
-                        )
                     }
 
                     AppointmentDetailCardContainer {
@@ -279,6 +265,8 @@ fun AppointmentDetailScreen(
 
                     val storeAddress = appointmentDetailViewModel.resolvedStoreAddress ?: item.store_address
                     storeAddress?.takeIf { it.isNotBlank() }?.let { address ->
+                        val locationStoreName =
+                            item.store_name?.trim().takeUnless { it.isNullOrEmpty() } ?: "Store"
                         AppointmentDetailCardContainer {
                             Text(
                                 "LOCATION",
@@ -286,7 +274,7 @@ fun AppointmentDetailScreen(
                                 color = DetailMutedText,
                             )
                             Text(
-                                storeDisplayName,
+                                locationStoreName,
                                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                                 color = DetailPrimaryText,
                             )
@@ -350,30 +338,6 @@ fun AppointmentDetailScreen(
                         }
                     }
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        item.service_price?.let {
-                            AssistChip(
-                                onClick = {},
-                                enabled = false,
-                                label = { Text("$${String.format(Locale.US, "%.2f", it)}") },
-                                colors = AssistChipDefaults.assistChipColors(
-                                    disabledContainerColor = DetailPanelBackground,
-                                    disabledLabelColor = DetailGold,
-                                ),
-                            )
-                        }
-                        item.service_duration?.let {
-                            AssistChip(
-                                onClick = {},
-                                enabled = false,
-                                label = { Text("$it min") },
-                                colors = AssistChipDefaults.assistChipColors(
-                                    disabledContainerColor = DetailPanelBackground,
-                                    disabledLabelColor = DetailSecondaryText,
-                                ),
-                            )
-                        }
-                    }
                 }
             }
         }

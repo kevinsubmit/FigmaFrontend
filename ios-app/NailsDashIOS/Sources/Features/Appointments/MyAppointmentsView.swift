@@ -697,7 +697,6 @@ private struct AppointmentDetailView: View {
                     locationCard
                     notesCard
                     cancelReasonCard
-                    detailChipsRow
                 }
                 .padding(.horizontal, 12)
                 .padding(.top, 10)
@@ -799,15 +798,6 @@ private struct AppointmentDetailView: View {
                     .clipShape(Capsule())
                     .foregroundStyle(statusColor(viewModel.appointment.status))
             }
-            Text(resolvedStoreDisplayName)
-                .font(.title2.weight(.bold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.86)
-            Text(resolvedServiceName)
-                .font(.subheadline)
-                .foregroundStyle(Color.white.opacity(0.78))
-                .lineLimit(2)
         }
         .modifier(AppointmentDetailCard(cardBG: cardBG, brandGold: brandGold))
     }
@@ -1062,22 +1052,6 @@ private struct AppointmentDetailView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .modifier(AppointmentDetailCard(cardBG: cardBG, brandGold: brandGold))
-        }
-    }
-
-    @ViewBuilder
-    private var detailChipsRow: some View {
-        let price = viewModel.appointment.service_price
-        let duration = viewModel.appointment.service_duration
-        if price != nil || duration != nil {
-            HStack(spacing: UITheme.spacing8) {
-                if let price {
-                    detailChip(title: moneyText(price), foreground: brandGold)
-                }
-                if let duration {
-                    detailChip(title: durationText(duration), foreground: Color.white.opacity(0.78))
-                }
-            }
         }
     }
 
