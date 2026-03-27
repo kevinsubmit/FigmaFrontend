@@ -24,6 +24,7 @@ struct StoreDetailView: View {
     @State private var reviewGalleryImages: [URL] = []
     @State private var reviewGalleryIndex: Int = 0
     @State private var showReviewGallery: Bool = false
+    @State private var selectedPortfolioIndex: Int? = nil
     @State private var showFullHours: Bool = false
     @State private var showBookServicesSheet: Bool = false
     @State private var toast: StoreDetailToastPayload?
@@ -109,6 +110,29 @@ struct StoreDetailView: View {
         }
         .fullScreenCover(isPresented: $showReviewGallery) {
             reviewImageViewer
+        }
+        .fullScreenCover(
+            isPresented: Binding(
+                get: { selectedPortfolioIndex != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        selectedPortfolioIndex = nil
+                    }
+                }
+            )
+        ) {
+            if let startIndex = selectedPortfolioIndex, !viewModel.portfolioItems.isEmpty {
+                StorePortfolioDetailView(
+                    items: viewModel.portfolioItems,
+                    initialIndex: startIndex,
+                    imageURL: imageURL(from:),
+                    onClose: { selectedPortfolioIndex = nil },
+                    onBookServices: {
+                        selectedPortfolioIndex = nil
+                        selectedTab = .services
+                    }
+                )
+            }
         }
         .sheet(isPresented: $showBookServicesSheet) {
             if let store = viewModel.store,
@@ -606,40 +630,45 @@ struct StoreDetailView: View {
             } else {
                 let fixedCardHeight: CGFloat = 214
                 LazyVGrid(columns: portfolioColumns, spacing: UITheme.spacing8) {
-                    ForEach(viewModel.portfolioItems, id: \.id) { image in
-                        CachedAsyncImage(url: imageURL(from: image.image_url)) { phase in
-                            switch phase {
-                            case .empty:
-                                ProgressView()
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            case .success(let img):
-                                img
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .clipped()
-                                    .overlay(
-                                        LinearGradient(
-                                            colors: [.clear, Color.black.opacity(0.55)],
-                                            startPoint: .center,
-                                            endPoint: .bottom
+                    ForEach(Array(viewModel.portfolioItems.enumerated()), id: \.element.id) { idx, image in
+                        Button {
+                            selectedPortfolioIndex = idx
+                        } label: {
+                            CachedAsyncImage(url: imageURL(from: image.image_url)) { phase in
+                                switch phase {
+                                case .empty:
+                                    ProgressView()
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                case .success(let img):
+                                    img
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                        .clipped()
+                                        .overlay(
+                                            LinearGradient(
+                                                colors: [.clear, Color.black.opacity(0.55)],
+                                                startPoint: .center,
+                                                endPoint: .bottom
+                                            )
                                         )
-                                    )
-                            case .failure:
-                                Color.gray.opacity(0.2)
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            @unknown default:
-                                EmptyView()
+                                case .failure:
+                                    Color.gray.opacity(0.2)
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                @unknown default:
+                                    EmptyView()
+                                }
                             }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: fixedCardHeight)
+                            .background(Color.white.opacity(0.02))
+                            .clipShape(RoundedRectangle(cornerRadius: UITheme.chipCornerRadius))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: UITheme.chipCornerRadius)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: fixedCardHeight)
-                        .background(Color.white.opacity(0.02))
-                        .clipShape(RoundedRectangle(cornerRadius: UITheme.chipCornerRadius))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: UITheme.chipCornerRadius)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                        )
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -1315,6 +1344,129 @@ struct StoreDetailView: View {
             .padding(.trailing, UITheme.pagePadding)
         }
         .tint(.white)
+    }
+}
+
+private struct StorePortfolioDetailView: View {
+    let items: [StorePortfolioDTO]
+    let initialIndex: Int
+    let imageURL: (String) -> URL?
+    let onClose: () -> Void
+    let onBookServices: () -> Void
+
+    @State private var selectedIndex: Int
+
+    init(
+        items: [StorePortfolioDTO],
+        initialIndex: Int,
+        imageURL: @escaping (String) -> URL?,
+        onClose: @escaping () -> Void,
+        onBookServices: @escaping () -> Void
+    ) {
+        self.items = items
+        self.initialIndex = initialIndex
+        self.imageURL = imageURL
+        self.onClose = onClose
+        self.onBookServices = onBookServices
+        _selectedIndex = State(initialValue: initialIndex)
+    }
+
+    private var currentItem: StorePortfolioDTO? {
+        guard !items.isEmpty else { return nil }
+        let safeIndex = min(max(selectedIndex, 0), items.count - 1)
+        return items[safeIndex]
+    }
+
+    private var heroHeight: CGFloat {
+        min(max(UIScreen.main.bounds.width * 1.28, 420), 560)
+    }
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            Color.black.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                TabView(selection: $selectedIndex) {
+                    ForEach(Array(items.enumerated()), id: \.element.id) { idx, item in
+                        ZStack {
+                            CachedAsyncImage(url: imageURL(item.image_url)) { phase in
+                                switch phase {
+                                case .empty:
+                                    ZStack {
+                                        Color.black
+                                        ProgressView().tint(.white)
+                                    }
+                                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                        .background(Color.black)
+                                case .failure:
+                                    VStack(spacing: UITheme.spacing8) {
+                                        Image(systemName: "photo")
+                                        Text("Image unavailable")
+                                    }
+                                    .font(.caption)
+                                    .foregroundStyle(.white.opacity(0.8))
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    .background(Color.black)
+                                @unknown default:
+                                    EmptyView()
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: heroHeight)
+                        .tag(idx)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+
+            }
+
+            HStack(alignment: .top) {
+                Text("\(min(selectedIndex + 1, max(items.count, 1)))/\(max(items.count, 1))")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.92))
+                    .padding(.horizontal, UITheme.pillHorizontalPadding)
+                    .padding(.vertical, UITheme.pillVerticalPadding)
+                    .background(Color.black.opacity(0.56))
+                    .clipShape(Capsule())
+
+                Spacer()
+
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(UITheme.spacing10)
+                        .background(Color.black.opacity(0.56))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, UITheme.spacing16 + UITheme.spacing4)
+            .padding(.horizontal, UITheme.pagePadding)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(spacing: 0) {
+                Button(action: onBookServices) {
+                    Text("Book Services")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.black)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
+                        .background(UITheme.brandGold)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, UITheme.pagePadding)
+            .padding(.top, UITheme.spacing12)
+            .padding(.bottom, UITheme.spacing16)
+            .background(Color.black.opacity(0.96))
+        }
     }
 }
 

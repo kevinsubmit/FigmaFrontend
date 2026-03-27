@@ -40,6 +40,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -88,6 +89,7 @@ import com.nailsdash.android.ui.screen.ReferralScreen
 import com.nailsdash.android.ui.screen.ReviewsScreen
 import com.nailsdash.android.ui.screen.SettingsScreen
 import com.nailsdash.android.ui.screen.StoreDetailScreen
+import com.nailsdash.android.ui.screen.StorePortfolioDetailScreen
 import com.nailsdash.android.ui.screen.StoresScreen
 import com.nailsdash.android.ui.screen.VipScreen
 import com.nailsdash.android.ui.screen.ChangePasswordScreen
@@ -378,6 +380,9 @@ fun NailsDashApp() {
                 arguments = listOf(navArgument("storeId") { type = NavType.IntType }),
             ) { backStackEntry ->
                 val storeId = backStackEntry.arguments?.getInt("storeId") ?: return@composable
+                val requestedTab by backStackEntry.savedStateHandle
+                    .getStateFlow("store_detail_selected_tab", "")
+                    .collectAsState()
                 StoreDetailScreen(
                     storeId = storeId,
                     sessionViewModel = sessionViewModel,
@@ -389,6 +394,34 @@ fun NailsDashApp() {
                             popUpTo(MainDestination.Book.route)
                             launchSingleTop = true
                         }
+                    },
+                    requestedTabLabel = requestedTab.takeIf { it.isNotBlank() },
+                    onRequestedTabConsumed = {
+                        backStackEntry.savedStateHandle["store_detail_selected_tab"] = ""
+                    },
+                    onOpenPortfolio = { portfolioId ->
+                        navController.navigate("book/store/$storeId/portfolio/$portfolioId")
+                    },
+                )
+            }
+            composable(
+                route = "book/store/{storeId}/portfolio/{portfolioId}",
+                arguments = listOf(
+                    navArgument("storeId") { type = NavType.IntType },
+                    navArgument("portfolioId") { type = NavType.IntType },
+                ),
+            ) { backStackEntry ->
+                val storeId = backStackEntry.arguments?.getInt("storeId") ?: return@composable
+                val portfolioId = backStackEntry.arguments?.getInt("portfolioId") ?: return@composable
+                StorePortfolioDetailScreen(
+                    storeId = storeId,
+                    portfolioId = portfolioId,
+                    onBack = { navController.navigateUp() },
+                    onBookServices = {
+                        navController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("store_detail_selected_tab", "Services")
+                        navController.navigateUp()
                     },
                 )
             }

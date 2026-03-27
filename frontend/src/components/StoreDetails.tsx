@@ -50,6 +50,7 @@ import { getServicesByStoreId, Service as APIService } from '../services/service
 import { Store as APIStore } from '../services/stores.service';
 import { addAppointmentServiceItem, createAppointment, createAppointmentGroup, getMyAppointments } from '../services/appointments.service';
 import { getStorePortfolio, PortfolioItem } from '../services/store-portfolio.service';
+import { StorePortfolioDetail } from './StorePortfolioDetail';
 import StoreReviews from './StoreReviews';
 import { Pin } from '../api/pins';
 import { getStoreRating, StoreRating } from '../api/reviews';
@@ -226,6 +227,7 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
   const [hasMorePortfolio, setHasMorePortfolio] = useState(true);
   const [portfolioSkip, setPortfolioSkip] = useState(0);
   const [portfolioError, setPortfolioError] = useState<string | null>(null);
+  const [selectedPortfolioIndex, setSelectedPortfolioIndex] = useState<number | null>(null);
 
   // Reviews State
   const [reviewsList, setReviewsList] = useState<Review[]>([]);
@@ -248,6 +250,10 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
 
   // Shared Observer Target
   const observerTarget = useRef(null);
+
+  useEffect(() => {
+    setSelectedPortfolioIndex(null);
+  }, [store.id]);
 
   const resolveStoreImageUrl = (url?: string | null): string => {
     return resolveAssetUrl(url);
@@ -407,6 +413,10 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
       loadMoreReviews();
     }
   }, [activeTab, store.id]);
+
+  const openPortfolioDetail = useCallback((index: number) => {
+    setSelectedPortfolioIndex(index);
+  }, []);
 
   // Infinite Scroll Observer (Shared Logic)
   useEffect(() => {
@@ -1357,20 +1367,33 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
                  ) : portfolioItems.length > 0 ? (
                     <Masonry columnsCount={2} gutter="8px">
                         {portfolioItems.map((item, index) => (
-                            <div key={item.id} className="relative group cursor-pointer overflow-hidden rounded-xl bg-gray-900 border border-[#333]">
+                            <button
+                                key={item.id}
+                                type="button"
+                                onClick={() => openPortfolioDetail(index)}
+                                onPointerUp={() => openPortfolioDetail(index)}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    openPortfolioDetail(index);
+                                  }
+                                }}
+                                className="group relative block w-full overflow-hidden rounded-xl border border-[#333] bg-gray-900 p-0 text-left touch-manipulation"
+                                aria-label={`Open portfolio image ${index + 1}`}
+                            >
                                 <img 
                                     src={resolveAssetUrl(item.image_url)} 
                                     alt={item.title || `Portfolio ${index + 1}`} 
                                     loading="lazy"
                                     decoding="async"
-                                    className="w-full h-auto object-cover hover:scale-105 transition-transform duration-500"
+                                    className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-105"
                                 />
                                 {item.title && (
-                                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
+                                  <div className="pointer-events-none absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-3">
                                     <p className="text-white text-sm font-medium">{item.title}</p>
                                   </div>
                                 )}
-                            </div>
+                            </button>
                         ))}
                     </Masonry>
                  ) : (
@@ -1602,6 +1625,18 @@ export function StoreDetails({ store, onBack, onBookingComplete, referencePin, s
             </button>
           </div>
         </motion.div>
+      )}
+
+      {selectedPortfolioIndex !== null && portfolioItems.length > 0 && (
+        <StorePortfolioDetail
+          items={portfolioItems}
+          initialIndex={selectedPortfolioIndex}
+          onClose={() => setSelectedPortfolioIndex(null)}
+          onBookServices={() => {
+            setSelectedPortfolioIndex(null);
+            setActiveTab('services');
+          }}
+        />
       )}
 
       {/* Map Selection Drawer */}

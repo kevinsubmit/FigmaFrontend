@@ -179,6 +179,9 @@ fun StoreDetailScreen(
     sessionViewModel: AppSessionViewModel,
     onBack: () -> Unit,
     onBookingCompleted: () -> Unit,
+    requestedTabLabel: String? = null,
+    onRequestedTabConsumed: () -> Unit = {},
+    onOpenPortfolio: (Int) -> Unit = {},
     storeDetailViewModel: StoreDetailViewModel = viewModel(),
 ) {
     val bearerToken = sessionViewModel.accessTokenOrNull()
@@ -242,6 +245,13 @@ fun StoreDetailScreen(
     LaunchedEffect(selectedTab) {
         if (selectedTab != "Details") {
             showFullHours = false
+        }
+    }
+    LaunchedEffect(requestedTabLabel) {
+        val target = requestedTabLabel?.trim().orEmpty()
+        if (target.isNotEmpty()) {
+            storeDetailViewModel.pickTab(target)
+            onRequestedTabConsumed()
         }
     }
     LaunchedEffect(storeDetailViewModel.errorMessage) {
@@ -440,11 +450,13 @@ fun StoreDetailScreen(
                                         ) {
                                             StorePortfolioCard(
                                                 row = rowItems.first(),
+                                                onClick = { onOpenPortfolio(rowItems.first().id) },
                                                 modifier = Modifier.weight(1f),
                                             )
                                             if (rowItems.size > 1) {
                                                 StorePortfolioCard(
                                                     row = rowItems[1],
+                                                    onClick = { onOpenPortfolio(rowItems[1].id) },
                                                     modifier = Modifier.weight(1f),
                                                 )
                                             } else {
@@ -1861,6 +1873,7 @@ private fun StoreReviewImageViewerDialog(
 @Composable
 private fun StorePortfolioCard(
     row: StorePortfolio,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val image = AssetUrlResolver.resolveURL(row.image_url)
@@ -1868,7 +1881,8 @@ private fun StorePortfolioCard(
         shape = RoundedCornerShape(12.dp),
         modifier = modifier
             .fillMaxWidth()
-            .height(214.dp),
+            .height(214.dp)
+            .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.02f)),
         border = BorderStroke(
             width = 1.dp,
