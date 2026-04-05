@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import apiClient from '../lib/api';
 import { notificationsService } from '../services/notifications.service';
-import pointsService from '../services/points.service';
+import pointsService, { type DailyCheckInStatus } from '../services/points.service';
 import couponsService from '../services/coupons.service';
 import giftCardsService from '../services/gift-cards.service';
 import vipService, { type VipStatus } from '../services/vip.service';
@@ -53,6 +53,8 @@ export function Profile({ onNavigate }: ProfileProps) {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [vipStatus, setVipStatus] = useState<VipStatus | null>(null);
   const [vipLoaded, setVipLoaded] = useState(false);
+  const [dailyCheckInStatus, setDailyCheckInStatus] = useState<DailyCheckInStatus | null>(null);
+  const [isClaimingDailyCheckIn, setIsClaimingDailyCheckIn] = useState(false);
   const [stats, setStats] = useState({
     points: 0,
     coupons: 0,
@@ -119,6 +121,7 @@ export function Profile({ onNavigate }: ProfileProps) {
         getMyFavoritePinsCount(token),
         giftCardsService.getSummary(token),
         vipService.getStatus(),
+        pointsService.getDailyCheckInStatus(token),
       ]);
 
       const unreadResult = results[0].status === 'fulfilled' ? results[0].value : 0;
@@ -130,6 +133,7 @@ export function Profile({ onNavigate }: ProfileProps) {
       const favoritesResult = results[5].status === 'fulfilled' ? results[5].value : null;
       const giftSummaryResult = results[6].status === 'fulfilled' ? results[6].value : null;
       const vipStatusResult = results[7].status === 'fulfilled' ? results[7].value : null;
+      const dailyCheckInResult = results[8].status === 'fulfilled' ? results[8].value : null;
 
       setUnreadCount(unreadResult ?? 0);
       setStats({
@@ -141,6 +145,7 @@ export function Profile({ onNavigate }: ProfileProps) {
         favorites: favoritesResult?.count ?? 0,
       });
       setVipStatus(vipStatusResult ?? buildFallbackVipStatus(appointmentsResult));
+      setDailyCheckInStatus(dailyCheckInResult);
       setVipLoaded(true);
     } catch (fallbackError) {
       console.error('Failed to load profile stats:', fallbackError);
@@ -176,6 +181,30 @@ export function Profile({ onNavigate }: ProfileProps) {
     }, 400);
     return () => clearTimeout(timer);
   }, []);
+
+  const handleDailyCheckIn = async () => {
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+    if (!token || isClaimingDailyCheckIn || dailyCheckInStatus?.checked_in_today) return;
+
+    try {
+      setIsClaimingDailyCheckIn(true);
+      const response = await pointsService.claimDailyCheckIn(token);
+      setDailyCheckInStatus({
+        checked_in_today: response.checked_in_today,
+        reward_points: response.reward_points,
+        checkin_date: response.checkin_date,
+        checked_in_at: response.checked_in_at,
+      });
+      await loadProfileStats();
+      window.dispatchEvent(new CustomEvent('nailsdash:points-updated'));
+      toast.success(`Checked in successfully. +${response.awarded_points} points.`, { duration: 1200 });
+    } catch (error) {
+      console.error('Failed to claim daily check-in:', error);
+      toast.error('Failed to check in');
+    } finally {
+      setIsClaimingDailyCheckIn(false);
+    }
+  };
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -318,6 +347,40 @@ export function Profile({ onNavigate }: ProfileProps) {
           </div>
         </div>
         
+        {/* Daily Check-In Entry */}
+        <div className="w-full max-w-md mt-4 mb-4">
+          <button
+            onClick={handleDailyCheckIn}
+            disabled={dailyCheckInStatus?.checked_in_today || isClaimingDailyCheckIn}
+            className="w-full bg-gradient-to-r from-[#1a1a1a] to-[#252525] border border-[#D4AF37]/20 rounded-2xl p-4 flex items-center justify-between gap-4 text-left active:scale-[0.98] transition-all disabled:opacity-100"
+          >
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="w-12 h-12 rounded-xl bg-[#D4AF37]/10 flex items-center justify-center border border-[#D4AF37]/20">
+                <Coins className="w-6 h-6 text-[#D4AF37]" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-black tracking-[0.22em] text-gray-500">DAILY CHECK-IN</p>
+                <p className="text-sm font-semibold text-white mt-1">
+                  {dailyCheckInStatus?.checked_in_today
+                    ? "Today's points already claimed."
+                    : `Check in now and earn ${dailyCheckInStatus?.reward_points ?? 0} points.`}
+                </p>
+              </div>
+            </div>
+            <div className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap ${
+              dailyCheckInStatus?.checked_in_today
+                ? 'bg-white/10 text-white/55'
+                : 'bg-[#D4AF37] text-black'
+            }`}>
+              {isClaimingDailyCheckIn
+                ? 'Checking...'
+                : dailyCheckInStatus?.checked_in_today
+                  ? 'Checked In'
+                  : `+${dailyCheckInStatus?.reward_points ?? 0} pts`}
+            </div>
+          </button>
+        </div>
+
         {/* VIP Membership Section */}
         <div className="w-full max-w-md mt-4 mb-6"> 
               <motion.div 

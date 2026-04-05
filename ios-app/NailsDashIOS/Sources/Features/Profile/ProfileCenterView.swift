@@ -7,6 +7,7 @@ private struct ProfileCenterPrimarySummary {
     let favoriteCount: Int?
     let completedOrders: Int?
     let vipStatus: VipStatusDTO?
+    let dailyCheckInStatus: DailyCheckInStatusDTO?
 }
 
 private struct ProfileCenterSecondarySummary {
@@ -52,17 +53,27 @@ private struct ProfileCenterSummaryService {
             }
         }()
 
+        async let dailyCheckInTask: DailyCheckInStatusDTO? = {
+            do {
+                return try await rewardsService.getDailyCheckInStatus(token: token)
+            } catch {
+                return nil
+            }
+        }()
+
         let unreadCount = await unreadTask
         let points = await pointsTask
         let favoriteCount = await favoriteCountTask
         let vipStatus = await vipStatusTask
+        let dailyCheckInStatus = await dailyCheckInTask
 
         return ProfileCenterPrimarySummary(
             unreadCount: max(unreadCount ?? 0, 0),
             points: max(points ?? 0, 0),
             favoriteCount: favoriteCount.map { max($0, 0) },
             completedOrders: vipStatus.map { max($0.total_visits, 0) },
-            vipStatus: vipStatus
+            vipStatus: vipStatus,
+            dailyCheckInStatus: dailyCheckInStatus
         )
     }
 
@@ -117,10 +128,13 @@ private final class ProfileCenterViewModel: ObservableObject {
     @Published var reviewCount: Int = 0
     @Published var favoriteCount: Int = 0
     @Published var vipStatus: VipStatusDTO?
+    @Published var dailyCheckInStatus: DailyCheckInStatusDTO?
+    @Published var isClaimingDailyCheckIn = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
 
     private let summaryService = ProfileCenterSummaryService()
+    private let rewardsService = ProfileRewardsService()
     private var didLoadOnce = false
     private var loadedToken: String?
     private var requestToken = 0
@@ -159,6 +173,7 @@ private final class ProfileCenterViewModel: ObservableObject {
         if let resolvedVipStatus = primarySummary.vipStatus {
             vipStatus = resolvedVipStatus
         }
+        dailyCheckInStatus = primarySummary.dailyCheckInStatus
         errorMessage = nil
         isLoading = false
 
@@ -173,6 +188,25 @@ private final class ProfileCenterViewModel: ObservableObject {
         }
         if let resolvedReviewCount = secondarySummary.reviewCount {
             reviewCount = resolvedReviewCount
+        }
+    }
+
+    func claimDailyCheckIn(token: String) async {
+        guard !isClaimingDailyCheckIn else { return }
+        isClaimingDailyCheckIn = true
+        defer { isClaimingDailyCheckIn = false }
+
+        do {
+            let response = try await rewardsService.claimDailyCheckIn(token: token)
+            dailyCheckInStatus = DailyCheckInStatusDTO(
+                checked_in_today: response.checked_in_today,
+                reward_points: response.reward_points,
+                checkin_date: response.checkin_date,
+                checked_in_at: response.checked_in_at
+            )
+            await load(token: token, force: true)
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 }
@@ -202,6 +236,7 @@ struct ProfileCenterView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: UITheme.spacing14) {
                     profileHeaderCard
+                    dailyCheckInEntryCard
                     vipAccessCardLink
                     inviteFriendsCard
                     statsGrid
@@ -519,6 +554,64 @@ struct ProfileCenterView: View {
             )
         }
         .buttonStyle(.plain)
+    }
+
+    private var dailyCheckInEntryCard: some View {
+        let status = viewModel.dailyCheckInStatus
+        let rewardPoints = max(status?.reward_points ?? 0, 0)
+        let checkedIn = status?.checked_in_today ?? false
+
+        return HStack(spacing: UITheme.spacing12) {
+            ZStack {
+                Circle()
+                    .fill(brandGold.opacity(0.14))
+                    .frame(width: 48, height: 48)
+                Image(systemName: checkedIn ? "checkmark.seal.fill" : "calendar.badge.plus")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundStyle(brandGold)
+            }
+
+            VStack(alignment: .leading, spacing: UITheme.spacing4) {
+                Text("DAILY CHECK-IN")
+                    .font(.caption.weight(.black))
+                    .tracking(2.2)
+                    .foregroundStyle(Color.white.opacity(0.5))
+                Text(checkedIn ? "Today's points already claimed." : "Check in now and earn \(rewardPoints) points.")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.92))
+            }
+
+            Spacer()
+
+            Button {
+                Task {
+                    guard let token = appState.requireAccessToken() else { return }
+                    await viewModel.claimDailyCheckIn(token: token)
+                }
+            } label: {
+                Text(checkedIn ? "Checked In" : "+\(rewardPoints) pts")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(checkedIn ? Color.white.opacity(0.55) : Color.black)
+                    .padding(.horizontal, UITheme.spacing14)
+                    .padding(.vertical, UITheme.spacing10)
+                    .background(checkedIn ? Color.white.opacity(0.08) : brandGold)
+                    .clipShape(Capsule())
+            }
+            .disabled(checkedIn || viewModel.isClaimingDailyCheckIn)
+        }
+        .padding(UITheme.spacing16)
+        .background(
+            LinearGradient(
+                colors: [cardBG.opacity(0.98), Color.white.opacity(0.02)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: UITheme.panelCornerRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: UITheme.panelCornerRadius, style: .continuous)
+                .stroke(brandGold.opacity(0.16), lineWidth: 1)
+        )
     }
 
     private var statsGrid: some View {

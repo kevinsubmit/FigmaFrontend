@@ -32,7 +32,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CardGiftcard
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.NorthEast
@@ -53,6 +55,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -79,6 +82,7 @@ import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.ProfileCenterViewModel
 import com.nailsdash.android.utils.AssetUrlResolver
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 private data class ProfileStatItem(
     val title: String,
@@ -113,6 +117,7 @@ fun ProfileScreen(
     profileCenterViewModel: ProfileCenterViewModel = viewModel(),
 ) {
     val bearerToken = sessionViewModel.accessTokenOrNull()
+    val uiScope = rememberCoroutineScope()
     var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(bearerToken) {
@@ -205,6 +210,98 @@ fun ProfileScreen(
                         maskedPhone = maskedPhone,
                         avatarUrl = avatarUrl,
                     )
+                }
+
+                item {
+                    val dailyStatus = profileCenterViewModel.dailyCheckInStatus
+                    val rewardPoints = maxOf(dailyStatus?.reward_points ?: 0, 0)
+                    val checkedInToday = dailyStatus?.checked_in_today == true
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = ProfileCardBackground),
+                        border = BorderStroke(1.dp, ProfileGold.copy(alpha = 0.16f)),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    Brush.linearGradient(
+                                        colors = listOf(
+                                            ProfileCardBackground.copy(alpha = 0.98f),
+                                            Color.White.copy(alpha = 0.02f),
+                                        ),
+                                    ),
+                                )
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .background(ProfileGold.copy(alpha = 0.14f), CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = if (checkedInToday) Icons.Filled.CheckCircle else Icons.Filled.CalendarMonth,
+                                    contentDescription = null,
+                                    tint = ProfileGold,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(
+                                    text = "DAILY CHECK-IN",
+                                    style = MaterialTheme.typography.labelSmall.copy(
+                                        fontWeight = FontWeight.Black,
+                                        letterSpacing = 2.sp,
+                                    ),
+                                    color = ProfileMutedText,
+                                )
+                                Text(
+                                    text = if (checkedInToday) {
+                                        "Today's points already claimed."
+                                    } else {
+                                        "Check in now and earn $rewardPoints points."
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = ProfilePrimaryText.copy(alpha = 0.92f),
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(if (checkedInToday) Color.White.copy(alpha = 0.08f) else ProfileGold)
+                                    .clickable(
+                                        enabled = !checkedInToday && !profileCenterViewModel.isClaimingDailyCheckIn && bearerToken != null,
+                                        onClick = {
+                                            if (bearerToken != null) {
+                                                uiScope.launch {
+                                                    profileCenterViewModel.claimDailyCheckIn(bearerToken)
+                                                }
+                                            }
+                                        },
+                                    )
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                            ) {
+                                Text(
+                                    text = when {
+                                        profileCenterViewModel.isClaimingDailyCheckIn -> "Checking..."
+                                        checkedInToday -> "Checked In"
+                                        else -> "+$rewardPoints pts"
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = if (checkedInToday) Color.White.copy(alpha = 0.55f) else Color.Black,
+                                )
+                            }
+                        }
+                    }
                 }
 
                 item {

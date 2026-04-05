@@ -61,6 +61,12 @@ class ProfileCenterViewModel(application: Application) : AndroidViewModel(applic
     var vipStatus by mutableStateOf<VipStatus?>(null)
         private set
 
+    var dailyCheckInStatus by mutableStateOf<DailyCheckInStatus?>(null)
+        private set
+
+    var isClaimingDailyCheckIn by mutableStateOf(false)
+        private set
+
     var isLoading by mutableStateOf(false)
         private set
 
@@ -94,6 +100,9 @@ class ProfileCenterViewModel(application: Application) : AndroidViewModel(applic
             errorMessage = null
             isLoading = false
 
+            profileRepository.getDailyCheckInStatus(bearerToken)
+                .onSuccess { dailyCheckInStatus = it }
+
             val secondarySummary = profileRepository.getProfileCenterSecondarySummary(bearerToken)
             if (requestVersion != loadRequestVersion) return@launch
 
@@ -115,6 +124,20 @@ class ProfileCenterViewModel(application: Application) : AndroidViewModel(applic
         summary.couponCount?.let { couponCount = it }
         summary.giftBalance?.let { giftBalance = it }
         summary.reviewCount?.let { reviewCount = it }
+    }
+
+    fun claimDailyCheckIn(bearerToken: String) {
+        if (isClaimingDailyCheckIn) return
+        isClaimingDailyCheckIn = true
+        viewModelScope.launch {
+            profileRepository.claimDailyCheckIn(bearerToken)
+                .onSuccess {
+                    errorMessage = null
+                    load(bearerToken, force = true)
+                }
+                .onFailure { errorMessage = it.message }
+            isClaimingDailyCheckIn = false
+        }
     }
 }
 
