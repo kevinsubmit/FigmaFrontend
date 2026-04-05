@@ -50,7 +50,8 @@ const getHeaderValue = (headers: any, headerName: string): string | null => {
     return direct.trim();
   }
   if (typeof headers.get === 'function') {
-    const fromGetter = headers.get(headerName) ?? headers.get(normalizedName);
+    const fromGetter =
+      headers.get.call(headers, headerName) ?? headers.get.call(headers, normalizedName);
     if (typeof fromGetter === 'string' && fromGetter.trim()) {
       return fromGetter.trim();
     }

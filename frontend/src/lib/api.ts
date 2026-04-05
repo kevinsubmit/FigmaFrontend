@@ -131,7 +131,8 @@ const getHeaderValue = (headers: unknown, headerName: string): string | null => 
 
   const getter = (headersRecord as { get?: (name: string) => unknown }).get;
   if (typeof getter === 'function') {
-    const fromGetter = getter(headerName) ?? getter(normalizedName);
+    const boundGetter = getter.bind(headersRecord) as (name: string) => unknown;
+    const fromGetter = boundGetter(headerName) ?? boundGetter(normalizedName);
     if (typeof fromGetter === 'string' && fromGetter.trim()) {
       return fromGetter.trim();
     }
