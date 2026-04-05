@@ -111,6 +111,9 @@ class AppSessionViewModel(application: Application) : AndroidViewModel(applicati
     var appointmentsRefreshVersion by mutableStateOf(0L)
         private set
 
+    var profileSummaryRefreshVersion by mutableStateOf(0L)
+        private set
+
     var bookingStyleReference by mutableStateOf<BookingStyleReference?>(null)
         private set
 
@@ -128,6 +131,10 @@ class AppSessionViewModel(application: Application) : AndroidViewModel(applicati
 
     fun requestAppointmentsRefresh() {
         appointmentsRefreshVersion = System.currentTimeMillis()
+    }
+
+    fun requestProfileSummaryRefresh() {
+        profileSummaryRefreshVersion = System.currentTimeMillis()
     }
 
     fun refreshSession() {

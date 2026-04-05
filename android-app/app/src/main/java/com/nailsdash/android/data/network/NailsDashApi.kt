@@ -12,6 +12,8 @@ import com.nailsdash.android.data.model.AppNotification
 import com.nailsdash.android.data.model.AuthUser
 import com.nailsdash.android.data.model.CouponTemplate
 import com.nailsdash.android.data.model.CountDTO
+import com.nailsdash.android.data.model.DailyCheckInClaimResponse
+import com.nailsdash.android.data.model.DailyCheckInStatus
 import com.nailsdash.android.data.model.FavoriteState
 import com.nailsdash.android.data.model.GiftCard
 import com.nailsdash.android.data.model.GiftCardClaimRequest
@@ -331,6 +333,16 @@ interface NailsDashApi {
         @Query("skip") skip: Int,
         @Query("limit") limit: Int,
     ): List<PointTransaction>
+
+    @GET("points/daily-checkin/status")
+    suspend fun getDailyCheckInStatus(
+        @Header("Authorization") bearerToken: String,
+    ): DailyCheckInStatus
+
+    @POST("points/daily-checkin")
+    suspend fun claimDailyCheckIn(
+        @Header("Authorization") bearerToken: String,
+    ): DailyCheckInClaimResponse
 
     @GET("coupons/exchangeable")
     suspend fun getExchangeableCoupons(@Header("Authorization") bearerToken: String): List<CouponTemplate>

@@ -216,6 +216,9 @@ struct ProfileCenterView: View {
         .tint(brandGold)
         .task { await loadIfNeeded() }
         .refreshable { await reload() }
+        .onChange(of: appState.profileSummaryRefreshID) { _ in
+            Task { await reload() }
+        }
         .onChange(of: viewModel.errorMessage) { value in
             guard let value, !value.isEmpty else { return }
             alertMessage = value

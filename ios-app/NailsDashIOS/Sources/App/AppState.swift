@@ -90,6 +90,7 @@ final class AppState: ObservableObject {
     @Published var currentUser: AuthUser? = nil
     @Published var selectedTab: AppTab = .home
     @Published var appointmentsTabRefreshID = UUID()
+    @Published var profileSummaryRefreshID = UUID()
     @Published var bookingStyleReference: BookingStyleReference? = nil
     @Published var bookOpenedFromStyleReference: Bool = false
     @Published var bookTabResetID = UUID()
@@ -259,6 +260,10 @@ final class AppState: ObservableObject {
 
     func requestAppointmentsRefresh() {
         appointmentsTabRefreshID = UUID()
+    }
+
+    func requestProfileSummaryRefresh() {
+        profileSummaryRefreshID = UUID()
     }
 
     func requireAccessToken() -> String? {

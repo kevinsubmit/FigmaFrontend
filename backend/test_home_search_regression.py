@@ -49,6 +49,7 @@ TRUNCATE_TABLES: Sequence[str] = (
     "backend_users",
     "coupon_phone_grants",
     "coupons",
+    "daily_checkins",
     "gift_card_transactions",
     "gift_cards",
     "home_feed_theme_settings",

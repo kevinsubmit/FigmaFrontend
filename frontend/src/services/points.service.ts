@@ -17,6 +17,19 @@ export interface PointTransaction {
   created_at: string;
 }
 
+export interface DailyCheckInStatus {
+  checked_in_today: boolean;
+  reward_points: number;
+  checkin_date: string;
+  checked_in_at?: string | null;
+}
+
+export interface DailyCheckInClaimResponse extends DailyCheckInStatus {
+  awarded_points: number;
+  available_points: number;
+  total_points: number;
+}
+
 class PointsService {
   /**
    * Get user's points balance
@@ -34,6 +47,16 @@ class PointsService {
       '/points/transactions',
       { params: { skip, limit } }
     );
+    return response.data;
+  }
+
+  async getDailyCheckInStatus(token: string): Promise<DailyCheckInStatus> {
+    const response = await apiClient.get<DailyCheckInStatus>('/points/daily-checkin/status');
+    return response.data;
+  }
+
+  async claimDailyCheckIn(token: string): Promise<DailyCheckInClaimResponse> {
+    const response = await apiClient.post<DailyCheckInClaimResponse>('/points/daily-checkin');
     return response.data;
   }
 

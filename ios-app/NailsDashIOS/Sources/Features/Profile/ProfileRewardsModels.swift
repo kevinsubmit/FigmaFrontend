@@ -16,6 +16,23 @@ struct PointTransactionDTO: Decodable, Identifiable {
     let created_at: String
 }
 
+struct DailyCheckInStatusDTO: Decodable {
+    let checked_in_today: Bool
+    let reward_points: Int
+    let checkin_date: String
+    let checked_in_at: String?
+}
+
+struct DailyCheckInClaimResponseDTO: Decodable {
+    let checked_in_today: Bool
+    let reward_points: Int
+    let awarded_points: Int
+    let checkin_date: String
+    let checked_in_at: String?
+    let available_points: Int
+    let total_points: Int
+}
+
 struct CouponTemplateDTO: Decodable {
     let id: Int
     let name: String

@@ -17,6 +17,7 @@ struct PointsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: UITheme.spacing16) {
                     pointsHeroCard
+                    dailyCheckInCard
 
                     VStack(alignment: .leading, spacing: UITheme.spacing10) {
                         UnifiedSectionHeader(title: "EXCHANGE COUPONS")
@@ -128,11 +129,85 @@ struct PointsView: View {
         await viewModel.exchange(token: token, couponID: couponID)
     }
 
+    private func claimDailyCheckIn() async {
+        guard let token = appState.requireAccessToken() else { return }
+        let awarded = await viewModel.claimDailyCheckIn(token: token)
+        if awarded {
+            appState.requestProfileSummaryRefresh()
+        }
+    }
+
     private func loadMoreTransactionsIfNeeded(currentIndex: Int) async {
         let thresholdIndex = max(viewModel.transactions.count - 4, 0)
         guard currentIndex >= thresholdIndex else { return }
         guard let token = appState.requireAccessToken() else { return }
         await viewModel.loadMoreTransactions(token: token)
+    }
+
+    @ViewBuilder
+    private var dailyCheckInCard: some View {
+        let status = viewModel.dailyCheckInStatus
+        let rewardPoints = max(status?.reward_points ?? 0, 0)
+        let checkedIn = status?.checked_in_today ?? false
+
+        VStack(alignment: .leading, spacing: UITheme.spacing12) {
+            HStack(alignment: .center, spacing: UITheme.spacing10) {
+                ZStack {
+                    Circle()
+                        .fill(brandGold.opacity(0.14))
+                        .frame(width: 42, height: 42)
+                    Image(systemName: checkedIn ? "checkmark.seal.fill" : "calendar.badge.plus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(brandGold)
+                }
+
+                VStack(alignment: .leading, spacing: UITheme.spacing4) {
+                    Text("DAILY CHECK-IN")
+                        .font(.caption.weight(.black))
+                        .tracking(2.2)
+                        .foregroundStyle(.secondary)
+                    Text(checkedIn ? "Come back tomorrow for more points." : "Check in today and earn \(rewardPoints) points.")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.92))
+                }
+
+                Spacer()
+
+                Button {
+                    Task { await claimDailyCheckIn() }
+                } label: {
+                    Text(checkedIn ? "Checked In" : "+\(rewardPoints) pts")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(checkedIn ? Color.white.opacity(0.55) : Color.black)
+                        .padding(.horizontal, UITheme.spacing14)
+                        .padding(.vertical, UITheme.spacing10)
+                        .background(checkedIn ? Color.white.opacity(0.08) : brandGold)
+                        .clipShape(Capsule())
+                }
+                .disabled(checkedIn || viewModel.isClaimingDailyCheckIn)
+            }
+
+            if let checkedInAt = status?.checked_in_at, checkedIn {
+                Text("Today's check-in completed at \(formatCheckInTime(checkedInAt)).")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, UITheme.spacing14)
+        .padding(.vertical, UITheme.spacing14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBG)
+        .clipShape(RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner))
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(brandGold.opacity(0.32))
+                .frame(height: UITheme.spacing1)
+                .clipShape(RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner))
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: RewardsVisualTokens.cardCorner)
+                .stroke(brandGold.opacity(RewardsVisualTokens.mediumBorderOpacity), lineWidth: 1)
+        )
     }
 
     @ViewBuilder
@@ -326,6 +401,13 @@ struct PointsView: View {
         }
     }
 
+    private func formatCheckInTime(_ rawValue: String) -> String {
+        guard let date = PointsCheckInDateParser.parse(rawValue) else {
+            return "today"
+        }
+        return date.formatted(date: .omitted, time: .shortened)
+    }
+
     private func historyRow(item: PointTransactionDTO, isLast: Bool) -> some View {
         let isPositive = item.type.lowercased() == "earn" || item.amount >= 0
 
@@ -385,5 +467,41 @@ struct PointsView: View {
             return "Points update"
         }
         return normalized.localizedCapitalized
+    }
+}
+
+private enum PointsCheckInDateParser {
+    private static let fractional: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let standard: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    static func parse(_ rawValue: String) -> Date? {
+        let trimmed = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let date = fractional.date(from: trimmed) {
+            return date
+        }
+        if let date = standard.date(from: trimmed) {
+            return date
+        }
+        if !trimmed.hasSuffix("Z") {
+            let normalized = trimmed.contains("T")
+                ? "\(trimmed)Z"
+                : trimmed.replacingOccurrences(of: " ", with: "T") + "Z"
+            if let date = fractional.date(from: normalized) {
+                return date
+            }
+            if let date = standard.date(from: normalized) {
+                return date
+            }
+        }
+        return nil
     }
 }

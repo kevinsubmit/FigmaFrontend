@@ -21,6 +21,7 @@ from app.models.referral import Referral
 from app.models.pin import Pin, Tag, pin_tags
 from app.models.pin_favorite import PinFavorite
 from app.models.gift_card import GiftCard, GiftCardTransaction
+from app.models.daily_checkin import DailyCheckIn
 from app.models.user_points import UserPoints
 from app.models.point_transaction import PointTransaction, TransactionType
 from app.models.coupon import Coupon, CouponType, CouponCategory
@@ -41,4 +42,4 @@ from app.models.store_blocked_slot import StoreBlockedSlot
 from app.models.push_device_token import PushDeviceToken
 from app.models.app_version_policy import AppVersionPolicy
 
-__all__ = ["User", "VerificationCode", "Store", "StoreImage", "Service", "ServiceCatalog", "Appointment", "AppointmentStatus", "Technician", "StoreHours", "StoreHoliday", "TechnicianUnavailable", "Notification", "NotificationType", "Review", "ReviewReply", "AppointmentReminder", "ReminderType", "ReminderStatus", "StoreFavorite", "StorePortfolio", "Referral", "Pin", "Tag", "pin_tags", "PinFavorite", "GiftCard", "GiftCardTransaction", "UserPoints", "PointTransaction", "TransactionType", "Coupon", "CouponType", "CouponCategory", "UserCoupon", "CouponStatus", "CouponPhoneGrant", "Promotion", "PromotionService", "PromotionScope", "PromotionDiscountType", "StoreAdminApplication", "UserRiskState", "RiskEvent", "HomeFeedThemeSetting", "SecurityIPRule", "SecurityBlockLog", "SystemLog", "AppointmentStaffSplit", "AppointmentServiceItem", "AppointmentGroup", "AppointmentSettlementEvent", "VIPLevelConfig", "StoreBlockedSlot", "PushDeviceToken", "AppVersionPolicy"]
+__all__ = ["User", "VerificationCode", "Store", "StoreImage", "Service", "ServiceCatalog", "Appointment", "AppointmentStatus", "Technician", "StoreHours", "StoreHoliday", "TechnicianUnavailable", "Notification", "NotificationType", "Review", "ReviewReply", "AppointmentReminder", "ReminderType", "ReminderStatus", "StoreFavorite", "StorePortfolio", "Referral", "Pin", "Tag", "pin_tags", "PinFavorite", "GiftCard", "GiftCardTransaction", "DailyCheckIn", "UserPoints", "PointTransaction", "TransactionType", "Coupon", "CouponType", "CouponCategory", "UserCoupon", "CouponStatus", "CouponPhoneGrant", "Promotion", "PromotionService", "PromotionScope", "PromotionDiscountType", "StoreAdminApplication", "UserRiskState", "RiskEvent", "HomeFeedThemeSetting", "SecurityIPRule", "SecurityBlockLog", "SystemLog", "AppointmentStaffSplit", "AppointmentServiceItem", "AppointmentGroup", "AppointmentSettlementEvent", "VIPLevelConfig", "StoreBlockedSlot", "PushDeviceToken", "AppVersionPolicy"]

@@ -8,6 +8,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.nailsdash.android.data.model.Appointment
 import com.nailsdash.android.data.model.CouponTemplate
+import com.nailsdash.android.data.model.DailyCheckInStatus
 import com.nailsdash.android.data.model.GiftCard
 import com.nailsdash.android.data.model.PointTransaction
 import com.nailsdash.android.data.model.PointsBalance
@@ -128,10 +129,16 @@ class PointsViewModel(application: Application) : AndroidViewModel(application) 
     var transactions by mutableStateOf(emptyList<PointTransaction>())
         private set
 
+    var dailyCheckInStatus by mutableStateOf<DailyCheckInStatus?>(null)
+        private set
+
     var exchangeables by mutableStateOf(emptyList<CouponTemplate>())
         private set
 
     var isRedeemingCouponId by mutableStateOf<Int?>(null)
+        private set
+
+    var isClaimingDailyCheckIn by mutableStateOf(false)
         private set
 
     var actionMessage by mutableStateOf<String?>(null)
@@ -159,12 +166,41 @@ class PointsViewModel(application: Application) : AndroidViewModel(application) 
                 val b = async { repository.getPointsBalance(bearerToken) }
                 val t = async { repository.getPointTransactions(bearerToken, limit = 50) }
                 val e = async { repository.getExchangeableCoupons(bearerToken) }
+                val c = async { repository.getDailyCheckInStatus(bearerToken) }
 
                 b.await().onSuccess { balance = it }.onFailure { errorMessage = it.message }
                 t.await().onSuccess { transactions = it }.onFailure { errorMessage = it.message }
                 e.await().onSuccess { exchangeables = it }.onFailure { errorMessage = it.message }
+                c.await().onSuccess { dailyCheckInStatus = it }.onFailure { errorMessage = it.message }
             }
             isLoading = false
+        }
+    }
+
+    suspend fun claimDailyCheckIn(bearerToken: String): Boolean {
+        if (isClaimingDailyCheckIn) return false
+        isClaimingDailyCheckIn = true
+        return try {
+            var awardedPoints = 0
+            repository.claimDailyCheckIn(bearerToken)
+                .onSuccess { response ->
+                    awardedPoints = response.awarded_points
+                    actionMessage = if (response.awarded_points > 0) {
+                        "Checked in successfully. +${response.awarded_points} points."
+                    } else {
+                        "Already checked in today."
+                    }
+                    errorMessage = null
+                }
+                .onFailure { errorMessage = it.message }
+                .isSuccess.also { success ->
+                    if (success) {
+                        load(bearerToken, force = true)
+                    }
+                }
+            awardedPoints > 0
+        } finally {
+            isClaimingDailyCheckIn = false
         }
     }
 

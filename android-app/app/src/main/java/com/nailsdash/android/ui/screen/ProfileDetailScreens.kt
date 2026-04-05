@@ -298,6 +298,7 @@ fun PointsScreen(
     pointsViewModel: PointsViewModel = viewModel(),
 ) {
     val token = sessionViewModel.accessTokenOrNull()
+    val uiScope = rememberCoroutineScope()
     var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(token) {
@@ -471,6 +472,107 @@ fun PointsScreen(
                                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                                         color = RewardsSecondaryText,
                                     )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    val dailyStatus = pointsViewModel.dailyCheckInStatus
+                    val rewardPoints = maxOf(dailyStatus?.reward_points ?: 0, 0)
+                    val checkedInToday = dailyStatus?.checked_in_today == true
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, RewardsGold.copy(alpha = 0.18f)),
+                    ) {
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopCenter)
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(RewardsGold.copy(alpha = 0.32f)),
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 14.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .background(RewardsGold.copy(alpha = 0.14f), CircleShape),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = if (checkedInToday) Icons.Filled.CheckCircle else Icons.Filled.CalendarMonth,
+                                        contentDescription = null,
+                                        tint = RewardsGold,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Text(
+                                        text = "DAILY CHECK-IN",
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontWeight = FontWeight.Black,
+                                            letterSpacing = 2.sp,
+                                        ),
+                                        color = RewardsSecondaryText,
+                                    )
+                                    Text(
+                                        text = if (checkedInToday) {
+                                            "Come back tomorrow for more points."
+                                        } else {
+                                            "Check in today and earn $rewardPoints points."
+                                        },
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        color = RewardsPrimaryText.copy(alpha = 0.92f),
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(999.dp))
+                                        .background(if (checkedInToday) Color.White.copy(alpha = 0.08f) else RewardsGold)
+                                        .clickable(
+                                            enabled = !checkedInToday && !pointsViewModel.isClaimingDailyCheckIn && token != null,
+                                            onClick = {
+                                                if (token != null) {
+                                                    uiScope.launch {
+                                                        val awarded = pointsViewModel.claimDailyCheckIn(token)
+                                                        if (awarded) {
+                                                            sessionViewModel.requestProfileSummaryRefresh()
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                        )
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    if (pointsViewModel.isClaimingDailyCheckIn) {
+                                        CircularProgressIndicator(
+                                            color = if (checkedInToday) RewardsGold else Color.Black,
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp,
+                                        )
+                                    } else {
+                                        Text(
+                                            text = if (checkedInToday) "Checked In" else "+$rewardPoints pts",
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = if (checkedInToday) RewardsPrimaryText.copy(alpha = 0.55f) else Color.Black,
+                                        )
+                                    }
                                 }
                             }
                         }

@@ -1,12 +1,12 @@
 # Backend Smoke 覆盖清单
 
-更新时间：2026-03-21
+更新时间：2026-04-05
 
 ## 当前入口
 
 - 统一执行入口：`backend/run_regression_smokes.py`
 - CI 工作流：`.github/workflows/backend-payment-regression.yml`
-- 当前 CI 实际覆盖：`13` 条真实链路 smoke
+- 当前 CI 实际覆盖：`14` 条真实链路 smoke
 
 执行命令：
 
@@ -294,6 +294,25 @@ python run_regression_smokes.py
 - `GET /pins/theme/public`
 - `GET /pins`
 
+### 14. daily-checkin
+
+脚本：`backend/test_daily_checkin_regression.py`
+
+覆盖：
+
+- 今日签到状态查询
+- 首次签到成功加分
+- 重复签到幂等保护
+- 积分余额联动
+- 积分流水写入 `Daily check-in`
+
+对应主模块：
+
+- `GET /points/daily-checkin/status`
+- `POST /points/daily-checkin`
+- `points/balance`
+- `points/transactions`
+
 ## 仓库里已有，但未纳入统一 runner / CI 的脚本
 
 当前无。
@@ -319,7 +338,7 @@ python run_regression_smokes.py
 
 ## 当前结论
 
-当前后端 smoke / CI 已经覆盖了最核心的 13 条消费者主链路：
+当前后端 smoke / CI 已经覆盖了最核心的 14 条消费者主链路：
 
 - 预约创建与改期取消
 - 团单与技师分账
@@ -334,6 +353,7 @@ python run_regression_smokes.py
 - 技师改派
 - 预约服务明细增删汇总
 - 首页 tags/theme/search
+- 每日签到积分
 
 这套覆盖已经足以拦住“主链路直接坏掉”的大部分回归。
 

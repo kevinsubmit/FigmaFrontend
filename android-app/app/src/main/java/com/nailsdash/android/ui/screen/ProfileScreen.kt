@@ -120,6 +120,11 @@ fun ProfileScreen(
             profileCenterViewModel.loadIfNeeded(bearerToken)
         }
     }
+    LaunchedEffect(bearerToken, sessionViewModel.profileSummaryRefreshVersion) {
+        if (bearerToken != null && sessionViewModel.profileSummaryRefreshVersion != 0L) {
+            profileCenterViewModel.load(bearerToken, force = true)
+        }
+    }
     LaunchedEffect(profileCenterViewModel.errorMessage) {
         val message = profileCenterViewModel.errorMessage?.trim().orEmpty()
         if (message.isNotEmpty()) {

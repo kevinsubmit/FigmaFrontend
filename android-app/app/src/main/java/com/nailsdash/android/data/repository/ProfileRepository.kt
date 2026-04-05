@@ -4,6 +4,8 @@ import com.nailsdash.android.core.cache.TimedMemoryCache
 import com.nailsdash.android.core.network.toUserMessage
 import com.nailsdash.android.data.model.CountDTO
 import com.nailsdash.android.data.model.CouponTemplate
+import com.nailsdash.android.data.model.DailyCheckInClaimResponse
+import com.nailsdash.android.data.model.DailyCheckInStatus
 import com.nailsdash.android.data.model.GiftCard
 import com.nailsdash.android.data.model.GiftCardClaimRequest
 import com.nailsdash.android.data.model.GiftCardRevokeResponse
@@ -124,6 +126,23 @@ class ProfileRepository {
             .mapFailure()
             .onSuccess { pointTransactionsCache.put(cacheKey, it) }
     }
+
+    suspend fun getDailyCheckInStatus(bearerToken: String): Result<DailyCheckInStatus> {
+        val cacheKey = TokenKey(bearerToken)
+        dailyCheckInStatusCache.get(cacheKey)?.let { return Result.success(it) }
+        return runCatching { api.getDailyCheckInStatus(bearerToken) }
+            .mapFailure()
+            .onSuccess { dailyCheckInStatusCache.put(cacheKey, it) }
+    }
+
+    suspend fun claimDailyCheckIn(bearerToken: String): Result<DailyCheckInClaimResponse> =
+        runCatching { api.claimDailyCheckIn(bearerToken) }
+            .mapFailure()
+            .onSuccess {
+                pointsBalanceCache.clear()
+                pointTransactionsCache.clear()
+                dailyCheckInStatusCache.clear()
+            }
 
     suspend fun getExchangeableCoupons(bearerToken: String): Result<List<CouponTemplate>> {
         val cacheKey = TokenKey(bearerToken)
@@ -355,6 +374,7 @@ class ProfileRepository {
         private const val LONG_TTL_MS = 60 * 1000L
         private val unreadCountCache = TimedMemoryCache<TokenKey, UnreadCount>(SHORT_TTL_MS, maxEntries = 4)
         private val pointsBalanceCache = TimedMemoryCache<TokenKey, PointsBalance>(SHORT_TTL_MS, maxEntries = 4)
+        private val dailyCheckInStatusCache = TimedMemoryCache<TokenKey, DailyCheckInStatus>(SHORT_TTL_MS, maxEntries = 4)
         private val giftCardSummaryCache = TimedMemoryCache<GiftSummaryKey, GiftCardSummary>(SHORT_TTL_MS, maxEntries = 4)
         private val pointTransactionsCache = TimedMemoryCache<TokenLimitKey, List<PointTransaction>>(SHORT_TTL_MS, maxEntries = 8)
         private val exchangeableCouponsCache = TimedMemoryCache<TokenKey, List<CouponTemplate>>(LONG_TTL_MS, maxEntries = 4)

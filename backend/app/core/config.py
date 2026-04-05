@@ -3,6 +3,7 @@ Application configuration settings
 """
 from pydantic_settings import BaseSettings
 from typing import List
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from functools import lru_cache
 
 
@@ -28,6 +29,8 @@ class Settings(BaseSettings):
     EMBEDDED_SCHEDULER_ENABLED: str = ""
     ASYNC_PUSH_QUEUE_SIZE: int = 2000
     REMINDER_PROCESS_BATCH_SIZE: int = 200
+    DAILY_CHECKIN_REWARD_POINTS: int = 5
+    DAILY_CHECKIN_TIMEZONE: str = "America/New_York"
     
     # Database
     DATABASE_URL: str
@@ -118,6 +121,19 @@ class Settings(BaseSettings):
         if normalized in {"app", "redirect", "x_accel_redirect"}:
             return normalized
         return "app"
+
+    @property
+    def daily_checkin_reward_points(self) -> int:
+        return max(int(self.DAILY_CHECKIN_REWARD_POINTS), 0)
+
+    @property
+    def daily_checkin_timezone(self) -> str:
+        candidate = (self.DAILY_CHECKIN_TIMEZONE or "America/New_York").strip() or "America/New_York"
+        try:
+            ZoneInfo(candidate)
+            return candidate
+        except ZoneInfoNotFoundError:
+            return "America/New_York"
 
     @property
     def web_log_level(self) -> str:

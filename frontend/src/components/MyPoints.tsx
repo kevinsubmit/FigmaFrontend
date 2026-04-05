@@ -1,7 +1,7 @@
 import { ArrowLeft, Coins, TrendingUp, TrendingDown } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Loader } from './ui/Loader';
-import pointsService, { PointsBalance, PointTransaction } from '../services/points.service';
+import pointsService, { DailyCheckInStatus, PointsBalance, PointTransaction } from '../services/points.service';
 import couponsService, { Coupon } from '../services/coupons.service';
 
 interface MyPointsProps {
@@ -12,8 +12,10 @@ export function MyPoints({ onBack }: MyPointsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [balance, setBalance] = useState<PointsBalance | null>(null);
   const [transactions, setTransactions] = useState<PointTransaction[]>([]);
+  const [dailyCheckInStatus, setDailyCheckInStatus] = useState<DailyCheckInStatus | null>(null);
   const [exchangeableCoupons, setExchangeableCoupons] = useState<Coupon[]>([]);
   const [exchangingCouponId, setExchangingCouponId] = useState<number | null>(null);
+  const [isClaimingDailyCheckIn, setIsClaimingDailyCheckIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,13 +35,15 @@ export function MyPoints({ onBack }: MyPointsProps) {
       }
 
       // Load balance and transactions
-      const [balanceData, transactionsData] = await Promise.all([
+      const [balanceData, transactionsData, checkInStatus] = await Promise.all([
         pointsService.getBalance(token),
         pointsService.getTransactions(token, 0, 50),
+        pointsService.getDailyCheckInStatus(token),
       ]);
 
       setBalance(balanceData);
       setTransactions(transactionsData);
+      setDailyCheckInStatus(checkInStatus);
 
       const couponsData = await couponsService.getExchangeableCoupons(token);
       setExchangeableCoupons(couponsData);
@@ -65,6 +69,26 @@ export function MyPoints({ onBack }: MyPointsProps) {
       setError(err.response?.data?.detail || 'Failed to exchange coupon');
     } finally {
       setExchangingCouponId(null);
+    }
+  };
+
+  const handleDailyCheckIn = async () => {
+    try {
+      const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+      if (!token) {
+        setError('Please login to check in');
+        return;
+      }
+      setIsClaimingDailyCheckIn(true);
+      const result = await pointsService.claimDailyCheckIn(token);
+      await loadPointsData();
+      if (result.awarded_points > 0) {
+        window.dispatchEvent(new CustomEvent('nailsdash:points-updated'));
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to complete daily check-in');
+    } finally {
+      setIsClaimingDailyCheckIn(false);
     }
   };
 
@@ -108,6 +132,39 @@ export function MyPoints({ onBack }: MyPointsProps) {
             Total Earned: {balance.total_points.toLocaleString()}
           </p>
         )}
+      </div>
+
+      <div className="px-4 pt-4">
+        <div className="rounded-xl border border-[#333] bg-[#111] p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 rounded-full bg-[#D4AF37]/10 border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37]">
+              <Coins className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-black tracking-[0.22em] text-gray-400">DAILY CHECK-IN</p>
+              <p className="text-sm font-semibold text-white mt-1">
+                {dailyCheckInStatus?.checked_in_today
+                  ? 'Come back tomorrow for more points.'
+                  : `Check in today and earn ${dailyCheckInStatus?.reward_points ?? 0} points.`}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleDailyCheckIn}
+            disabled={dailyCheckInStatus?.checked_in_today || isClaimingDailyCheckIn}
+            className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap ${
+              dailyCheckInStatus?.checked_in_today
+                ? 'bg-white/10 text-white/55'
+                : 'bg-[#D4AF37] text-black'
+            } disabled:opacity-100`}
+          >
+            {isClaimingDailyCheckIn
+              ? 'Checking...'
+              : dailyCheckInStatus?.checked_in_today
+                ? 'Checked In'
+                : `+${dailyCheckInStatus?.reward_points ?? 0} pts`}
+          </button>
+        </div>
       </div>
 
       {error && (

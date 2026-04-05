@@ -17,6 +17,23 @@ data class PointTransaction(
     val created_at: String,
 )
 
+data class DailyCheckInStatus(
+    val checked_in_today: Boolean,
+    val reward_points: Int,
+    val checkin_date: String,
+    val checked_in_at: String? = null,
+)
+
+data class DailyCheckInClaimResponse(
+    val checked_in_today: Boolean,
+    val reward_points: Int,
+    val awarded_points: Int,
+    val checkin_date: String,
+    val checked_in_at: String? = null,
+    val available_points: Int,
+    val total_points: Int,
+)
+
 data class CouponTemplate(
     val id: Int,
     val name: String,

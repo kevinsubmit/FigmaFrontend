@@ -15,6 +15,7 @@ struct ProfileRewardsService {
         static let unreadCount: TimeInterval = 20
         static let pointsBalance: TimeInterval = 30
         static let pointTransactions: TimeInterval = 30
+        static let dailyCheckIn: TimeInterval = 15
         static let coupons: TimeInterval = 30
         static let giftCards: TimeInterval = 30
         static let giftCardSummary: TimeInterval = 30
@@ -30,6 +31,7 @@ struct ProfileRewardsService {
     private static let unreadCountCache = TimedAsyncRequestCache<String, Int>()
     private static let pointsBalanceCache = TimedAsyncRequestCache<String, PointsBalanceDTO>()
     private static let pointTransactionsCache = TimedAsyncRequestCache<String, [PointTransactionDTO]>()
+    private static let dailyCheckInStatusCache = TimedAsyncRequestCache<String, DailyCheckInStatusDTO>()
     private static let couponsCache = TimedAsyncRequestCache<String, [UserCouponDTO]>()
     private static let giftCardsCache = TimedAsyncRequestCache<String, [GiftCardDTO]>()
     private static let giftCardSummaryCache = TimedAsyncRequestCache<String, GiftCardSummaryDTO>()
@@ -66,6 +68,23 @@ struct ProfileRewardsService {
         return try await Self.pointTransactionsCache.value(for: cacheKey, ttl: CacheTTL.pointTransactions) {
             try await APIClient.shared.request(path: path, token: token)
         }
+    }
+
+    func getDailyCheckInStatus(token: String) async throws -> DailyCheckInStatusDTO {
+        try await Self.dailyCheckInStatusCache.value(for: token, ttl: CacheTTL.dailyCheckIn) {
+            try await APIClient.shared.request(path: "/points/daily-checkin/status", token: token)
+        }
+    }
+
+    func claimDailyCheckIn(token: String) async throws -> DailyCheckInClaimResponseDTO {
+        let response: DailyCheckInClaimResponseDTO = try await APIClient.shared.request(
+            path: "/points/daily-checkin",
+            method: "POST",
+            token: token
+        )
+        Self.invalidatePoints(for: token)
+        Self.dailyCheckInStatusCache.removeValue(for: token)
+        return response
     }
 
     func getMyCoupons(token: String, status: String? = nil, skip: Int = 0, limit: Int = 50) async throws -> [UserCouponDTO] {
@@ -396,13 +415,18 @@ struct ProfileRewardsService {
     }
 
     private static func invalidatePointsAndCoupons(for token: String) {
-        pointsBalanceCache.removeValue(for: token)
-        pointTransactionsCache.removeValues { key in
-            key.hasPrefix("\(token)|")
-        }
+        invalidatePoints(for: token)
         couponsCache.removeValues { key in
             key.hasPrefix("\(token)|")
         }
         exchangeableCouponsCache.removeValue(for: token)
+    }
+
+    private static func invalidatePoints(for token: String) {
+        pointsBalanceCache.removeValue(for: token)
+        dailyCheckInStatusCache.removeValue(for: token)
+        pointTransactionsCache.removeValues { key in
+            key.hasPrefix("\(token)|")
+        }
     }
 }

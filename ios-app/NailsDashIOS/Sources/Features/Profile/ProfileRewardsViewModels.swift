@@ -14,8 +14,10 @@ func mergeUniqueRows<Row: Identifiable>(existing: [Row], newRows: [Row]) -> [Row
 final class PointsViewModel: ObservableObject {
     @Published var balance: PointsBalanceDTO?
     @Published var transactions: [PointTransactionDTO] = []
+    @Published var dailyCheckInStatus: DailyCheckInStatusDTO?
     @Published var exchangeables: [CouponTemplateDTO] = []
     @Published var isRedeemingCouponID: Int?
+    @Published var isClaimingDailyCheckIn = false
     @Published var actionMessage: String?
     @Published var isLoading = false
     @Published var isLoadingMoreTransactions = false
@@ -51,8 +53,10 @@ final class PointsViewModel: ObservableObject {
                 skip: 0,
                 limit: initialTransactionPageSize
             )
+            async let c = service.getDailyCheckInStatus(token: token)
             balance = try await b
             exchangeables = try await e
+            dailyCheckInStatus = try await c
             let loadedTransactions = try await t
             guard currentRequestToken == transactionsRequestToken else { return }
             transactions = loadedTransactions
@@ -63,6 +67,26 @@ final class PointsViewModel: ObservableObject {
             errorMessage = mapError(err)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func claimDailyCheckIn(token: String) async -> Bool {
+        guard !isClaimingDailyCheckIn else { return false }
+        isClaimingDailyCheckIn = true
+        defer { isClaimingDailyCheckIn = false }
+        do {
+            let response = try await service.claimDailyCheckIn(token: token)
+            actionMessage = response.awarded_points > 0
+                ? "Checked in successfully. +\(response.awarded_points) points."
+                : "Already checked in today."
+            await load(token: token, force: true)
+            return response.awarded_points > 0
+        } catch let err as APIError {
+            errorMessage = mapError(err)
+            return false
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
         }
     }
 

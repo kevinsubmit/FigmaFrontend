@@ -239,6 +239,26 @@ python -m app.reconcile_legacy_db
 python -m app.reconcile_legacy_db --adopt-managed
 ```
 
+如需把历史 SQLite 开发库迁移到当前 Docker/MySQL：
+
+```bash
+# 先确保 docker compose 的 backend / db 已启动
+docker compose up -d db backend backend-scheduler
+
+# 先看源库和目标库表/数据量，不写入
+docker compose exec -T backend python migrate_sqlite_to_mysql.py --dry-run
+
+# 执行 SQLite -> MySQL 迁移
+docker compose exec -T backend python migrate_sqlite_to_mysql.py
+```
+
+建议顺序：
+
+- 先备份 `backend/nailsdash.db`
+- 再备份当前 MySQL
+- 迁移完成后清 Redis 并重启 `backend` / `backend-scheduler`
+- 本地直接跑 `uvicorn` 时，把 `backend/.env` 的 `DATABASE_URL` 也改到 MySQL，避免再次误连 SQLite
+
 ## 测试
 
 ```bash
@@ -502,6 +522,25 @@ python test_reschedule_cancel_regression.py
 CLEANUP_AFTER=0 python test_reschedule_cancel_regression.py
 ```
 
+每日签到积分真实链路 smoke：
+
+```bash
+python test_daily_checkin_regression.py
+```
+
+默认行为：
+
+- 跑前自动清理动态业务数据
+- 自动种最小顾客账号
+- 跑 `daily-checkin status + claim + repeat-claim idempotency + points balance/transactions`
+- 跑后自动再次清理动态业务数据
+
+如需保留回归数据用于人工排查：
+
+```bash
+CLEANUP_AFTER=0 python test_daily_checkin_regression.py
+```
+
 CI 已接入统一 smoke runner：
 
 - GitHub Actions workflow：`Backend Regression Smokes`
@@ -522,11 +561,29 @@ python run_regression_smokes.py
 python run_regression_smokes.py --list
 
 # 只跑部分 smoke
-python run_regression_smokes.py --only payment --only complete-no-show --only availability-constraints --only favorites --only technician-reassignment --only appointment-service-items --only home-search
+python run_regression_smokes.py --only payment --only daily-checkin --only complete-no-show --only availability-constraints --only favorites --only technician-reassignment --only appointment-service-items --only home-search
 
 # 输出机器可读 JSON 结果
 python run_regression_smokes.py --results-file artifacts/consumer-smoke-results.json
 ```
+
+每日签到积分接口：
+
+```bash
+# 查询今天是否已签到
+GET /api/v1/points/daily-checkin/status
+
+# 执行今天签到
+POST /api/v1/points/daily-checkin
+```
+
+接口行为：
+
+- 以后端配置时区为准，默认 `America/New_York`
+- 每个用户每天只能成功签到一次
+- 默认奖励 `5` 积分
+- 重复点击会返回已签到状态，不会重复加分
+- 成功签到后会写入 `point_transactions`，原因是 `Daily check-in`
 
 结果文件当前固定使用：
 
@@ -728,6 +785,8 @@ mypy app/
 | DB_POOL_RECYCLE_SECONDS | 数据库连接回收时间（秒） | 1800 |
 | DB_POOL_PRE_PING | 是否在借出连接前预检查 | True |
 | REDIS_URL | Redis 连接 URL；为空时只使用进程内 TTL 缓存 | redis://localhost:6379/0 |
+| DAILY_CHECKIN_REWARD_POINTS | 每日签到奖励积分 | 5 |
+| DAILY_CHECKIN_TIMEZONE | 每日签到判定时区 | America/New_York |
 | SECRET_KEY | JWT密钥 | - |
 | ALGORITHM | JWT算法 | HS256 |
 | ACCESS_TOKEN_EXPIRE_MINUTES | Access Token过期时间（分钟） | 30 |
