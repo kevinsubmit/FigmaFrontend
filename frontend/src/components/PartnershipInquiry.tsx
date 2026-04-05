@@ -1,12 +1,15 @@
 import { ArrowLeft, Bell, MessageSquare, Share2, Store } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import supportContactService, { DEFAULT_SUPPORT_CONTACT_SETTINGS, openSupportContactUrl } from '../services/supportContact.service';
 
 export function PartnershipInquiry() {
   const navigate = useNavigate();
+  const [contactSettings, setContactSettings] = useState(DEFAULT_SUPPORT_CONTACT_SETTINGS);
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    void supportContactService.getSettings().then(setContactSettings);
   }, []);
 
   return (
@@ -56,13 +59,13 @@ export function PartnershipInquiry() {
               Contact our Partnership Team
             </p>
             <div className="grid grid-cols-2 gap-4">
-              <button className="flex flex-col items-center gap-3 p-6 bg-[#111] border border-[#222] rounded-2xl hover:border-[#25D366]/50 transition-all active:scale-95 group">
+              <button onClick={() => openSupportContactUrl(contactSettings.partnership_whatsapp_url)} className="flex flex-col items-center gap-3 p-6 bg-[#111] border border-[#222] rounded-2xl hover:border-[#25D366]/50 transition-all active:scale-95 group">
                 <div className="w-12 h-12 bg-[#25D366]/10 rounded-full flex items-center justify-center">
                   <MessageSquare className="w-6 h-6 text-[#25D366]" />
                 </div>
                 <span className="text-sm font-bold">WhatsApp</span>
               </button>
-              <button className="flex flex-col items-center gap-3 p-6 bg-[#111] border border-[#222] rounded-2xl hover:border-white/50 transition-all active:scale-95 group">
+              <button onClick={() => openSupportContactUrl(contactSettings.partnership_imessage_url)} className="flex flex-col items-center gap-3 p-6 bg-[#111] border border-[#222] rounded-2xl hover:border-white/50 transition-all active:scale-95 group">
                 <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center">
                   <Share2 className="w-6 h-6 text-white" />
                 </div>

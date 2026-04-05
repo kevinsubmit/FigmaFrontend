@@ -1,12 +1,15 @@
 import { ArrowLeft, ChevronRight, MessageSquare, Star } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import supportContactService, { DEFAULT_SUPPORT_CONTACT_SETTINGS, openSupportContactUrl } from '../services/supportContact.service';
 
 export function FeedbackSupport() {
   const navigate = useNavigate();
+  const [contactSettings, setContactSettings] = useState(DEFAULT_SUPPORT_CONTACT_SETTINGS);
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    void supportContactService.getSettings().then(setContactSettings);
   }, []);
 
   return (
@@ -30,7 +33,7 @@ export function FeedbackSupport() {
         </p>
 
         <div className="space-y-4">
-          <button className="w-full flex items-center gap-4 p-5 bg-[#111] border border-[#222] rounded-2xl hover:bg-[#1a1a1a] transition-all active:scale-[0.98]">
+          <button onClick={() => openSupportContactUrl(contactSettings.feedback_whatsapp_url)} className="w-full flex items-center gap-4 p-5 bg-[#111] border border-[#222] rounded-2xl hover:bg-[#1a1a1a] transition-all active:scale-[0.98]">
             <div className="w-12 h-12 bg-[#25D366]/10 rounded-xl flex items-center justify-center">
               <MessageSquare className="w-6 h-6 text-[#25D366]" />
             </div>
@@ -41,7 +44,7 @@ export function FeedbackSupport() {
             <ChevronRight className="w-5 h-5 text-gray-700" />
           </button>
 
-          <button className="w-full flex items-center gap-4 p-5 bg-[#111] border border-[#222] rounded-2xl hover:bg-[#1a1a1a] transition-all active:scale-[0.98]">
+          <button onClick={() => openSupportContactUrl(contactSettings.feedback_imessage_url)} className="w-full flex items-center gap-4 p-5 bg-[#111] border border-[#222] rounded-2xl hover:bg-[#1a1a1a] transition-all active:scale-[0.98]">
             <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center">
               <MessageSquare className="w-6 h-6 text-blue-500" />
             </div>
@@ -52,7 +55,7 @@ export function FeedbackSupport() {
             <ChevronRight className="w-5 h-5 text-gray-700" />
           </button>
 
-          <button className="w-full flex items-center gap-4 p-5 bg-[#111] border border-[#222] rounded-2xl hover:bg-[#1a1a1a] transition-all active:scale-[0.98]">
+          <button onClick={() => openSupportContactUrl(contactSettings.feedback_instagram_url)} className="w-full flex items-center gap-4 p-5 bg-[#111] border border-[#222] rounded-2xl hover:bg-[#1a1a1a] transition-all active:scale-[0.98]">
             <div className="w-12 h-12 bg-[#D4AF37]/10 rounded-xl flex items-center justify-center">
               <Star className="w-6 h-6 text-[#D4AF37]" />
             </div>

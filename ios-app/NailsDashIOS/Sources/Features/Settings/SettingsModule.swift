@@ -329,12 +329,30 @@ private struct SettingsUpdateResponseDTO: Decodable {
     let message: String
 }
 
+private struct SupportContactSettingsDTO: Decodable {
+    let feedback_whatsapp_url: String
+    let feedback_imessage_url: String
+    let feedback_instagram_url: String
+    let partnership_whatsapp_url: String
+    let partnership_imessage_url: String
+
+    static let defaults = SupportContactSettingsDTO(
+        feedback_whatsapp_url: "https://wa.me/14151234567",
+        feedback_imessage_url: "sms:+14151234567",
+        feedback_instagram_url: "https://instagram.com",
+        partnership_whatsapp_url: "https://wa.me/14151234567",
+        partnership_imessage_url: "sms:+14151234567"
+    )
+}
+
 private struct SettingsService {
     private enum CacheTTL {
         static let currentUser: TimeInterval = 60
+        static let supportContacts: TimeInterval = 300
     }
 
     private static let currentUserCache = TimedAsyncRequestCache<String, AuthUser>()
+    private static let supportContactCache = TimedAsyncRequestCache<String, SupportContactSettingsDTO>()
 
     func getCurrentUser(token: String) async throws -> AuthUser {
         try await Self.currentUserCache.value(for: token, ttl: CacheTTL.currentUser) {
@@ -375,6 +393,12 @@ private struct SettingsService {
 
     func updateSettings(token: String, payload: SettingsUpdateRequestDTO) async throws -> SettingsUpdateResponseDTO {
         try await APIClient.shared.request(path: "/users/settings", method: "PUT", token: token, body: payload)
+    }
+
+    func getSupportContactSettings() async throws -> SupportContactSettingsDTO {
+        try await Self.supportContactCache.value(for: "default", ttl: CacheTTL.supportContacts) {
+            try await APIClient.shared.request(path: "/support-contact")
+        }
     }
 
     func uploadAvatar(
@@ -1359,8 +1383,10 @@ private struct LanguageSettingsView: View {
 private struct FeedbackSupportView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @State private var contactSettings = SupportContactSettingsDTO.defaults
 
     private let brandGold = UITheme.brandGold
+    private let service = SettingsService()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1373,15 +1399,15 @@ private struct FeedbackSupportView: View {
                     settingsDescription("How can we help you today? Reach us through your preferred channel.")
                     settingsCard {
                         supportRow(title: "WhatsApp Support", subtitle: "Fastest response time", icon: "message", tint: Color.green) {
-                            openURL(URL(string: "https://wa.me/14151234567")!)
+                            openURL(URL(string: contactSettings.feedback_whatsapp_url)!)
                         }
                         rowDividerStyle
                         supportRow(title: "iMessage", subtitle: "Standard for iPhone users", icon: "message.circle", tint: Color.blue) {
-                            openURL(URL(string: "sms:+14151234567")!)
+                            openURL(URL(string: contactSettings.feedback_imessage_url)!)
                         }
                         rowDividerStyle
                         supportRow(title: "Instagram DM", subtitle: "Follow us for nail inspo", icon: "star", tint: brandGold) {
-                            openURL(URL(string: "https://instagram.com")!)
+                            openURL(URL(string: contactSettings.feedback_instagram_url)!)
                         }
                     }
                 }
@@ -1394,6 +1420,11 @@ private struct FeedbackSupportView: View {
         .toolbar(.hidden, for: .tabBar)
         .background(Color.black)
         .tint(brandGold)
+        .task {
+            if let loaded = try? await service.getSupportContactSettings() {
+                contactSettings = loaded
+            }
+        }
     }
 
     private func supportRow(
@@ -1438,9 +1469,11 @@ private struct FeedbackSupportView: View {
 private struct PartnershipInquiryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
+    @State private var contactSettings = SupportContactSettingsDTO.defaults
 
     private let brandGold = UITheme.brandGold
     private let cardBG = UITheme.cardBackground
+    private let service = SettingsService()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1468,14 +1501,14 @@ private struct PartnershipInquiryView: View {
 
                         HStack(spacing: UITheme.spacing12) {
                             Button {
-                                openURL(URL(string: "https://wa.me/14151234567")!)
+                                openURL(URL(string: contactSettings.partnership_whatsapp_url)!)
                             } label: {
                                 partnershipContactCard(title: "WhatsApp", icon: "message", tint: .green)
                             }
                             .buttonStyle(.plain)
 
                             Button {
-                                openURL(URL(string: "sms:+14151234567")!)
+                                openURL(URL(string: contactSettings.partnership_imessage_url)!)
                             } label: {
                                 partnershipContactCard(title: "iMessage", icon: "message.circle", tint: .blue)
                             }
@@ -1492,6 +1525,11 @@ private struct PartnershipInquiryView: View {
         .toolbar(.hidden, for: .tabBar)
         .background(Color.black)
         .tint(brandGold)
+        .task {
+            if let loaded = try? await service.getSupportContactSettings() {
+                contactSettings = loaded
+            }
+        }
     }
 
     private func partnershipFeature(icon: String, title: String, subtitle: String) -> some View {

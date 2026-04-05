@@ -46,6 +46,7 @@ import com.nailsdash.android.data.model.SettingsUpdatePhoneRequest
 import com.nailsdash.android.data.model.SettingsUpdatePhoneResponse
 import com.nailsdash.android.data.model.SettingsUpdateProfileRequest
 import com.nailsdash.android.data.model.SettingsUpdateProfileResponse
+import com.nailsdash.android.data.model.SupportContactSettings
 import com.nailsdash.android.data.model.SettingsUpdateRequest
 import com.nailsdash.android.data.model.SettingsUpdateResponse
 import com.nailsdash.android.data.model.Store
@@ -105,6 +106,9 @@ interface NailsDashApi {
         @Header("Authorization") bearerToken: String,
         @Part file: MultipartBody.Part,
     ): Map<String, String>
+
+    @GET("support-contact")
+    suspend fun getSupportContactSettings(): SupportContactSettings
 
     @GET("pins/tags")
     suspend fun getPinTags(): List<String>

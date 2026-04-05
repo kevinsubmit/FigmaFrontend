@@ -21,6 +21,7 @@ nailsdash.db
 # Alembic local migration scripts (generated locally, do not commit)
 backend/alembic/versions/*.py
 !backend/alembic/versions/20260319_000100_add_hot_query_composite_indexes.py
+!backend/alembic/versions/20260405_000200_add_support_contact_settings_table.py
 backend/alembic/versions/*.pyc
 backend/alembic/versions/__pycache__/
 

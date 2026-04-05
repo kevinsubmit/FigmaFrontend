@@ -45,3 +45,13 @@ data class SettingsUpdateResponse(
     val message: String,
     val settings: UserSettingsPayload? = null,
 )
+
+data class SupportContactSettings(
+    val feedback_whatsapp_url: String,
+    val feedback_imessage_url: String,
+    val feedback_instagram_url: String,
+    val partnership_whatsapp_url: String,
+    val partnership_imessage_url: String,
+    val created_at: String? = null,
+    val updated_at: String? = null,
+)

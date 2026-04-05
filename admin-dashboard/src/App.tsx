@@ -29,6 +29,7 @@ const Staff = lazy(() => import('./pages/Staff'));
 const VipLevels = lazy(() => import('./pages/VipLevels'));
 const PushCenter = lazy(() => import('./pages/PushCenter'));
 const VersionCenter = lazy(() => import('./pages/VersionCenter'));
+const ContactConfig = lazy(() => import('./pages/ContactConfig'));
 
 const App = () => (
   <AuthProvider>
@@ -234,6 +235,15 @@ const App = () => (
             element={
               <ProtectedRoute requireSuperAdmin>
                 <VersionCenter />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/contact-config"
+            element={
+              <ProtectedRoute requireSuperAdmin>
+                <ContactConfig />
               </ProtectedRoute>
             }
           />

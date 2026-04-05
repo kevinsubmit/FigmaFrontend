@@ -11,6 +11,7 @@ import com.nailsdash.android.data.model.SettingsUpdatePhoneRequest
 import com.nailsdash.android.data.model.SettingsUpdatePhoneResponse
 import com.nailsdash.android.data.model.SettingsUpdateProfileRequest
 import com.nailsdash.android.data.model.SettingsUpdateProfileResponse
+import com.nailsdash.android.data.model.SupportContactSettings
 import com.nailsdash.android.data.model.SettingsUpdateRequest
 import com.nailsdash.android.data.model.SettingsUpdateResponse
 import com.nailsdash.android.data.model.VerificationPurpose
@@ -32,6 +33,13 @@ class SettingsRepository {
         return runCatching { api.getMe(bearerToken) }
             .mapFailure()
             .onSuccess { currentUserCache.put(cacheKey, it) }
+    }
+
+    suspend fun getSupportContactSettings(): Result<SupportContactSettings> {
+        supportContactSettingsCache.get(SUPPORT_CONTACT_CACHE_KEY)?.let { return Result.success(it) }
+        return runCatching { api.getSupportContactSettings() }
+            .mapFailure()
+            .onSuccess { supportContactSettingsCache.put(SUPPORT_CONTACT_CACHE_KEY, it) }
     }
 
     suspend fun updateProfile(
@@ -97,6 +105,10 @@ class SettingsRepository {
 
     private companion object {
         private const val CACHE_TTL_MS = 30 * 1000L
+        private const val SUPPORT_CONTACT_CACHE_TTL_MS = 5 * 60 * 1000L
+        private const val SUPPORT_CONTACT_CACHE_KEY = "default"
         private val currentUserCache = TimedMemoryCache<TokenKey, AuthUser>(CACHE_TTL_MS, maxEntries = 4)
+        private val supportContactSettingsCache =
+            TimedMemoryCache<String, SupportContactSettings>(SUPPORT_CONTACT_CACHE_TTL_MS, maxEntries = 1)
     }
 }

@@ -98,6 +98,7 @@ import com.nailsdash.android.ui.state.ChangePasswordViewModel
 import com.nailsdash.android.ui.state.LanguageSettingsViewModel
 import com.nailsdash.android.ui.state.PhoneNumberSettingsViewModel
 import com.nailsdash.android.ui.state.ProfileSettingsViewModel
+import com.nailsdash.android.ui.state.SupportContactViewModel
 import java.time.LocalDate
 
 private data class SettingsMenuItem(
@@ -1403,11 +1404,17 @@ private fun showSettingsDatePickerDialog(
 @Composable
 fun FeedbackSupportScreen(onBack: () -> Unit = {}) {
     val uriHandler = LocalUriHandler.current
+    val supportContactViewModel: SupportContactViewModel = viewModel()
+    val contactSettings = supportContactViewModel.contactSettings
     val channels = listOf(
-        SupportChannel("WhatsApp Support", "Fastest response time", Icons.AutoMirrored.Filled.Message, Color(0xFF5EDB89), "https://wa.me/14151234567"),
-        SupportChannel("iMessage", "Standard for iPhone users", Icons.AutoMirrored.Filled.Message, Color(0xFF79B5FF), "sms:+14151234567"),
-        SupportChannel("Instagram DM", "Follow us for nail inspo", Icons.Filled.Star, SettingsGold, "https://instagram.com"),
+        SupportChannel("WhatsApp Support", "Fastest response time", Icons.AutoMirrored.Filled.Message, Color(0xFF5EDB89), contactSettings.feedback_whatsapp_url),
+        SupportChannel("iMessage", "Standard for iPhone users", Icons.AutoMirrored.Filled.Message, Color(0xFF79B5FF), contactSettings.feedback_imessage_url),
+        SupportChannel("Instagram DM", "Follow us for nail inspo", Icons.Filled.Star, SettingsGold, contactSettings.feedback_instagram_url),
     )
+
+    LaunchedEffect(Unit) {
+        supportContactViewModel.loadIfNeeded()
+    }
 
     Box(
         modifier = Modifier
@@ -1500,10 +1507,16 @@ fun FeedbackSupportScreen(onBack: () -> Unit = {}) {
 @Composable
 fun PartnershipInquiryScreen(onBack: () -> Unit = {}) {
     val uriHandler = LocalUriHandler.current
+    val supportContactViewModel: SupportContactViewModel = viewModel()
+    val contactSettings = supportContactViewModel.contactSettings
     val highlights = listOf(
         Triple(Icons.Filled.Storefront, "List Your Salon", "Get discovered by local beauty seekers"),
         Triple(Icons.Filled.Schedule, "Advanced Booking", "Manage appointments with ease"),
     )
+
+    LaunchedEffect(Unit) {
+        supportContactViewModel.loadIfNeeded()
+    }
 
     Box(
         modifier = Modifier
@@ -1612,7 +1625,7 @@ fun PartnershipInquiryScreen(onBack: () -> Unit = {}) {
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
                                 Button(
-                                    onClick = { uriHandler.openUri("https://wa.me/14151234567") },
+                                    onClick = { uriHandler.openUri(contactSettings.partnership_whatsapp_url) },
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(92.dp),
@@ -1637,7 +1650,7 @@ fun PartnershipInquiryScreen(onBack: () -> Unit = {}) {
                                     }
                                 }
                                 Button(
-                                    onClick = { uriHandler.openUri("sms:+14151234567") },
+                                    onClick = { uriHandler.openUri(contactSettings.partnership_imessage_url) },
                                     modifier = Modifier
                                         .weight(1f)
                                         .height(92.dp),

@@ -10,6 +10,7 @@ import com.nailsdash.android.data.model.SettingsUpdatePasswordRequest
 import com.nailsdash.android.data.model.SettingsUpdatePhoneRequest
 import com.nailsdash.android.data.model.SettingsUpdateProfileRequest
 import com.nailsdash.android.data.model.SettingsUpdateRequest
+import com.nailsdash.android.data.model.SupportContactSettings
 import com.nailsdash.android.data.repository.SettingsRepository
 import com.nailsdash.android.utils.PhoneFormatter
 import java.time.LocalDate
@@ -406,6 +407,33 @@ class LanguageSettingsViewModel(application: Application) : AndroidViewModel(app
             }
             isSaving = false
         }
+    }
+}
+
+class SupportContactViewModel(application: Application) : AndroidViewModel(application) {
+    private val repository = SettingsRepository()
+    private var hasLoadedOnce = false
+
+    var contactSettings by mutableStateOf(DEFAULT_SETTINGS)
+        private set
+
+    fun loadIfNeeded() {
+        if (hasLoadedOnce) return
+        hasLoadedOnce = true
+        viewModelScope.launch {
+            repository.getSupportContactSettings()
+                .onSuccess { contactSettings = it }
+        }
+    }
+
+    companion object {
+        val DEFAULT_SETTINGS = SupportContactSettings(
+            feedback_whatsapp_url = "https://wa.me/14151234567",
+            feedback_imessage_url = "sms:+14151234567",
+            feedback_instagram_url = "https://instagram.com",
+            partnership_whatsapp_url = "https://wa.me/14151234567",
+            partnership_imessage_url = "sms:+14151234567",
+        )
     }
 }
 

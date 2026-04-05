@@ -7,3 +7,4 @@ from app.schemas.store import *
 from app.schemas.service import *
 from app.schemas.appointment import *
 from app.schemas.gift_card import *
+from app.schemas.support_contact import *
