@@ -558,6 +558,13 @@ struct StoreDetailView: View {
                         HStack(spacing: UITheme.spacing8) {
                             ForEach(Array(reviewImageURLs.enumerated()), id: \.offset) { idx, url in
                                 Button {
+                                    Task {
+                                        await CachedImagePipeline.shared.prefetch(
+                                            urls: reviewImageURLs,
+                                            scale: UIScreen.main.scale,
+                                            limit: reviewImageURLs.count
+                                        )
+                                    }
                                     reviewGalleryImages = reviewImageURLs
                                     reviewGalleryIndex = idx
                                     showReviewGallery = true
@@ -590,6 +597,9 @@ struct StoreDetailView: View {
                             }
                         }
                     }
+                    .background(
+                        ImagePrefetcher(urls: reviewImageURLs.map(Optional.some), limit: reviewImageURLs.count)
+                    )
                 }
             }
 
@@ -1318,6 +1328,9 @@ struct StoreDetailView: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .always))
             .indexViewStyle(.page(backgroundDisplayMode: .always))
+            .background(
+                ImagePrefetcher(urls: reviewGalleryImages.map(Optional.some), limit: reviewGalleryImages.count)
+            )
 
             VStack(alignment: .trailing, spacing: UITheme.spacing12) {
                 Text("\(min(reviewGalleryIndex + 1, reviewGalleryImages.count))/\(max(reviewGalleryImages.count, 1))")

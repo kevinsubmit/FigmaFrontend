@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -144,6 +145,7 @@ import com.nailsdash.android.data.model.ReviewUploadImagePayload
 import com.nailsdash.android.data.model.Store
 import com.nailsdash.android.data.model.UserReview
 import com.nailsdash.android.data.model.UserCoupon
+import com.nailsdash.android.ui.component.ImagePrefetchEffect
 import com.nailsdash.android.ui.state.AppSessionViewModel
 import com.nailsdash.android.ui.state.CouponsViewModel
 import com.nailsdash.android.ui.state.GiftCardsViewModel
@@ -3642,12 +3644,47 @@ fun ReviewsScreen(
     onBack: () -> Unit = {},
     myReviewsViewModel: MyReviewsViewModel = viewModel(),
 ) {
+    val context = LocalContext.current
     val token = sessionViewModel.accessTokenOrNull()
     var showEditDialog by remember { mutableStateOf(false) }
     var editingReview by remember { mutableStateOf<UserReview?>(null) }
     var editRating by remember { mutableStateOf(5) }
     var editComment by remember { mutableStateOf("") }
+    var editExistingImagePaths by remember { mutableStateOf(emptyList<String>()) }
+    var editReviewDraftImages by remember { mutableStateOf(emptyList<ReviewDraftImage>()) }
     var noticeMessage by remember { mutableStateOf<String?>(null) }
+    val dismissEditDialog = {
+        showEditDialog = false
+        editingReview = null
+        editComment = ""
+        editRating = 5
+        editExistingImagePaths = emptyList()
+        editReviewDraftImages = emptyList()
+    }
+    val editReviewImagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents(),
+    ) { uris ->
+        if (uris.isEmpty()) return@rememberLauncherForActivityResult
+        val remainingSlots = (MaxReviewImageCount - editExistingImagePaths.size - editReviewDraftImages.size).coerceAtLeast(0)
+        if (remainingSlots == 0) {
+            noticeMessage = "Maximum 5 images allowed."
+            return@rememberLauncherForActivityResult
+        }
+        val limitedUris = uris.take(remainingSlots)
+        if (uris.size > remainingSlots) {
+            noticeMessage = "Maximum 5 images allowed."
+        }
+        val newDrafts = limitedUris.mapNotNull { uri ->
+            runCatching { loadReviewDraftImage(context = context, uri = uri) }
+                .getOrNull()
+        }
+        if (newDrafts.size < limitedUris.size) {
+            noticeMessage = "Some selected images could not be loaded."
+        }
+        if (newDrafts.isNotEmpty()) {
+            editReviewDraftImages = editReviewDraftImages + newDrafts
+        }
+    }
 
     LaunchedEffect(token) {
         if (token != null) myReviewsViewModel.loadIfNeeded(token)
@@ -3662,13 +3699,14 @@ fun ReviewsScreen(
 
     if (showEditDialog && editingReview != null) {
         val current = editingReview
+        val persistedReviewImageUrls = editExistingImagePaths.mapNotNull { AssetUrlResolver.resolveURL(it) }
+        val editReviewImageCount = editExistingImagePaths.size + editReviewDraftImages.size
         val closeInteraction = remember { MutableInteractionSource() }
         val cancelInteraction = remember { MutableInteractionSource() }
         val updateInteraction = remember { MutableInteractionSource() }
         ModalBottomSheet(
             onDismissRequest = {
-                showEditDialog = false
-                editingReview = null
+                dismissEditDialog()
             },
             containerColor = Color.Black,
             contentColor = RewardsPrimaryText,
@@ -3705,8 +3743,7 @@ fun ReviewsScreen(
                             interactionSource = closeInteraction,
                             indication = null,
                             onClick = {
-                                showEditDialog = false
-                                editingReview = null
+                                dismissEditDialog()
                             },
                         ),
                     )
@@ -3773,6 +3810,166 @@ fun ReviewsScreen(
                     )
                 }
 
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Photos (Optional, max 5)",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp,
+                        ),
+                        color = RewardsPrimaryText.copy(alpha = 0.62f),
+                    )
+
+                    if (persistedReviewImageUrls.isNotEmpty()) {
+                        ImagePrefetchEffect(urls = persistedReviewImageUrls, maxCount = persistedReviewImageUrls.size)
+                    }
+
+                    if (editReviewImageCount > 0) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 220.dp),
+                        ) {
+                            gridItems(editExistingImagePaths, key = { it }) { imagePath ->
+                                val removeImageInteraction = remember(imagePath) { MutableInteractionSource() }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(92.dp)
+                                        .clip(RoundedCornerShape(12.dp)),
+                                ) {
+                                    AsyncImage(
+                                        model = AssetUrlResolver.resolveURL(imagePath),
+                                        contentDescription = "Review photo",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(6.dp)
+                                            .size(22.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.Black.copy(alpha = 0.68f), CircleShape)
+                                            .clickable(
+                                                interactionSource = removeImageInteraction,
+                                                indication = null,
+                                                onClick = {
+                                                    editExistingImagePaths = editExistingImagePaths.filterNot { it == imagePath }
+                                                },
+                                            ),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Close,
+                                            contentDescription = "Remove image",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(11.dp),
+                                        )
+                                    }
+                                }
+                            }
+                            gridItems(editReviewDraftImages, key = { it.id }) { item ->
+                                val removeImageInteraction = remember(item.id) { MutableInteractionSource() }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(92.dp)
+                                        .clip(RoundedCornerShape(12.dp)),
+                                ) {
+                                    AsyncImage(
+                                        model = item.uri,
+                                        contentDescription = "Selected photo",
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(6.dp)
+                                            .size(22.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.Black.copy(alpha = 0.68f), CircleShape)
+                                            .clickable(
+                                                interactionSource = removeImageInteraction,
+                                                indication = null,
+                                                onClick = {
+                                                    editReviewDraftImages = editReviewDraftImages.filterNot { it.id == item.id }
+                                                },
+                                            ),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Close,
+                                            contentDescription = "Remove image",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(11.dp),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (editReviewImageCount < MaxReviewImageCount) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(RewardsCardBackground)
+                                .drawBehind {
+                                    drawRoundRect(
+                                        color = Color.White.copy(alpha = 0.16f),
+                                        cornerRadius = CornerRadius(12.dp.toPx(), 12.dp.toPx()),
+                                        style = Stroke(
+                                            width = 1.dp.toPx(),
+                                            pathEffect = PathEffect.dashPathEffect(
+                                                floatArrayOf(6.dp.toPx(), 4.dp.toPx()),
+                                            ),
+                                        ),
+                                    )
+                                }
+                                .clickable(
+                                    enabled = !myReviewsViewModel.isUploadingReviewImages,
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = { editReviewImagePickerLauncher.launch("image/*") },
+                                )
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (myReviewsViewModel.isUploadingReviewImages) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    color = RewardsGold,
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Outlined.Collections,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = RewardsPrimaryText.copy(alpha = 0.86f),
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (myReviewsViewModel.isUploadingReviewImages) "Uploading..." else "Add Photos",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 15.sp,
+                                ),
+                                color = RewardsPrimaryText.copy(alpha = 0.86f),
+                            )
+                        }
+                    }
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -3788,8 +3985,7 @@ fun ReviewsScreen(
                                 interactionSource = cancelInteraction,
                                 indication = null,
                                 onClick = {
-                                    showEditDialog = false
-                                    editingReview = null
+                                    dismissEditDialog()
                                 },
                             ),
                         contentAlignment = Alignment.Center,
@@ -3803,7 +3999,7 @@ fun ReviewsScreen(
                             color = RewardsPrimaryText.copy(alpha = 0.80f),
                         )
                     }
-                    val canUpdate = current != null && !isUpdating
+                    val canUpdate = current != null && !isUpdating && !myReviewsViewModel.isUploadingReviewImages
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -3824,10 +4020,16 @@ fun ReviewsScreen(
                                             appointmentId = appointmentId,
                                             rating = editRating.toDouble(),
                                             comment = editComment,
-                                            images = review.images,
+                                            existingImages = editExistingImagePaths,
+                                            imageFiles = editReviewDraftImages.map { image ->
+                                                ReviewUploadImagePayload(
+                                                    imageData = image.data,
+                                                    fileName = image.fileName,
+                                                    mimeType = image.mimeType,
+                                                )
+                                            },
                                             onUpdated = {
-                                                showEditDialog = false
-                                                editingReview = null
+                                                dismissEditDialog()
                                             },
                                         )
                                     }
@@ -3959,6 +4161,29 @@ fun ReviewsScreen(
                                 color = if (review.comment.isNullOrBlank()) Color.White.copy(alpha = 0.62f) else Color.White.copy(alpha = 0.82f),
                             )
 
+                            val reviewImageUrls = review.images.orEmpty()
+                                .mapNotNull { AssetUrlResolver.resolveURL(it) }
+                            if (reviewImageUrls.isNotEmpty()) {
+                                ImagePrefetchEffect(urls = reviewImageUrls, maxCount = reviewImageUrls.size)
+                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    items(reviewImageUrls, key = { it }) { imageUrl ->
+                                        AsyncImage(
+                                            model = imageUrl,
+                                            contentDescription = "Review image",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier
+                                                .size(88.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .border(
+                                                    width = 1.dp,
+                                                    color = Color.White.copy(alpha = 0.08f),
+                                                    shape = RoundedCornerShape(12.dp),
+                                                ),
+                                        )
+                                    }
+                                }
+                            }
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -3991,6 +4216,8 @@ fun ReviewsScreen(
                                                 editingReview = review
                                                 editComment = review.comment.orEmpty()
                                                 editRating = (review.rating ?: 5.0).roundToInt().coerceIn(1, 5)
+                                                editExistingImagePaths = review.images.orEmpty()
+                                                editReviewDraftImages = emptyList()
                                                 showEditDialog = true
                                             },
                                         ),

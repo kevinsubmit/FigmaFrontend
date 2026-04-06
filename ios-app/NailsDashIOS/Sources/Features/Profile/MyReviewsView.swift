@@ -1,4 +1,6 @@
+import PhotosUI
 import SwiftUI
+
 struct MyReviewsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var appState: AppState
@@ -9,6 +11,10 @@ struct MyReviewsView: View {
     @State private var editingReview: UserReviewDTO?
     @State private var editRating: Int = 5
     @State private var editComment: String = ""
+    @State private var editExistingImagePaths: [String] = []
+    @State private var editReviewDraftImages: [EditableReviewDraftImage] = []
+    @State private var editPickedReviewImages: [PhotosPickerItem] = []
+    @State private var isUploadingEditReviewImages = false
     private let brandGold = UITheme.brandGold
     private let cardBG = UITheme.cardBackground
 
@@ -64,6 +70,9 @@ struct MyReviewsView: View {
             alertMessage = value
             showAlert = true
         }
+        .onChange(of: editPickedReviewImages) { items in
+            Task { await handlePickedEditReviewImages(items) }
+        }
         .unifiedNoticeAlert(isPresented: $showAlert, message: alertMessage)
         .sheet(isPresented: $showEditSheet) {
             reviewEditSheet
@@ -93,7 +102,8 @@ struct MyReviewsView: View {
     }
 
     private func reviewItem(_ item: UserReviewDTO) -> some View {
-        VStack(alignment: .leading, spacing: UITheme.spacing10) {
+        let imageURLs = resolvedReviewImageURLs(item)
+        return VStack(alignment: .leading, spacing: UITheme.spacing10) {
             HStack(alignment: .top, spacing: UITheme.spacing8) {
                 VStack(alignment: .leading, spacing: UITheme.spacing4) {
                     Text(reviewStoreName(item))
@@ -126,6 +136,10 @@ struct MyReviewsView: View {
                 Text("No written comment")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+            }
+
+            if !imageURLs.isEmpty {
+                reviewImageStrip(urls: imageURLs)
             }
 
             HStack(spacing: UITheme.spacing8) {
@@ -214,6 +228,10 @@ struct MyReviewsView: View {
         editingReview = item
         editComment = item.comment ?? ""
         editRating = Int(max(min(round(item.rating ?? 5), 5), 1))
+        editExistingImagePaths = item.images ?? []
+        editReviewDraftImages = []
+        editPickedReviewImages = []
+        isUploadingEditReviewImages = false
         showEditSheet = true
     }
 
@@ -228,8 +246,7 @@ struct MyReviewsView: View {
                         .foregroundStyle(.white)
                     Spacer()
                     Button("Close") {
-                        showEditSheet = false
-                        editingReview = nil
+                        dismissEditSheet()
                     }
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.white.opacity(0.74))
@@ -272,10 +289,57 @@ struct MyReviewsView: View {
                         )
                 }
 
+                VStack(alignment: .leading, spacing: UITheme.spacing8) {
+                    Text("Photos (Optional, max 5)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.white.opacity(0.62))
+
+                    if editReviewImageCount > 0 {
+                        let columns = Array(repeating: GridItem(.flexible(), spacing: UITheme.spacing8), count: 3)
+                        LazyVGrid(columns: columns, spacing: UITheme.spacing8) {
+                            ForEach(Array(editExistingImagePaths.enumerated()), id: \.offset) { idx, path in
+                                editReviewRemoteImageCell(path: path) {
+                                    editExistingImagePaths.remove(at: idx)
+                                }
+                            }
+                            ForEach(editReviewDraftImages) { item in
+                                editReviewDraftImageCell(item: item)
+                            }
+                        }
+                    }
+
+                    if editReviewImageCount < 5 {
+                        PhotosPicker(
+                            selection: $editPickedReviewImages,
+                            maxSelectionCount: max(0, 5 - editReviewImageCount),
+                            matching: .images,
+                            photoLibrary: .shared()
+                        ) {
+                            HStack(spacing: UITheme.spacing8) {
+                                if isUploadingEditReviewImages {
+                                    ProgressView().tint(brandGold)
+                                } else {
+                                    Image(systemName: "photo.on.rectangle.angled")
+                                        .font(.subheadline.weight(.semibold))
+                                }
+                                Text(isUploadingEditReviewImages ? "Uploading..." : "Add Photos")
+                                    .font(.subheadline.weight(.semibold))
+                            }
+                            .foregroundStyle(Color.white.opacity(0.86))
+                            .frame(maxWidth: .infinity, minHeight: UITheme.ctaHeight - 6)
+                            .background(cardBG)
+                            .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous)
+                                    .stroke(Color.white.opacity(0.16), style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
+                            )
+                        }
+                    }
+                }
+
                 HStack(spacing: UITheme.spacing8) {
                     Button("Cancel") {
-                        showEditSheet = false
-                        editingReview = nil
+                        dismissEditSheet()
                     }
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Color.white.opacity(0.8))
@@ -298,6 +362,7 @@ struct MyReviewsView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .disabled(isUploadingEditReviewImages)
                     .background(brandGold)
                     .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous))
                 }
@@ -306,6 +371,181 @@ struct MyReviewsView: View {
             .padding(.top, UITheme.spacing18)
             .padding(.bottom, UITheme.spacing12)
         }
+    }
+
+    private var editReviewImageCount: Int {
+        editExistingImagePaths.count + editReviewDraftImages.count
+    }
+
+    @ViewBuilder
+    private func editReviewDraftImageCell(item: EditableReviewDraftImage) -> some View {
+        ZStack(alignment: .topTrailing) {
+            Image(uiImage: item.preview)
+                .resizable()
+                .scaledToFill()
+                .frame(height: 92)
+                .frame(maxWidth: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous))
+
+            Button {
+                editReviewDraftImages.removeAll { $0.id == item.id }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 22, height: 22)
+                    .background(Color.black.opacity(0.68))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .padding(6)
+        }
+    }
+
+    @ViewBuilder
+    private func editReviewRemoteImageCell(path: String, removeAction: @escaping () -> Void) -> some View {
+        ZStack(alignment: .topTrailing) {
+            CachedAsyncImage(url: AssetURLResolver.resolveURL(from: path)) { phase in
+                switch phase {
+                case .empty:
+                    ZStack { Color.white.opacity(0.08); ProgressView().tint(brandGold) }
+                case .success(let image):
+                    image.resizable().scaledToFill()
+                case .failure:
+                    Color.white.opacity(0.08)
+                        .overlay(Image(systemName: "photo").foregroundStyle(Color.white.opacity(0.45)))
+                @unknown default:
+                    Color.white.opacity(0.08)
+                }
+            }
+            .frame(height: 92)
+            .frame(maxWidth: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: UITheme.controlCornerRadius, style: .continuous))
+
+            Button(action: removeAction) {
+                Image(systemName: "xmark")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 22, height: 22)
+                    .background(Color.black.opacity(0.68))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .padding(6)
+        }
+    }
+
+    @ViewBuilder
+    private func reviewImageStrip(urls: [URL]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: UITheme.spacing8) {
+                ForEach(Array(urls.enumerated()), id: \.offset) { _, url in
+                    CachedAsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                                .tint(brandGold)
+                                .frame(width: UITheme.thumbnailSize, height: UITheme.thumbnailSize)
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: UITheme.thumbnailSize, height: UITheme.thumbnailSize)
+                                .clipped()
+                        case .failure:
+                            Color.white.opacity(0.06)
+                                .frame(width: UITheme.thumbnailSize, height: UITheme.thumbnailSize)
+                                .overlay(
+                                    Image(systemName: "photo")
+                                        .font(.caption)
+                                        .foregroundStyle(Color.white.opacity(0.5))
+                                )
+                        @unknown default:
+                            EmptyView()
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: UITheme.chipCornerRadius))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: UITheme.chipCornerRadius)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                    )
+                }
+            }
+            .padding(.vertical, 1)
+        }
+        .background(
+            ImagePrefetcher(urls: urls.map(Optional.some), limit: urls.count)
+        )
+    }
+
+    private func resolvedReviewImageURLs(_ item: UserReviewDTO) -> [URL] {
+        (item.images ?? []).compactMap { AssetURLResolver.resolveURL(from: $0) }
+    }
+
+    private func dismissEditSheet() {
+        showEditSheet = false
+        editingReview = nil
+        editComment = ""
+        editRating = 5
+        editExistingImagePaths = []
+        editReviewDraftImages = []
+        editPickedReviewImages = []
+        isUploadingEditReviewImages = false
+    }
+
+    private func handlePickedEditReviewImages(_ items: [PhotosPickerItem]) async {
+        guard !items.isEmpty else { return }
+
+        for item in items {
+            if editReviewImageCount >= 5 {
+                alertMessage = "Maximum 5 images allowed."
+                showAlert = true
+                break
+            }
+            do {
+                guard let data = try await item.loadTransferable(type: Data.self),
+                      let uiImage = UIImage(data: data) else {
+                    alertMessage = "Failed to read selected image."
+                    showAlert = true
+                    continue
+                }
+
+                guard let optimized = optimizeEditReviewImageData(from: uiImage) else {
+                    alertMessage = "Image size must be less than 5MB."
+                    showAlert = true
+                    continue
+                }
+
+                editReviewDraftImages.append(
+                    EditableReviewDraftImage(
+                        data: optimized,
+                        preview: uiImage,
+                        mimeType: "image/jpeg",
+                        fileName: "review_\(Int(Date().timeIntervalSince1970))_\(UUID().uuidString.prefix(8)).jpg"
+                    )
+                )
+            } catch {
+                alertMessage = "Failed to load selected image."
+                showAlert = true
+            }
+        }
+
+        editPickedReviewImages = []
+    }
+
+    private func optimizeEditReviewImageData(from image: UIImage) -> Data? {
+        let maxBytes = 5 * 1024 * 1024
+        guard var data = image.jpegData(compressionQuality: 0.9) else { return nil }
+        if data.count <= maxBytes { return data }
+
+        let attempts: [CGFloat] = [0.8, 0.72, 0.65, 0.58, 0.5, 0.42]
+        for quality in attempts {
+            if let compressed = image.jpegData(compressionQuality: quality), compressed.count <= maxBytes {
+                data = compressed
+                return data
+            }
+        }
+        return nil
     }
 
     private func saveEditedReview() {
@@ -317,18 +557,52 @@ struct MyReviewsView: View {
         guard let token = appState.requireAccessToken() else { return }
 
         Task {
+            var mergedImages = editExistingImagePaths
+            if !editReviewDraftImages.isEmpty {
+                isUploadingEditReviewImages = true
+                do {
+                    let uploaded = try await viewModel.uploadReviewImages(
+                        token: token,
+                        files: editReviewDraftImages.map(\.uploadPayload)
+                    )
+                    mergedImages.append(contentsOf: uploaded)
+                } catch let err as APIError {
+                    isUploadingEditReviewImages = false
+                    alertMessage = mapError(err)
+                    showAlert = true
+                    return
+                } catch {
+                    isUploadingEditReviewImages = false
+                    alertMessage = error.localizedDescription
+                    showAlert = true
+                    return
+                }
+            }
+
             await viewModel.updateReview(
                 token: token,
                 reviewID: review.id,
                 appointmentID: appointmentID,
                 rating: Double(editRating),
                 comment: editComment,
-                images: review.images
+                images: mergedImages
             )
+            isUploadingEditReviewImages = false
             if viewModel.errorMessage == nil {
-                showEditSheet = false
-                editingReview = nil
+                dismissEditSheet()
             }
         }
+    }
+}
+
+private struct EditableReviewDraftImage: Identifiable, Equatable {
+    let id = UUID()
+    let data: Data
+    let preview: UIImage
+    let mimeType: String
+    let fileName: String
+
+    var uploadPayload: ReviewUploadImagePayload {
+        ReviewUploadImagePayload(data: data, fileName: fileName, mimeType: mimeType)
     }
 }

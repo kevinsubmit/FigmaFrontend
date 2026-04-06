@@ -575,6 +575,9 @@ class MyReviewsViewModel(application: Application) : AndroidViewModel(applicatio
     var updatingReviewId by mutableStateOf<Int?>(null)
         private set
 
+    var isUploadingReviewImages by mutableStateOf(false)
+        private set
+
     var isLoading by mutableStateOf(false)
         private set
 
@@ -634,18 +637,35 @@ class MyReviewsViewModel(application: Application) : AndroidViewModel(applicatio
         appointmentId: Int,
         rating: Double,
         comment: String?,
-        images: List<String>? = null,
+        existingImages: List<String> = emptyList(),
+        imageFiles: List<ReviewUploadImagePayload> = emptyList(),
         onUpdated: () -> Unit = {},
     ) {
         updatingReviewId = reviewId
         viewModelScope.launch {
+            val uploadedImagePaths = if (imageFiles.isNotEmpty()) {
+                isUploadingReviewImages = true
+                val result = repository.uploadReviewImages(
+                    bearerToken = bearerToken,
+                    files = imageFiles,
+                )
+                isUploadingReviewImages = false
+                result.getOrElse { err ->
+                    errorMessage = err.message
+                    updatingReviewId = null
+                    return@launch
+                }
+            } else {
+                emptyList()
+            }
+
             repository.updateReview(
                 bearerToken = bearerToken,
                 reviewId = reviewId,
                 appointmentId = appointmentId,
                 rating = rating,
                 comment = comment,
-                images = images,
+                images = existingImages + uploadedImagePaths,
             ).onSuccess { updated ->
                 items = items.map { if (it.id == reviewId) updated else it }
                 refreshStoreNameMap()
@@ -655,6 +675,7 @@ class MyReviewsViewModel(application: Application) : AndroidViewModel(applicatio
             }.onFailure { err ->
                 errorMessage = err.message
             }
+            isUploadingReviewImages = false
             updatingReviewId = null
         }
     }

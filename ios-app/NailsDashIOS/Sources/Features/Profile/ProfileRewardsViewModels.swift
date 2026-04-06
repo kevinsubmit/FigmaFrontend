@@ -545,6 +545,7 @@ final class MyReviewsViewModel: ObservableObject {
     @Published var storeNameByID: [Int: String] = [:]
     @Published var deletingReviewID: Int?
     @Published var updatingReviewID: Int?
+    @Published var isUploadingReviewImages = false
     @Published var isLoading = false
     @Published var isLoadingMore = false
     @Published var hasMore = true
@@ -656,6 +657,15 @@ final class MyReviewsViewModel: ObservableObject {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    func uploadReviewImages(
+        token: String,
+        files: [ReviewUploadImagePayload]
+    ) async throws -> [String] {
+        isUploadingReviewImages = true
+        defer { isUploadingReviewImages = false }
+        return try await service.uploadReviewImages(token: token, files: files)
     }
 
     func deleteReview(token: String, reviewID: Int) async {

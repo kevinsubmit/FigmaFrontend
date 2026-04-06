@@ -122,6 +122,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
+import com.nailsdash.android.ui.component.ImagePrefetchEffect
 import com.nailsdash.android.data.model.ServiceItem
 import com.nailsdash.android.data.model.StoreDetail
 import com.nailsdash.android.data.model.StoreHour
@@ -1647,6 +1648,7 @@ private fun StoreReviewCard(
             val reviewImages = review.images.orEmpty()
                 .mapNotNull { AssetUrlResolver.resolveURL(it) }
             if (reviewImages.isNotEmpty()) {
+                ImagePrefetchEffect(urls = reviewImages, maxCount = reviewImages.size)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     itemsIndexed(reviewImages) { index, imageUrl ->
                         val imageInteraction = remember(imageUrl) { MutableInteractionSource() }
@@ -1709,6 +1711,7 @@ private fun StoreReviewImageViewerDialog(
     onDismiss: () -> Unit,
 ) {
     if (imageUrls.isEmpty()) return
+    ImagePrefetchEffect(urls = imageUrls, maxCount = imageUrls.size)
 
     val safeIndex = initialIndex.coerceIn(0, imageUrls.lastIndex)
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = safeIndex)
