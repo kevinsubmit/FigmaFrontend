@@ -85,6 +85,19 @@ docker compose up --build
 
 更多说明：`docs/quickstart.md`
 
+### 生产部署模板
+
+仓库现在提供单独的生产部署模板：
+
+```bash
+cp .env.prod.example .env.prod
+cp backend/.env.prod.example backend/.env.prod
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
+```
+
+参考：
+- [/Users/fengliangli/code/FigmaFrontend/docs/开发更新_2026-04-13_生产Docker部署模板.md](/Users/fengliangli/code/FigmaFrontend/docs/开发更新_2026-04-13_生产Docker部署模板.md)
+
 ### 前端开发
 
 ```bash

@@ -52,6 +52,20 @@ docker compose up --build
 
 Swagger UI: http://localhost:8000/api/docs
 
+### 生产 Docker 模板
+
+仓库根目录现在提供生产部署模板：
+
+```bash
+cp ../.env.prod.example ../.env.prod
+cp .env.prod.example .env.prod
+docker compose --env-file ../.env.prod -f ../docker-compose.prod.yml up -d --build
+docker compose --env-file ../.env.prod -f ../docker-compose.prod.yml exec -T backend alembic upgrade head
+```
+
+参考：
+- [/Users/fengliangli/code/FigmaFrontend/docs/开发更新_2026-04-13_生产Docker部署模板.md](/Users/fengliangli/code/FigmaFrontend/docs/开发更新_2026-04-13_生产Docker部署模板.md)
+
 ### 1. 环境要求
 
 - Python 3.9+

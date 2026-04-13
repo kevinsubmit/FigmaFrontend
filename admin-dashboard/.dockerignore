@@ -1,0 +1,8 @@
+node_modules
+dist
+.vite
+*.log
+*.pid
+npm-debug.log*
+admin_dashboard.log
+admin_dashboard.pid

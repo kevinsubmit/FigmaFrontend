@@ -1,0 +1,10 @@
+node_modules
+build
+dist
+.vite
+*.log
+*.pid
+npm-debug.log*
+frontend.pid
+frontend_dev.log
+frontend_server.log

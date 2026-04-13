@@ -1,0 +1,124 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nailsdash-edge
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_started
+      frontend-web:
+        condition: service_started
+      admin-web:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-app.example.com}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN:-admin.example.com}
+      API_DOMAIN: ${API_DOMAIN:-api.example.com}
+      TLS_CERT_FILE: ${TLS_CERT_FILE:-fullchain.pem}
+      TLS_KEY_FILE: ${TLS_KEY_FILE:-privkey.pem}
+    volumes:
+      - ./deploy/nginx/reverse-proxy.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ${TLS_CERTS_DIR:-./deploy/certs}:/etc/nginx/certs:ro
+      - ${ACME_WEBROOT_DIR:-./deploy/nginx/acme}:/var/www/acme:ro
+
+  db:
+    image: mysql:8.0
+    container_name: nailsdash-db
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-nailsdash}
+      MYSQL_USER: ${MYSQL_USER:-nailsdash}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-change-me}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-root-password}
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-change-root-password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - db_data:/var/lib/mysql
+
+  redis:
+    image: redis:7-alpine
+    container_name: nailsdash-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    volumes:
+      - redis_data:/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nailsdash-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env.prod
+    environment:
+      EMBEDDED_SCHEDULER_ENABLED: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "8000"
+    volumes:
+      - backend_uploads:/app/uploads
+
+  backend-scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nailsdash-backend-scheduler
+    restart: unless-stopped
+    command: ["python", "-m", "app.scheduler_worker"]
+    env_file:
+      - ./backend/.env.prod
+    environment:
+      EMBEDDED_SCHEDULER_ENABLED: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - backend_uploads:/app/uploads
+
+  frontend-web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile.prod
+      args:
+        VITE_API_BASE_URL: ${PUBLIC_API_BASE_URL:-https://api.example.com}
+        VITE_APP_VERSION: ${WEB_APP_VERSION:-web}
+    container_name: nailsdash-frontend-web
+    restart: unless-stopped
+    expose:
+      - "80"
+
+  admin-web:
+    build:
+      context: .
+      dockerfile: admin-dashboard/Dockerfile.prod
+      args:
+        VITE_ADMIN_API_BASE_URL: ${PUBLIC_API_BASE_URL:-https://api.example.com}
+        VITE_ADMIN_APP_VERSION: ${ADMIN_APP_VERSION:-web-admin}
+    container_name: nailsdash-admin-web
+    restart: unless-stopped
+    expose:
+      - "80"
+
+volumes:
+  db_data:
+  backend_uploads:
+  redis_data:

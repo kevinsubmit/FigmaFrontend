@@ -1,0 +1,13 @@
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.venv
+venv
+venv311
+uploads
+backend_server.log
+backend_server.pid
+nailsdash.db

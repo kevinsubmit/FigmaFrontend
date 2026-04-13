@@ -1,0 +1,17 @@
+.git
+.gitignore
+.idea
+tmp
+**/node_modules
+**/build
+**/dist
+**/.vite
+**/*.log
+**/*.pid
+**/__pycache__
+**/*.pyc
+backend/.venv
+backend/venv
+backend/venv311
+backend/uploads
+android-app/.idea
