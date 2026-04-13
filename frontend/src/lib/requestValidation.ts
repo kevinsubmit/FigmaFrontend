@@ -25,6 +25,7 @@ interface EmptyBodyRule {
 const EMPTY_BODY_RULES: EmptyBodyRule[] = [
   { method: 'POST', path: /^\/(?:api\/v1\/)?stores\/\d+\/favorite$/i },
   { method: 'POST', path: /^\/(?:api\/v1\/)?pins\/\d+\/favorite$/i },
+  { method: 'POST', path: /^\/(?:api\/v1\/)?points\/daily-checkin$/i },
   { method: 'PATCH', path: /^\/(?:api\/v1\/)?notifications\/\d+\/read$/i },
   { method: 'POST', path: /^\/(?:api\/v1\/)?notifications\/mark-all-read$/i },
 ];
