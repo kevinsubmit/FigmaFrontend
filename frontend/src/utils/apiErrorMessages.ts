@@ -100,8 +100,15 @@ const mapKnownMessage = (raw: string, status?: number): string | null => {
   if (!text) return null;
   const lower = text.toLowerCase();
 
-  if (lower === 'failed to fetch' || lower.includes('network error') || lower.includes('network request failed')) {
-    return 'Network error. Please check your connection and try again.';
+  if (
+    lower === 'failed to fetch'
+    || lower.includes('load failed')
+    || lower.includes('network error')
+    || lower.includes('network request failed')
+    || lower.includes('network appears offline')
+    || lower.includes('network appears offine')
+  ) {
+    return 'Unable to reach the server. Please check your connection and try again.';
   }
   if (lower.includes('timed out') || lower.includes('timeout')) {
     return 'Request timed out. Please check your connection and try again.';

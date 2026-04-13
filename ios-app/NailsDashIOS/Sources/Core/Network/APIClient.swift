@@ -375,7 +375,7 @@ final class APIClient {
                      NSURLErrorNetworkConnectionLost,
                      NSURLErrorCannotConnectToHost,
                      NSURLErrorCannotFindHost:
-                    throw APIError.network("Network appears offline. Please check your connection and try again.")
+                    throw APIError.network("Unable to reach the server. Please check your connection and try again.")
                 case NSURLErrorTimedOut:
                     throw APIError.network("Request timed out. Please try again.")
                 default:
@@ -681,7 +681,7 @@ final class APIClient {
         let lower = text.lowercased()
 
         if lower == "failed to fetch" || lower.contains("network error") || lower.contains("network request failed") {
-            return "Network error. Please check your connection and try again."
+            return "Unable to reach the server. Please check your connection and try again."
         }
         if lower.contains("not authenticated") || lower.contains("authentication required") {
             return "Please sign in to continue."
