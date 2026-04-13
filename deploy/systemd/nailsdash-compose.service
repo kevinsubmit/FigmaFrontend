@@ -1,0 +1,18 @@
+[Unit]
+Description=NailsDash production Docker Compose stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/nailsdash/nailsdash.env
+WorkingDirectory=/
+ExecStart=/bin/sh -lc 'cd "${APP_ROOT}" && docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build --remove-orphans'
+ExecStop=/bin/sh -lc 'cd "${APP_ROOT}" && docker compose --env-file .env.prod -f docker-compose.prod.yml down'
+ExecReload=/bin/sh -lc 'cd "${APP_ROOT}" && docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build --remove-orphans'
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

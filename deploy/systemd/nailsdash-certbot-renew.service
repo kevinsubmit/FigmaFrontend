@@ -1,0 +1,10 @@
+[Unit]
+Description=Renew NailsDash Let's Encrypt certificates
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/nailsdash/nailsdash.env
+WorkingDirectory=/
+ExecStart=/bin/sh -lc 'cd "${APP_ROOT}" && certbot renew --quiet --deploy-hook "${APP_ROOT}/deploy/scripts/sync-certbot-certs.sh && ${APP_ROOT}/deploy/scripts/reload-edge.sh"'
