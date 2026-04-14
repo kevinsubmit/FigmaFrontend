@@ -14,9 +14,9 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      APP_DOMAIN: ${APP_DOMAIN:-app.example.com}
-      ADMIN_DOMAIN: ${ADMIN_DOMAIN:-admin.example.com}
-      API_DOMAIN: ${API_DOMAIN:-api.example.com}
+      APP_DOMAIN: ${APP_DOMAIN:-www.nailsdash.com}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN:-admin.nailsdash.app}
+      API_DOMAIN: ${API_DOMAIN:-api.nailsdash.app}
       TLS_CERT_FILE: ${TLS_CERT_FILE:-fullchain.pem}
       TLS_KEY_FILE: ${TLS_KEY_FILE:-privkey.pem}
     volumes:
@@ -99,7 +99,7 @@ services:
       context: .
       dockerfile: frontend/Dockerfile.prod
       args:
-        VITE_API_BASE_URL: ${PUBLIC_API_BASE_URL:-https://api.example.com}
+        VITE_API_BASE_URL: ${PUBLIC_API_BASE_URL:-https://api.nailsdash.app}
         VITE_APP_VERSION: ${WEB_APP_VERSION:-web}
     container_name: nailsdash-frontend-web
     restart: unless-stopped
@@ -111,7 +111,7 @@ services:
       context: .
       dockerfile: admin-dashboard/Dockerfile.prod
       args:
-        VITE_ADMIN_API_BASE_URL: ${PUBLIC_API_BASE_URL:-https://api.example.com}
+        VITE_ADMIN_API_BASE_URL: ${PUBLIC_API_BASE_URL:-https://api.nailsdash.app}
         VITE_ADMIN_APP_VERSION: ${ADMIN_APP_VERSION:-web-admin}
     container_name: nailsdash-admin-web
     restart: unless-stopped

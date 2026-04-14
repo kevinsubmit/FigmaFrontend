@@ -1,5 +1,6 @@
 # Backend local config/runtime
 backend/.env
+backend/.env.prod
 backend/uploads/
 backend/artifacts/
 backend/*.log
@@ -38,6 +39,7 @@ admin-dashboard/.env
 admin-dashboard/dist/
 admin-dashboard/*.log
 admin-dashboard/*.pid
+.env.prod
 
 # IDE/run configs
 .run/
