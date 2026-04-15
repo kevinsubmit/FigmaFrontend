@@ -43,6 +43,8 @@ admin-dashboard/*.pid
 
 # IDE/run configs
 .run/
+.idea/
+android-app/.idea/
 
 # Android
 android-app/.gradle/
