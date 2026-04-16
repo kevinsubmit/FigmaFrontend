@@ -11,6 +11,8 @@ export interface GiftCard {
   user_id: number;
   purchaser_id: number;
   card_number: string;
+  template_key: string;
+  template: GiftCardTemplate;
   balance: number;
   initial_balance: number;
   status: 'active' | 'expired' | 'used' | 'pending_transfer' | 'revoked';
@@ -24,10 +26,23 @@ export interface GiftCard {
   updated_at: string;
 }
 
+export interface GiftCardTemplate {
+  key: string;
+  name: string;
+  description: string;
+  icon_key: string;
+  accent_start_hex: string;
+  accent_end_hex: string;
+  background_start_hex: string;
+  background_end_hex: string;
+  text_hex: string;
+}
+
 export interface GiftCardPurchaseRequest {
   amount: number;
   recipient_phone?: string;
   message?: string;
+  template_key?: string;
 }
 
 export interface GiftCardPurchaseResponse {
@@ -40,13 +55,29 @@ export interface GiftCardPurchaseResponse {
 export interface GiftCardTransferRequest {
   recipient_phone: string;
   message?: string;
+  template_key?: string;
 }
 
 export interface GiftCardClaimResponse {
   gift_card: GiftCard;
 }
 
+export interface GiftCardClaimPreview {
+  gift_card_id: number;
+  amount: number;
+  recipient_phone?: string | null;
+  recipient_message?: string | null;
+  claim_expires_at?: string | null;
+  template_key: string;
+  template: GiftCardTemplate;
+}
+
 class GiftCardsService {
+  async getTemplates(): Promise<GiftCardTemplate[]> {
+    const response = await apiClient.get<{ templates: GiftCardTemplate[] }>('/gift-cards/templates');
+    return response.data.templates;
+  }
+
   async getSummary(token: string): Promise<GiftCardSummary> {
     const response = await apiClient.get<GiftCardSummary>(
       '/gift-cards/summary'
@@ -89,6 +120,14 @@ class GiftCardsService {
   async claimGiftCard(token: string, claimCode: string): Promise<GiftCardClaimResponse> {
     const response = await apiClient.post<GiftCardClaimResponse>(
       '/gift-cards/claim',
+      { claim_code: claimCode }
+    );
+    return response.data;
+  }
+
+  async previewClaimGiftCard(token: string, claimCode: string): Promise<GiftCardClaimPreview> {
+    const response = await apiClient.post<GiftCardClaimPreview>(
+      '/gift-cards/claim-preview',
       { claim_code: claimCode }
     );
     return response.data;

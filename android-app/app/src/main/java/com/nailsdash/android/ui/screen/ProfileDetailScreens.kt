@@ -139,6 +139,7 @@ import com.nailsdash.android.BuildConfig
 import com.nailsdash.android.data.model.Appointment
 import com.nailsdash.android.data.model.CouponTemplate
 import com.nailsdash.android.data.model.GiftCard
+import com.nailsdash.android.data.model.GiftCardTemplate
 import com.nailsdash.android.data.model.HomeFeedPin
 import com.nailsdash.android.data.model.PointTransaction
 import com.nailsdash.android.data.model.ReviewUploadImagePayload
@@ -1621,12 +1622,26 @@ fun GiftCardsScreen(
     var claimCode by remember { mutableStateOf("") }
     var transferPhone by remember { mutableStateOf("") }
     var transferMessage by remember { mutableStateOf("") }
+    var selectedTemplateKey by remember { mutableStateOf("minimal_gold") }
     var showClaimDialog by remember { mutableStateOf(false) }
     var sendCardId by remember { mutableStateOf<Int?>(null) }
     var noticeMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(token) {
         if (token != null) giftCardsViewModel.loadIfNeeded(token)
+    }
+    LaunchedEffect(claimCode, showClaimDialog, token) {
+        if (!showClaimDialog || token == null) {
+            giftCardsViewModel.clearClaimPreview()
+            return@LaunchedEffect
+        }
+        val normalized = claimCode.trim()
+        if (normalized.length < 6) {
+            giftCardsViewModel.clearClaimPreview()
+            return@LaunchedEffect
+        }
+        delay(250)
+        giftCardsViewModel.loadClaimPreview(token, claimCode)
     }
     LaunchedEffect(giftCardsViewModel.errorMessage) {
         val message = giftCardsViewModel.errorMessage?.trim().orEmpty()
@@ -1647,6 +1662,7 @@ fun GiftCardsScreen(
             sendCardId = null
             transferPhone = ""
             transferMessage = ""
+            selectedTemplateKey = "minimal_gold"
         }
     }
 
@@ -1671,14 +1687,18 @@ fun GiftCardsScreen(
 
     if (showClaimDialog) {
         ModalBottomSheet(
-            onDismissRequest = { showClaimDialog = false },
+            onDismissRequest = {
+                showClaimDialog = false
+                claimCode = ""
+                giftCardsViewModel.clearClaimPreview()
+            },
             containerColor = Color.Black,
             contentColor = RewardsPrimaryText,
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(340.dp)
+                    .height(560.dp)
                     .padding(RewardsPagePadding),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -1706,7 +1726,11 @@ fun GiftCardsScreen(
                         modifier = Modifier.clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                        ) { showClaimDialog = false },
+                        ) {
+                            showClaimDialog = false
+                            claimCode = ""
+                            giftCardsViewModel.clearClaimPreview()
+                        },
                     )
                 }
 
@@ -1729,6 +1753,58 @@ fun GiftCardsScreen(
                         autoCorrectEnabled = false,
                     ),
                 )
+
+                when {
+                    giftCardsViewModel.claimPreview != null -> {
+                        GiftCardTemplateSurface(
+                            template = giftCardsViewModel.claimPreview!!.template,
+                            balance = giftCardsViewModel.claimPreview!!.amount,
+                            message = giftCardsViewModel.claimPreview!!.recipient_message,
+                            cardNumber = null,
+                            badge = "Gift preview",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(220.dp),
+                        )
+                    }
+                    giftCardsViewModel.isLoadingClaimPreview -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(Color.White.copy(alpha = 0.04f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "Loading preview...",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.4.sp,
+                                ),
+                                color = RewardsSecondaryText,
+                            )
+                        }
+                    }
+                    else -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(Color.White.copy(alpha = 0.04f))
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "Enter the gift code to preview the selected gift card style before claiming it.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = RewardsSecondaryText,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                }
 
                 val isClaiming = giftCardsViewModel.isClaiming
                 val claimButtonBg = RewardsGold
@@ -1788,13 +1864,13 @@ fun GiftCardsScreen(
                     style = MaterialTheme.typography.labelSmall.copy(fontSize = 12.sp),
                     color = RewardsSecondaryText,
                 )
-
-                Spacer(modifier = Modifier.weight(1f))
             }
         }
     }
 
     val sendCard = sortedCards.firstOrNull { it.id == sendCardId }
+    val selectedTemplate = giftCardsViewModel.templates.firstOrNull { it.key == selectedTemplateKey }
+        ?: sendCard?.template
     if (sendCardId != null && sendCard != null) {
         ModalBottomSheet(
             onDismissRequest = { sendCardId = null },
@@ -1804,7 +1880,7 @@ fun GiftCardsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(420.dp)
+                    .height(640.dp)
                     .padding(RewardsPagePadding),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -1836,34 +1912,71 @@ fun GiftCardsScreen(
                     )
                 }
 
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = RewardsCardBackground),
-                    shape = RoundedCornerShape(12.dp),
-                ) {
-                    Row(
+                selectedTemplate?.let { template ->
+                    GiftCardTemplateSurface(
+                        template = template,
+                        balance = sendCard.balance,
+                        message = transferMessage.takeIf { it.isNotBlank() },
+                        cardNumber = null,
+                        badge = "Gift preview",
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            text = "Balance",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 12.sp,
-                            ),
-                            color = RewardsSecondaryText,
-                        )
-                        Spacer(modifier = Modifier.weight(1f))
-                        Text(
-                            text = "$${String.format("%.2f", sendCard.balance)}",
-                            color = RewardsGold,
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Black,
-                                fontSize = 20.sp,
-                            ),
-                        )
+                            .height(220.dp),
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    GiftSheetLabel(text = "Choose a style")
+                    Text(
+                        text = "The recipient will see this same card design.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = RewardsSecondaryText,
+                    )
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(giftCardsViewModel.templates, key = { it.key }) { template ->
+                            Box(
+                                modifier = Modifier
+                                    .width(120.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color.Black)
+                                    .border(
+                                        width = 1.dp,
+                                        color = if (selectedTemplateKey == template.key) RewardsGold else Color.White.copy(alpha = 0.10f),
+                                        shape = RoundedCornerShape(16.dp),
+                                    )
+                                    .clickable { selectedTemplateKey = template.key }
+                                    .padding(10.dp),
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(84.dp)
+                                            .clip(RoundedCornerShape(14.dp))
+                                            .background(
+                                                Brush.linearGradient(
+                                                    listOf(
+                                                        parseHexColor(template.background_start_hex),
+                                                        parseHexColor(template.background_end_hex),
+                                                    ),
+                                                ),
+                                            ),
+                                    )
+                                    Text(
+                                        text = template.name,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = RewardsPrimaryText,
+                                    )
+                                    Text(
+                                        text = template.description,
+                                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                                        color = RewardsSecondaryText,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -1916,6 +2029,7 @@ fun GiftCardsScreen(
                                             giftCardId = sendCard.id,
                                             recipientPhone = transferPhone,
                                             message = transferMessage.takeIf { it.isNotBlank() },
+                                            templateKey = selectedTemplateKey,
                                         )
                                     }
                                 },
@@ -1954,7 +2068,6 @@ fun GiftCardsScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
             }
         }
     }
@@ -2246,6 +2359,7 @@ fun GiftCardsScreen(
                                 },
                                 onSend = {
                                     sendCardId = card.id
+                                    selectedTemplateKey = card.template_key
                                     transferPhone = ""
                                     transferMessage = ""
                                 },
@@ -2406,6 +2520,17 @@ private fun GiftCardCollectionCard(
                     .padding(horizontal = RewardsPagePadding, vertical = 13.dp),
                 verticalArrangement = Arrangement.spacedBy(11.dp),
             ) {
+            GiftCardTemplateSurface(
+                template = card.template,
+                balance = card.balance,
+                message = card.recipient_message,
+                cardNumber = card.card_number,
+                badge = if (status == "pending_transfer") "Pending transfer" else card.template.name,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(210.dp),
+            )
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -2727,11 +2852,196 @@ private fun GiftCardCollectionCard(
 
 }
 
+@Composable
+private fun GiftCardTemplateSurface(
+    template: GiftCardTemplate,
+    balance: Double,
+    message: String?,
+    cardNumber: String?,
+    badge: String,
+    modifier: Modifier = Modifier,
+) {
+    val accentStart = parseHexColor(template.accent_start_hex)
+    val accentEnd = parseHexColor(template.accent_end_hex)
+    val backgroundStart = parseHexColor(template.background_start_hex)
+    val backgroundEnd = parseHexColor(template.background_end_hex)
+    val foreground = parseHexColor(template.text_hex)
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(22.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(backgroundStart, backgroundEnd),
+                ),
+            )
+            .border(1.dp, accentStart.copy(alpha = 0.30f), RoundedCornerShape(22.dp))
+            .padding(18.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(accentStart.copy(alpha = 0.28f), Color.Transparent),
+                        center = Offset.Zero,
+                        radius = 440f,
+                    ),
+                ),
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(accentEnd.copy(alpha = 0.22f), Color.Transparent),
+                        center = Offset(900f, 900f),
+                        radius = 520f,
+                    ),
+                ),
+        )
+
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = "NAILSDASH GIFT CARD",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.2.sp,
+                        ),
+                        color = foreground.copy(alpha = 0.76f),
+                    )
+                    Text(
+                        text = badge,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.4.sp,
+                        ),
+                        color = foreground.copy(alpha = 0.82f),
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(accentStart.copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = giftTemplateIcon(template.icon_key),
+                        contentDescription = null,
+                        tint = accentStart,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "AVAILABLE BALANCE",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp,
+                    ),
+                    color = foreground.copy(alpha = 0.65f),
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    Text(
+                        text = "$",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Black,
+                            fontSize = 20.sp,
+                        ),
+                        color = accentStart,
+                    )
+                    Text(
+                        text = String.format("%.2f", balance),
+                        style = MaterialTheme.typography.displaySmall.copy(
+                            fontWeight = FontWeight.Black,
+                            fontSize = 36.sp,
+                        ),
+                        color = foreground,
+                    )
+                }
+                Text(
+                    text = message?.takeIf { it.isNotBlank() }?.let { "“$it”" } ?: "A little luxury, ready whenever you are.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = foreground.copy(alpha = 0.88f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        text = "Template",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.4.sp,
+                        ),
+                        color = foreground.copy(alpha = 0.60f),
+                    )
+                    Text(
+                        text = template.name,
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = foreground,
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                cardNumber?.takeIf { it.isNotBlank() }?.let {
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp,
+                        ),
+                        color = foreground.copy(alpha = 0.90f),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.Black.copy(alpha = 0.18f))
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
 private fun giftCardSurfaceGradient(): List<Color> {
     return listOf(
         RewardsCardBackground,
         Color(0xFF1E1B13),
     )
+}
+
+private fun parseHexColor(raw: String): Color =
+    runCatching { Color(android.graphics.Color.parseColor(raw)) }.getOrElse { Color.White }
+
+private fun giftTemplateIcon(iconKey: String): ImageVector = when (iconKey) {
+    "cake" -> Icons.Filled.CardGiftcard
+    "lotus" -> Icons.Filled.AutoAwesome
+    "confetti" -> Icons.Filled.CardGiftcard
+    "flower" -> Icons.Outlined.Collections
+    "gem" -> Icons.Filled.WorkspacePremium
+    else -> Icons.Filled.AutoAwesome
 }
 
 private fun giftStatusToneColor(status: String): Color {

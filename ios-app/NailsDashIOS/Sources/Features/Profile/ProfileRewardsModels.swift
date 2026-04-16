@@ -66,6 +66,8 @@ struct GiftCardDTO: Decodable, Identifiable {
     let user_id: Int
     let purchaser_id: Int
     let card_number: String
+    let template_key: String
+    let template: GiftCardTemplateDTO
     let recipient_phone: String?
     let recipient_message: String?
     let balance: Double
@@ -79,15 +81,33 @@ struct GiftCardDTO: Decodable, Identifiable {
     let updated_at: String
 }
 
+struct GiftCardTemplateDTO: Decodable, Identifiable {
+    var id: String { key }
+    let key: String
+    let name: String
+    let description: String
+    let icon_key: String
+    let accent_start_hex: String
+    let accent_end_hex: String
+    let background_start_hex: String
+    let background_end_hex: String
+    let text_hex: String
+}
+
 struct GiftCardSummaryDTO: Decodable {
     let total_balance: Double
     let active_count: Int
     let total_count: Int
 }
 
+struct GiftCardTemplateListResponseDTO: Decodable {
+    let templates: [GiftCardTemplateDTO]
+}
+
 struct GiftCardTransferRequestDTO: Encodable {
     let recipient_phone: String
     let message: String?
+    let template_key: String?
 }
 
 struct GiftCardClaimRequestDTO: Encodable {
@@ -107,6 +127,16 @@ struct GiftCardClaimResponseDTO: Decodable {
 
 struct GiftCardRevokeResponseDTO: Decodable {
     let gift_card: GiftCardDTO
+}
+
+struct GiftCardClaimPreviewDTO: Decodable {
+    let gift_card_id: Int
+    let amount: Double
+    let recipient_phone: String?
+    let recipient_message: String?
+    let claim_expires_at: String?
+    let template_key: String
+    let template: GiftCardTemplateDTO
 }
 
 struct UserReviewDTO: Decodable, Identifiable {

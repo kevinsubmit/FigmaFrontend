@@ -214,12 +214,15 @@ final class CouponsViewModel: ObservableObject {
 @MainActor
 final class GiftCardsViewModel: ObservableObject {
     @Published var cards: [GiftCardDTO] = []
+    @Published var templates: [GiftCardTemplateDTO] = []
     @Published var isLoading = false
     @Published var isLoadingMore = false
     @Published var hasMore = true
     @Published var isClaiming = false
+    @Published var isLoadingClaimPreview = false
     @Published var sendingCardID: Int?
     @Published var revokingCardID: Int?
+    @Published var claimPreview: GiftCardClaimPreviewDTO?
     @Published var errorMessage: String?
     @Published var actionMessage: String?
 
@@ -274,13 +277,17 @@ final class GiftCardsViewModel: ObservableObject {
             }
         }
         do {
-            let rows = try await service.getMyGiftCards(
+            async let rowsTask = service.getMyGiftCards(
                 token: token,
                 skip: requestedOffset,
                 limit: pageSize
             )
+            async let templatesTask = service.getGiftCardTemplates(token: token)
+            let rows = try await rowsTask
+            let templateRows = try await templatesTask
             guard currentRequestToken == requestToken else { return }
             cards = reset ? rows : mergeUniqueRows(existing: cards, newRows: rows)
+            templates = templateRows
             offset = requestedOffset + rows.count
             hasMore = rows.count == pageSize && !rows.isEmpty
             errorMessage = nil
@@ -297,7 +304,8 @@ final class GiftCardsViewModel: ObservableObject {
         token: String,
         giftCardID: Int,
         recipientPhone: String,
-        message: String?
+        message: String?,
+        templateKey: String?
     ) async -> Bool {
         let normalizedPhone = PhoneFormatter.normalizeUSPhone(recipientPhone)
         guard normalizedPhone.count == 11 else {
@@ -312,7 +320,8 @@ final class GiftCardsViewModel: ObservableObject {
                 token: token,
                 giftCardID: giftCardID,
                 recipientPhone: normalizedPhone,
-                message: message
+                message: message,
+                templateKey: templateKey
             )
             upsert(updated)
             actionMessage = "Gift sent successfully."
@@ -351,6 +360,30 @@ final class GiftCardsViewModel: ObservableObject {
             errorMessage = error.localizedDescription
             return false
         }
+    }
+
+    func loadClaimPreview(token: String, claimCode: String) async {
+        let normalizedCode = claimCode
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+        guard normalizedCode.count >= 6 else {
+            claimPreview = nil
+            isLoadingClaimPreview = false
+            return
+        }
+
+        isLoadingClaimPreview = true
+        do {
+            claimPreview = try await service.previewGiftCardClaim(token: token, claimCode: normalizedCode)
+        } catch {
+            claimPreview = nil
+        }
+        isLoadingClaimPreview = false
+    }
+
+    func clearClaimPreview() {
+        claimPreview = nil
+        isLoadingClaimPreview = false
     }
 
     func revoke(token: String, giftCardID: Int) async -> Bool {

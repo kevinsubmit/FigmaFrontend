@@ -16,6 +16,7 @@ class GiftCard(Base):
     claim_code = Column(String(16), unique=True, nullable=True, index=True)
     recipient_phone = Column(String(20), nullable=True, index=True)
     recipient_message = Column(String(255), nullable=True)
+    template_key = Column(String(64), nullable=False, default="minimal_gold")
     balance = Column(Float, nullable=False, default=0)
     initial_balance = Column(Float, nullable=False, default=0)
     status = Column(String(20), nullable=False, default="active")

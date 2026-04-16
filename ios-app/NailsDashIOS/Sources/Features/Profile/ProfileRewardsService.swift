@@ -35,6 +35,7 @@ struct ProfileRewardsService {
     private static let couponsCache = TimedAsyncRequestCache<String, [UserCouponDTO]>()
     private static let giftCardsCache = TimedAsyncRequestCache<String, [GiftCardDTO]>()
     private static let giftCardSummaryCache = TimedAsyncRequestCache<String, GiftCardSummaryDTO>()
+    private static let giftCardTemplatesCache = TimedAsyncRequestCache<String, [GiftCardTemplateDTO]>()
     private static let reviewsCache = TimedAsyncRequestCache<String, [UserReviewDTO]>()
     private static let favoritePinsCountCache = TimedAsyncRequestCache<String, Int>()
     private static let favoritePinsCache = TimedAsyncRequestCache<String, [HomeFeedPinDTO]>()
@@ -110,16 +111,25 @@ struct ProfileRewardsService {
         }
     }
 
+    func getGiftCardTemplates(token: String) async throws -> [GiftCardTemplateDTO] {
+        try await Self.giftCardTemplatesCache.value(for: token, ttl: CacheTTL.giftCardSummary) {
+            let response: GiftCardTemplateListResponseDTO = try await APIClient.shared.request(path: "/gift-cards/templates", token: token)
+            return response.templates
+        }
+    }
+
     func transferGiftCard(
         token: String,
         giftCardID: Int,
         recipientPhone: String,
-        message: String?
+        message: String?,
+        templateKey: String?
     ) async throws -> GiftCardDTO {
         let trimmedMessage = message?.trimmingCharacters(in: .whitespacesAndNewlines)
         let payload = GiftCardTransferRequestDTO(
             recipient_phone: recipientPhone,
-            message: (trimmedMessage?.isEmpty ?? true) ? nil : trimmedMessage
+            message: (trimmedMessage?.isEmpty ?? true) ? nil : trimmedMessage,
+            template_key: templateKey
         )
         let response: GiftCardPurchaseResponseDTO = try await APIClient.shared.request(
             path: "/gift-cards/\(giftCardID)/transfer",
@@ -129,6 +139,16 @@ struct ProfileRewardsService {
         )
         Self.invalidateGiftCards(for: token)
         return response.gift_card
+    }
+
+    func previewGiftCardClaim(token: String, claimCode: String) async throws -> GiftCardClaimPreviewDTO {
+        let payload = GiftCardClaimRequestDTO(claim_code: claimCode)
+        return try await APIClient.shared.request(
+            path: "/gift-cards/claim-preview",
+            method: "POST",
+            token: token,
+            body: payload
+        )
     }
 
     func claimGiftCard(token: String, claimCode: String) async throws -> GiftCardDTO {

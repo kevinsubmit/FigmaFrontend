@@ -18,7 +18,9 @@ from app.schemas.gift_card import (
     GiftCardClaimRequest,
     GiftCardClaimResponse,
     GiftCardRevokeResponse,
-    GiftCardTransferStatus
+    GiftCardTransferStatus,
+    GiftCardClaimPreviewResponse,
+    GiftCardTemplateListResponse,
 )
 from app.crud import gift_card as crud_gift_cards
 from app.crud import user as crud_user
@@ -26,6 +28,7 @@ from app.services.gift_card_service import send_gift_card_sms
 from app.services import notification_service
 from app.services import log_service
 from app.core.config import settings
+from app.services.gift_card_templates import get_gift_card_template, normalize_gift_card_template_key
 
 router = APIRouter()
 
@@ -48,6 +51,11 @@ def _admin_today_issued_amount(db: Session, admin_user_id: int) -> float:
         or 0.0
     )
     return float(total or 0.0)
+
+
+@router.get("/templates", response_model=GiftCardTemplateListResponse)
+def get_gift_card_templates():
+    return GiftCardTemplateListResponse.from_templates()
 
 
 @router.get("/", response_model=List[GiftCardResponse])
@@ -125,7 +133,8 @@ def purchase_gift_card(
         purchaser_id=current_user.id,
         amount=payload.amount,
         recipient_phone=payload.recipient_phone,
-        message=payload.message
+        message=payload.message,
+        template_key=payload.template_key,
     )
     sms_sent = False
     if payload.recipient_phone and claim_code and gift_card.claim_expires_at:
@@ -166,6 +175,7 @@ def purchase_gift_card(
             "gift_card_id": gift_card.id,
             "recipient_phone": payload.recipient_phone,
             "amount": float(payload.amount or 0),
+            "template_key": gift_card.template_key,
             "sms_sent": sms_sent,
             "status": gift_card.status,
             "claim_expires_at": str(gift_card.claim_expires_at) if gift_card.claim_expires_at else None,
@@ -199,7 +209,8 @@ def transfer_gift_card(
             db=db,
             gift_card=gift_card,
             recipient_phone=request.recipient_phone,
-            message=request.message
+            message=request.message,
+            template_key=request.template_key,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -231,6 +242,38 @@ def transfer_gift_card(
         sms_sent=sms_sent,
         claim_expires_at=updated_card.claim_expires_at,
         claim_code=updated_card.claim_code if settings.DEBUG else None
+    )
+
+
+@router.post("/claim-preview", response_model=GiftCardClaimPreviewResponse)
+def preview_gift_card_claim(
+    request: GiftCardClaimRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    gift_card = crud_gift_cards.get_gift_card_by_claim_code(db, request.claim_code)
+    if not gift_card:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Gift card not found")
+
+    if gift_card.status != "pending_transfer":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Gift card is not claimable")
+
+    now = datetime.utcnow()
+    if gift_card.claim_expires_at and gift_card.claim_expires_at < now:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Gift card claim expired")
+
+    if gift_card.recipient_phone and gift_card.recipient_phone != current_user.phone:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Recipient phone mismatch")
+
+    template_key = normalize_gift_card_template_key(gift_card.template_key)
+    return GiftCardClaimPreviewResponse(
+        gift_card_id=gift_card.id,
+        amount=float(gift_card.balance or 0),
+        recipient_phone=gift_card.recipient_phone,
+        recipient_message=gift_card.recipient_message,
+        claim_expires_at=gift_card.claim_expires_at,
+        template_key=template_key,
+        template=get_gift_card_template(template_key),
     )
 
 

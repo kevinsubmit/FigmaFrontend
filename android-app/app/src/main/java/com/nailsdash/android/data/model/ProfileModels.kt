@@ -67,6 +67,8 @@ data class GiftCard(
     val user_id: Int,
     val purchaser_id: Int,
     val card_number: String,
+    val template_key: String,
+    val template: GiftCardTemplate,
     val recipient_phone: String? = null,
     val recipient_message: String? = null,
     val balance: Double,
@@ -80,15 +82,32 @@ data class GiftCard(
     val updated_at: String,
 )
 
+data class GiftCardTemplate(
+    val key: String,
+    val name: String,
+    val description: String,
+    val icon_key: String,
+    val accent_start_hex: String,
+    val accent_end_hex: String,
+    val background_start_hex: String,
+    val background_end_hex: String,
+    val text_hex: String,
+)
+
 data class GiftCardSummary(
     val total_balance: Double,
     val active_count: Int,
     val total_count: Int,
 )
 
+data class GiftCardTemplateListResponse(
+    val templates: List<GiftCardTemplate>,
+)
+
 data class GiftCardTransferRequest(
     val recipient_phone: String,
     val message: String? = null,
+    val template_key: String? = null,
 )
 
 data class GiftCardClaimRequest(
@@ -108,6 +127,16 @@ data class GiftCardClaimResponse(
 
 data class GiftCardRevokeResponse(
     val gift_card: GiftCard,
+)
+
+data class GiftCardClaimPreview(
+    val gift_card_id: Int,
+    val amount: Double,
+    val recipient_phone: String? = null,
+    val recipient_message: String? = null,
+    val claim_expires_at: String? = null,
+    val template_key: String,
+    val template: GiftCardTemplate,
 )
 
 data class UserReview(

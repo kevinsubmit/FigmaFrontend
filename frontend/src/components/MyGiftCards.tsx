@@ -2,8 +2,9 @@ import { ArrowLeft, Copy, Check, Gift, Clock, Send, Phone, ShieldCheck, QrCode, 
 import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
-import giftCardsService, { GiftCard } from '../services/gift-cards.service';
+import giftCardsService, { GiftCard, GiftCardClaimPreview, GiftCardTemplate } from '../services/gift-cards.service';
 import { maskPhone } from '../utils/privacy';
+import { GiftCardTemplateVisual, renderGiftCardPreviewPayload, renderGiftCardVisualPayload } from './gift-cards/GiftCardTemplateVisual';
 
 interface GiftingData {
   recipientPhone: string;
@@ -17,14 +18,18 @@ interface MyGiftCardsProps {
 
 export function MyGiftCards({ onBack }: MyGiftCardsProps) {
   const [giftCards, setGiftCards] = useState<GiftCard[]>([]);
+  const [templates, setTemplates] = useState<GiftCardTemplate[]>([]);
   const [isGiftingOpen, setIsGiftingOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState<GiftCard | null>(null);
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>('minimal_gold');
   const [isSending, setIsSending] = useState(false);
   const [showQRCode, setShowQRCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isClaimOpen, setIsClaimOpen] = useState(false);
   const [claimCode, setClaimCode] = useState('');
   const [isClaiming, setIsClaiming] = useState(false);
+  const [claimPreview, setClaimPreview] = useState<GiftCardClaimPreview | null>(null);
+  const [isLoadingClaimPreview, setIsLoadingClaimPreview] = useState(false);
   const [giftData, setGiftData] = useState<GiftingData>({
     recipientPhone: '',
     amount: 0,
@@ -40,8 +45,12 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
       }
 
       try {
-        const cards = await giftCardsService.getMyGiftCards(token);
+        const [cards, templateRows] = await Promise.all([
+          giftCardsService.getMyGiftCards(token),
+          giftCardsService.getTemplates()
+        ]);
         setGiftCards(cards);
+        setTemplates(templateRows);
       } catch (error) {
         console.error('Failed to load gift cards:', error);
         toast.error('Unable to load gift cards');
@@ -52,6 +61,40 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
 
     loadGiftCards();
   }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+    const normalizedCode = claimCode.trim();
+    if (!isClaimOpen || !token || normalizedCode.length < 6) {
+      setClaimPreview(null);
+      setIsLoadingClaimPreview(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoadingClaimPreview(true);
+    const timer = window.setTimeout(async () => {
+      try {
+        const preview = await giftCardsService.previewClaimGiftCard(token, normalizedCode);
+        if (!cancelled) {
+          setClaimPreview(preview);
+        }
+      } catch {
+        if (!cancelled) {
+          setClaimPreview(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingClaimPreview(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [claimCode, isClaimOpen]);
 
   const formatDate = (value?: string | null) => {
     if (!value) return 'No expiration';
@@ -89,6 +132,12 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
     if (status === 'revoked') return 'text-red-400';
     return 'text-gray-500';
   };
+
+  const selectedTemplate =
+    templates.find((template) => template.key === selectedTemplateKey) ??
+    selectedCard?.template ??
+    templates[0] ??
+    null;
 
   const handleCopy = (code: string) => {
     try {
@@ -141,7 +190,8 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
       setIsSending(true);
       const response = await giftCardsService.transferGiftCard(token, selectedCard.id, {
         recipient_phone: giftData.recipientPhone,
-        message: giftData.message || undefined
+        message: giftData.message || undefined,
+        template_key: selectedTemplateKey,
       });
       setGiftCards((prev) => prev.map((card) => (card.id === response.gift_card.id ? response.gift_card : card)));
       setIsGiftingOpen(false);
@@ -151,6 +201,7 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
       });
       setGiftData({ recipientPhone: '', amount: 0, message: '' });
       setSelectedCard(null);
+      setSelectedTemplateKey('minimal_gold');
     } catch (error) {
       console.error('Failed to send gift card:', error);
       toast.error('Failed to send gift card');
@@ -191,9 +242,16 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
     try {
       setIsClaiming(true);
       const response = await giftCardsService.claimGiftCard(token, claimCode.trim());
-      setGiftCards((prev) => prev.map((card) => (card.id === response.gift_card.id ? response.gift_card : card)));
+      setGiftCards((prev) => {
+        const existing = prev.some((card) => card.id === response.gift_card.id);
+        if (existing) {
+          return prev.map((card) => (card.id === response.gift_card.id ? response.gift_card : card));
+        }
+        return [response.gift_card, ...prev];
+      });
       setIsClaimOpen(false);
       setClaimCode('');
+      setClaimPreview(null);
       toast.success('Gift card claimed', { duration: 1200 });
     } catch (error) {
       console.error('Failed to claim gift card:', error);
@@ -270,12 +328,11 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, x: 20 }}
                     whileHover={{ scale: 1.01 }}
-                    className="bg-[#111] border border-[#333] rounded-2xl overflow-hidden shadow-xl"
+                    className="overflow-hidden rounded-2xl"
                 >
-                    {/* Visual Card Top */}
-                    <div className="h-3 bg-gradient-to-r from-[#D4AF37] to-[#8c7325]" />
-                    
-                    <div className="p-5">
+                    <GiftCardTemplateVisual payload={renderGiftCardVisualPayload(card)} />
+
+                    <div className="mt-3 rounded-2xl border border-[#333] bg-[#111] p-5 shadow-xl">
                         <div className="flex justify-between items-start mb-6">
                             <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#2a2a2a] to-black border border-[#333] flex items-center justify-center">
@@ -335,6 +392,7 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
                               <button
                                 onClick={() => {
                                   setSelectedCard(card);
+                                  setSelectedTemplateKey(card.template_key || 'minimal_gold');
                                   setGiftData((prev) => ({
                                     ...prev,
                                     amount: card.balance
@@ -453,7 +511,10 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
               
               <div className="flex items-center gap-5 mb-8">
                 <button 
-                  onClick={() => setIsGiftingOpen(false)}
+                  onClick={() => {
+                    setIsGiftingOpen(false);
+                    setSelectedTemplateKey(selectedCard?.template_key ?? 'minimal_gold');
+                  }}
                   className="w-12 h-12 rounded-full bg-[#1a1a1a] border border-[#333] flex items-center justify-center hover:bg-[#252525] active:scale-90 transition-all shadow-lg"
                 >
                   <ArrowLeft className="w-6 h-6 text-white" />
@@ -466,15 +527,42 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
 
               <div className="space-y-6">
                 {/* Amount Display */}
-                <div className="bg-black border border-[#D4AF37]/30 rounded-2xl p-6 flex flex-col items-center shadow-[inset_0_0_20px_rgba(212,175,55,0.05)]">
-                  <p className="text-[#D4AF37] text-[10px] font-black uppercase tracking-[0.3em] mb-2">Gift Amount</p>
-                  <div className="flex items-start gap-1">
-                    <span className="text-xl font-bold text-[#D4AF37] mt-1">$</span>
-                    <h3 className="text-5xl font-black text-white tracking-tighter italic">
-                      {selectedCard ? selectedCard.balance.toFixed(2) : giftData.amount.toFixed(2)}
-                    </h3>
+                {selectedCard && selectedTemplate && (
+                  <GiftCardTemplateVisual
+                    payload={{
+                      balance: selectedCard.balance,
+                      template: selectedTemplate,
+                      message: giftData.message,
+                      badge: 'Gift preview',
+                    }}
+                    className="min-h-[230px]"
+                  />
+                )}
+
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-[#D4AF37] text-[10px] font-black uppercase tracking-[0.3em] mb-2">Choose a style</p>
+                    <p className="text-[11px] text-gray-500">The recipient will see this same gift card design.</p>
                   </div>
-                  <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-3 opacity-60">Full balance transfer only</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {templates.map((template) => (
+                      <button
+                        key={template.key}
+                        onClick={() => setSelectedTemplateKey(template.key)}
+                        className={`rounded-2xl border p-3 text-left transition-all ${selectedTemplateKey === template.key ? 'border-[#D4AF37] bg-[#1a1a1a]' : 'border-[#333] bg-black hover:border-[#555]'}`}
+                      >
+                        <div
+                          className="mb-3 h-20 rounded-xl"
+                          style={{
+                            background: `linear-gradient(135deg, ${template.background_start_hex} 0%, ${template.background_end_hex} 100%)`,
+                            boxShadow: `inset 0 0 0 1px ${template.accent_start_hex}30`,
+                          }}
+                        />
+                        <p className="text-xs font-black uppercase tracking-wider text-white">{template.name}</p>
+                        <p className="mt-1 text-[10px] leading-relaxed text-gray-500">{template.description}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -549,7 +637,11 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
               <div className="w-12 h-1.5 bg-[#333] rounded-full mx-auto mb-8" />
               <div className="flex items-center gap-5 mb-8">
                 <button
-                  onClick={() => setIsClaimOpen(false)}
+                  onClick={() => {
+                    setIsClaimOpen(false);
+                    setClaimPreview(null);
+                    setClaimCode('');
+                  }}
                   className="w-12 h-12 rounded-full bg-[#1a1a1a] border border-[#333] flex items-center justify-center hover:bg-[#252525] active:scale-90 transition-all shadow-lg"
                 >
                   <ArrowLeft className="w-6 h-6 text-white" />
@@ -571,6 +663,20 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
                     className="w-full bg-black border border-[#333] focus:border-[#D4AF37] rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-gray-600 outline-none transition-all tracking-widest"
                   />
                 </div>
+                {claimPreview ? (
+                  <GiftCardTemplateVisual
+                    payload={renderGiftCardPreviewPayload(claimPreview)}
+                    className="min-h-[220px]"
+                  />
+                ) : isLoadingClaimPreview ? (
+                  <div className="rounded-2xl border border-[#333] bg-[#0f0f0f] px-4 py-8 text-center text-[11px] uppercase tracking-[0.24em] text-gray-500">
+                    Loading preview...
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-[#333] bg-[#0f0f0f] px-4 py-5 text-[11px] leading-relaxed text-gray-500">
+                    Enter the claim code from your gift message to preview the card style before claiming it.
+                  </div>
+                )}
                 <button
                   disabled={isClaiming}
                   onClick={handleClaim}

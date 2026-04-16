@@ -23,6 +23,7 @@ nailsdash.db
 backend/alembic/versions/*.py
 !backend/alembic/versions/20260319_000100_add_hot_query_composite_indexes.py
 !backend/alembic/versions/20260405_000200_add_support_contact_settings_table.py
+!backend/alembic/versions/20260415_000100_add_gift_card_template_key.py
 backend/alembic/versions/*.pyc
 backend/alembic/versions/__pycache__/
 

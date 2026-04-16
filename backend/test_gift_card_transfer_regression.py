@@ -51,6 +51,8 @@ RECIPIENT_B_USERNAME = os.getenv("RECIPIENT_B_USERNAME", "gift_recipient_b")
 
 CARD_A_AMOUNT = float(os.getenv("CARD_A_AMOUNT", "40"))
 CARD_B_AMOUNT = float(os.getenv("CARD_B_AMOUNT", "25"))
+CARD_A_TEMPLATE = os.getenv("CARD_A_TEMPLATE", "birthday_bloom")
+CARD_B_TEMPLATE = os.getenv("CARD_B_TEMPLATE", "midnight_luxe")
 
 TRUNCATE_TABLES: Sequence[str] = (
     "appointment_groups",
@@ -293,13 +295,28 @@ def run_api_flow() -> Dict[str, Any]:
         f"/gift-cards/{card_a_id}/transfer",
         token=sender_token,
         expected_statuses=(200,),
-        json={"recipient_phone": RECIPIENT_A_PHONE, "message": "Card A transfer"},
+        json={
+            "recipient_phone": RECIPIENT_A_PHONE,
+            "message": "Card A transfer",
+            "template_key": CARD_A_TEMPLATE,
+        },
     )
     transferred_card_a = transfer_a["gift_card"]
     claim_code_a = transfer_a["claim_code"]
     assert_true(bool(claim_code_a), "card A claim code present in debug")
     assert_equal(transferred_card_a["status"], "pending_transfer", "card A status after transfer")
+    assert_equal(transferred_card_a["template_key"], CARD_A_TEMPLATE, "card A template after transfer")
     assert_equal(transferred_card_a["recipient_phone"], "1" + "".join(ch for ch in RECIPIENT_A_PHONE if ch.isdigit())[-10:], "card A recipient phone")
+
+    preview_a = request_json(
+        "POST",
+        "/gift-cards/claim-preview",
+        token=recipient_a_token,
+        expected_statuses=(200,),
+        json={"claim_code": claim_code_a},
+    )
+    assert_equal(preview_a["template_key"], CARD_A_TEMPLATE, "claim preview template A")
+    assert_equal(preview_a["template"]["key"], CARD_A_TEMPLATE, "claim preview template payload A")
 
     sender_cards_after_transfer_a = request_json("GET", "/gift-cards/my-cards", token=sender_token, expected_statuses=(200,))
     sender_card_a_after_transfer = get_card(sender_cards_after_transfer_a, card_a_id)
@@ -345,6 +362,7 @@ def run_api_flow() -> Dict[str, Any]:
     assert_true(all(int(item["id"]) != card_a_id for item in sender_cards_after_claim_a), "sender no longer owns card A after claim")
     recipient_a_card_a = get_card(recipient_a_cards_after_claim_a, card_a_id)
     assert_equal(recipient_a_card_a["status"], "active", "recipient A sees active card A")
+    assert_equal(recipient_a_card_a["template_key"], CARD_A_TEMPLATE, "recipient A sees card A template")
 
     recipient_a_summary_after_claim = request_json("GET", "/gift-cards/summary", token=recipient_a_token, expected_statuses=(200,))
     assert_equal(recipient_a_summary_after_claim["active_count"], 1, "recipient A active count after claim")
@@ -376,12 +394,17 @@ def run_api_flow() -> Dict[str, Any]:
         f"/gift-cards/{card_b_id}/transfer",
         token=sender_token,
         expected_statuses=(200,),
-        json={"recipient_phone": RECIPIENT_B_PHONE, "message": "Card B transfer"},
+        json={
+            "recipient_phone": RECIPIENT_B_PHONE,
+            "message": "Card B transfer",
+            "template_key": CARD_B_TEMPLATE,
+        },
     )
     transferred_card_b = transfer_b["gift_card"]
     claim_code_b = transfer_b["claim_code"]
     assert_true(bool(claim_code_b), "card B claim code present in debug")
     assert_equal(transferred_card_b["status"], "pending_transfer", "card B status after transfer")
+    assert_equal(transferred_card_b["template_key"], CARD_B_TEMPLATE, "card B template after transfer")
 
     transfer_status_b_pending = request_json(
         "GET",

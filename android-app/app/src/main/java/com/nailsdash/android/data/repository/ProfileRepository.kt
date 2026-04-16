@@ -8,8 +8,10 @@ import com.nailsdash.android.data.model.DailyCheckInClaimResponse
 import com.nailsdash.android.data.model.DailyCheckInStatus
 import com.nailsdash.android.data.model.GiftCard
 import com.nailsdash.android.data.model.GiftCardClaimRequest
+import com.nailsdash.android.data.model.GiftCardClaimPreview
 import com.nailsdash.android.data.model.GiftCardRevokeResponse
 import com.nailsdash.android.data.model.GiftCardSummary
+import com.nailsdash.android.data.model.GiftCardTemplate
 import com.nailsdash.android.data.model.GiftCardTransferRequest
 import com.nailsdash.android.data.model.PointTransaction
 import com.nailsdash.android.data.model.PointsBalance
@@ -194,13 +196,25 @@ class ProfileRepository {
             .onSuccess { giftCardSummaryCache.put(cacheKey, it) }
     }
 
+    suspend fun getGiftCardTemplates(bearerToken: String): Result<List<GiftCardTemplate>> {
+        giftCardTemplatesCache.get(bearerToken)?.let { return Result.success(it) }
+        return runCatching { api.getGiftCardTemplates(bearerToken).templates }
+            .mapFailure()
+            .onSuccess { giftCardTemplatesCache.put(bearerToken, it) }
+    }
+
     suspend fun transferGiftCard(
         bearerToken: String,
         giftCardId: Int,
         recipientPhone: String,
         message: String?,
+        templateKey: String?,
     ): Result<GiftCard> = runCatching {
-        val request = GiftCardTransferRequest(recipient_phone = recipientPhone, message = message)
+        val request = GiftCardTransferRequest(
+            recipient_phone = recipientPhone,
+            message = message,
+            template_key = templateKey,
+        )
         api.transferGiftCard(
             bearerToken = bearerToken,
             giftCardId = giftCardId,
@@ -220,6 +234,14 @@ class ProfileRepository {
         giftCardSummaryCache.clear()
         myGiftCardsCache.clear()
     }
+
+    suspend fun previewGiftCardClaim(bearerToken: String, claimCode: String): Result<GiftCardClaimPreview> =
+        runCatching {
+            api.previewGiftCardClaim(
+                bearerToken = bearerToken,
+                request = GiftCardClaimRequest(claim_code = claimCode),
+            )
+        }.mapFailure()
 
     suspend fun revokeGiftCard(bearerToken: String, giftCardId: Int): Result<GiftCard> = runCatching {
         val response: GiftCardRevokeResponse = api.revokeGiftCard(
@@ -376,6 +398,7 @@ class ProfileRepository {
         private val pointsBalanceCache = TimedMemoryCache<TokenKey, PointsBalance>(SHORT_TTL_MS, maxEntries = 4)
         private val dailyCheckInStatusCache = TimedMemoryCache<TokenKey, DailyCheckInStatus>(SHORT_TTL_MS, maxEntries = 4)
         private val giftCardSummaryCache = TimedMemoryCache<GiftSummaryKey, GiftCardSummary>(SHORT_TTL_MS, maxEntries = 4)
+        private val giftCardTemplatesCache = TimedMemoryCache<String, List<GiftCardTemplate>>(LONG_TTL_MS, maxEntries = 2)
         private val pointTransactionsCache = TimedMemoryCache<TokenLimitKey, List<PointTransaction>>(SHORT_TTL_MS, maxEntries = 8)
         private val exchangeableCouponsCache = TimedMemoryCache<TokenKey, List<CouponTemplate>>(LONG_TTL_MS, maxEntries = 4)
         private val myCouponsCache = TimedMemoryCache<TokenStatusKey, List<UserCoupon>>(SHORT_TTL_MS, maxEntries = 12)

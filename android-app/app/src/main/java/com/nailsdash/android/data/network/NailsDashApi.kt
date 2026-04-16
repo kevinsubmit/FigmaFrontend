@@ -19,8 +19,10 @@ import com.nailsdash.android.data.model.GiftCard
 import com.nailsdash.android.data.model.GiftCardClaimRequest
 import com.nailsdash.android.data.model.GiftCardClaimResponse
 import com.nailsdash.android.data.model.GiftCardPurchaseResponse
+import com.nailsdash.android.data.model.GiftCardClaimPreview
 import com.nailsdash.android.data.model.GiftCardRevokeResponse
 import com.nailsdash.android.data.model.GiftCardSummary
+import com.nailsdash.android.data.model.GiftCardTemplateListResponse
 import com.nailsdash.android.data.model.GiftCardTransferRequest
 import com.nailsdash.android.data.model.HomeFeedPin
 import com.nailsdash.android.data.model.LoginRequest
@@ -377,6 +379,11 @@ interface NailsDashApi {
         @Header("Authorization") bearerToken: String,
     ): GiftCardSummary
 
+    @GET("gift-cards/templates")
+    suspend fun getGiftCardTemplates(
+        @Header("Authorization") bearerToken: String,
+    ): GiftCardTemplateListResponse
+
     @POST("gift-cards/{giftCardId}/transfer")
     suspend fun transferGiftCard(
         @Header("Authorization") bearerToken: String,
@@ -389,6 +396,12 @@ interface NailsDashApi {
         @Header("Authorization") bearerToken: String,
         @Body request: GiftCardClaimRequest,
     ): GiftCardClaimResponse
+
+    @POST("gift-cards/claim-preview")
+    suspend fun previewGiftCardClaim(
+        @Header("Authorization") bearerToken: String,
+        @Body request: GiftCardClaimRequest,
+    ): GiftCardClaimPreview
 
     @POST("gift-cards/{giftCardId}/revoke")
     suspend fun revokeGiftCard(

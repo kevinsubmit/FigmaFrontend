@@ -105,6 +105,7 @@ def create_gift_card_purchase(
     amount: float,
     recipient_phone: Optional[str],
     message: Optional[str],
+    template_key: Optional[str] = None,
     claim_days: int = 30
 ) -> Tuple[GiftCard, Optional[str]]:
     now = datetime.utcnow()
@@ -125,6 +126,7 @@ def create_gift_card_purchase(
         claim_code=claim_code,
         recipient_phone=recipient_phone,
         recipient_message=message,
+        template_key=template_key or "minimal_gold",
         balance=amount,
         initial_balance=amount,
         status=status,
@@ -164,6 +166,7 @@ def transfer_existing_gift_card(
     gift_card: GiftCard,
     recipient_phone: str,
     message: Optional[str],
+    template_key: Optional[str] = None,
     claim_days: int = 30
 ) -> GiftCard:
     if gift_card.status != "active":
@@ -172,6 +175,7 @@ def transfer_existing_gift_card(
     now = datetime.utcnow()
     gift_card.recipient_phone = recipient_phone
     gift_card.recipient_message = message
+    gift_card.template_key = template_key or gift_card.template_key or "minimal_gold"
     gift_card.status = "pending_transfer"
     gift_card.claim_expires_at = now + timedelta(days=claim_days)
     gift_card.claimed_by_user_id = None

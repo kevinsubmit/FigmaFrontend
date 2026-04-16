@@ -10,6 +10,8 @@ import com.nailsdash.android.data.model.Appointment
 import com.nailsdash.android.data.model.CouponTemplate
 import com.nailsdash.android.data.model.DailyCheckInStatus
 import com.nailsdash.android.data.model.GiftCard
+import com.nailsdash.android.data.model.GiftCardClaimPreview
+import com.nailsdash.android.data.model.GiftCardTemplate
 import com.nailsdash.android.data.model.PointTransaction
 import com.nailsdash.android.data.model.PointsBalance
 import com.nailsdash.android.data.model.ReferralListItem
@@ -317,10 +319,16 @@ class GiftCardsViewModel(application: Application) : AndroidViewModel(applicatio
     var cards by mutableStateOf(emptyList<GiftCard>())
         private set
 
+    var templates by mutableStateOf(emptyList<GiftCardTemplate>())
+        private set
+
     var isLoading by mutableStateOf(false)
         private set
 
     var isClaiming by mutableStateOf(false)
+        private set
+
+    var isLoadingClaimPreview by mutableStateOf(false)
         private set
 
     var sendingCardId by mutableStateOf<Int?>(null)
@@ -335,6 +343,9 @@ class GiftCardsViewModel(application: Application) : AndroidViewModel(applicatio
     var actionMessage by mutableStateOf<String?>(null)
         private set
 
+    var claimPreview by mutableStateOf<GiftCardClaimPreview?>(null)
+        private set
+
     fun loadIfNeeded(bearerToken: String) {
         if (loadedBearerToken == bearerToken && hasLoadedOnce && errorMessage == null && !isLoading) return
         load(bearerToken)
@@ -347,15 +358,20 @@ class GiftCardsViewModel(application: Application) : AndroidViewModel(applicatio
         hasLoadedOnce = true
         isLoading = true
         viewModelScope.launch {
-            repository.getMyGiftCards(bearerToken, limit = 100)
-                .onSuccess {
-                    cards = it
-                    errorMessage = null
-                }
-                .onFailure { err ->
-                    cards = emptyList()
-                    errorMessage = err.message
-                }
+            coroutineScope {
+                val cardsTask = async { repository.getMyGiftCards(bearerToken, limit = 100) }
+                val templatesTask = async { repository.getGiftCardTemplates(bearerToken) }
+                cardsTask.await()
+                    .onSuccess {
+                        cards = it
+                        errorMessage = null
+                    }
+                    .onFailure { err ->
+                        cards = emptyList()
+                        errorMessage = err.message
+                    }
+                templatesTask.await().onSuccess { templates = it }
+            }
             isLoading = false
         }
     }
@@ -365,6 +381,7 @@ class GiftCardsViewModel(application: Application) : AndroidViewModel(applicatio
         giftCardId: Int,
         recipientPhone: String,
         message: String?,
+        templateKey: String?,
     ) {
         val normalizedPhone = PhoneFormatter.normalizeUSPhone(recipientPhone)
         if (normalizedPhone.length != 11) {
@@ -379,6 +396,7 @@ class GiftCardsViewModel(application: Application) : AndroidViewModel(applicatio
                 giftCardId = giftCardId,
                 recipientPhone = normalizedPhone,
                 message = message,
+                templateKey = templateKey,
             ).onSuccess { updated ->
                 upsert(updated)
                 actionMessage = "Gift sent successfully."
@@ -410,6 +428,28 @@ class GiftCardsViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             isClaiming = false
         }
+    }
+
+    fun loadClaimPreview(bearerToken: String, claimCode: String) {
+        val normalizedCode = claimCode.trim().uppercase()
+        if (normalizedCode.length < 6) {
+            claimPreview = null
+            isLoadingClaimPreview = false
+            return
+        }
+
+        isLoadingClaimPreview = true
+        viewModelScope.launch {
+            repository.previewGiftCardClaim(bearerToken, normalizedCode)
+                .onSuccess { claimPreview = it }
+                .onFailure { claimPreview = null }
+            isLoadingClaimPreview = false
+        }
+    }
+
+    fun clearClaimPreview() {
+        claimPreview = null
+        isLoadingClaimPreview = false
     }
 
     fun revoke(bearerToken: String, giftCardId: Int) {
