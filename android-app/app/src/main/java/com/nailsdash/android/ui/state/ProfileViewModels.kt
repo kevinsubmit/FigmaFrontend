@@ -383,8 +383,13 @@ class GiftCardsViewModel(application: Application) : AndroidViewModel(applicatio
         message: String?,
         templateKey: String?,
     ) {
+        if (recipientPhone.isBlank()) {
+            errorMessage = "Please enter recipient phone number."
+            return
+        }
+
         val normalizedPhone = PhoneFormatter.normalizeUSPhone(recipientPhone)
-        if (normalizedPhone.length != 11) {
+        if (normalizedPhone.length != 11 || !normalizedPhone.startsWith("1")) {
             errorMessage = "Please enter a valid US phone number."
             return
         }

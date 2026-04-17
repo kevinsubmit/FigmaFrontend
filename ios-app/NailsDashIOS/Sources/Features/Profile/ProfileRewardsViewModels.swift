@@ -307,8 +307,13 @@ final class GiftCardsViewModel: ObservableObject {
         message: String?,
         templateKey: String?
     ) async -> Bool {
+        if recipientPhone.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            errorMessage = "Please enter recipient phone number."
+            return false
+        }
+
         let normalizedPhone = PhoneFormatter.normalizeUSPhone(recipientPhone)
-        guard normalizedPhone.count == 11 else {
+        guard normalizedPhone.count == 11, normalizedPhone.hasPrefix("1") else {
             errorMessage = "Please enter a valid US phone number."
             return false
         }

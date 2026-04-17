@@ -122,7 +122,7 @@ struct GiftCardsView: View {
         .unifiedNoticeAlert(isPresented: $showAlert, message: alertMessage)
         .sheet(isPresented: $showSendSheet) {
             sendGiftSheet
-                .presentationDetents([.height(420)])
+                .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showClaimSheet) {
@@ -408,7 +408,7 @@ struct GiftCardsView: View {
     private var sendGiftSheet: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            VStack(alignment: .leading, spacing: UITheme.spacing12) {
+            VStack(spacing: 0) {
                 HStack {
                     Text("Send Gift Card")
                         .font(.title3.weight(.bold))
@@ -421,97 +421,108 @@ struct GiftCardsView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(brandGold)
                 }
+                .padding(.horizontal, UITheme.pagePadding)
+                .padding(.top, UITheme.pagePadding)
+                .padding(.bottom, UITheme.spacing10)
 
-                if let card = selectedCardForSending {
-                    giftCardVisual(
-                        balance: card.balance,
-                        template: selectedTemplate,
-                        message: sendMessage,
-                        cardNumber: nil,
-                        badge: "Gift preview"
-                    )
-                    .frame(height: 220)
-                }
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: UITheme.spacing12) {
+                        VStack(alignment: .leading, spacing: UITheme.spacing8) {
+                            Text("Choose a style")
+                                .font(.caption.weight(.bold))
+                                .kerning(1.6)
+                                .foregroundStyle(brandGold)
+                            Text("The recipient will see this same card design.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
 
-                VStack(alignment: .leading, spacing: UITheme.spacing8) {
-                    Text("Choose a style")
-                        .font(.caption.weight(.bold))
-                        .kerning(1.6)
-                        .foregroundStyle(brandGold)
-                    Text("The recipient will see this same card design.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: UITheme.spacing10) {
-                            ForEach(viewModel.templates) { template in
-                                Button {
-                                    selectedTemplateKey = template.key
-                                } label: {
-                                    VStack(alignment: .leading, spacing: UITheme.spacing8) {
-                                        RoundedRectangle(cornerRadius: 14)
-                                            .fill(
-                                                LinearGradient(
-                                                    colors: [Color(hex: template.background_start_hex), Color(hex: template.background_end_hex)],
-                                                    startPoint: .topLeading,
-                                                    endPoint: .bottomTrailing
-                                                )
-                                            )
-                                            .overlay(
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: UITheme.spacing10) {
+                                    ForEach(viewModel.templates) { template in
+                                        Button {
+                                            selectedTemplateKey = template.key
+                                        } label: {
+                                            VStack(alignment: .leading, spacing: UITheme.spacing8) {
                                                 RoundedRectangle(cornerRadius: 14)
-                                                    .stroke(selectedTemplateKey == template.key ? brandGold : Color.white.opacity(0.10), lineWidth: 1)
-                                            )
-                                            .frame(width: 120, height: 84)
-                                        Text(template.name)
-                                            .font(.caption.weight(.bold))
-                                            .foregroundStyle(.white)
-                                        Text(template.description)
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                            .lineLimit(2)
+                                                    .fill(
+                                                        LinearGradient(
+                                                            colors: [Color(hex: template.background_start_hex), Color(hex: template.background_end_hex)],
+                                                            startPoint: .topLeading,
+                                                            endPoint: .bottomTrailing
+                                                        )
+                                                    )
+                                                    .overlay(
+                                                        RoundedRectangle(cornerRadius: 14)
+                                                            .stroke(selectedTemplateKey == template.key ? brandGold : Color.white.opacity(0.10), lineWidth: 1)
+                                                    )
+                                                    .frame(width: 120, height: 84)
+                                                Text(template.name)
+                                                    .font(.caption.weight(.bold))
+                                                    .foregroundStyle(.white)
+                                                Text(template.description)
+                                                    .font(.caption2)
+                                                    .foregroundStyle(.secondary)
+                                                    .lineLimit(2)
+                                            }
+                                            .frame(width: 120, alignment: .leading)
+                                        }
+                                        .buttonStyle(.plain)
                                     }
-                                    .frame(width: 120, alignment: .leading)
                                 }
-                                .buttonStyle(.plain)
                             }
                         }
+
+                        if let card = selectedCardForSending {
+                            giftCardVisual(
+                                balance: card.balance,
+                                template: selectedTemplate,
+                                message: sendMessage,
+                                cardNumber: nil,
+                                badge: "Gift preview"
+                            )
+                            .frame(height: 220)
+                        }
+
+                        VStack(alignment: .leading, spacing: UITheme.spacing6) {
+                            Text("Recipient Phone")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            TextField("Enter US phone", text: $sendRecipientPhone)
+                                .keyboardType(.numberPad)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled(true)
+                                .padding(.horizontal, UITheme.spacing12)
+                                .padding(.vertical, UITheme.spacing10)
+                                .background(Color.black.opacity(0.42))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                )
+                        }
+
+                        VStack(alignment: .leading, spacing: UITheme.spacing6) {
+                            Text("Message (Optional)")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            TextField("Write a message", text: $sendMessage, axis: .vertical)
+                                .textInputAutocapitalization(.sentences)
+                                .lineLimit(3, reservesSpace: true)
+                                .padding(.horizontal, UITheme.spacing12)
+                                .padding(.vertical, UITheme.spacing10)
+                                .background(Color.black.opacity(0.42))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                )
+                        }
                     }
+                    .padding(.horizontal, UITheme.pagePadding)
+                    .padding(.bottom, UITheme.spacing18)
                 }
-
-                VStack(alignment: .leading, spacing: UITheme.spacing6) {
-                    Text("Recipient Phone")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    TextField("Enter US phone", text: $sendRecipientPhone)
-                        .keyboardType(.numberPad)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled(true)
-                        .padding(.horizontal, UITheme.spacing12)
-                        .padding(.vertical, UITheme.spacing10)
-                        .background(Color.black.opacity(0.42))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                        )
-                }
-
-                VStack(alignment: .leading, spacing: UITheme.spacing6) {
-                    Text("Message (Optional)")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    TextField("Write a message", text: $sendMessage)
-                        .textInputAutocapitalization(.sentences)
-                        .padding(.horizontal, UITheme.spacing12)
-                        .padding(.vertical, UITheme.spacing10)
-                        .background(Color.black.opacity(0.42))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-                        )
-                }
-
+            }
+            .safeAreaInset(edge: .bottom) {
                 Button {
                     Task { await handleSendGiftCard() }
                 } label: {
@@ -536,9 +547,11 @@ struct GiftCardsView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(viewModel.sendingCardID != nil)
-
+                .padding(.horizontal, UITheme.pagePadding)
+                .padding(.top, UITheme.spacing8)
+                .padding(.bottom, UITheme.spacing8)
+                .background(Color.black)
             }
-            .padding(UITheme.pagePadding)
         }
     }
 
@@ -851,15 +864,6 @@ struct GiftCardsView: View {
                 }
 
                 HStack(alignment: .bottom) {
-                    VStack(alignment: .leading, spacing: UITheme.spacing3) {
-                        Text("Template")
-                            .font(.caption2.weight(.bold))
-                            .kerning(1.4)
-                            .foregroundStyle(foreground.opacity(0.60))
-                        Text(template.name)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(foreground)
-                    }
                     Spacer()
                     if let cardNumber, !cardNumber.isEmpty {
                         Text(cardNumber)

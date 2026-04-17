@@ -33,6 +33,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -1880,7 +1882,9 @@ fun GiftCardsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(640.dp)
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
                     .padding(RewardsPagePadding),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -1909,19 +1913,6 @@ fun GiftCardsScreen(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                         ) { sendCardId = null },
-                    )
-                }
-
-                selectedTemplate?.let { template ->
-                    GiftCardTemplateSurface(
-                        template = template,
-                        balance = sendCard.balance,
-                        message = transferMessage.takeIf { it.isNotBlank() },
-                        cardNumber = null,
-                        badge = "Gift preview",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp),
                     )
                 }
 
@@ -1978,6 +1969,19 @@ fun GiftCardsScreen(
                             }
                         }
                     }
+                }
+
+                selectedTemplate?.let { template ->
+                    GiftCardTemplateSurface(
+                        template = template,
+                        balance = sendCard.balance,
+                        message = transferMessage.takeIf { it.isNotBlank() },
+                        cardNumber = null,
+                        badge = "Gift preview",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp),
+                    )
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -2989,21 +2993,6 @@ private fun GiftCardTemplateSurface(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.Bottom,
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(
-                        text = "Template",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.4.sp,
-                        ),
-                        color = foreground.copy(alpha = 0.60f),
-                    )
-                    Text(
-                        text = template.name,
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                        color = foreground,
-                    )
-                }
                 Spacer(modifier = Modifier.weight(1f))
                 cardNumber?.takeIf { it.isNotBlank() }?.let {
                     Text(

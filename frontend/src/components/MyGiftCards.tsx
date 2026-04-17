@@ -1,5 +1,6 @@
 import { ArrowLeft, Copy, Check, Gift, Clock, Send, Phone, ShieldCheck, QrCode, XCircle, Ticket } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import giftCardsService, { GiftCard, GiftCardClaimPreview, GiftCardTemplate } from '../services/gift-cards.service';
@@ -107,6 +108,12 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
     return maskPhone(phone);
   };
 
+  const normalizeUSPhone = (input: string) => {
+    const digits = input.replace(/\D/g, '');
+    if (digits.length === 10) return `1${digits}`;
+    return digits;
+  };
+
   const totalBalance = useMemo(
     () => giftCards.filter((card) => card.status === 'active').reduce((acc, card) => acc + card.balance, 0),
     [giftCards]
@@ -175,8 +182,15 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
       return;
     }
 
-    if (!giftData.recipientPhone) {
-      toast.error('Please enter a valid phone number');
+    const rawRecipientPhone = giftData.recipientPhone.trim();
+    if (!rawRecipientPhone) {
+      toast.error('Please enter recipient phone number');
+      return;
+    }
+
+    const normalizedRecipientPhone = normalizeUSPhone(rawRecipientPhone);
+    if (normalizedRecipientPhone.length !== 11 || !normalizedRecipientPhone.startsWith('1')) {
+      toast.error('Please enter a valid US phone number');
       return;
     }
 
@@ -189,7 +203,7 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
     try {
       setIsSending(true);
       const response = await giftCardsService.transferGiftCard(token, selectedCard.id, {
-        recipient_phone: giftData.recipientPhone,
+        recipient_phone: normalizedRecipientPhone,
         message: giftData.message || undefined,
         template_key: selectedTemplateKey,
       });
@@ -259,6 +273,11 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
     } finally {
       setIsClaiming(false);
     }
+  };
+
+  const renderModalPortal = (content: ReactNode) => {
+    if (typeof document === 'undefined') return null;
+    return createPortal(content, document.body);
   };
 
   return (
@@ -492,147 +511,157 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
       </AnimatePresence>
 
       {/* Gifting Modal/Drawer Overlay */}
-      <AnimatePresence>
-        {isGiftingOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl p-6 flex flex-col justify-end"
-          >
-            <motion.div 
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="bg-[#111] border border-[#333] rounded-t-[2.5rem] p-8 -mx-6 -mb-6 pb-12 shadow-[0_-20px_50px_rgba(0,0,0,0.8)]"
-            >
-              <div className="w-12 h-1.5 bg-[#333] rounded-full mx-auto mb-8" />
-              
-              <div className="flex items-center gap-5 mb-8">
-                <button 
-                  onClick={() => {
-                    setIsGiftingOpen(false);
-                    setSelectedTemplateKey(selectedCard?.template_key ?? 'minimal_gold');
-                  }}
-                  className="w-12 h-12 rounded-full bg-[#1a1a1a] border border-[#333] flex items-center justify-center hover:bg-[#252525] active:scale-90 transition-all shadow-lg"
-                >
-                  <ArrowLeft className="w-6 h-6 text-white" />
-                </button>
-                <div>
-                  <h2 className="text-3xl font-black italic tracking-tighter text-white uppercase leading-none">Send a Gift</h2>
-                  <p className="text-[#D4AF37] text-[10px] font-black uppercase tracking-widest mt-1">Luxury Digital Experience</p>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                {/* Amount Display */}
-                {selectedCard && selectedTemplate && (
-                  <GiftCardTemplateVisual
-                    payload={{
-                      balance: selectedCard.balance,
-                      template: selectedTemplate,
-                      message: giftData.message,
-                      badge: 'Gift preview',
-                    }}
-                    className="min-h-[230px]"
-                  />
-                )}
-
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-[#D4AF37] text-[10px] font-black uppercase tracking-[0.3em] mb-2">Choose a style</p>
-                    <p className="text-[11px] text-gray-500">The recipient will see this same gift card design.</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {templates.map((template) => (
-                      <button
-                        key={template.key}
-                        onClick={() => setSelectedTemplateKey(template.key)}
-                        className={`rounded-2xl border p-3 text-left transition-all ${selectedTemplateKey === template.key ? 'border-[#D4AF37] bg-[#1a1a1a]' : 'border-[#333] bg-black hover:border-[#555]'}`}
-                      >
-                        <div
-                          className="mb-3 h-20 rounded-xl"
-                          style={{
-                            background: `linear-gradient(135deg, ${template.background_start_hex} 0%, ${template.background_end_hex} 100%)`,
-                            boxShadow: `inset 0 0 0 1px ${template.accent_start_hex}30`,
-                          }}
-                        />
-                        <p className="text-xs font-black uppercase tracking-wider text-white">{template.name}</p>
-                        <p className="mt-1 text-[10px] leading-relaxed text-gray-500">{template.description}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="relative group">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-[#D4AF37] transition-colors" />
-                    <input 
-                      type="text"
-                      placeholder="Recipient Phone"
-                      value={giftData.recipientPhone}
-                      onChange={(e) => setGiftData({ ...giftData, recipientPhone: e.target.value })}
-                      className="w-full bg-black border border-[#333] focus:border-[#D4AF37] rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-gray-600 outline-none transition-all"
-                    />
-                  </div>
-
-                  <textarea 
-                    placeholder="Add a personal message (Optional)"
-                    rows={3}
-                    value={giftData.message}
-                    onChange={(e) => setGiftData({ ...giftData, message: e.target.value })}
-                    className="w-full bg-black border border-[#333] focus:border-[#D4AF37] rounded-2xl p-4 text-white placeholder:text-gray-600 outline-none transition-all resize-none"
-                  />
-                </div>
-
-                <div className="pt-4">
-                  <button 
-                    disabled={isSending}
-                    onClick={handleSendGift}
-                    className="w-full bg-[#D4AF37] hover:bg-[#b5952f] disabled:opacity-50 disabled:cursor-not-allowed text-black font-black uppercase py-5 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(212,175,55,0.3)] active:scale-[0.98]"
-                  >
-                    {isSending ? (
-                      <>
-                        <motion.div 
-                          animate={{ rotate: 360 }} 
-                          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                          className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full"
-                        />
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-5 h-5" />
-                        Send Digital Gift Card
-                      </>
-                    )}
-                  </button>
-                  <p className="text-[9px] text-gray-600 text-center mt-4 uppercase font-bold flex items-center justify-center gap-1">
-                    <ShieldCheck className="w-3 h-3" /> Secure Payment Powered by GlamPay
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Claim Modal */}
-      <AnimatePresence>
-        {isClaimOpen && (
+      {isGiftingOpen &&
+        renderModalPortal(
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[105] bg-black/90 backdrop-blur-xl p-6 flex flex-col justify-end"
+            className="fixed inset-0 z-[220] bg-black/95 backdrop-blur-xl"
           >
             <motion.div
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
-              exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="bg-[#111] border border-[#333] rounded-t-[2.5rem] p-8 -mx-6 -mb-6 pb-12 shadow-[0_-20px_50px_rgba(0,0,0,0.8)]"
+              className="flex h-[100dvh] w-full flex-col overflow-hidden bg-[#111] text-white sm:mx-auto sm:my-6 sm:h-[min(920px,calc(100dvh-3rem))] sm:max-w-2xl sm:rounded-[2.25rem] sm:border sm:border-[#333] sm:shadow-[0_-20px_50px_rgba(0,0,0,0.8)]"
+            >
+              <div
+                className="border-b border-[#232323] px-4 pb-4 pt-4 sm:px-8"
+                style={{ paddingTop: 'max(env(safe-area-inset-top), 1rem)' }}
+              >
+                <div className="mx-auto mb-5 h-1.5 w-12 rounded-full bg-[#333] sm:hidden" />
+
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => {
+                      setIsGiftingOpen(false);
+                      setSelectedTemplateKey(selectedCard?.template_key ?? 'minimal_gold');
+                    }}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#333] bg-[#1a1a1a] shadow-lg transition-all hover:bg-[#252525] active:scale-90"
+                  >
+                    <ArrowLeft className="h-5 w-5 text-white" />
+                  </button>
+                  <div className="min-w-0">
+                    <h2 className="text-[1.75rem] font-black uppercase leading-none tracking-tight text-white sm:text-3xl">Send a Gift</h2>
+                    <p className="mt-1 text-[10px] font-black uppercase tracking-[0.32em] text-[#D4AF37]">Luxury Digital Experience</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-8 sm:py-6">
+                <div className="space-y-5">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="mb-2 text-[10px] font-black uppercase tracking-[0.3em] text-[#D4AF37]">Choose a style</p>
+                      <p className="text-[11px] text-gray-500">The recipient will see this same gift card design.</p>
+                    </div>
+                    <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-2">
+                      {templates.map((template) => (
+                        <button
+                          key={template.key}
+                          onClick={() => setSelectedTemplateKey(template.key)}
+                          className={`w-[160px] shrink-0 snap-start rounded-2xl border p-3 text-left transition-all ${selectedTemplateKey === template.key ? 'border-[#D4AF37] bg-[#1a1a1a]' : 'border-[#333] bg-black hover:border-[#555]'}`}
+                        >
+                          <div
+                            className="mb-3 h-20 rounded-xl"
+                            style={{
+                              background: `linear-gradient(135deg, ${template.background_start_hex} 0%, ${template.background_end_hex} 100%)`,
+                              boxShadow: `inset 0 0 0 1px ${template.accent_start_hex}30`,
+                            }}
+                          />
+                          <p className="text-xs font-black uppercase tracking-wider text-white">{template.name}</p>
+                          <p className="mt-1 line-clamp-2 text-[10px] leading-relaxed text-gray-500">{template.description}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {selectedCard && selectedTemplate && (
+                    <GiftCardTemplateVisual
+                      payload={{
+                        balance: selectedCard.balance,
+                        template: selectedTemplate,
+                        message: giftData.message,
+                        badge: 'Gift preview',
+                      }}
+                      className="min-h-[210px] sm:min-h-[230px]"
+                    />
+                  )}
+
+                  <div className="space-y-4">
+                    <div className="relative group">
+                      <Phone className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 transition-colors group-focus-within:text-[#D4AF37]" />
+                      <input
+                        type="text"
+                        placeholder="Recipient Phone"
+                        value={giftData.recipientPhone}
+                        onChange={(e) => setGiftData({ ...giftData, recipientPhone: e.target.value })}
+                        className="w-full rounded-2xl border border-[#333] bg-black py-4 pl-12 pr-4 text-white outline-none transition-all placeholder:text-gray-600 focus:border-[#D4AF37]"
+                      />
+                    </div>
+
+                    <textarea
+                      placeholder="Add a personal message (Optional)"
+                      rows={4}
+                      value={giftData.message}
+                      onChange={(e) => setGiftData({ ...giftData, message: e.target.value })}
+                      className="min-h-[130px] w-full resize-none rounded-2xl border border-[#333] bg-black p-4 text-white outline-none transition-all placeholder:text-gray-600 focus:border-[#D4AF37]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className="border-t border-[#232323] bg-[#111]/95 px-4 pb-16 pt-4 backdrop-blur-xl sm:px-8 sm:pb-4"
+                style={{ paddingBottom: 'calc(max(env(safe-area-inset-bottom), 1rem) + 4.5rem)' }}
+              >
+                <button
+                  disabled={isSending}
+                  onClick={handleSendGift}
+                  className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#D4AF37] py-5 font-black uppercase text-black shadow-[0_10px_30px_rgba(212,175,55,0.3)] transition-all hover:bg-[#b5952f] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isSending ? (
+                    <>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        className="h-5 w-5 rounded-full border-2 border-black/20 border-t-black"
+                      />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-5 w-5" />
+                      Send Digital Gift Card
+                    </>
+                  )}
+                </button>
+                <p className="mt-3 flex items-center justify-center gap-1 text-center text-[9px] font-bold uppercase text-gray-600">
+                  <ShieldCheck className="h-3 w-3" /> Secure Payment Powered by GlamPay
+                </p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+      {/* Claim Modal */}
+      {isClaimOpen &&
+        renderModalPortal(
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-[225] bg-black/90 backdrop-blur-xl flex items-end"
+            style={{
+              paddingTop: 'max(env(safe-area-inset-top), 1rem)',
+              paddingBottom: 'max(env(safe-area-inset-bottom), 1rem)',
+              paddingLeft: '1rem',
+              paddingRight: '1rem',
+            }}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="w-full max-h-[88vh] overflow-y-auto overscroll-contain rounded-[2.25rem] border border-[#333] bg-[#111] p-6 pb-8 shadow-[0_-20px_50px_rgba(0,0,0,0.8)] sm:mx-auto sm:max-w-2xl sm:p-8"
             >
               <div className="w-12 h-1.5 bg-[#333] rounded-full mx-auto mb-8" />
               <div className="flex items-center gap-5 mb-8">
@@ -688,7 +717,6 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
     </div>
   );
 }

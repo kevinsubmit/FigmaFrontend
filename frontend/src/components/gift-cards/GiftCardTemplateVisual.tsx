@@ -89,10 +89,7 @@ export function GiftCardTemplateVisual({ payload, className = '' }: { payload: V
         </div>
 
         <div className="flex items-end justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.24em] opacity-60">Template</p>
-            <p className="mt-1 text-sm font-semibold">{payload.template.name}</p>
-          </div>
+          <div />
           {payload.cardNumber ? (
             <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-right font-mono text-xs tracking-[0.24em] opacity-90">
               {payload.cardNumber}
