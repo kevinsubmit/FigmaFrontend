@@ -11,6 +11,7 @@ struct GiftCardsView: View {
     @State private var selectedTemplateKey: String = "minimal_gold"
     @State private var sendRecipientPhone: String = ""
     @State private var sendMessage: String = ""
+    @State private var sendPhoneError: String?
     @State private var showSendSheet: Bool = false
     @State private var showClaimSheet: Bool = false
     private let brandGold = UITheme.brandGold
@@ -417,6 +418,7 @@ struct GiftCardsView: View {
                     Button("Close") {
                         showSendSheet = false
                         selectedCardForSending = nil
+                        sendPhoneError = nil
                     }
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(brandGold)
@@ -488,6 +490,9 @@ struct GiftCardsView: View {
                                 .font(.caption.weight(.semibold))
                                 .foregroundStyle(.secondary)
                             TextField("Enter US phone", text: $sendRecipientPhone)
+                                .onChange(of: sendRecipientPhone) { _ in
+                                    sendPhoneError = nil
+                                }
                                 .keyboardType(.numberPad)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled(true)
@@ -497,8 +502,13 @@ struct GiftCardsView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 12))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                                        .stroke((sendPhoneError == nil ? Color.white.opacity(0.08) : Color.red.opacity(0.85)), lineWidth: 1)
                                 )
+                            if let sendPhoneError, !sendPhoneError.isEmpty {
+                                Text(sendPhoneError)
+                                    .font(.caption)
+                                    .foregroundStyle(Color.red.opacity(0.9))
+                            }
                         }
 
                         VStack(alignment: .leading, spacing: UITheme.spacing6) {
@@ -942,10 +952,24 @@ struct GiftCardsView: View {
             showAlert = true
             return
         }
+
+        let trimmedPhone = sendRecipientPhone.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedPhone.isEmpty {
+            sendPhoneError = "Please enter recipient phone number."
+            return
+        }
+
+        let normalizedPhone = PhoneFormatter.normalizeUSPhone(trimmedPhone)
+        guard normalizedPhone.count == 11, normalizedPhone.hasPrefix("1") else {
+            sendPhoneError = "Please enter a valid US phone number."
+            return
+        }
+
+        sendPhoneError = nil
         let success = await viewModel.transfer(
             token: token,
             giftCardID: card.id,
-            recipientPhone: sendRecipientPhone,
+            recipientPhone: normalizedPhone,
             message: sendMessage,
             templateKey: selectedTemplateKey
         )
@@ -955,6 +979,7 @@ struct GiftCardsView: View {
             sendRecipientPhone = ""
             sendMessage = ""
             selectedTemplateKey = "minimal_gold"
+            sendPhoneError = nil
         }
     }
 

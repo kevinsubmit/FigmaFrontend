@@ -159,6 +159,7 @@ import com.nailsdash.android.ui.state.PointsViewModel
 import com.nailsdash.android.ui.state.ReferralViewModel
 import com.nailsdash.android.utils.AppDateTimeFormatterCache
 import com.nailsdash.android.utils.AssetUrlResolver
+import com.nailsdash.android.utils.PhoneFormatter
 import java.io.ByteArrayOutputStream
 import java.time.Instant
 import java.time.LocalDate
@@ -1624,6 +1625,7 @@ fun GiftCardsScreen(
     var claimCode by remember { mutableStateOf("") }
     var transferPhone by remember { mutableStateOf("") }
     var transferMessage by remember { mutableStateOf("") }
+    var transferPhoneError by remember { mutableStateOf<String?>(null) }
     var selectedTemplateKey by remember { mutableStateOf("minimal_gold") }
     var showClaimDialog by remember { mutableStateOf(false) }
     var sendCardId by remember { mutableStateOf<Int?>(null) }
@@ -1664,6 +1666,7 @@ fun GiftCardsScreen(
             sendCardId = null
             transferPhone = ""
             transferMessage = ""
+            transferPhoneError = null
             selectedTemplateKey = "minimal_gold"
         }
     }
@@ -1912,7 +1915,10 @@ fun GiftCardsScreen(
                         modifier = Modifier.clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                        ) { sendCardId = null },
+                        ) {
+                            sendCardId = null
+                            transferPhoneError = null
+                        },
                     )
                 }
 
@@ -1988,7 +1994,10 @@ fun GiftCardsScreen(
                     GiftSheetLabel(text = "Recipient Phone")
                     GiftSheetInputField(
                         value = transferPhone,
-                        onValueChange = { transferPhone = it },
+                        onValueChange = {
+                            transferPhone = it
+                            transferPhoneError = null
+                        },
                         placeholder = "Enter US phone",
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number,
@@ -1996,6 +2005,13 @@ fun GiftCardsScreen(
                             autoCorrectEnabled = false,
                         ),
                     )
+                    transferPhoneError?.takeIf { it.isNotBlank() }?.let { message ->
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFFF8A8A),
+                        )
+                    }
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -2028,10 +2044,21 @@ fun GiftCardsScreen(
                                 indication = null,
                                 onClick = {
                                     if (token != null) {
+                                        val trimmedPhone = transferPhone.trim()
+                                        if (trimmedPhone.isEmpty()) {
+                                            transferPhoneError = "Please enter recipient phone number."
+                                            return@clickable
+                                        }
+                                        val normalizedPhone = PhoneFormatter.normalizeUSPhone(trimmedPhone)
+                                        if (normalizedPhone.length != 11 || !normalizedPhone.startsWith("1")) {
+                                            transferPhoneError = "Please enter a valid US phone number."
+                                            return@clickable
+                                        }
+                                        transferPhoneError = null
                                         giftCardsViewModel.transfer(
                                             bearerToken = token,
                                             giftCardId = sendCard.id,
-                                            recipientPhone = transferPhone,
+                                            recipientPhone = normalizedPhone,
                                             message = transferMessage.takeIf { it.isNotBlank() },
                                             templateKey = selectedTemplateKey,
                                         )

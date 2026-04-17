@@ -31,6 +31,7 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
   const [isClaiming, setIsClaiming] = useState(false);
   const [claimPreview, setClaimPreview] = useState<GiftCardClaimPreview | null>(null);
   const [isLoadingClaimPreview, setIsLoadingClaimPreview] = useState(false);
+  const [sendPhoneError, setSendPhoneError] = useState<string | null>(null);
   const [giftData, setGiftData] = useState<GiftingData>({
     recipientPhone: '',
     amount: 0,
@@ -184,15 +185,16 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
 
     const rawRecipientPhone = giftData.recipientPhone.trim();
     if (!rawRecipientPhone) {
-      toast.error('Please enter recipient phone number');
+      setSendPhoneError('Please enter recipient phone number');
       return;
     }
 
     const normalizedRecipientPhone = normalizeUSPhone(rawRecipientPhone);
     if (normalizedRecipientPhone.length !== 11 || !normalizedRecipientPhone.startsWith('1')) {
-      toast.error('Please enter a valid US phone number');
+      setSendPhoneError('Please enter a valid US phone number');
       return;
     }
+    setSendPhoneError(null);
 
     const token = localStorage.getItem('access_token') || localStorage.getItem('token');
     if (!token) {
@@ -216,6 +218,7 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
       setGiftData({ recipientPhone: '', amount: 0, message: '' });
       setSelectedCard(null);
       setSelectedTemplateKey('minimal_gold');
+      setSendPhoneError(null);
     } catch (error) {
       console.error('Failed to send gift card:', error);
       toast.error('Failed to send gift card');
@@ -522,7 +525,7 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="flex h-[100dvh] w-full flex-col overflow-hidden bg-[#111] text-white sm:mx-auto sm:my-6 sm:h-[min(920px,calc(100dvh-3rem))] sm:max-w-2xl sm:rounded-[2.25rem] sm:border sm:border-[#333] sm:shadow-[0_-20px_50px_rgba(0,0,0,0.8)]"
+              className="flex h-[100svh] max-h-[100svh] w-full flex-col overflow-hidden bg-[#111] text-white sm:mx-auto sm:my-6 sm:h-[min(920px,calc(100dvh-3rem))] sm:max-h-[min(920px,calc(100dvh-3rem))] sm:max-w-2xl sm:rounded-[2.25rem] sm:border sm:border-[#333] sm:shadow-[0_-20px_50px_rgba(0,0,0,0.8)]"
             >
               <div
                 className="border-b border-[#232323] px-4 pb-4 pt-4 sm:px-8"
@@ -535,6 +538,7 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
                     onClick={() => {
                       setIsGiftingOpen(false);
                       setSelectedTemplateKey(selectedCard?.template_key ?? 'minimal_gold');
+                      setSendPhoneError(null);
                     }}
                     className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#333] bg-[#1a1a1a] shadow-lg transition-all hover:bg-[#252525] active:scale-90"
                   >
@@ -594,10 +598,16 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
                         type="text"
                         placeholder="Recipient Phone"
                         value={giftData.recipientPhone}
-                        onChange={(e) => setGiftData({ ...giftData, recipientPhone: e.target.value })}
-                        className="w-full rounded-2xl border border-[#333] bg-black py-4 pl-12 pr-4 text-white outline-none transition-all placeholder:text-gray-600 focus:border-[#D4AF37]"
+                        onChange={(e) => {
+                          setGiftData({ ...giftData, recipientPhone: e.target.value });
+                          if (sendPhoneError) setSendPhoneError(null);
+                        }}
+                        className={`w-full rounded-2xl border bg-black py-4 pl-12 pr-4 text-white outline-none transition-all placeholder:text-gray-600 focus:border-[#D4AF37] ${sendPhoneError ? 'border-[#ff7b7b]' : 'border-[#333]'}`}
                       />
                     </div>
+                    {sendPhoneError ? (
+                      <p className="-mt-2 text-sm font-medium text-[#ff9a9a]">{sendPhoneError}</p>
+                    ) : null}
 
                     <textarea
                       placeholder="Add a personal message (Optional)"
@@ -611,8 +621,8 @@ export function MyGiftCards({ onBack }: MyGiftCardsProps) {
               </div>
 
               <div
-                className="border-t border-[#232323] bg-[#111]/95 px-4 pb-16 pt-4 backdrop-blur-xl sm:px-8 sm:pb-4"
-                style={{ paddingBottom: 'calc(max(env(safe-area-inset-bottom), 1rem) + 4.5rem)' }}
+                className="sticky bottom-0 shrink-0 border-t border-[#232323] bg-[#111]/98 px-4 pt-4 backdrop-blur-xl sm:px-8"
+                style={{ paddingBottom: 'calc(max(env(safe-area-inset-bottom), 1rem) + 1rem)' }}
               >
                 <button
                   disabled={isSending}
