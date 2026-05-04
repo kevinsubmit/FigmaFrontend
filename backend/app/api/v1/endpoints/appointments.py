@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import json
 import logging
+import secrets
 
 from app.api.deps import get_db, get_current_user
 from app.crud import appointment as crud_appointment
@@ -41,8 +42,12 @@ from app.schemas.appointment import (
     AppointmentServiceItemCreate,
     AppointmentServiceSummary,
     AppointmentServiceItemResponse,
+    AppointmentAdminWalkInCreate,
+    WalkInCustomerSearchItem,
+    WalkInCustomerSearchResponse,
 )
 from app.schemas.user import UserResponse
+from app.schemas.phone import normalize_us_phone as normalize_us_phone_strict
 from app.models.appointment import AppointmentStatus
 from app.models.appointment import Appointment as AppointmentModel
 from app.models.appointment_group import AppointmentGroup
@@ -66,6 +71,7 @@ from app.services import log_service
 from app.services.vip_config_service import load_vip_level_rows
 from app.crud import coupons as crud_coupons
 from app.utils.phone_privacy import mask_phone
+from app.core.security import get_password_hash
 
 router = APIRouter()
 DEFAULT_STORE_TIMEZONE = "America/New_York"
@@ -189,6 +195,15 @@ def _ensure_not_past_appointment(appointment_date, appointment_time, store_timez
         raise HTTPException(
             status_code=400,
             detail="Past time cannot be booked. Please select a future time."
+        )
+
+
+def _ensure_walk_in_date_not_in_past(appointment_date, store_timezone: ZoneInfo):
+    today = datetime.now(store_timezone).date()
+    if appointment_date < today:
+        raise HTTPException(
+            status_code=400,
+            detail="Walk-in date cannot be earlier than today.",
         )
 
 
@@ -324,6 +339,7 @@ def _run_appointment_creation_side_effects(
     appointment: AppointmentModel,
     user_id: int,
     ip_address: Optional[str],
+    send_customer_notifications: bool = True,
 ) -> None:
     try:
         risk_service.log_risk_event(
@@ -340,6 +356,8 @@ def _run_appointment_creation_side_effects(
             appointment.id,
             exc,
         )
+    if not send_customer_notifications:
+        return
     try:
         notification_service.notify_appointment_created(db, appointment)
     except Exception as exc:
@@ -528,6 +546,137 @@ def _mark_paid_if_completed(appointment: AppointmentModel, service: Optional[Ser
     order_amount = _resolve_appointment_order_amount(appointment, service)
     appointment.payment_status = "paid"
     appointment.paid_amount = float(order_amount)
+
+
+def _assert_admin_can_manage_store(
+    current_user: UserResponse,
+    *,
+    store_id: Optional[int] = None,
+) -> None:
+    if not current_user.is_admin and not current_user.store_id:
+        raise HTTPException(status_code=403, detail="Only store administrators can operate appointments")
+    if not current_user.is_admin and current_user.store_admin_status != "approved":
+        raise HTTPException(status_code=403, detail="Store admin approval required")
+    if store_id is not None and not current_user.is_admin and int(current_user.store_id or 0) != int(store_id):
+        raise HTTPException(status_code=403, detail="You can only operate appointments from your own store")
+
+
+def _build_walk_in_username(db: Session, phone: str) -> str:
+    phone_tail = phone[-6:]
+    while True:
+        candidate = f"walkin_{phone_tail}_{secrets.token_hex(2)}"
+        exists = db.query(UserModel.id).filter(UserModel.username == candidate).first()
+        if not exists:
+            return candidate
+
+
+def _resolve_or_create_walk_in_customer(
+    db: Session,
+    *,
+    phone: str,
+    full_name: Optional[str],
+) -> tuple[UserModel, bool]:
+    existing_user = (
+        db.query(UserModel)
+        .filter(
+            UserModel.phone == phone,
+            UserModel.is_active == True,
+            UserModel.is_admin == False,
+            UserModel.store_id.is_(None),
+        )
+        .first()
+    )
+    if existing_user:
+        if not (existing_user.full_name or "").strip() and full_name:
+            existing_user.full_name = full_name.strip()
+            db.flush()
+        return existing_user, False
+
+    if not full_name:
+        raise HTTPException(status_code=400, detail="Full name is required for a new walk-in customer")
+
+    user = UserModel(
+        phone=phone,
+        username=_build_walk_in_username(db, phone),
+        password_hash=get_password_hash(secrets.token_urlsafe(24)),
+        full_name=full_name.strip(),
+        phone_verified=False,
+        is_active=True,
+        is_admin=False,
+        store_id=None,
+    )
+    db.add(user)
+    db.flush()
+    return user, True
+
+
+def _build_walk_in_customer_search_response(
+    db: Session,
+    *,
+    phone: str,
+    store_id: int,
+) -> WalkInCustomerSearchResponse:
+    customer = (
+        db.query(UserModel)
+        .filter(
+            UserModel.phone == phone,
+            UserModel.is_active == True,
+            UserModel.is_admin == False,
+            UserModel.store_id.is_(None),
+        )
+        .first()
+    )
+    if not customer:
+        return WalkInCustomerSearchResponse(customer=None)
+
+    total_appointments = (
+        db.query(func.count(AppointmentModel.id))
+        .filter(AppointmentModel.user_id == customer.id)
+        .scalar()
+        or 0
+    )
+    completed_count = (
+        db.query(func.count(AppointmentModel.id))
+        .filter(
+            AppointmentModel.user_id == customer.id,
+            AppointmentModel.status == AppointmentStatus.COMPLETED,
+        )
+        .scalar()
+        or 0
+    )
+    last_appointment = (
+        db.query(AppointmentModel)
+        .filter(AppointmentModel.user_id == customer.id)
+        .order_by(AppointmentModel.appointment_date.desc(), AppointmentModel.appointment_time.desc())
+        .first()
+    )
+    parsed_last_appointment_at = None
+    if last_appointment:
+        parsed_last_appointment_at = datetime.combine(
+            last_appointment.appointment_date,
+            last_appointment.appointment_time,
+        )
+    store_visit_count = (
+        db.query(func.count(AppointmentModel.id))
+        .filter(
+            AppointmentModel.user_id == customer.id,
+            AppointmentModel.store_id == store_id,
+        )
+        .scalar()
+        or 0
+    )
+    return WalkInCustomerSearchResponse(
+        customer=WalkInCustomerSearchItem(
+            id=int(customer.id),
+            full_name=(customer.full_name or "").strip() or None,
+            username=customer.username,
+            phone=customer.phone,
+            total_appointments=int(total_appointments),
+            completed_count=int(completed_count),
+            last_appointment_at=parsed_last_appointment_at,
+            store_visit_count=int(store_visit_count),
+        )
+    )
 
 
 def _assert_admin_can_operate_appointment(
@@ -1381,6 +1530,155 @@ def get_admin_appointments(
         )
 
     return result
+
+
+@router.get("/admin/walk-in/customer-search", response_model=WalkInCustomerSearchResponse)
+def search_walk_in_customer(
+    phone: str = Query(..., min_length=10, max_length=20),
+    store_id: Optional[int] = Query(None),
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        normalized_phone = normalize_us_phone_strict(phone, "Phone must be a valid US phone number")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    resolved_store_id = int(current_user.store_id) if not current_user.is_admin else store_id
+    if resolved_store_id is None:
+        raise HTTPException(status_code=400, detail="Store ID is required")
+
+    _assert_admin_can_manage_store(current_user, store_id=resolved_store_id)
+    return _build_walk_in_customer_search_response(
+        db,
+        phone=normalized_phone,
+        store_id=int(resolved_store_id),
+    )
+
+
+@router.post("/admin/walk-in", response_model=Appointment)
+def create_admin_walk_in_appointment(
+    request: Request,
+    payload: AppointmentAdminWalkInCreate,
+    current_user: UserResponse = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _assert_admin_can_manage_store(current_user, store_id=payload.store_id)
+
+    store = db.query(Store).filter(Store.id == payload.store_id).first()
+    if not store:
+        raise HTTPException(status_code=404, detail="Store not found")
+    store_timezone = _resolve_zoneinfo(store.time_zone)
+    _ensure_walk_in_date_not_in_past(payload.appointment_date, store_timezone)
+
+    service = db.query(Service).filter(Service.id == payload.service_id).first()
+    if not service:
+        raise HTTPException(status_code=404, detail="Service not found")
+    if service.store_id != payload.store_id:
+        raise HTTPException(status_code=400, detail="Service does not belong to this store")
+    if service.is_active != 1:
+        raise HTTPException(status_code=400, detail="Service is not available")
+
+    _ensure_not_store_holiday(
+        db=db,
+        store_id=payload.store_id,
+        appointment_date=payload.appointment_date,
+    )
+    _ensure_within_store_business_hours(
+        db=db,
+        store_id=payload.store_id,
+        appointment_date=payload.appointment_date,
+        appointment_time=payload.appointment_time,
+        duration_minutes=service.duration_minutes,
+    )
+    _ensure_not_blocked_by_store_slot(
+        db=db,
+        store_id=payload.store_id,
+        appointment_date=payload.appointment_date,
+        appointment_time=payload.appointment_time,
+        duration_minutes=service.duration_minutes,
+    )
+    _ensure_technician_is_available(
+        db=db,
+        technician_id=payload.technician_id,
+        appointment_date=payload.appointment_date,
+        appointment_time=payload.appointment_time,
+        duration_minutes=service.duration_minutes,
+    )
+
+    ip_address = request.client.host if request.client else None
+
+    try:
+        customer, _created = _resolve_or_create_walk_in_customer(
+            db,
+            phone=payload.phone,
+            full_name=payload.full_name,
+        )
+
+        _lock_booking_subjects(
+            db,
+            user_ids=[customer.id],
+            technician_ids=[payload.technician_id],
+        )
+
+        conflict_result = crud_appointment.check_time_conflict(
+            db,
+            appointment_date=payload.appointment_date,
+            appointment_time=payload.appointment_time,
+            service_id=payload.service_id,
+            technician_id=payload.technician_id,
+            user_id=customer.id,
+        )
+        if conflict_result["has_conflict"]:
+            raise HTTPException(status_code=400, detail=conflict_result["message"])
+
+        appointment_create = AppointmentCreate(
+            store_id=payload.store_id,
+            service_id=payload.service_id,
+            technician_id=payload.technician_id,
+            appointment_date=payload.appointment_date,
+            appointment_time=payload.appointment_time,
+            notes=payload.notes,
+        )
+        db_appointment = crud_appointment.create_appointment(
+            db,
+            appointment=appointment_create,
+            user_id=customer.id,
+            booked_by_user_id=current_user.id,
+            auto_commit=False,
+        )
+        db_appointment.status = AppointmentStatus.CONFIRMED
+        db_appointment.booking_source = "admin_walk_in"
+        if service.price is not None and db_appointment.order_amount is None:
+            db_appointment.order_amount = float(service.price)
+        if db_appointment.original_amount is None and db_appointment.order_amount is not None:
+            db_appointment.original_amount = float(db_appointment.order_amount)
+        if service.price is not None and db_appointment.original_amount is None:
+            db_appointment.original_amount = float(service.price)
+        db_appointment.coupon_discount_amount = float(db_appointment.coupon_discount_amount or 0)
+        db_appointment.gift_card_used_amount = float(db_appointment.gift_card_used_amount or 0)
+        db_appointment.cash_paid_amount = float(db_appointment.cash_paid_amount or 0)
+        db_appointment.final_paid_amount = float(db_appointment.final_paid_amount or 0)
+        db_appointment.points_earned = int(db_appointment.points_earned or 0)
+        db_appointment.points_reverted = int(db_appointment.points_reverted or 0)
+        db_appointment.settlement_status = db_appointment.settlement_status or "unsettled"
+        db.commit()
+        db.refresh(db_appointment)
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        raise
+
+    _run_appointment_creation_side_effects(
+        db,
+        appointment=db_appointment,
+        user_id=customer.id,
+        ip_address=ip_address,
+        send_customer_notifications=not payload.skip_notifications,
+    )
+    return db_appointment
 
 
 @router.get("/{appointment_id}", response_model=Appointment)

@@ -41,6 +41,7 @@ export interface Appointment {
   payment_status?: string | null;
   paid_amount?: number | null;
   booked_by_user_id?: number | null;
+  booking_source?: string | null;
   guest_name?: string | null;
   guest_phone?: string | null;
   notes?: string | null;
@@ -92,6 +93,33 @@ export interface AppointmentServiceSummary {
   items: AppointmentServiceItem[];
 }
 
+export interface WalkInCustomerSearchItem {
+  id: number;
+  full_name?: string | null;
+  username: string;
+  phone: string;
+  total_appointments: number;
+  completed_count: number;
+  last_appointment_at?: string | null;
+  store_visit_count: number;
+}
+
+export interface WalkInCustomerSearchResponse {
+  customer?: WalkInCustomerSearchItem | null;
+}
+
+export interface WalkInAppointmentCreatePayload {
+  phone: string;
+  full_name?: string;
+  store_id: number;
+  service_id: number;
+  technician_id?: number | null;
+  appointment_date: string;
+  appointment_time: string;
+  notes?: string;
+  skip_notifications?: boolean;
+}
+
 export const getAppointments = async (params?: Record<string, any>) => {
   const userRaw = localStorage.getItem('user');
   let includeFullPhone = false;
@@ -116,6 +144,16 @@ export const updateAppointmentStatus = async (id: number, payload: { status: str
 
 export const markAppointmentNoShow = async (id: number) => {
   const response = await api.post(`/appointments/${id}/no-show`);
+  return response.data as Appointment;
+};
+
+export const searchWalkInCustomer = async (params: { phone: string; store_id?: number }) => {
+  const response = await api.get('/appointments/admin/walk-in/customer-search', { params });
+  return response.data as WalkInCustomerSearchResponse;
+};
+
+export const createWalkInAppointment = async (payload: WalkInAppointmentCreatePayload) => {
+  const response = await api.post('/appointments/admin/walk-in', payload);
   return response.data as Appointment;
 };
 

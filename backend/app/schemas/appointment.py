@@ -1,10 +1,11 @@
 """
 Appointment Schemas
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime, date, time
 from app.models.appointment import AppointmentStatus
+from app.schemas.phone import normalize_us_phone
 
 
 class AppointmentBase(BaseModel):
@@ -169,6 +170,7 @@ class Appointment(AppointmentBase):
     is_group_host: Optional[bool] = False
     payment_status: Optional[str] = None
     paid_amount: Optional[float] = None
+    booking_source: Optional[str] = None
     cancel_reason: Optional[str] = None
     completed_at: Optional[datetime] = None
     review_id: Optional[int] = None
@@ -246,3 +248,54 @@ class AppointmentGroupResponse(BaseModel):
     group_code: Optional[str] = None
     host_appointment: AppointmentWithDetails
     guest_appointments: List[AppointmentWithDetails]
+
+
+class WalkInCustomerSearchItem(BaseModel):
+    id: int
+    full_name: Optional[str] = None
+    username: str
+    phone: str
+    total_appointments: int = 0
+    completed_count: int = 0
+    last_appointment_at: Optional[datetime] = None
+    store_visit_count: int = 0
+
+    class Config:
+        from_attributes = True
+
+
+class WalkInCustomerSearchResponse(BaseModel):
+    customer: Optional[WalkInCustomerSearchItem] = None
+
+
+class AppointmentAdminWalkInCreate(BaseModel):
+    phone: str = Field(..., min_length=10, max_length=20)
+    full_name: Optional[str] = Field(None, max_length=200)
+    store_id: int
+    service_id: int
+    technician_id: Optional[int] = None
+    appointment_date: date
+    appointment_time: time
+    notes: Optional[str] = None
+    skip_notifications: bool = True
+
+    @field_validator("phone")
+    @classmethod
+    def validate_phone(cls, value: str) -> str:
+        return normalize_us_phone(value, "Phone must be a valid US phone number")
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_full_name(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None
+
+    @field_validator("notes")
+    @classmethod
+    def validate_notes(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        normalized = value.strip()
+        return normalized or None

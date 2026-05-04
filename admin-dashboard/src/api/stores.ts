@@ -4,6 +4,7 @@ export interface Store {
   id: number;
   name: string;
   address: string;
+  time_zone?: string | null;
   is_visible?: boolean;
   manual_rank?: number | null;
   boost_score?: number | null;

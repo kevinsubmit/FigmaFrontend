@@ -180,6 +180,8 @@ EMBEDDED_SCHEDULER_ENABLED=false python -m app.server
 - `PUT /api/v1/appointments/{id}` - 更新预约
 - `DELETE /api/v1/appointments/{id}` - 取消预约
 - `PATCH /api/v1/appointments/{id}/complete` - 完成预约（可选用券）
+- `GET /api/v1/appointments/admin/walk-in/customer-search` - 后台按手机号搜索 walk-in 客户
+- `POST /api/v1/appointments/admin/walk-in` - 后台快速创建 walk-in 预约（默认 `confirmed`，来源 `admin_walk_in`）
 
 ### VIP会员 (VIP)
 

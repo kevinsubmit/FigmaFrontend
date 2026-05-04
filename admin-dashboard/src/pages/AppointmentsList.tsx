@@ -1,4 +1,4 @@
-import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CalendarDays,
@@ -40,6 +40,7 @@ import { CustomerCouponItem, CustomerGiftCardItem, getCustomerRewards } from '..
 import { getServiceCatalog, getStoreServices, Service } from '../api/services';
 import { getTechnicians, Technician } from '../api/technicians';
 import { createStoreBlockedSlot, deleteStoreBlockedSlot, getStoreBlockedSlots, StoreBlockedSlot } from '../api/stores';
+import { WalkInQuickCreateDrawer } from '../components/WalkInQuickCreateDrawer';
 import { useAuth } from '../context/AuthContext';
 import { formatApiDateTimeET, formatYmdAsETDate, getTodayYmdET } from '../utils/time';
 
@@ -336,9 +337,10 @@ const AppointmentsList: React.FC = () => {
   const [newBlockedEnd, setNewBlockedEnd] = useState('11:00');
   const [newBlockedReason, setNewBlockedReason] = useState('Busy');
   const [selectedBlockedStoreId, setSelectedBlockedStoreId] = useState<string>('');
+  const [showWalkInDrawer, setShowWalkInDrawer] = useState(false);
 
-  useEffect(() => {
-    const load = async () => {
+  const loadAppointments = useCallback(
+    async (focusAppointmentId?: number) => {
       setLoading(true);
       try {
         const params: Record<string, string | number> = { limit: 200 };
@@ -351,15 +353,21 @@ const AppointmentsList: React.FC = () => {
         setCatalogServiceNames(
           Array.from(new Set(catalog.map((item) => item.name).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
         );
+        if (focusAppointmentId) {
+          setSelected(data.find((item) => item.id === focusAppointmentId) || null);
+        }
       } catch (error) {
         toast.error('Failed to load appointments');
       } finally {
         setLoading(false);
       }
-    };
+    },
+    [role, user],
+  );
 
-    load();
-  }, [role, user]);
+  useEffect(() => {
+    loadAppointments();
+  }, [loadAppointments]);
 
   const blockedStoreOptions = useMemo(() => {
     const map = new Map<number, string>();
@@ -1230,6 +1238,10 @@ const AppointmentsList: React.FC = () => {
     setCollapsedGroupKeys((prev) => ({ ...prev, [groupKey]: !prev[groupKey] }));
   };
 
+  const handleWalkInCreated = async (appointment: Appointment) => {
+    await loadAppointments(appointment.id);
+  };
+
   return (
     <AdminLayout>
       <TopBar title="预约管理" subtitle="按日期、服务、店铺快速检索和排班" />
@@ -1269,23 +1281,31 @@ const AppointmentsList: React.FC = () => {
               />
             </div>
 
-            <div className="inline-flex rounded-xl border border-blue-100 bg-blue-50 p-1">
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setViewMode('day')}
-                className={`rounded-lg px-3 py-1.5 text-xs uppercase tracking-[0.15em] ${
-                  viewMode === 'day' ? 'bg-gold-500 text-white' : 'text-slate-600'
-                }`}
+                onClick={() => setShowWalkInDrawer(true)}
+                className="rounded-xl bg-gold-500 px-3 py-2 text-xs font-semibold uppercase tracking-[0.15em] text-slate-950"
               >
-                Day
+                New Walk-in
               </button>
-              <button
-                onClick={() => setViewMode('week')}
-                className={`rounded-lg px-3 py-1.5 text-xs uppercase tracking-[0.15em] ${
-                  viewMode === 'week' ? 'bg-gold-500 text-white' : 'text-slate-600'
-                }`}
-              >
-                Week
-              </button>
+              <div className="inline-flex rounded-xl border border-blue-100 bg-blue-50 p-1">
+                <button
+                  onClick={() => setViewMode('day')}
+                  className={`rounded-lg px-3 py-1.5 text-xs uppercase tracking-[0.15em] ${
+                    viewMode === 'day' ? 'bg-gold-500 text-white' : 'text-slate-600'
+                  }`}
+                >
+                  Day
+                </button>
+                <button
+                  onClick={() => setViewMode('week')}
+                  className={`rounded-lg px-3 py-1.5 text-xs uppercase tracking-[0.15em] ${
+                    viewMode === 'week' ? 'bg-gold-500 text-white' : 'text-slate-600'
+                  }`}
+                >
+                  Week
+                </button>
+              </div>
             </div>
           </div>
 
@@ -2252,6 +2272,13 @@ const AppointmentsList: React.FC = () => {
           </div>
         </div>
       )}
+      <WalkInQuickCreateDrawer
+        open={showWalkInDrawer}
+        onClose={() => setShowWalkInDrawer(false)}
+        onCreated={handleWalkInCreated}
+        isSuperAdmin={role === 'super_admin'}
+        currentUserStoreId={user?.store_id}
+      />
     </AdminLayout>
   );
 };

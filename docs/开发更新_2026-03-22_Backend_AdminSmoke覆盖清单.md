@@ -1,13 +1,13 @@
 # Backend Admin Smoke 覆盖清单
 
-更新时间：2026-03-22
+更新时间：2026-05-03
 
 ## 当前入口
 
 - 独立执行入口：`backend/run_admin_regression_smokes.py`
 - 独立 CI 工作流：`.github/workflows/backend-admin-regression.yml`
-- 当前 admin smoke 脚本总数：`6`
-- CI 默认执行：`5` 条细分 smoke
+- 当前 admin smoke 脚本总数：`7`
+- CI 默认执行：`6` 条细分 smoke
 
 执行命令：
 
@@ -85,6 +85,18 @@ python run_admin_regression_smokes.py
 - 只把真正要校验的后台运营能力走 API
 - 跑后自动再次清理动态业务数据
 
+### 7. walk-in-admin
+
+脚本：`backend/test_walk_in_regression.py`
+
+覆盖：
+
+- `appointments/admin/walk-in/customer-search`
+- `appointments/admin/walk-in`
+- 新客轻量客户自动创建
+- `booking_source=admin_walk_in`
+- `booked_by_user_id` 记录后台建单管理员
+
 ## 与 consumer suite 的关系
 
 - `backend/run_regression_smokes.py` 继续负责消费者主链路
@@ -102,5 +114,6 @@ python run_admin_regression_smokes.py
 - `risk/*`
 - `security/*`
 - `logs/admin*`
+- `appointments/admin/walk-in*`
 
 `admin-ops` 保留为本地一键整合回归，不纳入默认 CI 细分执行列表。

@@ -67,6 +67,11 @@ SMOKE_CASES: tuple[SmokeCase, ...] = (
         script_path="test_logs_admin_regression.py",
     ),
     SmokeCase(
+        key="walk-in-admin",
+        label="Walk-In Admin Regression Smoke",
+        script_path="test_walk_in_regression.py",
+    ),
+    SmokeCase(
         key="admin-ops",
         label="Admin Operations Full Regression Smoke",
         script_path="test_admin_ops_regression.py",
@@ -79,6 +84,7 @@ DEFAULT_SMOKE_KEYS: tuple[str, ...] = (
     "risk-admin",
     "security-admin",
     "logs-admin",
+    "walk-in-admin",
 )
 
 

@@ -67,6 +67,7 @@ class Appointment(Base):
     settled_at = Column(DateTime(timezone=True), nullable=True)
     payment_status = Column(String(20), nullable=False, default="unpaid", index=True)
     paid_amount = Column(Float, nullable=False, default=0)
+    booking_source = Column(String(32), nullable=False, default="customer_app", index=True)
     status = Column(
         Enum('pending', 'confirmed', 'completed', 'cancelled', name='appointment_status'),
         default='pending',
